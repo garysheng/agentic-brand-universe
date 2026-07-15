@@ -103,7 +103,7 @@ Three wired mechanisms, applied at defined points:
 ```jsonc
 {
   "id": "jerry-man",                       // stable slug, unique in the universe
-  "kind": "character",                     // character | setting | doctrine | motif | beat | prop | group
+  "kind": "character",                     // character | setting | visual-metaphor | doctrine | motif | beat | prop | group
   "originStory": "golden-path-book",       // where it entered canon
   "authority": { "lockedBy": "gary", "lockedOn": "2026-07-10" },
   "structured": {                          // machine, load-bearing
@@ -115,13 +115,29 @@ Three wired mechanisms, applied at defined points:
     "voice": "earnest, wants to believe",
     "lore": "the obedient-servant builder…",
     "rules": "front patches only from the front; …"
+  },
+  "realPerson": {                          // present ONLY when the entity is a real person (backtest finding 4)
+    "photoStack": ["reference/photos/…"],  // 5+ real photos; GABR built from the stack, never a painting-of-a-painting
+    "canonicalPhotos": { "face": "…", "fit": "…" },
+    "approval": { "state": "gated", "by": "brenda-gentry", "on": null },  // gated | approved
+    "sensitiveList": "RESEARCH.md#sensitive", // what never ships
+    "wardrobeEras": { "default": "…", "activity": { "running": "…" } },   // activity-specific attire (rule: no street outfit while running)
+    "groupCount": null                     // for a group/lineup: the EXACT member count (a research fact, not an art inference)
   }
 }
 ```
-For a **setting**, `structured` carries the *contract*: `{ turnaround, emptyPlates[], blueprint, map,
-blocking, dressing }` — all required before any spread in that location renders. A setting with a null
-contract field is **unlocked** and the resolver refuses to render it. (This is the environment
-load-bearing fix; see §6.)
+**Entity kinds, and the two the backtest forced in:**
+- For a **setting**, `structured` carries the *contract*: `{ turnaround, emptyPlates[], blueprint, map,
+  blocking, dressing }` — all required before any spread in that location renders. A null contract
+  field means **unlocked** and the resolver refuses to render it. (Environment load-bearing fix; §6.)
+- **`visual-metaphor`** (backtest finding 2) is a first-class kind: the central object a whole book
+  zooms into and argues through — *Hold It Up to Forever*'s locked scale, *Maximize*'s bazaar of
+  cages. It carries a setting-style contract (a locked master + derived element crops) because, like a
+  setting, every page depends on it — but it is the book's *spine-object*, not merely a location.
+- **`realPerson`** is a sub-block on a `character`, not a flag (backtest finding 4): real-subject books
+  (Brenda, Russ, Nait, Panama, Apostle Lee) need the photo stack, approval state, sensitive list,
+  activity-wardrobe eras, and exact group counts — the multi-ref rule, the subject-approval gate, and
+  the group-lineup lesson all live here.
 
 ### 4.2 Relation
 ```jsonc
@@ -135,14 +151,34 @@ story that touches this doctrine") and so contradictions/supersessions are expli
 {
   "id": "not-every-fire-is-holy",
   "logline": "…",
-  "spine": "obedient-servant",             // the arc invariant this story must satisfy
+  "spine": "obedient-servant",             // the arc invariant this story must satisfy —
+                                           // obedient-servant | thesis | primer | testimony | ...
+                                           // NOT every story is a hero-journey (backtest finding 1):
+                                           // An Honest Primer on AI is a "primer" spine; Hold It Up
+                                           // to Forever is a "thesis" spine built on a visual-metaphor.
   "refrain": "Not every fire is holy.",
+  "register": {                            // the paint-language (backtest finding 3) — a first-class
+    "id": "warm-oil-curdles-cold",         // per-story renderer config, not implicit in the renderer
+    "anchor": "reference/style-anchor.png",// content-neutral palette/finish swatch, passed first
+    "anchoredToRealArt": null,             // e.g. Painted in His Image anchors to Tadeo's own canvases
+    "rejectedPoles": ["washed-out/mushy", "famous-artist pastiche"]
+  },
   "features": ["jerry-man", "brenda-gentry", "anjali-sambalu", "wally-boone", "wisp", "the-fear-thing"],
   "beats": [ { "n": 1, "text": "…", "location": null, "characters": ["jerry-man"], "provenance": "…" } ],
   "writesBack": [ { "kind": "character", "id": "anjali-sambalu", "locked": true } ],
   "gates": { "wordsBlessed": "2026-07-15", "subjectApproval": "gated:brenda-gentry" }
 }
 ```
+
+**Spine (finding 1):** the NoF canon's claim that *every* property is an obedient-servant journey is
+not actually true — *An Honest Primer on AI* is an explainer, not a hero-journey. `spine` is a
+per-story **declared** invariant drawn from an open set (`obedient-servant`, `thesis`, `primer`,
+`testimony`, …); craft-canon checks a story against *its declared* spine, never a single assumed one.
+
+**Register (finding 3):** the paint-language is a first-class per-story renderer config, sometimes
+anchored to a real artist's own body of work (*Painted in His Image* → Tadeo's canvases). It is
+locked via register experiments (Gary points), then passed as a content-neutral **style anchor** on
+every render — never left implicit inside the renderer.
 
 ### 4.4 Ref contract (the resolver)
 - `resolve(entity) → real paths | error`
@@ -166,6 +202,14 @@ and emits medium output + a `writesBack` proposal for the author to accept.
   events enter canon after they happen).
 - **Time-travel is free.** Because canon is git, "what did the universe contain when story X shipped"
   is a checkout, not a feature.
+- **Craft-canon is DISCOVERED, then encoded — not given (the deepest backtest finding).** The hardest
+  book (*Kenosis*, immersive venue) ran on a large pile of rules the author learned *by failing*:
+  hologram-vs-visitor translucency, projection inventories, "make her more obviously a hologram," the
+  style-anchor-leaks-content trap. The framework does **not** produce those taste discoveries up
+  front. What it does: (a) turn the *mechanical* failures (missing refs, drifting settings, unsourced
+  beats) into hard errors so they stop recurring, and (b) give each *discovered* rule a first-class
+  home (a craft-canon invariant, a new entity field) so it is paid for once and reused forever. Craft
+  grows by making stories; the system's job is to capture it, not to pretend it precedes the work.
 
 ## 6. Nation of Fire as the reference implementation
 
@@ -194,25 +238,57 @@ locked.
   throughout).
 - Not a replacement for human taste — the gates are load-bearing, deliberately.
 
-## 8. Open questions
+## 8. Decisions (resolved 2026-07-15) + genuinely-open
 
-- **Canon storage:** one canon repo per universe, or a shared multi-universe store? (Lean: per-universe
-  repo, like `nation-of-fire/universe` today.)
-- **Prose-vs-structured source of truth per field:** which fields must be structured vs may stay
-  prose? (Lean: anything a renderer or resolver consumes is structured; everything else prose.)
-- **Craft-canon enforcement:** advisory (a checklist an agent self-scores) vs hard (a validator that
-  blocks)? Likely graduated — hard for the mechanical (refrain present, spine declared), advisory +
-  judge-panel for the subjective (is the turn earned).
-- **How much of the wiki is generated from canon** vs hand-authored? (Lean: concept pages
-  hand-authored; worked-example pages generated/derived from real canon records.)
+**Decided (were open questions; the backtest gave enough evidence):**
+- **Canon storage → one repo per universe.** Like `nation-of-fire/universe` today. A shared
+  multi-universe store is a premature abstraction; per-universe keeps git-as-evolution clean.
+- **Structured-vs-prose → consumption decides.** Any field a renderer or resolver *consumes* is
+  structured (load-bearing); everything else is prose. No field is both source-of-truth.
+- **Craft-canon enforcement → graduated.** Hard-blocking for the mechanical and checkable (refrain
+  present, spine declared, refs resolve, provenance non-empty, setting locked); advisory + judge-panel
+  for the subjective (is the turn earned, is it moving). Never block on taste; never let a mechanical
+  miss through.
 
-## 9. Glossary
+**Still genuinely open:**
+- **How much of the wiki is generated from canon** vs hand-authored. (Lean: concept pages
+  hand-authored; worked-example pages derived from real canon records — but not committed until the
+  wiki is scaffolded.)
+- **Judge-panel design** for the subjective half of quality (rubric, how many lenses, when it runs).
+
+## 9. Backtest / validation (2026-07-15)
+
+The spec was audited against the real Nation of Fire roster (24 properties + a 24-entry crossover
+log) — *would the books already made be creatable on this framework?*
+
+- **~18 fit cleanly:** character-carried, antagonist-cast, ensemble, real-subject, setting-carried.
+  **Crossovers are the strongest validation** — the 24-entry log is native as Relation records.
+- **4 types strained v0.1 and are now folded in above:** non-journey **spines** (finding 1, *Honest
+  Primer*), **`visual-metaphor`** as a kind (finding 2, *Hold It Up to Forever*), **register** as
+  first-class (finding 3, *Painted in His Image*), the **`realPerson`** dossier (finding 4, the
+  real-subject books).
+- **Honest caveat:** the framework is reverse-engineered *from* these books, so post-hoc
+  expressibility is half-circular. Its real value is preventing the *recurring mechanical* failures
+  (ref-scatter, setting drift, the Charlotte leak, provenance contamination) and giving *discovered*
+  taste a home — not auto-producing taste (see §5, craft-canon is discovered-then-encoded).
+- **Verdict:** every existing book is expressible; the four additions close the strain; the next real
+  test is whether the framework makes the *next* book cheaper, not the last fifteen describable.
+
+## 10. Glossary
 
 - **Universe / Canon** — the evolving graph of everything true in a story world.
 - **Entity** — a typed node in canon (character, setting, doctrine, motif, beat, prop, group).
 - **Load-bearing reference** — a reference whose absence is a build error, not a silent drift.
 - **Story spec** — a medium-neutral composition selecting canon + beats + spine + provenance.
 - **Renderer** — a pluggable projection of canon + story into one medium.
-- **Craft-canon** — narrative-craft rules encoded as enforceable invariants.
+- **Craft-canon** — narrative-craft rules encoded as enforceable invariants (discovered, then encoded).
 - **Write-back** — the new canon a finished story contributes to the universe.
 - **Gate** — a point where human taste or a hard check must pass before proceeding.
+- **Spine** — a story's declared arc invariant (obedient-servant, thesis, primer, testimony, …); not
+  a single assumed shape.
+- **Visual-metaphor** — an entity kind: the central object a whole book zooms into and argues through
+  (the locked scale, the bazaar of cages); the book's spine-object.
+- **Register** — a story's paint-language: a first-class per-story renderer config, sometimes anchored
+  to a real artist's own work, locked via experiments and passed as a content-neutral style anchor.
+- **realPerson dossier** — the sub-block on a real-subject character: photo stack, approval state,
+  sensitive list, activity-wardrobe eras, exact group count.
