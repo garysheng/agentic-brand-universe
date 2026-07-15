@@ -49,19 +49,25 @@ def resolve_setting(store: CanonStore, eid: str) -> list[str]:
                         f"lock turnaround + emptyPlates + blueprint + map + blocking + dressing first")
     root = store.asset_root
     contract = e.raw.get("contract", {}) or {}
-    for f in SETTING_CONTRACT_FIELDS:
+    # File fields must resolve on disk; descriptor fields (prose passed in prompts) must be non-empty.
+    file_fields = ("turnaround", "blueprint")
+    descriptor_fields = ("map", "blocking", "dressing")
+    for f in file_fields:
         v = contract.get(f)
-        if f == "emptyPlates":
-            if not v:
-                problems.append(f"{eid}.emptyPlates is empty (need per-angle EMPTY plates)")
-            else:
-                for rel in v:
-                    if not (root / rel).exists():
-                        problems.append(f"{eid}.emptyPlates -> {rel} (NOT ON DISK)")
-        elif v in (None, ""):
-            problems.append(f"{eid}.{f} is null (required by the setting contract)")
+        if v in (None, ""):
+            problems.append(f"{eid}.{f} is null (required image; the drawn plate/blueprint)")
         elif not (root / v).exists():
             problems.append(f"{eid}.{f} -> {v} (NOT ON DISK)")
+    plates = contract.get("emptyPlates") or []
+    if not plates:
+        problems.append(f"{eid}.emptyPlates is empty (need per-angle EMPTY plates)")
+    else:
+        for rel in plates:
+            if not (root / rel).exists():
+                problems.append(f"{eid}.emptyPlates -> {rel} (NOT ON DISK)")
+    for f in descriptor_fields:
+        if not (contract.get(f) or "").strip():
+            problems.append(f"{eid}.{f} is empty (required descriptor: prose passed in every prompt)")
     return problems
 
 
