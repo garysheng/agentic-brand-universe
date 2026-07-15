@@ -1,0 +1,3 @@
+{ "id":"the-hall","kind":"setting","originStory":"first-trial","status":"unlocked",
+  "contract":{"turnaround":null,"emptyPlates":[],"blueprint":null,"map":null,"blocking":null,"dressing":null},
+  "prose":{"rules":"the trial hall; lock before rendering"} }

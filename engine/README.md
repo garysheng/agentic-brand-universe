@@ -9,16 +9,21 @@ a typed **canon store**, **model** validation, and the **load-bearing reference*
 ```bash
 cd engine
 
-# tests (runs against the real Nation of Fire reference universe)
+# tests (self-contained synthetic fixture — no content-repo dependency)
 python3 -m unittest tests.test_engine -v
 
-# CLI, on the reference universe
-python3 -m agenticstory.cli list         ../universes/nation-of-fire
-python3 -m agenticstory.cli validate     ../universes/nation-of-fire
-python3 -m agenticstory.cli crossovers   ../universes/nation-of-fire jerry-man
-python3 -m agenticstory.cli assert-story ../universes/nation-of-fire not-every-fire-is-holy
-python3 -m agenticstory.cli assert-spread ../universes/nation-of-fire --characters anjali-sambalu,wally-boone
+# CLI, pointed at the REAL Nation of Fire universe (which lives in its own repo)
+NOF=../../nation-of-fire/universe
+python3 -m agenticstory.cli list         "$NOF"
+python3 -m agenticstory.cli validate     "$NOF"
+python3 -m agenticstory.cli crossovers   "$NOF" jerry-man
+python3 -m agenticstory.cli assert-story "$NOF" not-every-fire-is-holy
+python3 -m agenticstory.cli assert-spread "$NOF" --characters anjali-sambalu,wally-boone
 ```
+
+The engine is universe-agnostic: point it at any `<universe>/` dir (one with `universe.json` +
+`canon/` + `stories/`). The framework repo ships only a synthetic test fixture, never a universe's
+canon.
 
 ## What it proves
 
@@ -36,7 +41,7 @@ letting the book drift.
 | `agenticstory/store.py` | CanonStore: load a universe dir, index + graph queries |
 | `agenticstory/refs.py` | load-bearing resolution: `assert_story`, `assert_spread`, `resolve_*` |
 | `agenticstory/cli.py` | `validate · list · crossovers · assert-story · assert-spread` (non-zero exit gates CI/gen) |
-| `universes/nation-of-fire/` | the reference-implementation seed: real entities/relations/story pointing at real art |
+| `tests/fixtures/example/` | a self-contained synthetic universe for the tests (no content-repo dependency) |
 
 ## Next (not built yet)
 - `new-story` / `new-entity` scaffolders (write-back proposals)

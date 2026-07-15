@@ -1,8 +1,0 @@
-{
-  "id": "the-arena",
-  "kind": "setting",
-  "originStory": "not-every-fire-is-holy-book",
-  "status": "unlocked",
-  "contract": { "turnaround": null, "emptyPlates": [], "blueprint": null, "map": null, "blocking": null, "dressing": null },
-  "prose": { "rules": "MSG-like arena finale. Must lock empty-first turnaround + blueprint + $MAP + blocking + dressing before any arena spread renders. Register target: regB cold-cinematic." }
-}

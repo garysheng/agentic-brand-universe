@@ -1,0 +1,2 @@
+[ { "from":"hero","rel":"crossover-with","to":"sage","story":"first-trial","note":"the sage sends the hero" },
+  { "from":"guide","rel":"appears-in","to":"first-trial","note":"the guide walks with the hero" } ]

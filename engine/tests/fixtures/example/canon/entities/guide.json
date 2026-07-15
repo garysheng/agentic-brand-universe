@@ -1,0 +1,3 @@
+{ "id":"guide","kind":"motif","originStory":"first-trial",
+  "structured":{"sheets":{"gabr":"guide.png"},"requiredForRender":["gabr"]},
+  "prose":{"rules":"a light-form"} }

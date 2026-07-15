@@ -23,10 +23,18 @@ generation.**
 
 - **Spec v0.2** ([`SPEC.md`](./SPEC.md)) — backtested against the real 24-book roster.
 - **Engine v0** ([`engine/`](./engine/)) — RUNNING: typed canon store + model validation + the
-  load-bearing reference gate, stdlib only, 11 tests green. Dogfooded on the real Nation of Fire
-  canon: `assert-story not-every-fire-is-holy` resolves all six featured entities' art on disk and
-  correctly blocks on the one unlocked setting (the arena).
-- **Reference universe** ([`universes/nation-of-fire/`](./universes/nation-of-fire/)) — real
-  entities/relations/story as typed records.
+  load-bearing reference gate, stdlib only, 11 tests green (against a self-contained fixture, no
+  content-repo dependency).
 
-Next: `new-story` scaffolders, graduated craft-canon checks, `agenticstory.wiki`.
+**Framework ≠ content.** This repo is the framework; it holds no universe's canon. A universe is data
+that conforms to the schema and lives in its **own** repo. The reference universe — **Nation of
+Fire** — lives at `nation-of-fire/universe/` (typed `canon/entities`, `canon/relations`, `stories/`).
+Validate it by pointing the engine at it:
+
+```bash
+python3 -m agenticstory.cli assert-story ../../nation-of-fire/universe not-every-fire-is-holy
+# resolves all 6 featured entities' real art on disk; blocks ONLY on the unlocked arena setting.
+```
+
+Next: `new-story` scaffolders, graduated craft-canon checks, migrate the standalone
+`nation-of-fire/universe/canon/resolve_gabr.py` onto this engine, `agenticstory.wiki`.

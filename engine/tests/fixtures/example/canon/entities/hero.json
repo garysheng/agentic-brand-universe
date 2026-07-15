@@ -1,0 +1,3 @@
+{ "id":"hero","kind":"character","originStory":"first-trial",
+  "structured":{"sheets":{"face":"hero-face.png","body":"hero-body.png"},"requiredForRender":["face","body"]},
+  "prose":{"voice":"earnest"} }

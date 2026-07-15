@@ -1,0 +1,4 @@
+{ "id":"sage","kind":"character","originStory":"first-trial",
+  "structured":{"sheets":{"portrait":"sage.png"},"requiredForRender":["portrait"]},
+  "realPerson":{"photoStack":["sage.png"],"approval":{"state":"gated","by":"sage","on":null},"sensitiveList":"RESEARCH.md"},
+  "prose":{"voice":"warm"} }

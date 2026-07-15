@@ -1,0 +1,6 @@
+{ "id":"first-trial","logline":"the hero faces the trial","spine":"obedient-servant","refrain":"only forward",
+  "features":["hero","sage","guide"],
+  "gates":{"wordsBlessed":"2026-07-15","subjectApproval":"gated:sage"},
+  "beats":[
+    {"n":1,"text":"the hero is called","location":null,"characters":["hero"],"provenance":"fixture"},
+    {"n":5,"text":"the trial in the hall","location":"the-hall","characters":["hero","guide"],"provenance":"fixture"} ] }
