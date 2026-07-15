@@ -175,6 +175,11 @@ not actually true — *An Honest Primer on AI* is an explainer, not a hero-journ
 per-story **declared** invariant drawn from an open set (`obedient-servant`, `thesis`, `primer`,
 `testimony`, …); craft-canon checks a story against *its declared* spine, never a single assumed one.
 
+**Story status (`stub` | `full`):** a story may be registered as a `stub` (title + declared spine,
+no beats yet) so the canon reflects the whole roster before every book is fully migrated — the
+features/beats/provenance requirements apply only to a `full` story. (Mirrors a setting being
+`unlocked`.)
+
 **Register (finding 3):** the paint-language is a first-class per-story renderer config, sometimes
 anchored to a real artist's own body of work (*Painted in His Image* → Tadeo's canvases). It is
 locked via register experiments (Gary points), then passed as a content-neutral **style anchor** on

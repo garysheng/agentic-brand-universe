@@ -35,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("validate", "list"):
         s = sub.add_parser(name); s.add_argument("universe")
     c = sub.add_parser("crossovers"); c.add_argument("universe"); c.add_argument("entity")
+    rel = sub.add_parser("relations"); rel.add_argument("universe"); rel.add_argument("entity")
     a = sub.add_parser("assert-story"); a.add_argument("universe"); a.add_argument("story")
     sp = sub.add_parser("assert-spread"); sp.add_argument("universe")
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
@@ -66,6 +67,15 @@ def main(argv: list[str] | None = None) -> int:
         for r in rels:
             other = r.to if r.from_ == args.entity else r.from_
             print(f"  {args.entity} × {other}  ({r.raw.get('story', '?')}): {r.raw.get('note', '')}")
+        return 0
+    if args.cmd == "relations":
+        rels = store.relations_of(args.entity)
+        if not rels:
+            print(f"no relations for '{args.entity}'"); return 0
+        for r in rels:
+            arrow = "→" if r.from_ == args.entity else "←"
+            other = r.to if r.from_ == args.entity else r.from_
+            print(f"  {r.rel:16s} {arrow} {other:22s} {r.raw.get('note', '')}")
         return 0
     if args.cmd == "assert-story":
         return _print_problems(f"assert-story [{args.story}]",

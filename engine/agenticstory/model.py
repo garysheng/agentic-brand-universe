@@ -120,14 +120,22 @@ class StorySpec:
     def from_dict(d: dict[str, Any]) -> "StorySpec":
         return StorySpec(id=d.get("id", ""), raw=d)
 
+    @property
+    def status(self) -> str:
+        return self.raw.get("status", "full")  # "stub" = registered but not yet fully migrated
+
     def validate(self) -> list[str]:
         """Structural validation only (no filesystem). Load-bearing asset + setting
-        checks live in refs.assert_story, which needs the canon store + disk."""
+        checks live in refs.assert_story, which needs the canon store + disk.
+        A 'stub' story is a registered placeholder (title + spine) and is exempt
+        from the features/beats/provenance requirements until it is filled in."""
         p: list[str] = []
         if not self.id:
             p.append("story missing 'id'")
         if not self.raw.get("spine"):
             p.append(f"{self.id}: no declared spine (every story declares its arc invariant)")
+        if self.status == "stub":
+            return p
         if not self.features:
             p.append(f"{self.id}: no features (a story selects canon entities)")
         if not self.beats:
