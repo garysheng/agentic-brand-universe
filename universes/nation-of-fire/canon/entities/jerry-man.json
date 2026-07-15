@@ -1,0 +1,20 @@
+{
+  "id": "jerry-man",
+  "kind": "character",
+  "originStory": "golden-path-book",
+  "authority": { "lockedBy": "gary", "lockedOn": "2026-07-10" },
+  "structured": {
+    "sheets": {
+      "man": "nation-of-fire/kenosis-experience-book/reference/gabrs/gabr-02-jerry-man.png",
+      "face": "nation-of-fire/kenosis-experience-book/reference/gabrs/gabr-15-jerry-man-face.png",
+      "turnaround": "nation-of-fire/kenosis-experience-book/reference/gabrs/gabr-13-jerry-turnaround.png",
+      "jacketBack": "nation-of-fire/kenosis-experience-book/reference/gabrs/gabr-14-jerry-jacket-back.png"
+    },
+    "requiredForRender": ["man", "face"],
+    "invariants": ["no-lenses", "double-eyelid-crease", "north-star-cross-upper-back"]
+  },
+  "prose": {
+    "voice": "earnest, wants to believe",
+    "rules": "NO lenses ever. Denim jacket; North Star Cross on upper back; front patches only from the front."
+  }
+}

@@ -1,0 +1,5 @@
+[
+  { "from": "jerry-man", "rel": "crossover-with", "to": "brenda-gentry", "story": "gold-belongs-to-god", "note": "Jerry is the son God sends Brenda to build beside; reused in Not Every Fire Is Holy." },
+  { "from": "wisp", "rel": "appears-in", "to": "not-every-fire-is-holy", "note": "The true Fire vs the counterfeit; drawn by the platform layer on the closing plate." },
+  { "from": "the-fear-thing", "rel": "crossover-with", "to": "anjali-sambalu", "story": "not-every-fire-is-holy", "note": "The principality riding Anjali's ministry, exposed and split at the MSG finale." }
+]

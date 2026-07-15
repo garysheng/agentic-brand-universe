@@ -1,0 +1,11 @@
+{
+  "id": "wally-boone",
+  "kind": "character",
+  "originStory": "not-every-fire-is-holy-book",
+  "fictional": true,
+  "structured": {
+    "sheets": { "gabr": "nation-of-fire/not-every-fire-is-holy-book/reference/gabrs/gabr-wally-boone.png" },
+    "requiredForRender": ["gabr"]
+  },
+  "prose": { "rules": "Fictional Billy-Graham ARCHETYPE (never his face/name). White hair, navy suit, Bible; the trusted endorser whose blessing disarms discernment." }
+}

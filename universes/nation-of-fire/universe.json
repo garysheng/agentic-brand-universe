@@ -1,0 +1,5 @@
+{
+  "name": "nation-of-fire",
+  "assetRoot": "../../..",
+  "note": "Reference-implementation seed. assetRoot resolves to github-repos/, so entity asset paths (nation-of-fire/<book>/...) point at the REAL locked art on disk. This is a translated SLICE of the universe canon for dogfooding the engine, not the full canon."
+}

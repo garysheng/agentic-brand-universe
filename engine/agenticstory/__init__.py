@@ -1,0 +1,6 @@
+"""Agentic Story engine v0 — a universe is first-class; stories are compositions; refs are load-bearing."""
+from .model import Entity, Relation, StorySpec  # noqa: F401
+from .store import CanonStore  # noqa: F401
+from .refs import assert_story, assert_spread, resolve_entity_assets, resolve_setting  # noqa: F401
+
+__version__ = "0.0.1"

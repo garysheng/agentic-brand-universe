@@ -1,0 +1,15 @@
+{
+  "id": "brenda-gentry",
+  "kind": "character",
+  "originStory": "brenda-gentry-book",
+  "structured": {
+    "sheets": { "gabr": "nation-of-fire/brenda-gentry-book/brand-os/static/brand/generation-layer/golden-atomic-brand-references/gabr-01-brenda.png" },
+    "requiredForRender": ["gabr"]
+  },
+  "realPerson": {
+    "photoStack": ["nation-of-fire/brenda-gentry-book/brand-os/static/brand/generation-layer/golden-atomic-brand-references/gabr-01-brenda.png"],
+    "approval": { "state": "gated", "by": "brenda-gentry", "on": null },
+    "sensitiveList": "brenda-gentry-book/RESEARCH.md"
+  },
+  "prose": { "voice": "warm, regal", "rules": "Real-likeness tribute; her gold giver-sight is the discernment device; books featuring her stay gated until she blesses." }
+}

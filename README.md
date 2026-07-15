@@ -21,5 +21,12 @@ generation.**
 
 ## Status
 
-v0.1 spec. Engine v0 = the Nation of Fire load-bearing GABR resolver
-(`nation-of-fire/universe/canon/`), to be generalized here. First dogfood: *Not Every Fire Is Holy*.
+- **Spec v0.2** ([`SPEC.md`](./SPEC.md)) — backtested against the real 24-book roster.
+- **Engine v0** ([`engine/`](./engine/)) — RUNNING: typed canon store + model validation + the
+  load-bearing reference gate, stdlib only, 11 tests green. Dogfooded on the real Nation of Fire
+  canon: `assert-story not-every-fire-is-holy` resolves all six featured entities' art on disk and
+  correctly blocks on the one unlocked setting (the arena).
+- **Reference universe** ([`universes/nation-of-fire/`](./universes/nation-of-fire/)) — real
+  entities/relations/story as typed records.
+
+Next: `new-story` scaffolders, graduated craft-canon checks, `agenticstory.wiki`.
