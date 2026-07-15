@@ -10,14 +10,16 @@ crossover relation, and one UNLOCKED setting that must block a story.
  nation-of-fire/universe — the engine is universe-agnostic by design.)
 """
 import copy
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 ENGINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ENGINE_DIR))
 
-from agenticstory import CanonStore, refs  # noqa: E402
+from agenticstory import CanonStore, refs, scaffold, SPEC_VERSION  # noqa: E402
 from agenticstory.model import Entity  # noqa: E402
 
 UNIVERSE = Path(__file__).resolve().parent / "fixtures" / "example"
@@ -86,6 +88,70 @@ class TestValidationCatchesBreakage(unittest.TestCase):
                   "realPerson": {"approval": {"state": "gated"}}}
         problems = Entity.from_dict(broken).validate()
         self.assertTrue(any("photoStack" in p for p in problems))
+
+
+class TestScaffold(unittest.TestCase):
+    """`init` must produce a universe that loads and validates GREEN out of the box,
+    carries spec provenance, and (with --example) self-demonstrates the load-bearing
+    gate: structurally valid, but assert-story refuses until real assets exist."""
+
+    def test_empty_scaffold_validates_green(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "myverse"
+            written = scaffold.scaffold_universe(target, name="myverse")
+            self.assertTrue(written)
+            store = CanonStore(target)
+            self.assertEqual(store.validate_canon(), [], "empty scaffold must validate clean")
+
+    def test_manifest_carries_spec_provenance(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "myverse"
+            scaffold.scaffold_universe(target, name="myverse")
+            man = json.loads((target / "universe.json").read_text())
+            self.assertEqual(man["name"], "myverse")
+            self.assertEqual(man["spec"]["version"], SPEC_VERSION)
+            self.assertIn("agenticstory.wiki", man["spec"]["wiki"])
+            self.assertIn(f"v{SPEC_VERSION}", man["spec"]["conformsTo"])
+
+    def test_gate_wrapper_written_and_executable(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "myverse"
+            scaffold.scaffold_universe(target, name="myverse")
+            gate = target / "canon" / "scripts" / "assert.sh"
+            self.assertTrue(gate.exists())
+            self.assertTrue(gate.stat().st_mode & 0o111, "assert.sh must be executable")
+
+    def test_example_scaffold_validates_green(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "exverse"
+            scaffold.scaffold_universe(target, name="exverse", example=True)
+            store = CanonStore(target)
+            self.assertEqual(store.validate_canon(), [], "example scaffold must validate clean")
+            for eid in ("protagonist", "the-crossroads"):
+                self.assertIn(eid, store.entities)
+            self.assertIn("the-first-step", store.stories)
+
+    def test_example_gate_refuses_until_assets_exist(self):
+        # The example character's sheets are placeholder paths not on disk, so the
+        # load-bearing gate must refuse the story — that refusal is the feature.
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "exverse"
+            scaffold.scaffold_universe(target, name="exverse", example=True)
+            store = CanonStore(target)
+            problems = refs.assert_story(store, "the-first-step")
+            self.assertTrue(problems, "gate should refuse: example assets are placeholders")
+            self.assertTrue(any("protagonist" in p for p in problems), problems)
+
+    def test_refuses_overwrite_without_force(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "myverse"
+            scaffold.scaffold_universe(target, name="myverse")
+            with self.assertRaises(FileExistsError):
+                scaffold.scaffold_universe(target, name="myverse")
+            # force overwrites cleanly
+            written = scaffold.scaffold_universe(target, name="myverse2", force=True)
+            self.assertTrue(written)
+            self.assertEqual(json.loads((target / "universe.json").read_text())["name"], "myverse2")
 
 
 if __name__ == "__main__":

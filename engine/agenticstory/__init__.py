@@ -4,3 +4,11 @@ from .store import CanonStore  # noqa: F401
 from .refs import assert_story, assert_spread, resolve_entity_assets, resolve_setting  # noqa: F401
 
 __version__ = "0.0.1"
+
+# The framework spec every scaffolded universe conforms to. Canonical source of
+# truth for provenance — a universe.json records these so it always names the
+# spec version it follows and points back to the wiki that defines it (like a
+# BOOMERANG.md `conforms_to`). Bump SPEC_VERSION in lockstep with SPEC.md.
+SPEC_VERSION = "0.2"
+SPEC_WIKI = "https://agenticstory.wiki"
+SPEC_URL = "https://agenticstory.wiki/spec"

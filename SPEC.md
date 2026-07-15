@@ -1,6 +1,6 @@
 # Agentic Story — Framework Spec
 
-**v0.1 — 2026-07-15.** The first-principles architecture for compelling, agentically writable,
+**v0.2 — 2026-07-15.** The first-principles architecture for compelling, agentically writable,
 composable, evolvable story generation. Home: `agenticstory.wiki`. Reference implementation: the
 Nation of Fire universe.
 
@@ -96,7 +96,7 @@ Three wired mechanisms, applied at defined points:
 
 ## 4. Primitives (the schemas)
 
-> These are the v0.1 shapes. They will tighten as the engine implements them; treat field names as
+> These are the v0.2 shapes. They will tighten as the engine implements them; treat field names as
 > provisional but the *structure* as the commitment.
 
 ### 4.1 Canon Entity

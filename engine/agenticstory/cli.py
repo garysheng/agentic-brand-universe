@@ -16,7 +16,7 @@ import argparse
 import sys
 
 from .store import CanonStore
-from . import refs
+from . import refs, scaffold, SPEC_VERSION, SPEC_WIKI
 
 
 def _print_problems(title: str, problems: list[str]) -> int:
@@ -39,8 +39,32 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("assert-story"); a.add_argument("universe"); a.add_argument("story")
     sp = sub.add_parser("assert-spread"); sp.add_argument("universe")
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
+    ini = sub.add_parser("init", help="scaffold a new universe (conforms to spec v" + SPEC_VERSION + ")")
+    ini.add_argument("universe", help="target directory for the new universe")
+    ini.add_argument("--name", required=True, help="universe name (slug)")
+    ini.add_argument("--asset-root", default=".", help="where entity asset paths resolve (default: the universe dir)")
+    ini.add_argument("--example", action="store_true", help="also scaffold a worked example (character/setting/story/relation)")
+    ini.add_argument("--force", action="store_true", help="overwrite an existing universe.json")
 
     args = ap.parse_args(argv)
+
+    # init does not load a store (the universe does not exist yet)
+    if args.cmd == "init":
+        try:
+            written = scaffold.scaffold_universe(
+                args.universe, name=args.name, asset_root=args.asset_root,
+                example=args.example, force=args.force)
+        except FileExistsError as e:
+            print(f"init: {e}"); return 1
+        print(f"init [{args.name}]: scaffolded {len(written)} file(s), conforms to spec v{SPEC_VERSION} ({SPEC_WIKI})")
+        for p in written:
+            print(f"  + {p}")
+        # confirm the scaffold is structurally valid out of the box
+        problems = CanonStore(args.universe).validate_canon()
+        print("next: `validate` →", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
+        print("      then `assert-story <id>` before rendering (it refuses until real assets exist).")
+        return 0 if not problems else 1
+
     store = CanonStore(args.universe)
 
     if args.cmd == "validate":
