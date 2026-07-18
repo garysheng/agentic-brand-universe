@@ -222,8 +222,8 @@ Everything above already exists in Nation of Fire, informally. Agentic Story is 
 
 | Agentic Story layer / primitive | Nation of Fire today | Gap to close |
 | --- | --- | --- |
-| Canon (entities + relations) | `universe/CANON.md` (prose) + brand OS | promote to typed records; keep prose as fields |
-| Refs (load-bearing) | `universe/canon/gabr-index.json` + `resolve_gabr.py` | **built 2026-07-15**; generalize `nof-*` → universe-agnostic |
+| Canon (entities + relations) | `nof-universe/CANON.md` (prose) + typed `canon/entities` | promote to typed records; keep prose as fields |
+| Refs (load-bearing) | `nof-universe/canon` (typed) + `assert.sh` → the engine | **built 2026-07-15**; generalized `nof-*` → universe-agnostic (the engine); **reference implementation made self-contained 2026-07-18** — all canon assets moved into `nof-universe/` (`assetRoot: "."`), so the universe resolves every reference inside its own repo and the folder was renamed `universe/` → `nof-universe/` |
 | Setting contract | skill rule 17 (blueprint, empty-plates, $MAP, blocking/dressing) | encode as the setting entity's structured contract (resolver already refuses unlocked) |
 | Story spec | each book's `MANUSCRIPT.md` + brand.json `books` entry | unify into one story-spec record |
 | Renderer | `create-brand-os-picture-book` + `picture-book-platform` | wrap as the first named renderer |
@@ -246,7 +246,7 @@ locked.
 ## 8. Decisions (resolved 2026-07-15) + genuinely-open
 
 **Decided (were open questions; the backtest gave enough evidence):**
-- **Canon storage → one repo per universe.** Like `nation-of-fire/universe` today. A shared
+- **Canon storage → one repo per universe.** Like `nation-of-fire/nof-universe` today. A shared
   multi-universe store is a premature abstraction; per-universe keeps git-as-evolution clean.
 - **Structured-vs-prose → consumption decides.** Any field a renderer or resolver *consumes* is
   structured (load-bearing); everything else is prose. No field is both source-of-truth.

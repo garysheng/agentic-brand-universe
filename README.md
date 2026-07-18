@@ -32,7 +32,7 @@ Fire** — lives at `nation-of-fire/universe/` (typed `canon/entities`, `canon/r
 Validate it by pointing the engine at it:
 
 ```bash
-python3 -m agenticstory.cli assert-story ../../nation-of-fire/universe not-every-fire-is-holy
+python3 -m agenticstory.cli assert-story ../../nation-of-fire/nof-universe not-every-fire-is-holy
 # resolves all 6 featured entities' real art on disk; blocks ONLY on the unlocked arena setting.
 ```
 
