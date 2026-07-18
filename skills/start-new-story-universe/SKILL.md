@@ -43,14 +43,23 @@ which spec **version** it conforms to and the wiki that defines it — provenanc
 Confirm this is a NEW world, not a new property in an old one. If the operator names an
 existing universe, stop and redirect to that universe's canon + renderer. Pick the canon
 repo home (default: a new top-level repo `~/Documents/github-repos/<universe>/` with a
-`universe/` canon dir inside, mirroring `nation-of-fire/universe`). One repo per universe
+`universe/` canon dir inside, mirroring `nation-of-fire/nof-universe`). One repo per universe
 (SPEC §8) — do not add to a shared multi-universe store.
 
 ### Phase 1 — Interview (one question at a time)
 Gather only what canon needs to begin. Do not over-ask; the universe grows by making stories.
 - **Name** (slug) and one-line premise of the world.
-- **Asset root** — where reference art/voice files will live relative to the canon dir
-  (default `.`; for a multi-repo world like NoF, `..` so sibling property repos resolve).
+- **Asset root** — leave it `.` (the default). Every asset lives INSIDE this universe repo
+  (SPEC §3a self-containment). Do NOT set it to `..` to reach sibling property repos — that is
+  the scatter the framework exists to kill (the Nation of Fire canon started that way and had to
+  be consolidated back in). A universe you can clone as one folder, whose refs all resolve, is the
+  guarantee. Properties keep their own spread art / narration; the universe owns the canonical
+  refs (character sheets, setting plates, reference photos) under its own root.
+- **Identity** — the constants this universe is known by, written into `universe.json` `identity`
+  (SPEC §11): its `mark` (the "made in this universe" byline), a `platformUniverseId` if it will
+  ship to a shared platform, a `theme` (brand token set), a `closingOrnament` if it has a recurring
+  closing motif, and `voice` term rules (words to capitalize / keep one-word for the voice gate).
+  These are DATA the generic framework skills read — never hardcode them into a skill.
 - **The first property** — its working title, its **spine** (the arc invariant it must
   satisfy: `obedient-servant | thesis | primer | testimony | …`; NOT assumed to be a
   hero-journey — SPEC finding 1), and whether it is carried by a character, a **setting**,
@@ -62,12 +71,20 @@ Gather only what canon needs to begin. Do not over-ask; the universe grows by ma
 ### Phase 2 — Scaffold (tested machinery, not hand-authoring)
 From the engine dir (`agenticstory/engine`):
 ```bash
-python3 -m agenticstory.cli init <repo>/universe --name <slug> [--asset-root ..] [--example]
+python3 -m agenticstory.cli init <repo>/<slug>-universe --name <slug> [--example]
 ```
 - Use `--example` for the operator's first-ever universe (drops a worked
   character/setting/story/relation so the shape is obvious); omit it once they know the shape.
-- This writes `universe.json` (with spec provenance), `canon/{entities,relations}/`,
-  `stories/`, a `canon/README.md`, and the load-bearing gate `canon/scripts/assert.sh`.
+- This writes `universe.json` (with spec provenance + a stub `identity` block + the
+  self-containment note), `canon/{entities,relations}/`, `stories/`, a `canon/README.md`, and the
+  load-bearing gate `canon/scripts/assert.sh`. Name the repo folder `<slug>-universe` (not the
+  generic `universe`), so it stands on its own.
+- **Fill the `identity` block** with the values gathered in Phase 1 (mark, theme, voice terms,
+  etc.). Leave `assetRoot` at `.`.
+- Do NOT scaffold or fork any per-universe skill. The operations (ref resolution, casting sweep,
+  entity register, render read-back, voice gate, the renderer) are **framework skills** the
+  universe inherits, parameterized by this universe's path + `identity` (SPEC §11). A universe
+  ships data, not skill code.
 - The command prints a `validate → OK`. If it is not OK, stop and fix before seeding canon.
 
 ### Phase 3 — Seed the first canon
@@ -103,10 +120,16 @@ The gates are load-bearing on purpose (SPEC §3.5). Establish, for this universe
 
 ## Definition of done
 - A new one-repo universe exists, `git init`'d, first commit made.
-- `universe.json` names the **spec version** and the canonical wiki (provenance present).
+- `universe.json` names the **spec version** and the canonical wiki (provenance present), and its
+  **`identity` block is filled** (mark, theme, voice terms, etc. — SPEC §11).
+- **Self-contained (SPEC §3a):** `assetRoot` is `.` and every referenced asset lives inside the
+  repo. You could clone this folder alone and every ref would resolve. No ref points at a sibling
+  folder or another repo.
 - `validate` is GREEN; the first story is registered (stub or full).
 - The load-bearing gate is wired and demonstrably refuses on a missing/unlocked reference.
 - Real-subject properties are gated until blessed; no real person's private detail in canon.
+- **No per-universe skill code was created** — the universe inherits framework skills and ships
+  only data (canon, assets, identity, craft-canon).
 - The scaffold does not bake in any single property's specifics — those live in that
   property's own surfaces, not in canon-wide files.
 
@@ -117,7 +140,7 @@ The gates are load-bearing on purpose (SPEC §3.5). Establish, for this universe
   for a wiki; the picture-book skills for a single book).
 
 ## Reference implementation
-**Nation of Fire** (`nation-of-fire/universe`) is the proof this works: ~24 properties, a
+**Nation of Fire** (`nation-of-fire/nof-universe`) is the proof this works: ~24 properties, a
 typed canon, the load-bearing gate, and a real dogfood (*Not Every Fire Is Holy*, whose
 arena setting was correctly *refused* until locked). Use it as the worked example of a filled
 universe — but never copy its property-specific rules into a fresh universe's canon.

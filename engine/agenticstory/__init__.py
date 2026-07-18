@@ -9,6 +9,6 @@ __version__ = "0.0.1"
 # truth for provenance — a universe.json records these so it always names the
 # spec version it follows and points back to the wiki that defines it (like a
 # BOOMERANG.md `conforms_to`). Bump SPEC_VERSION in lockstep with SPEC.md.
-SPEC_VERSION = "0.2"
+SPEC_VERSION = "0.3"
 SPEC_WIKI = "https://agenticstory.wiki"
 SPEC_URL = "https://agenticstory.wiki/spec"

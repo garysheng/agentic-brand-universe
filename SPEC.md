@@ -1,8 +1,14 @@
 # Agentic Story — Framework Spec
 
-**v0.2 — 2026-07-15.** The first-principles architecture for compelling, agentically writable,
+**v0.3 — 2026-07-18.** The first-principles architecture for compelling, agentically writable,
 composable, evolvable story generation. Home: `agenticstory.wiki`. Reference implementation: the
 Nation of Fire universe.
+
+> **v0.3 changelog:** (1) **Self-containment** made an explicit invariant (principle 3a) — a universe
+> owns its assets inside its own repo; refs never point outward. (2) New **§11 Skills & Identity layer**
+> — generic framework skills parameterized by a target universe read a universe's `identity` block;
+> a universe ships *data*, the framework ships *skills*. Both were earned making the Nation of Fire
+> universe self-contained and auditing its skills for multi-universe reuse.
 
 > **Thesis, in one line:** *A story is a query over an evolving canon, rendered into a medium, held
 > to craft and to human taste.*
@@ -34,6 +40,13 @@ in the loop exactly where taste is irreducible.
 3. **References are load-bearing.** Every canon entity that has an asset (a character sheet, a setting
    plate, a voice sample) resolves to a real file or the build **fails loudly**. A reference you can
    forget is not a reference; it is a wish.
+   - **3a. Self-containment.** A universe owns its assets *inside its own repo*. `assetRoot` resolves
+     within the universe repo, and every referenced file lives under it — never in a sibling folder or
+     another repo. The test: you can clone the universe repo alone and every reference still resolves,
+     the gate still runs. Assets scattered across the folders that happen to *use* them is the drift
+     this kills (the Nation of Fire canon began that way — 342 assets across 44 book folders — and was
+     consolidated into one self-contained repo, 2026-07-18). A universe that cannot move as one folder
+     is not yet a universe.
 4. **Quality = taste × craft × truth.** Compelling output comes from three wired sources, never from
    the generator alone: (a) **human taste gates** at the irreducible moments; (b) **craft-canon** —
    narrative craft encoded as enforceable invariants; (c) **provenance** — beats grounded in real
@@ -279,6 +292,49 @@ log) — *would the books already made be creatable on this framework?*
 - **Verdict:** every existing book is expressible; the four additions close the strain; the next real
   test is whether the framework makes the *next* book cheaper, not the last fifteen describable.
 
+## 11. Skills & Identity layer (v0.3)
+
+The framework's operations — resolve an entity's refs, sweep canon before naming, register a new
+entity, read back a render, gate voice, run a renderer — are **universe-agnostic**. They differ
+between universes only in *data*, never in *procedure*. So:
+
+> **A universe ships data; the framework ships skills.** Standing up universe #2 is filling in canon +
+> an identity block, not forking a pipeline. A skill must NEVER hardcode a universe's name, path, mark,
+> theme, cast, or voice terms — it takes a target universe and reads them.
+
+**The identity block.** Every `universe.json` carries an `identity` object: the constants a universe is
+known by, that generic skills read.
+
+```jsonc
+"identity": {
+  "mark": "A NATION OF FIRE story",     // the "made in this universe" byline a renderer stamps
+  "platformUniverseId": "nation-of-fire",// registry id when shipping to a shared platform
+  "theme": "gold-belongs-to-god",        // brand token set / palette id
+  "closingOrnament": "wisp",             // a recurring closing motif, if any
+  "voice": { "capitalize": ["Kingdom","Spirit"], "oneWord": ["Christofuturist"] }, // voice-gate rules
+  "subjectApproval": { "realLivingPerson": "requires-blessing" }
+}
+```
+
+**Craft-canon is data, not skill prose.** Genres, spines, and register rules a universe discovers
+(SPEC §3.5, §5) are typed canon records the renderer reads — NOT paragraphs buried in a skill file.
+Craft rules living as skill-file scar tissue is the exact drift this framework exists to kill (§1); a
+genre like "expectant biography" or a spine like "obedient-servant" is a record stories declare against,
+so it is paid for once and reused by every future universe that adopts it.
+
+**Two skill tiers.**
+- **Framework skills** (in the `agenticstory` plugin, parameterized by `--universe <path>` or by
+  discovering `universe.json` upward): ref resolution, casting sweep, entity registration, render
+  read-back, voice gate, and each medium renderer. Written once; every universe inherits them.
+- **Universe data** (in the universe repo): canon (entities/relations/stories), assets (self-contained,
+  §3a), the `identity` block, and craft-canon records. No per-universe skill *code* — only data the
+  framework skills consume.
+
+The tell that a "universe-specific" skill is really a framework skill wearing a costume: renaming the
+universe folder edits the skill. If a rename touches a skill, that skill was hardcoding a universe that
+belonged in its `identity` block. (The Nation of Fire audit, 2026-07-18, found all nine of its skills
+were generic procedure over universe-specific data — zero needed bespoke code.)
+
 ## 10. Glossary
 
 - **Universe / Canon** — the evolving graph of everything true in a story world.
@@ -297,3 +353,12 @@ log) — *would the books already made be creatable on this framework?*
   to a real artist's own work, locked via experiments and passed as a content-neutral style anchor.
 - **realPerson dossier** — the sub-block on a real-subject character: photo stack, approval state,
   sensitive list, activity-wardrobe eras, exact group count.
+- **Self-containment (§3a)** — a universe owns its assets inside its own repo; you can clone the
+  universe folder alone and every reference resolves. A universe that cannot move as one folder is not
+  yet a universe.
+- **Identity block** — the `universe.json` object holding a universe's constants (mark, platform id,
+  theme, closing ornament, voice terms, subject-approval policy) that generic framework skills read
+  instead of hardcoding the universe.
+- **Framework skill vs universe data** — operations (ref resolution, casting sweep, entity register,
+  render read-back, voice gate, renderers) are written once in the framework and parameterized by a
+  target universe; a universe ships only data (canon, assets, identity, craft-canon), never skill code.

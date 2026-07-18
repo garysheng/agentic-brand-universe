@@ -201,10 +201,28 @@ def scaffold_universe(
             "wiki": SPEC_WIKI,
             "conformsTo": f"{SPEC_URL} v{SPEC_VERSION}",
         },
+        # IDENTITY — the universe's own constants (SPEC v0.3 §11). Generic framework
+        # skills read these instead of hardcoding a universe. Fill them in; a skill
+        # must NEVER hardcode a universe's name, mark, theme, or voice terms. A new
+        # universe ships DATA (this block + canon + assets); the framework ships the
+        # skills, parameterized by the target universe.
+        "identity": {
+            "mark": f"A {name.replace('-', ' ').upper()} story",  # the "made in this universe" byline
+            "platformUniverseId": name,          # registry id when shipping to a shared platform
+            "theme": None,                        # brand token set / palette id (fill in)
+            "closingOrnament": None,              # a recurring closing motif, if any (e.g. a flame)
+            "voice": {"capitalize": [], "oneWord": []},  # voice-gate term rules for this universe
+            "subjectApproval": {"realLivingPerson": "requires-blessing"},
+        },
+        # SELF-CONTAINMENT (SPEC v0.3, principle 3a): assetRoot is "." and EVERY asset
+        # a canon entity references lives inside THIS repo. Never point canon at a
+        # sibling folder or another repo — a universe you can clone alone, whose refs
+        # all resolve, is the load-bearing guarantee.
         "note": f"Typed canon for the {name} universe (agenticstory schema v{SPEC_VERSION}). "
                 f"Structured/load-bearing records live here; prose narrative canon may live in "
-                f"CANON.md. Validated by the agenticstory engine; the canonical spec is defined at "
-                f"{SPEC_WIKI}.",
+                f"CANON.md. Self-contained: every referenced asset resolves under assetRoot "
+                f"inside this repo. Validated by the agenticstory engine; the canonical spec is "
+                f"defined at {SPEC_WIKI}.",
     }, indent=2) + "\n")
 
     # 2. canon dirs (keep empty dirs in git)
