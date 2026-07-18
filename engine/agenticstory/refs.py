@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .store import CanonStore
 from .model import Entity, SETTING_CONTRACT_FIELDS
+from .matrix import matrix_for
 
 
 def resolve_entity_assets(store: CanonStore, eid: str) -> tuple[dict[str, str], list[str]]:
@@ -93,6 +94,51 @@ def assert_story(store: CanonStore, story_id: str) -> list[str]:
         if loc:
             problems += [f"beat {b.get('n')}: {m}" for m in resolve_setting(store, loc)]
     return problems
+
+
+def lock_level(store: CanonStore, eid: str) -> str:
+    """Advisory reference-completeness of an entity: 'stub' | 'partial' | 'locked'.
+
+    - setting / visual-metaphor: 'locked' iff resolve_setting reports no problems.
+    - sheet-matrixed kinds (character/prop/motif): 'locked' iff the kind's FULL
+      matrix resolves on disk; 'partial' iff the entity's own requiredForRender
+      sheets resolve (covers legacy key names); else 'stub'.
+    - other kinds: 'locked' iff requiredForRender resolves; 'partial' if it has
+      sheets but they do not all resolve; else 'stub'.
+    Never raises: an unknown entity is 'stub'.
+    """
+    e = store.entity(eid)
+    if e is None:
+        return "stub"
+    if e.kind in ("setting", "visual-metaphor"):
+        problems = resolve_setting(store, eid)
+        if not problems:
+            return "locked"
+        contract = e.raw.get("contract", {}) or {}
+        has_any = any(
+            isinstance(contract.get(f), str) and (store.asset_root / contract[f]).exists()
+            for f in ("turnaround", "blueprint")
+        )
+        return "partial" if has_any else "stub"
+
+    root = store.asset_root
+    sheets = (e.raw.get("structured") or {}).get("sheets") or {}
+    if not sheets:
+        return "stub"
+
+    def on_disk(key: str) -> bool:
+        v = sheets.get(key)
+        return isinstance(v, str) and (root / v).exists()
+
+    req = e.required_sheet_keys()
+    req_ok = bool(req) and all(on_disk(k) for k in req)
+
+    m = matrix_for(e.kind)
+    if m is None:
+        return "locked" if req_ok else "partial"
+    if all(on_disk(k) for k in m["shots"]):
+        return "locked"
+    return "partial" if req_ok else "stub"
 
 
 def assert_spread(store: CanonStore, characters: list[str], location: str | None) -> list[str]:

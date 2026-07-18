@@ -90,6 +90,47 @@ class TestValidationCatchesBreakage(unittest.TestCase):
         self.assertTrue(any("photoStack" in p for p in problems))
 
 
+class TestLockLevel(unittest.TestCase):
+    def test_lock_level_reports_matrix_completeness(self):
+        import tempfile, json, os
+        from pathlib import Path
+        from agenticstory import CanonStore
+        from agenticstory.refs import lock_level
+        d = Path(tempfile.mkdtemp())
+        (d / "canon" / "entities").mkdir(parents=True)
+        (d / "stories").mkdir()
+        (d / "canon" / "relations").mkdir()
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        art = d / "art"; art.mkdir()
+        def png(name):
+            p = art / name; p.write_bytes(b"x"); return f"art/{name}"
+        # a character with the FULL matrix on disk -> locked
+        full = {
+            "id": "hero", "kind": "character",
+            "structured": {
+                "sheets": {k: png(f"{k}.png") for k in
+                           ["face-neutral","face-3q","expressions","forward-fullbody",
+                            "profile-left","profile-right","back","signature-pose"]},
+                "requiredForRender": ["forward-fullbody","face-neutral"],
+            },
+        }
+        # a character with only required on disk (legacy-style keys) -> partial
+        partial = {
+            "id": "sidekick", "kind": "character",
+            "structured": {"sheets": {"man": png("man.png"), "face": png("face.png")},
+                           "requiredForRender": ["man","face"]},
+        }
+        # a character with no sheets -> stub
+        stub = {"id": "ghost", "kind": "character", "structured": {"sheets": {}, "requiredForRender": []}}
+        for e in (full, partial, stub):
+            (d / "canon" / "entities" / f"{e['id']}.json").write_text(json.dumps(e))
+        store = CanonStore(d)
+        self.assertEqual(lock_level(store, "hero"), "locked")
+        self.assertEqual(lock_level(store, "sidekick"), "partial")
+        self.assertEqual(lock_level(store, "ghost"), "stub")
+        self.assertEqual(lock_level(store, "nonexistent"), "stub")
+
+
 class TestScaffold(unittest.TestCase):
     """`init` must produce a universe that loads and validates GREEN out of the box,
     carries spec provenance, and (with --example) self-demonstrates the load-bearing

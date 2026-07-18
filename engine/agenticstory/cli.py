@@ -6,6 +6,7 @@ Agentic Story CLI.
   agenticstory crossovers <universe> <entity> # crossover relations for an entity
   agenticstory assert-story <universe> <id>   # THE pre-render gate for a whole story
   agenticstory assert-spread <universe> --characters a,b [--location X]
+  agenticstory lock-level <universe> <entity>  # advisory reference-completeness report
 
 Exit code is non-zero when validation/assertion finds problems, so gen scripts
 and CI can gate on it.
@@ -39,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("assert-story"); a.add_argument("universe"); a.add_argument("story")
     sp = sub.add_parser("assert-spread"); sp.add_argument("universe")
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
+    ll = sub.add_parser("lock-level"); ll.add_argument("universe"); ll.add_argument("entity")
     ini = sub.add_parser("init", help="scaffold a new universe (conforms to spec v" + SPEC_VERSION + ")")
     ini.add_argument("universe", help="target directory for the new universe")
     ini.add_argument("--name", required=True, help="universe name (slug)")
@@ -108,6 +110,9 @@ def main(argv: list[str] | None = None) -> int:
         chars = [c.strip() for c in args.characters.split(",") if c.strip()]
         return _print_problems(f"assert-spread [{', '.join(chars)}{' @ ' + args.location if args.location else ''}]",
                                refs.assert_spread(store, chars, args.location or None))
+    if args.cmd == "lock-level":
+        print(refs.lock_level(store, args.entity))
+        return 0
     return 2
 
 
