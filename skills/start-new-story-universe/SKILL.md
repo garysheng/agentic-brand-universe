@@ -60,6 +60,9 @@ Gather only what canon needs to begin. Do not over-ask; the universe grows by ma
   ship to a shared platform, a `theme` (brand token set), a `closingOrnament` if it has a recurring
   closing motif, and `voice` term rules (words to capitalize / keep one-word for the voice gate).
   These are DATA the generic framework skills read — never hardcode them into a skill.
+  Also set `identity.register`: the universe's illustrative **style** (default **"detailed comic
+  book"**), which the renderer passes as a style anchor on every render. Note any `rejectedPoles`
+  (styles to bake as negatives, e.g. photoreal, anime, washed-out).
 - **The first property** — its working title, its **spine** (the arc invariant it must
   satisfy: `obedient-servant | thesis | primer | testimony | …`; NOT assumed to be a
   hero-journey — SPEC finding 1), and whether it is carried by a character, a **setting**,
@@ -81,6 +84,11 @@ python3 -m agenticstory.cli init <repo>/<slug>-universe --name <slug> [--example
   generic `universe`), so it stands on its own.
 - **Fill the `identity` block** with the values gathered in Phase 1 (mark, theme, voice terms,
   etc.). Leave `assetRoot` at `.`.
+- **Style-lock (register anchor).** The scaffold sets `register.name` (default "detailed comic
+  book") with `register.anchor: null`. Lock the anchor before rendering: generate a content-neutral
+  style swatch in that named style (no universe characters, just palette + line + finish), get the
+  operator's "that's the look" approval, save it to `reference/register/style-anchor.png`, and set
+  `identity.register.anchor` to that path. Until locked, renderers warn and fall back to wording.
 - Do NOT scaffold or fork any per-universe skill. The operations (ref resolution, casting sweep,
   entity register, render read-back, voice gate, the renderer) are **framework skills** the
   universe inherits, parameterized by this universe's path + `identity` (SPEC §11). A universe
@@ -94,6 +102,11 @@ do not invent fields). Minimum viable first canon:
   entity needs `structured.sheets` + `requiredForRender`; a setting/visual-metaphor needs a
   `status` + `contract` and stays **unlocked** (correctly refused) until its turnaround +
   empty plates + blueprint + map/blocking/dressing exist.
+  A renderer-consumed entity is complete when its **reference matrix** (SPEC §12) is locked: for a
+  character, the ~8-shot set (face-neutral/3q/expressions, forward-fullbody, profile L+R, back,
+  signature-pose); for a setting, its contract plates; for a visual-metaphor, its states. Use
+  `agenticstory lock-level <universe> <entity>` to see stub/partial/locked. Authoring a new entity
+  is the job of the `add-*` framework skills (they scaffold the matrix slots + prompts).
 - **Relations:** any known `appears-in` / `crossover-with` / `derived-from` edges.
 - **First story:** one `stories/<id>.json`. Register it as `status: "stub"` (spine + logline
   only) if beats are not written yet; promote to `"full"` (features + beats + per-beat
@@ -125,6 +138,8 @@ The gates are load-bearing on purpose (SPEC §3.5). Establish, for this universe
 - **Self-contained (SPEC §3a):** `assetRoot` is `.` and every referenced asset lives inside the
   repo. You could clone this folder alone and every ref would resolve. No ref points at a sibling
   folder or another repo.
+- `identity.register` is set (default "detailed comic book") and its **style anchor is locked**
+  (`reference/register/style-anchor.png` exists, `register.anchor` points at it).
 - `validate` is GREEN; the first story is registered (stub or full).
 - The load-bearing gate is wired and demonstrably refuses on a missing/unlocked reference.
 - Real-subject properties are gated until blessed; no real person's private detail in canon.
