@@ -213,6 +213,11 @@ def scaffold_universe(
             "closingOrnament": None,              # a recurring closing motif, if any (e.g. a flame)
             "voice": {"capitalize": [], "oneWord": []},  # voice-gate term rules for this universe
             "subjectApproval": {"realLivingPerson": "requires-blessing"},
+            "register": {
+                "name": "detailed comic book",   # default illustrative style (SPEC v0.4 §11/§12)
+                "anchor": None,                   # locked via start-universe's style-lock step
+                "rejectedPoles": ["photoreal", "anime", "washed-out"],
+            },
         },
         # SELF-CONTAINMENT (SPEC v0.3, principle 3a): assetRoot is "." and EVERY asset
         # a canon entity references lives inside THIS repo. Never point canon at a
@@ -226,7 +231,7 @@ def scaffold_universe(
     }, indent=2) + "\n")
 
     # 2. canon dirs (keep empty dirs in git)
-    for d in ("canon/entities", "canon/relations", "stories"):
+    for d in ("canon/entities", "canon/relations", "stories", "reference/register"):
         write(f"{d}/.gitkeep", "")
 
     # 3. the gate + canon README

@@ -259,6 +259,17 @@ class TestScaffold(unittest.TestCase):
             self.assertTrue(written)
             self.assertEqual(json.loads((target / "universe.json").read_text())["name"], "myverse2")
 
+    def test_scaffold_emits_register_and_reference_dir(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "demo-universe"
+            scaffold.scaffold_universe(target, name="demo")
+            man = json.loads((target / "universe.json").read_text())
+            reg = man["identity"]["register"]
+            self.assertEqual(reg["name"], "detailed comic book")
+            self.assertIsNone(reg["anchor"])            # not locked yet
+            self.assertIn("photoreal", reg["rejectedPoles"])
+            self.assertTrue((target / "reference" / "register" / ".gitkeep").exists())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
