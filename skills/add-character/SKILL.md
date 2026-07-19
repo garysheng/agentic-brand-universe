@@ -15,7 +15,7 @@ One character, into a universe's canon, as a typed record with its reference mat
 
 1. **Casting sweep first (reuse wins).** Before naming a new character, sweep `canon/entities/` + any CANON.md for an existing entity that fits the role. If one fits, STOP and reuse it (a reuse is a crossover receipt, and it saves the whole matrix build). Only proceed if genuinely new.
 2. **Interview (one question at a time).** Gather only what canon needs.
-   - **Real person:** their name; the role they play in this universe; their story/voice; wardrobe eras (default + any activity-specific, e.g. no street clothes while running); signature physical invariants (glasses, a scar, a pendant); and the **sensitive list** (what must NEVER ship private details). Collect a **photo stack** (aim for 8+ varied real photos: front, 3/4, profile, full-body, candids) into `reference/<id>/photos/`. Never invent or store details the subject did not authorize.
+   - **Real person:** their name; the role they play in this universe; their story/voice; wardrobe eras (default + any activity-specific, e.g. no street clothes while running); signature physical invariants (glasses, a scar, a pendant); and the **sensitive list** (the private details that must NEVER ship). Collect a **photo stack** (aim for 8+ varied real photos: front, 3/4, profile, full-body, candids) into `reference/<id>/photos/`. Never invent or store details the subject did not authorize.
    - **Fictional:** a design brief: look, silhouette, palette, signature invariants, voice. No photo stack; no gate.
 3. **Scaffold the entity (tested machinery).** From the engine dir:
    ```bash
