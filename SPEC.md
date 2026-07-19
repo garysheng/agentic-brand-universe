@@ -11,6 +11,11 @@ Nation of Fire universe.
 > (named style + a content-neutral style anchor passed first on every render), defaulted by the
 > start-universe flow.
 
+> **v0.4.1 changelog:** **§13 Craft-canon records** — a typed home (`canon/craft/*.json`, kinds
+> `spine` | `genre` | `register-rule`) for the genres, spines, and register rules a renderer honors,
+> so craft is data, not skill prose (§11). Optional and back-compatible: a universe with no
+> `canon/craft/` validates unchanged.
+
 > **v0.3 changelog:** (1) **Self-containment** made an explicit invariant (principle 3a) — a universe
 > owns its assets inside its own repo; refs never point outward. (2) New **§11 Skills & Identity layer**
 > — generic framework skills parameterized by a target universe read a universe's `identity` block;
@@ -353,6 +358,23 @@ universe folder edits the skill. If a rename touches a skill, that skill was har
 belonged in its `identity` block. (The Nation of Fire audit, 2026-07-18, found all nine of its skills
 were generic procedure over universe-specific data — zero needed bespoke code.)
 
+## 13. Craft-canon records (v0.4.1)
+
+Craft-canon is data, not skill prose (SPEC §11). A universe's discovered craft lives as typed records
+in `canon/craft/*.json`, loaded and validated by the engine:
+
+- **spine** — a story's arc invariant (obedient-servant, thesis, primer, testimony, ...). A story's
+  `spine` field names one. Craft-canon checks a story against ITS declared spine, never one assumed shape.
+- **genre** — a book type with its own format canon (e.g. the expectant biography, the visualized
+  epistle). A renderer reads the genre a property declares.
+- **register-rule** — a universe-wide visual or narrative law (e.g. "gold belongs to God",
+  "testimony over prediction", "awe not horror") the renderer honors on every unit.
+
+Each record: `{ id, kind, name, summary, rules, origin }`. `rules` (or `summary`) is required; `origin`
+records where a rule was discovered. The collection is OPTIONAL: a universe with no `canon/craft/`
+validates unchanged. This is how a genre discovered making one book (SPEC §5, craft is discovered then
+encoded) is paid for once and reused by every future property and universe.
+
 ## 12. Reference-matrix standard (v0.4)
 
 "Locked" must mean something checkable per kind. The reference matrix is the canonical set of
@@ -409,3 +431,6 @@ unchanged: a missing REQUIRED sheet is still a hard error. A renderer MAY requir
   missing required sheets.
 - **Register** — a universe's illustrative style, a first-class `identity.register` (named style +
   a content-neutral style anchor passed first on every render); may be overridden per property.
+- **Craft-canon record (§13)** — a typed `canon/craft/*.json` record (kind spine | genre |
+  register-rule) holding a genre, spine, or universe-wide craft law a renderer honors; craft as data,
+  not skill prose.
