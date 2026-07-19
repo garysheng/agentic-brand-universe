@@ -1,8 +1,15 @@
 # Agentic Story — Framework Spec
 
-**v0.3 — 2026-07-18.** The first-principles architecture for compelling, agentically writable,
+**v0.4 — 2026-07-18.** The first-principles architecture for compelling, agentically writable,
 composable, evolvable story generation. Home: `agenticstory.wiki`. Reference implementation: the
 Nation of Fire universe.
+
+> **v0.4 changelog:** (1) **§12 Reference-matrix standard** — a per-kind canonical shot set defines
+> what "locked" means; the engine reports `lock_level` (stub/partial/locked), advisory and
+> back-compatible (the load-bearing gate's hard-fail on missing required sheets is unchanged).
+> (2) **Register in identity** — a universe's illustrative style is a first-class `identity.register`
+> (named style + a content-neutral style anchor passed first on every render), defaulted by the
+> start-universe flow.
 
 > **v0.3 changelog:** (1) **Self-containment** made an explicit invariant (principle 3a) — a universe
 > owns its assets inside its own repo; refs never point outward. (2) New **§11 Skills & Identity layer**
@@ -312,9 +319,20 @@ known by, that generic skills read.
   "theme": "gold-belongs-to-god",        // brand token set / palette id
   "closingOrnament": "wisp",             // a recurring closing motif, if any
   "voice": { "capitalize": ["Kingdom","Spirit"], "oneWord": ["Christofuturist"] }, // voice-gate rules
-  "subjectApproval": { "realLivingPerson": "requires-blessing" }
+  "subjectApproval": { "realLivingPerson": "requires-blessing" },
+  "register": {                              // the universe's illustrative style (v0.4)
+    "name": "detailed comic book",           // named style, defaulted by start-universe
+    "anchor": "reference/register/style-anchor.png", // content-neutral swatch, passed FIRST every render
+    "rejectedPoles": ["photoreal", "anime", "washed-out"]
+  }
 }
 ```
+
+**Register (v0.4).** A universe renders in one illustrative style. `identity.register` names it and
+points at a content-neutral **style anchor** the renderer passes as the first reference on every
+render, with `rejectedPoles` baked as negatives. A per-property `register` (SPEC §4.3) may still
+override it. `start-new-story-universe` defaults `register.name` to "detailed comic book" and locks
+the anchor via a style-lock step.
 
 **Craft-canon is data, not skill prose.** Genres, spines, and register rules a universe discovers
 (SPEC §3.5, §5) are typed canon records the renderer reads — NOT paragraphs buried in a skill file.
@@ -334,6 +352,28 @@ The tell that a "universe-specific" skill is really a framework skill wearing a 
 universe folder edits the skill. If a rename touches a skill, that skill was hardcoding a universe that
 belonged in its `identity` block. (The Nation of Fire audit, 2026-07-18, found all nine of its skills
 were generic procedure over universe-specific data — zero needed bespoke code.)
+
+## 12. Reference-matrix standard (v0.4)
+
+"Locked" must mean something checkable per kind. The reference matrix is the canonical set of
+reference shots an entity needs before it is fully renderable, so tooling can report
+under-referenced entities the way the gate reports missing files.
+
+- **character** — the anti-uncanny-valley set: `face-neutral`, `face-3q`, `expressions`,
+  `forward-fullbody`, `profile-left`, `profile-right`, `back`, `signature-pose`. Minimum
+  (`requiredForRender`) is `forward-fullbody` + `face-neutral`; the rest strengthen identity
+  consistency across renders. Real people are generated from a photo stack (never a
+  painting-of-a-painting); fictional characters from a locked design.
+- **setting** — the existing `contract`: `turnaround`, `emptyPlates[]`, `blueprint` (files) plus
+  `map`, `blocking`, `dressing` (descriptors). Unchanged; named here as the setting matrix.
+- **visual-metaphor** — a locked master plus `state` plates (the object across its argued states).
+- **prop / motif** — `hero` plus `detail` crops.
+
+**`lock_level(entity) -> stub | partial | locked`** (engine) reports completeness against the kind's
+matrix. It is **advisory** in v0.4 and back-compatible: an entity that predates the matrix, or uses
+its own sheet-key names, reports `partial` when its own `requiredForRender` resolves — it is not
+broken, just not matrix-complete. The load-bearing gate (`assert_story` / `assert_spread`) is
+unchanged: a missing REQUIRED sheet is still a hard error. A renderer MAY require `locked`.
 
 ## 10. Glossary
 
@@ -362,3 +402,10 @@ were generic procedure over universe-specific data — zero needed bespoke code.
 - **Framework skill vs universe data** — operations (ref resolution, casting sweep, entity register,
   render read-back, voice gate, renderers) are written once in the framework and parameterized by a
   target universe; a universe ships only data (canon, assets, identity, craft-canon), never skill code.
+- **Reference matrix (§12)** — the canonical set of reference shots an entity needs per kind
+  (a character's ~8 angles, a setting's contract, a visual-metaphor's states, a prop's hero+crops).
+- **lock_level** — an advisory engine report of an entity's reference completeness: stub, partial,
+  or locked against its kind's matrix. Distinct from the load-bearing gate, which hard-fails on
+  missing required sheets.
+- **Register** — a universe's illustrative style, a first-class `identity.register` (named style +
+  a content-neutral style anchor passed first on every render); may be overridden per property.
