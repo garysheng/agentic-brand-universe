@@ -98,7 +98,7 @@ run against a universe whose required references do not resolve. *(AITX loads vi
 > load-bearing refs. It does **not yet** formally type the goldens library, the generation/skill
 > layer, the permissions model, or the human-language edit surface — the OS reads those from
 > convention (the `brand-os/` folder, `goldens/`), not from a locked schema. Formalizing that input
-> contract is v0.2 work (§9, and cartridge VISION §5).
+> contract is v0.2 work (§9).
 
 ## 4. Core capabilities (the MUSTs, grounded in AITX Brand OS)
 
