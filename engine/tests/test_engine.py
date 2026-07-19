@@ -313,6 +313,37 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(lock_level(store, "the-hall"), "stub")
 
 
+class TestCraftCanon(unittest.TestCase):
+    def test_craft_canon_loads_and_validates(self):
+        import json, tempfile
+        from pathlib import Path
+        from agenticstory import CanonStore
+        from agenticstory.model import CraftCanon
+        d = Path(tempfile.mkdtemp())
+        (d / "canon" / "entities").mkdir(parents=True)
+        (d / "canon" / "relations").mkdir(); (d / "stories").mkdir()
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        # no craft dir yet -> still validates
+        store = CanonStore(d)
+        self.assertEqual(store.validate_canon(), [])
+        self.assertEqual(store.craft, {})
+        # add a craft dir with a good and a bad record
+        (d / "canon" / "craft").mkdir()
+        (d / "canon" / "craft" / "obedient-servant.json").write_text(json.dumps(
+            {"id": "obedient-servant", "kind": "spine", "name": "Obedient Servant",
+             "summary": "the servant obeys and God acts", "rules": "...", "origin": "test"}))
+        (d / "canon" / "craft" / "bad.json").write_text(json.dumps(
+            {"id": "bad", "kind": "not-a-kind", "name": "Bad"}))
+        store = CanonStore(d)
+        self.assertIn("obedient-servant", store.craft)
+        self.assertIsInstance(store.craft["obedient-servant"], CraftCanon)
+        problems = store.validate_canon()
+        self.assertTrue(any("bad" in p and "kind" in p for p in problems))
+        # a valid-only store validates clean
+        (d / "canon" / "craft" / "bad.json").unlink()
+        self.assertEqual(CanonStore(d).validate_canon(), [])
+
+
 class TestLockShot(unittest.TestCase):
     def test_lock_shot_promotes_required_and_keeps_validate_green(self):
         import json, tempfile

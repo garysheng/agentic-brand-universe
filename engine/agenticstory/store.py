@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .model import Entity, Relation, StorySpec
+from .model import CraftCanon, Entity, Relation, StorySpec
 
 
 class CanonStore:
@@ -28,6 +28,7 @@ class CanonStore:
         self.entities: dict[str, Entity] = {}
         self.relations: list[Relation] = []
         self.stories: dict[str, StorySpec] = {}
+        self.craft: dict[str, CraftCanon] = {}
         self._load()
 
     def _load(self) -> None:
@@ -38,6 +39,11 @@ class CanonStore:
         for f in sorted((self.dir / "canon" / "entities").glob("*.json")):
             e = Entity.from_dict(json.loads(f.read_text()))
             self.entities[e.id] = e
+        craft_dir = self.dir / "canon" / "craft"
+        if craft_dir.exists():
+            for f in sorted(craft_dir.glob("*.json")):
+                c = CraftCanon.from_dict(json.loads(f.read_text()))
+                self.craft[c.id] = c
         rel_dir = self.dir / "canon" / "relations"
         if rel_dir.exists():
             for f in sorted(rel_dir.glob("*.json")):
@@ -72,6 +78,8 @@ class CanonStore:
         problems: list[str] = []
         for e in self.entities.values():
             problems += e.validate()
+        for c in self.craft.values():
+            problems += c.validate()
         # a relation side may be an entity OR a story (e.g. `wisp appears-in <story>`)
         known = set(self.entities) | set(self.stories)
         for r in self.relations:

@@ -3,6 +3,7 @@ Agentic Story CLI.
 
   agenticstory validate <universe>            # structural validation of all canon + stories
   agenticstory list <universe>                # entities + stories
+  agenticstory list-craft <universe>          # craft-canon records (spine/genre/register-rule)
   agenticstory crossovers <universe> <entity> # crossover relations for an entity
   agenticstory assert-story <universe> <id>   # THE pre-render gate for a whole story
   agenticstory assert-spread <universe> --characters a,b [--location X]
@@ -39,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("validate", "list"):
         s = sub.add_parser(name); s.add_argument("universe")
+    lc = sub.add_parser("list-craft"); lc.add_argument("universe")
     c = sub.add_parser("crossovers"); c.add_argument("universe"); c.add_argument("entity")
     rel = sub.add_parser("relations"); rel.add_argument("universe"); rel.add_argument("entity")
     a = sub.add_parser("assert-story"); a.add_argument("universe"); a.add_argument("story")
@@ -95,6 +97,10 @@ def main(argv: list[str] | None = None) -> int:
         print("stories:")
         for s in store.stories.values():
             print(f"  {s.id:24s} spine={s.raw.get('spine')} features={len(s.features)} beats={len(s.beats)}")
+        return 0
+    if args.cmd == "list-craft":
+        for c in sorted(store.craft.values(), key=lambda c: (c.kind, c.id)):
+            print(f"{c.kind:14} {c.id:32} {c.raw.get('name', '')}")
         return 0
     if args.cmd == "crossovers":
         rels = store.crossovers(args.entity)

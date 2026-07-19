@@ -84,6 +84,32 @@ class Entity:
         return p
 
 
+CRAFT_KINDS = {"spine", "genre", "register-rule"}
+
+
+@dataclass
+class CraftCanon:
+    """A typed craft-canon record: a spine, a genre, or a register-rule the
+    renderer honors. Craft is data, not skill prose (SPEC §11, §13)."""
+    id: str
+    kind: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @staticmethod
+    def from_dict(d: dict[str, Any]) -> "CraftCanon":
+        return CraftCanon(id=d.get("id", ""), kind=d.get("kind", ""), raw=d)
+
+    def validate(self) -> list[str]:
+        p: list[str] = []
+        if not self.id:
+            p.append("craft record missing 'id'")
+        if self.kind not in CRAFT_KINDS:
+            p.append(f"{self.id}: unknown craft kind '{self.kind}' (allowed: {sorted(CRAFT_KINDS)})")
+        if not (self.raw.get("rules") or self.raw.get("summary")):
+            p.append(f"{self.id}: craft record needs a 'rules' or 'summary'")
+        return p
+
+
 @dataclass
 class Relation:
     from_: str
