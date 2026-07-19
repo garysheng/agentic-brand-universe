@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  *{margin:0;box-sizing:border-box}
+  :root{
+    --ground:#0e1117; --surface:#171d26; --surface-2:#1e2530; --line:#2b3542;
+    --struct:#3f4c5a; --text:#c9d3df; --muted:#8592a0; --bright:#eef3f9;
+    --gold:#e3b341; --gold-soft:#f0cd78; --good:#5bbf8f; --iris:#7aa2f7;
+    --mono:'JetBrains Mono',ui-monospace,monospace; --sans:'Inter',system-ui,sans-serif;
+  }
+  html,body{width:1200px;height:630px}
+  body{
+    font-family:var(--sans); background:var(--ground); color:var(--text);
+    padding:64px 70px; position:relative; overflow:hidden;
+    background-image:
+      radial-gradient(700px 500px at 88% -8%, rgba(227,179,65,.14), transparent),
+      radial-gradient(600px 460px at -6% 8%, rgba(122,162,247,.12), transparent);
+  }
+  .eyebrow{font-family:var(--mono); font-size:20px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:14px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 16px var(--gold)}
+  h1{color:var(--bright); font-weight:900; letter-spacing:-.03em; line-height:1.04; font-size:74px; margin-top:26px; max-width:1000px}
+  h1 em{font-style:normal; color:var(--gold)}
+  .sub{color:var(--muted); font-size:26px; margin-top:24px; max-width:900px; line-height:1.45}
+  .sub b{color:var(--text); font-weight:600}
+  .flow{position:absolute; left:70px; bottom:62px; display:flex; align-items:center; gap:15px; font-family:var(--mono)}
+  .pill{padding:12px 18px; border-radius:12px; border:1px solid var(--line); background:var(--surface-2); font-size:19px; font-weight:600; display:flex; flex-direction:column; gap:2px}
+  .pill .t{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:500}
+  .pill.c{border-color:rgba(122,162,247,.5)} .pill.c .v{color:var(--iris)}
+  .pill.o{border-color:rgba(227,179,65,.5)} .pill.o .v{color:var(--gold)}
+  .pill.p{border-color:rgba(91,191,143,.5)} .pill.p .v{color:var(--good)}
+  .op{font-size:30px; color:var(--struct); font-weight:700}
+  .mark{position:absolute; right:70px; bottom:66px; font-family:var(--mono); font-size:21px; color:var(--muted); text-align:right; line-height:1.7}
+  .mark .b{color:var(--gold); font-weight:600}
+  .glyph{position:absolute; top:58px; right:70px; width:60px; height:60px; border-radius:16px; background:linear-gradient(150deg,var(--gold-soft),#d98a4a); display:grid; place-items:center; color:#1a1206; font-size:30px; font-weight:900; box-shadow:0 12px 30px -8px rgba(227,179,65,.5)}
+</style>
+</head>
+<body>
+  <div class="glyph">◆</div>
+  <div class="eyebrow"><span class="dot"></span> An open standard · v0.5 · 2026</div>
+  <h1>The Agentic Brand <em>Universe</em> Standard</h1>
+  <p class="sub">A version-controlled brand <b>universe</b> (the cartridge) + a Brand <b>OS</b> (the console) → any deliverable, on brand, on demand, with provenance.</p>
+  <div class="flow">
+    <div class="pill c"><span class="t">cartridge · data</span><span class="v">Brand Universe</span></div>
+    <div class="op">+</div>
+    <div class="pill o"><span class="t">console · runtime</span><span class="v">Brand OS</span></div>
+    <div class="op">→</div>
+    <div class="pill p"><span class="t">output</span><span class="v">any deliverable</span></div>
+  </div>
+  <div class="mark"><span class="b">agenticbranduniverse<wbr />.com</span><br />the end of brand slop</div>
+</body>
+</html>

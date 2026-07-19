@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Agentic Brand Universe Standard</title>
+<meta name="description" content="An open standard for version-controlled, agentically-generated brands. A brand universe (the cartridge) plus a Brand OS (the console) projects one canon into any deliverable — story, flyer, merch, meme — on brand, on demand, with provenance." />
+<link rel="canonical" href="https://agenticbranduniverse.com/" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Agentic Brand Universe" />
+<meta property="og:title" content="The Agentic Brand Universe Standard" />
+<meta property="og:description" content="The end of brand slop. A version-controlled brand universe (cartridge) + a Brand OS (console) → any deliverable, on brand, on demand, with provenance." />
+<meta property="og:url" content="https://agenticbranduniverse.com/" />
+<meta property="og:image" content="https://agenticbranduniverse.com/og.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="The Agentic Brand Universe Standard — cartridge plus console projects one canon into any deliverable." />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="The Agentic Brand Universe Standard" />
+<meta name="twitter:description" content="A version-controlled brand universe (cartridge) + a Brand OS (console) → any deliverable, on brand, on demand, with provenance." />
+<meta name="twitter:image" content="https://agenticbranduniverse.com/og.jpg" />
+
+<meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#eef1f5" media="(prefers-color-scheme: light)" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/favicon.svg" />
+
+<style>
+  :root{
+    --ground:#0e1117; --surface:#171d26; --surface-2:#1e2530; --line:#2b3542;
+    --struct:#3f4c5a; --text:#c9d3df; --muted:#7d8896; --bright:#eef3f9;
+    --gold:#e3b341; --gold-soft:#f0cd78; --good:#5bbf8f; --warn:#d98a4a; --iris:#7aa2f7;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --maxw:66rem;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --ground:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --line:#dde3ea;
+      --struct:#c2ccd6; --text:#26303c; --muted:#5c6976; --bright:#0f1620;
+      --gold:#b5851a; --gold-soft:#caa03a; --good:#2f8f66; --warn:#b96a26; --iris:#3f6ad8;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0e1117; --surface:#171d26; --surface-2:#1e2530; --line:#2b3542;
+    --struct:#3f4c5a; --text:#c9d3df; --muted:#7d8896; --bright:#eef3f9;
+    --gold:#e3b341; --gold-soft:#f0cd78; --good:#5bbf8f; --warn:#d98a4a; --iris:#7aa2f7;
+  }
+  :root[data-theme="light"]{
+    --ground:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --line:#dde3ea;
+    --struct:#c2ccd6; --text:#26303c; --muted:#5c6976; --bright:#0f1620;
+    --gold:#b5851a; --gold-soft:#caa03a; --good:#2f8f66; --warn:#b96a26; --iris:#3f6ad8;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0}
+  .page{
+    background:var(--ground); color:var(--text); font-family:var(--sans);
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+    padding:clamp(1.25rem,4vw,3rem) 1.25rem 4rem;
+    background-image:
+      radial-gradient(60rem 40rem at 80% -10%, color-mix(in srgb, var(--gold) 7%, transparent), transparent),
+      radial-gradient(50rem 40rem at -10% 10%, color-mix(in srgb, var(--iris) 6%, transparent), transparent);
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto}
+  a{color:var(--gold-soft); text-decoration-color:color-mix(in srgb, var(--gold-soft) 40%, transparent); text-underline-offset:3px}
+
+  /* nav */
+  .nav{display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:clamp(2rem,6vw,3.5rem)}
+  .brandmark{display:flex; align-items:center; gap:.6rem; font-family:var(--mono); font-size:.82rem; letter-spacing:.04em; color:var(--bright); font-weight:600}
+  .brandmark .glyph{width:22px;height:22px;border-radius:6px;background:linear-gradient(150deg,var(--gold),var(--warn));display:grid;place-items:center;color:#1a1206;font-weight:800;font-size:.7rem;box-shadow:0 4px 14px -4px color-mix(in srgb,var(--gold) 60%,transparent)}
+  .nav .links{display:flex; gap:1.2rem; font-family:var(--mono); font-size:.76rem; letter-spacing:.02em}
+  .nav .links a{color:var(--muted); text-decoration:none}
+  .nav .links a:hover{color:var(--gold)}
+  @media (max-width:32rem){.nav .links{display:none}}
+
+  .eyebrow{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--muted); display:flex; gap:.6rem; align-items:center; flex-wrap:wrap;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  h1,h2,h3{color:var(--bright); text-wrap:balance; line-height:1.08; margin:0}
+  .thesis{
+    font-weight:800; letter-spacing:-.028em; margin:1.1rem 0 0;
+    font-size:clamp(2.1rem,6vw,3.9rem);
+  }
+  .thesis em{font-style:normal; color:var(--gold)}
+  .lede{color:var(--muted); font-size:clamp(1.02rem,2.1vw,1.2rem); max-width:56ch; margin:1.2rem 0 0}
+  .lede b{color:var(--text); font-weight:600}
+
+  .cta{display:flex; flex-wrap:wrap; gap:.7rem; margin-top:1.8rem}
+  .btn{
+    font-family:var(--mono); font-size:.8rem; letter-spacing:.02em; text-decoration:none;
+    padding:.7rem 1.1rem; border-radius:9px; display:inline-flex; gap:.5rem; align-items:center; transition:.15s;
+  }
+  .btn.primary{background:var(--gold); color:#1a1206; font-weight:600}
+  .btn.primary:hover{background:var(--gold-soft)}
+  .btn.ghost{background:var(--surface); color:var(--text); border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--gold); color:var(--bright)}
+
+  section{margin-top:clamp(3rem,7vw,4.6rem)}
+  .kicker{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--gold); margin:0 0 1.1rem; display:flex; align-items:center; gap:.7rem;
+  }
+  .kicker::after{content:""; flex:1; height:1px; background:var(--line)}
+  h2.h{font-size:clamp(1.4rem,3.2vw,1.9rem); font-weight:800; letter-spacing:-.02em; margin-bottom:.5rem}
+  .sub{color:var(--muted); max-width:62ch; margin:.2rem 0 0}
+  .sub b{color:var(--text); font-weight:600}
+
+  /* the model diagram */
+  .model{
+    margin-top:1.8rem; background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:clamp(1.2rem,3.5vw,2rem); box-shadow:0 24px 60px -40px rgba(0,0,0,.6);
+  }
+  .flow{display:grid; grid-template-columns:1fr auto 1fr auto 1.3fr; gap:.9rem; align-items:stretch}
+  @media (max-width:52rem){.flow{grid-template-columns:1fr; gap:1rem}}
+  .node{border-radius:11px; padding:1.05rem 1.1rem; border:1px solid var(--line); background:var(--surface-2); display:flex; flex-direction:column; gap:.35rem}
+  .node .tag{font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  .node .name{color:var(--bright); font-weight:800; letter-spacing:-.01em; font-size:1.05rem}
+  .node .desc{font-size:.86rem; color:var(--muted)}
+  .node.cartridge{border-color:color-mix(in srgb,var(--iris) 45%,var(--line)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--iris) 12%,transparent)}
+  .node.cartridge .name{color:var(--iris)}
+  .node.console{border-color:color-mix(in srgb,var(--gold) 50%,var(--line)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 12%,transparent)}
+  .node.console .name{color:var(--gold)}
+  .arrow{display:grid; place-items:center; font-family:var(--mono); color:var(--struct); font-size:1.4rem; font-weight:700}
+  @media (max-width:52rem){.arrow{transform:rotate(90deg); padding:.1rem 0}}
+  .plus{display:grid;place-items:center;font-family:var(--mono);color:var(--gold);font-size:1.5rem;font-weight:700}
+  @media (max-width:52rem){.plus{transform:none}}
+  .projections{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.55rem}
+  .chip{font-family:var(--mono); font-size:.72rem; padding:.28rem .6rem; border-radius:999px; background:color-mix(in srgb,var(--good) 12%,transparent); color:var(--good); border:1px solid color-mix(in srgb,var(--good) 30%,transparent)}
+  .analogy{margin-top:1.3rem; text-align:center; font-family:var(--mono); font-size:.82rem; color:var(--muted); letter-spacing:.01em}
+  .analogy b{color:var(--gold); font-weight:600}
+  .analogy .i{color:var(--iris)}
+
+  /* three definitions */
+  .defs{display:grid; grid-template-columns:repeat(auto-fit,minmax(16rem,1fr)); gap:.9rem; margin-top:1.6rem}
+  .def{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:1.2rem 1.25rem; position:relative; overflow:hidden}
+  .def::before{content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--accent)}
+  .def.c1{--accent:var(--iris)} .def.c2{--accent:var(--gold)} .def.c3{--accent:var(--good)}
+  .def .n{font-family:var(--mono); font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  .def .term{color:var(--bright); font-weight:800; font-size:1.15rem; margin:.3rem 0 .1rem; letter-spacing:-.01em}
+  .def .eq{font-family:var(--mono); font-size:.78rem; color:var(--accent); margin-bottom:.5rem}
+  .def .body{font-size:.92rem; color:var(--muted)}
+  .def .body b{color:var(--text); font-weight:600}
+
+  /* principle grid */
+  .bets{display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:.9rem; margin-top:1.5rem}
+  .bet{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1.05rem 1.15rem}
+  .bet .ico{font-size:1.1rem; margin-bottom:.5rem}
+  .bet .t{color:var(--bright); font-weight:700; margin:0 0 .25rem; letter-spacing:-.01em}
+  .bet .d{font-size:.9rem; color:var(--muted)}
+  .bet .d b{color:var(--text); font-weight:600}
+
+  /* projection gallery */
+  .gallery{display:grid; grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr)); gap:.7rem; margin-top:1.5rem}
+  .tile{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:.9rem 1rem; text-align:left}
+  .tile .k{font-family:var(--mono); font-size:.7rem; color:var(--gold); letter-spacing:.03em}
+  .tile .v{color:var(--bright); font-weight:600; margin-top:.2rem; font-size:.95rem}
+  .tile .m{font-size:.8rem; color:var(--muted); margin-top:.15rem}
+  .tile.story{border-color:color-mix(in srgb,var(--gold) 45%,var(--line)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 10%,transparent)}
+  .tile.story .k{color:var(--gold-soft)}
+
+  /* adopters */
+  .adopters{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.3rem}
+  .adopter{font-family:var(--mono); font-size:.76rem; color:var(--text); background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:.4rem .85rem}
+
+  /* proof cards */
+  .proof{display:grid; grid-template-columns:repeat(auto-fit,minmax(18rem,1fr)); gap:1rem; margin-top:1.6rem}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:13px; padding:1.4rem 1.45rem; text-decoration:none; display:block; transition:.15s}
+  .card:hover{border-color:var(--gold); transform:translateY(-2px)}
+  .card .role{font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold)}
+  .card .title{color:var(--bright); font-weight:800; font-size:1.25rem; margin:.4rem 0 .1rem; letter-spacing:-.015em}
+  .card .desc{font-size:.92rem; color:var(--muted); margin-top:.4rem}
+  .card .link{font-family:var(--mono); font-size:.78rem; color:var(--gold-soft); margin-top:.9rem; display:inline-flex; gap:.4rem; align-items:center}
+
+  /* spec / layers */
+  .stack{display:flex; flex-direction:column; gap:.5rem; margin-top:1.5rem}
+  .layer{
+    display:grid; grid-template-columns:9.5rem 1fr; gap:1rem; align-items:center;
+    background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--struct);
+    border-radius:9px; padding:.85rem 1.05rem;
+  }
+  .layer .lname{font-family:var(--mono); font-weight:600; color:var(--bright); letter-spacing:.02em}
+  .layer .ldesc{font-size:.9rem; color:var(--muted)}
+  .layer .ldesc b{color:var(--text); font-weight:600}
+  .layer.load{border-left-color:var(--gold); box-shadow:inset 0 0 0 1px rgba(227,179,65,.08)}
+  .layer.load .lname{color:var(--gold)}
+  .layer.cross{border-left-style:dashed; background:var(--surface-2)}
+  @media (max-width:34rem){.layer{grid-template-columns:1fr; gap:.3rem}}
+
+  .specnote{margin-top:1.4rem; padding:1.1rem 1.25rem; border:1px dashed var(--struct); border-radius:10px; background:var(--surface-2); font-size:.92rem; color:var(--muted)}
+  .specnote b{color:var(--text)}
+  .specnote code{font-family:var(--mono); font-size:.85em; color:var(--gold-soft); background:color-mix(in srgb,var(--gold) 12%,transparent); padding:.1rem .35rem; border-radius:4px}
+
+  /* status pills */
+  .status{margin-top:clamp(3rem,7vw,4rem); padding-top:1.5rem; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; gap:.55rem}
+  .pill{font-family:var(--mono); font-size:.74rem; letter-spacing:.03em; color:var(--text); background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:.35rem .8rem; display:inline-flex; gap:.45rem; align-items:center}
+  .pill .g{color:var(--good)} .pill .y{color:var(--gold)}
+
+  footer{margin-top:2.6rem; font-family:var(--mono); font-size:.74rem; color:var(--muted); letter-spacing:.02em; line-height:1.9}
+  footer b{color:var(--gold); font-weight:500}
+  footer a{color:var(--muted)}
+  footer a:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="wrap">
+
+  <nav class="nav">
+    <div class="brandmark"><span class="glyph">◆</span> agenticbranduniverse</div>
+    <div class="links">
+      <a href="#model">The model</a>
+      <a href="#projections">Projections</a>
+      <a href="#proof">Live universes</a>
+      <a href="#spec">The spec</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header>
+    <p class="eyebrow"><span class="dot"></span> An open standard · v0.5 · 2026</p>
+    <h1 class="thesis">Every brand becomes a <em>version-controlled universe</em> its agent can render on demand.</h1>
+    <p class="lede">
+      <b>The Agentic Brand Universe</b> is an open standard for building brands as living, version-controlled canon
+      instead of a static PDF. Define the brand once — its characters, settings, motifs, rules, and blessed
+      "golden" assets — and an agent projects that canon into <b>any</b> deliverable, on brand, on demand,
+      with provenance. It's the end of brand slop.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="#model">See how it works</a>
+      <a class="btn ghost" href="https://github.com/garysheng/agenticstory/blob/master/SPEC.md" target="_blank" rel="noopener">Read the spec →</a>
+    </div>
+  </header>
+
+  <!-- THE MODEL -->
+  <section id="model">
+    <p class="kicker">The model</p>
+    <h2 class="h">Cartridge + console → anything you want</h2>
+    <p class="sub">Three distinct things, and once you see them apart, the whole standard clicks. A <b>brand universe</b> is the data. A <b>Brand OS</b> is the runtime that loads it. A <b>projection</b> is whatever it renders.</p>
+
+    <div class="model">
+      <div class="flow">
+        <div class="node cartridge">
+          <span class="tag">The cartridge · data</span>
+          <span class="name">Brand Universe</span>
+          <span class="desc">A portable, version-controlled brand: canon (characters, settings, motifs, rules) + blessed golden assets. Forkable. Rentable. This is what the standard defines.</span>
+        </div>
+        <div class="plus">+</div>
+        <div class="node console">
+          <span class="tag">The console · runtime</span>
+          <span class="name">Brand OS</span>
+          <span class="desc">A deployed engine that loads a universe and generates any on-brand deliverable from it — in plain language, held to the brand's rules, every output carrying provenance.</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node">
+          <span class="tag">The output · medium-neutral</span>
+          <span class="name">Projections</span>
+          <span class="desc">Whatever the OS renders from the universe.</span>
+          <div class="projections">
+            <span class="chip">picture book</span>
+            <span class="chip">flyer</span>
+            <span class="chip">merch</span>
+            <span class="chip">meme</span>
+            <span class="chip">social</span>
+            <span class="chip">sponsor thank-you</span>
+          </div>
+        </div>
+      </div>
+      <p class="analogy">The universe is the <span class="i">codebase</span>. &nbsp;The OS is the <b>runtime</b>. &nbsp;The deliverables are what it runs.</p>
+    </div>
+
+    <div class="defs">
+      <div class="def c1">
+        <div class="n">1 · the data</div>
+        <div class="term">Agentic Brand Universe</div>
+        <div class="eq">the cartridge</div>
+        <div class="body">A brand as a <b>typed, git-versioned canon</b> plus its golden assets. Portable enough to fork or rent. This is the object the spec standardizes — the cartridge format every OS can read.</div>
+      </div>
+      <div class="def c2">
+        <div class="n">2 · the software</div>
+        <div class="term">Agentic Brand OS</div>
+        <div class="eq">the console</div>
+        <div class="body">A deployed runtime that <b>loads a universe and generates deliverables</b> from plain-language requests — on brand, held to the rules, with provenance. The working example: the <b>AITX Brand OS</b>.</div>
+      </div>
+      <div class="def c3">
+        <div class="n">3 · the output</div>
+        <div class="term">Projection</div>
+        <div class="eq">the deliverable</div>
+        <div class="body">Any single thing the OS spits out from a universe — a book, a flyer, merch, a meme, a thank-you. <b>Medium-neutral</b>: same canon, same spec, many projections.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT HOLDS TOGETHER -->
+  <section>
+    <p class="kicker">Why it stays on brand</p>
+    <h2 class="h">Canon is the source of truth. Everything else is a projection of it.</h2>
+    <p class="sub">Three mechanics keep a thousand outputs looking like one brand — wired as steps the OS runs, never left to a person to remember.</p>
+    <div class="bets">
+      <div class="bet">
+        <div class="ico">🧬</div>
+        <div class="t">References carry identity</div>
+        <div class="d">Every character, setting, and motif resolves to a <b>real, blessed reference asset</b> — or the render fails loudly. A reference you can forget is a wish, not a standard. This is what kills drift.</div>
+      </div>
+      <div class="bet">
+        <div class="ico">🏅</div>
+        <div class="t">Golden assets carry taste</div>
+        <div class="d">The brand's blessed "golden" outputs become the anchors every new render is conditioned on. Taste is captured once and reused forever, instead of re-argued every time.</div>
+      </div>
+      <div class="bet">
+        <div class="ico">🧾</div>
+        <div class="t">Every output carries provenance</div>
+        <div class="d">A deliverable knows which canon it came from and which references it used. Nothing vivid ships unsourced. The brand can always answer "where did this come from?"</div>
+      </div>
+      <div class="bet">
+        <div class="ico">⛲</div>
+        <div class="t">Canon is version-controlled</div>
+        <div class="d">The universe lives in git. Every change is a commit, every contradiction a diff. "What did the brand look like when we shipped that campaign?" is a checkout, not a memory.</div>
+      </div>
+      <div class="bet">
+        <div class="ico">🧭</div>
+        <div class="t">A deterministic prompt compiler</div>
+        <div class="d">The OS assembles each render's prompt straight from canon, so a rule the brand already carries can't be silently dropped. The input is deterministic; a read-back gate still checks the output.</div>
+      </div>
+      <div class="bet">
+        <div class="ico">🚦</div>
+        <div class="t">A load-bearing render gate</div>
+        <div class="d">No deliverable renders until its references resolve and its checks pass. Quality is a set of wired gates, not a hope. Human taste sits exactly where taste is irreducible.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STANDARD NOT A TOOL -->
+  <section>
+    <p class="kicker">Why a standard, not a tool</p>
+    <h2 class="h">Brand-neutral and medium-neutral, by construction.</h2>
+    <p class="sub">A tool locks you into one vendor, one look, one medium. A standard defines the <b>cartridge format</b> — so any OS can load any universe, and any universe can render into any medium. Your brand is data you own, not a subscription you rent.</p>
+    <div class="adopters">
+      <span class="adopter">personal brands</span>
+      <span class="adopter">churches &amp; ministries</span>
+      <span class="adopter">corporations</span>
+      <span class="adopter">franchises</span>
+      <span class="adopter">creators</span>
+      <span class="adopter">communities</span>
+      <span class="adopter">campaigns</span>
+      <span class="adopter">product lines</span>
+    </div>
+  </section>
+
+  <!-- PROJECTIONS -->
+  <section id="projections">
+    <p class="kicker">The broader win</p>
+    <h2 class="h">Agentic storytelling is <em>one</em> projection. Agentic brand <em>management</em> is the whole game.</h2>
+    <p class="sub">Picture books and comics were the first thing the standard enabled — a proof that one canon can carry a whole illustrated world. But the same universe renders your entire visual identity. One canon, one spec, many projections.</p>
+    <div class="gallery">
+      <div class="tile story"><div class="k">projection · 01</div><div class="v">Agentic Story</div><div class="m">picture books, comics — the first proof</div></div>
+      <div class="tile"><div class="k">projection</div><div class="v">Flyers &amp; posters</div><div class="m">events, drops, announcements</div></div>
+      <div class="tile"><div class="k">projection</div><div class="v">Merch</div><div class="m">tees, stickers, packaging</div></div>
+      <div class="tile"><div class="k">projection</div><div class="v">Memes</div><div class="m">on-brand, on the timeline</div></div>
+      <div class="tile"><div class="k">projection</div><div class="v">Social</div><div class="m">posts, threads, carousels</div></div>
+      <div class="tile"><div class="k">projection</div><div class="v">Sponsor thank-yous</div><div class="m">personalized, on demand</div></div>
+      <div class="tile"><div class="k">projection</div><div class="v">Visual identity</div><div class="m">a whole coherent system</div></div>
+      <div class="tile"><div class="k">projection</div><div class="v">…anything</div><div class="m">medium-neutral by design</div></div>
+    </div>
+  </section>
+
+  <!-- PROOF -->
+  <section id="proof">
+    <p class="kicker">Real universes built on the standard</p>
+    <h2 class="h">Not a whitepaper. Working systems you can open right now.</h2>
+    <p class="sub">Two live universes, each with a running OS or a shipped body of projections. This is the standard, dogfooded.</p>
+    <div class="proof">
+      <a class="card" href="https://aitx-brand-os.vercel.app" target="_blank" rel="noopener">
+        <div class="role">Console · a live Brand OS</div>
+        <div class="title">AITX Brand OS</div>
+        <div class="desc">An Agentic Brand OS running the AITX universe — ask it in plain language and it generates on-brand deliverables from the loaded canon, with provenance. The clearest picture of cartridge + console in one place.</div>
+        <div class="link">aitx-brand-os.vercel.app →</div>
+      </a>
+      <a class="card" href="https://soulsoftech.vercel.app" target="_blank" rel="noopener">
+        <div class="role">Cartridge · a shipped universe</div>
+        <div class="title">Souls of Tech</div>
+        <div class="desc">A brand universe projected into a body of illustrated picture books — the Agentic Story projection in the wild. One shared canon carrying a whole illustrated world across many books.</div>
+        <div class="link">soulsoftech.vercel.app →</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- THE SPEC -->
+  <section id="spec">
+    <p class="kicker">For builders</p>
+    <h2 class="h">The cartridge format is a real spec. Five layers.</h2>
+    <p class="sub">If you want the architecture beneath the standard — the primitives, the invariants, the load-bearing reference gate, the reference-matrix and provenance model — it's all written down and versioned.</p>
+    <div class="stack">
+      <div class="layer cross"><div class="lname">Quality</div><div class="ldesc">taste gates · craft-canon · provenance — <b>cross-cuts every layer</b></div></div>
+      <div class="layer"><div class="lname">Renderer</div><div class="ldesc">the OS that projects canon + a request into a medium — <b>one deliverable at a time</b></div></div>
+      <div class="layer"><div class="lname">Brief</div><div class="ldesc">a composition: selects canon + the deliverable's beats + a declared <b>spine</b> + provenance</div></div>
+      <div class="layer load"><div class="lname">Refs</div><div class="ldesc">the load-bearing resolver: entity → real blessed asset, or <b>crash</b> — this kills silent drift</div></div>
+      <div class="layer"><div class="lname">Canon</div><div class="ldesc">typed entities + relations, git-versioned — <b>the universe itself</b></div></div>
+    </div>
+    <p class="specnote">
+      <b>The spec is v0.5</b>, backtested against a real 24-property roster and dogfooded on live universes.
+      Read <code>SPEC.md</code> for the full architecture — canon as source of truth, references that carry
+      identity, golden assets, the deterministic prompt compiler, the read-back gate, and provenance.
+      &nbsp;→ <a href="https://github.com/garysheng/agenticstory/blob/master/SPEC.md" target="_blank" rel="noopener">github.com/garysheng/agenticstory</a>
+    </p>
+  </section>
+
+  <div class="status">
+    <span class="pill"><span class="g">●</span> open standard · spec v0.5</span>
+    <span class="pill"><span class="g">●</span> engine v0 · running</span>
+    <span class="pill"><span class="y">●</span> live: AITX Brand OS</span>
+    <span class="pill"><span class="y">●</span> live: Souls of Tech</span>
+    <span class="pill"><span class="g">●</span> cartridge · console · projection</span>
+  </div>
+
+  <footer>
+    <b>The Agentic Brand Universe</b> — a version-controlled brand, projected into anything, on demand, with provenance.<br />
+    The standard: <a href="https://github.com/garysheng/agenticstory" target="_blank" rel="noopener">github.com/garysheng/agenticstory</a> &nbsp;·&nbsp;
+    Live universes: <a href="https://aitx-brand-os.vercel.app" target="_blank" rel="noopener">AITX Brand OS</a>, <a href="https://soulsoftech.vercel.app" target="_blank" rel="noopener">Souls of Tech</a>
+  </footer>
+
+</div>
+</div>
+</body>
+</html>
