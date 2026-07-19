@@ -313,5 +313,39 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(lock_level(store, "the-hall"), "stub")
 
 
+class TestLockShot(unittest.TestCase):
+    def test_lock_shot_promotes_required_and_keeps_validate_green(self):
+        import json, tempfile
+        from pathlib import Path
+        from agenticstory import CanonStore, scaffold_entity, lock_shot
+        from agenticstory.model import Entity
+        from agenticstory.refs import lock_level
+        d = Path(tempfile.mkdtemp())
+        (d / "canon" / "entities").mkdir(parents=True)
+        (d / "canon" / "relations").mkdir(); (d / "stories").mkdir()
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        art = d / "art"; art.mkdir()
+        def png(name):
+            p = art / name; p.write_bytes(b"x"); return f"art/{name}"
+        ch = scaffold_entity("character", "hero", "Hero")
+        # lock ONE required shot -> requiredForRender gains just that key, validate green, still partial
+        lock_shot(ch, "forward-fullbody", png("ff.png"))
+        self.assertEqual(ch["structured"]["requiredForRender"], ["forward-fullbody"])
+        # lock the other required -> both required present
+        lock_shot(ch, "face-neutral", png("fn.png"))
+        self.assertEqual(set(ch["structured"]["requiredForRender"]), {"forward-fullbody", "face-neutral"})
+        self.assertEqual(Entity.from_dict(ch).validate(), [])
+        (d / "canon" / "entities" / "hero.json").write_text(json.dumps(ch))
+        store = CanonStore(d)
+        self.assertEqual(lock_level(store, "hero"), "partial")   # required locked, matrix not complete
+        # lock the rest of the matrix -> locked
+        for shot in ["face-3q", "expressions", "profile-left", "profile-right", "back", "signature-pose"]:
+            lock_shot(ch, shot, png(f"{shot}.png"))
+        (d / "canon" / "entities" / "hero.json").write_text(json.dumps(ch))
+        store = CanonStore(d)
+        self.assertEqual(lock_level(store, "hero"), "locked")
+        self.assertEqual(Entity.from_dict(ch).validate(), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

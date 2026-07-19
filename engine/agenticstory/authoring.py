@@ -65,3 +65,22 @@ def scaffold_entity(
         ent["prose"] = {"rules": ""}
 
     return ent
+
+
+def lock_shot(entity: dict, shot: str, path: str) -> dict:
+    """Lock a generated reference shot into an entity (mutates + returns it).
+
+    Sets `structured.sheets[shot] = path` and recomputes `requiredForRender` to the
+    kind's matrix-required shots that now have a path. This keeps `validate` green at
+    every step (a required key always resolves) and promotes the entity to gate-real
+    only once its required shots are locked. Non-matrixed kinds keep any existing
+    requiredForRender untouched.
+    """
+    st = entity.setdefault("structured", {})
+    sheets = st.setdefault("sheets", {})
+    sheets[shot] = path
+    m = matrix_for(entity.get("kind", ""))
+    if m:
+        required = m.get("required", [])
+        st["requiredForRender"] = [k for k in required if sheets.get(k)]
+    return entity

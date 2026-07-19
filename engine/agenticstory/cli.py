@@ -45,6 +45,8 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("assert-spread"); sp.add_argument("universe")
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
     ll = sub.add_parser("lock-level"); ll.add_argument("universe"); ll.add_argument("entity")
+    ls2 = sub.add_parser("lock-shot", help="lock a generated reference shot into an entity")
+    ls2.add_argument("universe"); ls2.add_argument("eid"); ls2.add_argument("shot"); ls2.add_argument("path")
     ae = sub.add_parser("add-entity", help="scaffold a schema-valid entity stub with reference-matrix slots")
     ae.add_argument("universe"); ae.add_argument("kind"); ae.add_argument("eid")
     ae.add_argument("--name", default=""); ae.add_argument("--origin", default=None)
@@ -134,6 +136,15 @@ def main(argv: list[str] | None = None) -> int:
             (uni / "reference" / args.eid / "photos").mkdir(parents=True, exist_ok=True)
         store = CanonStore(uni)
         print(f"wrote {dest.relative_to(uni)}  (lock_level: {refs.lock_level(store, args.eid)})")
+        return 0
+    if args.cmd == "lock-shot":
+        from .authoring import lock_shot
+        uni = Path(args.universe)
+        entp = uni / "canon" / "entities" / f"{args.eid}.json"
+        ent = json.loads(entp.read_text())
+        lock_shot(ent, args.shot, args.path)
+        entp.write_text(json.dumps(ent, indent=2) + "\n")
+        print(f"locked {args.eid}.{args.shot} -> {args.path}  (lock_level: {refs.lock_level(CanonStore(uni), args.eid)})")
         return 0
     return 2
 
