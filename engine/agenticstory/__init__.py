@@ -3,6 +3,7 @@ from .model import Entity, Relation, StorySpec  # noqa: F401
 from .store import CanonStore  # noqa: F401
 from .refs import assert_story, assert_spread, resolve_entity_assets, resolve_setting, lock_level  # noqa: F401
 from .matrix import REFERENCE_MATRIX, matrix_for  # noqa: F401
+from .authoring import scaffold_entity  # noqa: F401
 
 __version__ = "0.0.1"
 

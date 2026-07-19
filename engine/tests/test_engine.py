@@ -270,6 +270,48 @@ class TestScaffold(unittest.TestCase):
             self.assertIn("photoreal", reg["rejectedPoles"])
             self.assertTrue((target / "reference" / "register" / ".gitkeep").exists())
 
+    def test_scaffold_entity_validates_and_reports_stub(self):
+        import json
+        from agenticstory import CanonStore, scaffold_entity
+        from agenticstory.model import Entity
+        from agenticstory.refs import lock_level
+        import tempfile
+        from pathlib import Path
+        d = Path(tempfile.mkdtemp())
+        (d / "canon" / "entities").mkdir(parents=True)
+        (d / "canon" / "relations").mkdir()
+        (d / "stories").mkdir()
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        # character (fictional): 8 matrix slots, requiredForRender empty, validates, lock_level stub
+        ch = scaffold_entity("character", "hero", "Hero")
+        self.assertEqual(set(ch["structured"]["sheets"].keys()),
+                         {"face-neutral","face-3q","expressions","forward-fullbody",
+                          "profile-left","profile-right","back","signature-pose"})
+        self.assertEqual(ch["structured"]["requiredForRender"], [])
+        self.assertNotIn("realPerson", ch)
+        self.assertEqual(Entity.from_dict(ch).validate(), [])
+        # real person: photo stack required -> realPerson gated
+        rp = scaffold_entity("character", "vip", "Vip", photo_stack=["reference/vip/photos/01.jpg"])
+        self.assertEqual(rp["realPerson"]["approval"]["state"], "gated")
+        self.assertEqual(rp["realPerson"]["photoStack"], ["reference/vip/photos/01.jpg"])
+        self.assertEqual(Entity.from_dict(rp).validate(), [])
+        # setting: unlocked contract, validates
+        st = scaffold_entity("setting", "the-hall", "The Hall")
+        self.assertEqual(st["status"], "unlocked")
+        self.assertIn("contract", st)
+        self.assertEqual(Entity.from_dict(st).validate(), [])
+        # prop: hero+detail slots
+        pr = scaffold_entity("prop", "the-key", "The Key")
+        self.assertEqual(set(pr["structured"]["sheets"].keys()), {"hero","detail"})
+        self.assertEqual(Entity.from_dict(pr).validate(), [])
+        # write them and confirm lock_level stub + store validates
+        for e in (ch, rp, st, pr):
+            (d / "canon" / "entities" / f"{e['id']}.json").write_text(json.dumps(e))
+        store = CanonStore(d)
+        self.assertEqual(store.validate_canon(), [])
+        self.assertEqual(lock_level(store, "hero"), "stub")
+        self.assertEqual(lock_level(store, "the-hall"), "stub")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

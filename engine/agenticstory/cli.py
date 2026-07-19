@@ -7,6 +7,8 @@ Agentic Story CLI.
   agenticstory assert-story <universe> <id>   # THE pre-render gate for a whole story
   agenticstory assert-spread <universe> --characters a,b [--location X]
   agenticstory lock-level <universe> <entity>  # advisory reference-completeness report
+  agenticstory add-entity <universe> <kind> <eid> [--name N] [--origin S] [--photo path ...]
+                                               # scaffold a schema-valid entity stub
 
 Exit code is non-zero when validation/assertion finds problems, so gen scripts
 and CI can gate on it.
@@ -14,7 +16,9 @@ and CI can gate on it.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from pathlib import Path
 
 from .store import CanonStore
 from . import refs, scaffold, SPEC_VERSION, SPEC_WIKI
@@ -41,6 +45,10 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("assert-spread"); sp.add_argument("universe")
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
     ll = sub.add_parser("lock-level"); ll.add_argument("universe"); ll.add_argument("entity")
+    ae = sub.add_parser("add-entity", help="scaffold a schema-valid entity stub with reference-matrix slots")
+    ae.add_argument("universe"); ae.add_argument("kind"); ae.add_argument("eid")
+    ae.add_argument("--name", default=""); ae.add_argument("--origin", default=None)
+    ae.add_argument("--photo", action="append", default=None, help="a photo-stack path (repeatable)")
     ini = sub.add_parser("init", help="scaffold a new universe (conforms to spec v" + SPEC_VERSION + ")")
     ini.add_argument("universe", help="target directory for the new universe")
     ini.add_argument("--name", required=True, help="universe name (slug)")
@@ -112,6 +120,20 @@ def main(argv: list[str] | None = None) -> int:
                                refs.assert_spread(store, chars, args.location or None))
     if args.cmd == "lock-level":
         print(refs.lock_level(store, args.entity))
+        return 0
+    if args.cmd == "add-entity":
+        from .authoring import scaffold_entity
+        uni = Path(args.universe)
+        ent = scaffold_entity(args.kind, args.eid, args.name or args.eid,
+                              origin_story=args.origin, photo_stack=args.photo)
+        dest = uni / "canon" / "entities" / f"{args.eid}.json"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(ent, indent=2) + "\n")
+        (uni / "reference" / args.eid).mkdir(parents=True, exist_ok=True)
+        if args.photo:
+            (uni / "reference" / args.eid / "photos").mkdir(parents=True, exist_ok=True)
+        store = CanonStore(uni)
+        print(f"wrote {dest.relative_to(uni)}  (lock_level: {refs.lock_level(store, args.eid)})")
         return 0
     return 2
 
