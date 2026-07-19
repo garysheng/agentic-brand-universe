@@ -1,8 +1,9 @@
-# Agentic Story — Framework Spec
+# Agentic Brand Universe — Cartridge Spec
 
-**v0.5 — 2026-07-18.** The first-principles architecture for compelling, agentically writable,
-composable, evolvable story generation. Home: `agenticstory.wiki`. Reference implementation: the
-Nation of Fire universe.
+**v0.5 — 2026-07-18.** The version-controlled brand-universe (cartridge) format: the first-principles
+architecture for a brand as version-controlled canon + golden assets, agentically writable,
+composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
+Reference implementation: the Nation of Fire universe.
 
 > **v0.5 changelog:** **§4.6 Prompt compiler (the render step) + entity `render` block.** The
 > resolver asserted that refs *exist* (§4.4), but the load-bearing PROMPT was still hand-assembled by
@@ -36,8 +37,8 @@ Nation of Fire universe.
 > a universe ships *data*, the framework ships *skills*. Both were earned making the Nation of Fire
 > universe self-contained and auditing its skills for multi-universe reuse.
 
-> **Thesis, in one line:** *A story is a query over an evolving canon, rendered into a medium, held
-> to craft and to human taste.*
+> **Thesis, in one line:** *A deliverable is a query over an evolving canon, rendered into a medium,
+> held to craft and to human taste.*
 
 ---
 
@@ -50,11 +51,12 @@ and quality depended on the author holding it all in his head. The books were co
 evolvable in spirit but not in mechanism — so the same failures recurred book after book (settings
 that drift, references that silently go missing, beats that can't be traced to anything real).
 
-Agentic Story makes the implicit system explicit: a small set of primitives and invariants that make
-a narrative **universe** the first-class object, stories **compositions** over it, references
-**load-bearing** (their absence is a crash, not a drift), and quality a set of **wired gates** rather
-than a memory feat. It is designed to be written and evolved primarily **by agents**, with the human
-in the loop exactly where taste is irreducible.
+The Agentic Brand Universe standard makes the implicit system explicit: a small set of primitives and
+invariants that make a brand **universe** — version-controlled canon + golden assets — the
+first-class object, deliverables **compositions** over it, references **load-bearing** (their absence
+is a crash, not a drift), and quality a set of **wired gates** rather than a memory feat. It is
+designed to be written and evolved primarily **by agents**, with the human in the loop exactly where
+taste is irreducible. (An **Agentic Story** — the picture-book / comic — is one such deliverable.)
 
 ## 2. First principles (the bets)
 
