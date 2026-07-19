@@ -1,8 +1,22 @@
 # Agentic Story — Framework Spec
 
-**v0.4 — 2026-07-18.** The first-principles architecture for compelling, agentically writable,
+**v0.5 — 2026-07-18.** The first-principles architecture for compelling, agentically writable,
 composable, evolvable story generation. Home: `agenticstory.wiki`. Reference implementation: the
 Nation of Fire universe.
+
+> **v0.5 changelog:** **§4.6 Prompt compiler (the render step) + entity `render` block.** The
+> resolver asserted that refs *exist* (§4.4), but the load-bearing PROMPT was still hand-assembled by
+> the author each render — so a rule the entity already carried could silently be dropped (earned
+> 2026-07-18, *The Room With No Fire*: a hand-written prompt omitted Jerry's front patches and aged
+> him down, wrecking likeness across a whole batch, even though the entity spelled both out). The fix
+> makes prompt assembly *deterministic*: a compiler emits the prompt text + ref list + QA checklist
+> straight from canon, so nothing load-bearing is retyped. New entity structured field **`render`**
+> (`always` / `poses{pose:{sheets[],bake}}` / `qa[]`) is the compiler-consumable home for identity
+> craft that used to live as `prose.rules` scar tissue. Determinism ceiling made explicit: the
+> compiler makes the INPUT deterministic; model output stays stochastic, so the read-back gate (§3.5)
+> is still mandatory. Reference impl: `nof-universe/canon/scripts/compile_render.py`, first migration
+> `jerry-man.render`. Back-compatible: an entity with no `render` block still renders via a
+> hand-written prompt.
 
 > **v0.4 changelog:** (1) **§12 Reference-matrix standard** — a per-kind canonical shot set defines
 > what "locked" means; the engine reports `lock_level` (stub/partial/locked), advisory and
@@ -132,9 +146,19 @@ Three wired mechanisms, applied at defined points:
   "originStory": "golden-path-book",       // where it entered canon
   "authority": { "lockedBy": "gary", "lockedOn": "2026-07-10" },
   "structured": {                          // machine, load-bearing
-    "sheets": { "man": "…/gabr-02-jerry-man.png", "face": "…" },
+    "sheets": { "man": "…/gabr-02-jerry-man.png", "face": "…", "jacketBack": "…", "shoes": "…" },
     "requiredForRender": ["man", "face"],
-    "invariants": ["no-lenses", "double-eyelid-crease", "north-star-cross-upper-back"]
+    "invariants": ["no-lenses", "double-eyelid-crease", "north-star-cross-upper-back"],
+    "render": {                            // compiler-consumable identity craft (§4.6) — NOT prose
+      "always": "canonical adult face per the face sheet; clean-shaven; NO lenses; …",
+      "poses": {                           // pose-conditional refs + bake text the compiler emits
+        "front": { "sheets": ["man","face","pendant","shoes"],
+                   "bake": "front patches: SMILEY on one chest, TEXAS FLAG on the other" },
+        "back":  { "sheets": ["man","jacketBack","face","shoes"],
+                   "bake": "ONLY the north-star back patch; front patches invisible from behind" }
+      },
+      "qa": ["face matches face sheet (adult)", "front pose: both patches present", "pendant is a STAR not a crucifix"]
+    }
   },
   "prose": {                               // first-class, human/agent-authored
     "voice": "earnest, wants to believe",
@@ -220,6 +244,30 @@ every render — never left implicit inside the renderer.
 A renderer declares `consumes` (which entity fields it reads) and `produces` (medium artifacts), and
 must call `assert-spread` before every unit. It never mutates canon; it only reads canon + story spec
 and emits medium output + a `writesBack` proposal for the author to accept.
+
+### 4.6 Prompt compiler (the render step)
+`assert-spread` guarantees the refs *exist*; it says nothing about the **prompt**. Left to a human or
+LLM, the prompt is retyped every render and any rule not recalled in that moment is silently dropped
+— the single highest-frequency defect class (earned 2026-07-18: a hand-written prompt omitted a
+character's canon-declared front patches and invented an age, across a whole batch). The compiler
+removes that step.
+
+- **Contract:** `compile(spread-spec, preamble) → (prompt, refs[], qa[])`, pure and deterministic.
+  A *spread-spec* is thin — `{ setting:{entity,sheet?}, characters:[{entity,pose}], extras:[{entity,bake?,sheet?}], scene }` — the only free text is the scene *action*. Everything identity-bearing is compiled from canon:
+  - refs = each entity's `requiredForRender` + the pose's `render.poses[pose].sheets` (de-duped);
+  - prompt = `preamble.register` + setting bake (the setting's `contract.dressing` + book rule) + each character's `render.always` + `render.poses[pose].bake` + extra bakes + `scene` + `preamble.negatives`;
+  - qa = the union of every in-frame entity's `invariants` + `render.qa` — **the checklist is compiled from the same canon as the prompt**, so read-back can never check the wrong things (the second half of the earned failure: the QA checklist was also hand-written and never checked the missing patches).
+- **Provider-agnostic:** the compiler emits `(prompt, refs, size)` and hands off to a swappable
+  provider adapter (`gpt-image-2` today, others behind the same interface). The adapter normalizes the
+  *call*; per-provider reference-conditioning and moderation (e.g. a `public-figure` block) remain
+  provider facts, not framework facts.
+- **Determinism ceiling (invariant):** the compiler makes the *input* deterministic; the model output
+  stays stochastic. A compiled prompt is necessary, not sufficient — the read-back gate (§3.5) is
+  still mandatory, and a drift-prone shape is guaranteed by *passing its reference image*, never by
+  wording it harder.
+- **Reference impl:** `nof-universe/canon/scripts/compile_render.py` reads a book `render-spec.json`
+  and renders every spread through the existing `render_spread.sh` guard (no-self-reference). First
+  entity migrated: `jerry-man.render`.
 
 ## 5. Evolution & versioning
 
