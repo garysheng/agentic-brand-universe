@@ -99,3 +99,14 @@ Prove the generic path drives a real NoF book end-to-end through the framework p
 - Actually generating a real NoF book's art through the generic path (Gary runs this; he is the taste gate).
 - Locking NoF's universe register anchor as a file (a small data step Gary can do when he first runs render-book on NoF).
 - Phase F: retiring the `nof` plugin (only after Gary personally renders a real book on the generic path and confirms the look holds).
+
+---
+
+## PROOF RESULT (2026-07-18)
+
+Resolution proof on `not-every-fire-is-holy` PASSED end-to-end through the framework primitives:
+- **Spine + craft:** the story declares spine `obedient-servant`; all 7 nof-universe craft records (1 spine, 3 genres, 3 register-rules) the generic renderer reads are present (`list-craft`).
+- **Canon resolves:** `assert-story not-every-fire-is-holy` returns OK (exit 0) — the generic render-book's per-spread canon-resolve resolves the real 8-entity cast + `the-arena` location from the self-contained nof-universe. The load-bearing gate is green.
+- **Register:** added `identity.register` (name "soft painterly storybook realism" + rejectedPoles) to nof-universe. `register.anchor` is null (Gary locks a style-anchor FILE on his first `render-book` run; NoF's style lived per-book before the v0.4 register standard).
+
+**Conclusion:** the generic render path can drive a real NoF book: it resolves the canon, reads the spine + genre + register-rules, and knows the style. What remains is the taste-gated art generation itself, which Gary runs (he is the taste gate), and locking the style-anchor file. Phase F (retiring the nof plugin) waits until Gary personally renders a real NoF book on this path and confirms the look holds.
