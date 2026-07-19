@@ -8,6 +8,7 @@ rendered from.
 > taste.*
 
 - **The spec:** [`SPEC.md`](./SPEC.md) — the cartridge architecture (five layers, primitives, invariants).
+- **The engine spec:** [`BRAND-OS-SPEC.md`](./BRAND-OS-SPEC.md) — the Agentic Brand OS (the console/runtime that loads a cartridge and generates on-brand deliverables). **v0.1, early draft.**
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementation:** the Nation of Fire universe (~15 illustrated books over one shared
   canon). The standard is the act of naming the system those books already use. An **Agentic Story**
