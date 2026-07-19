@@ -111,10 +111,15 @@ def lock_level(store: CanonStore, eid: str) -> str:
     if e is None:
         return "stub"
     if e.kind in ("setting", "visual-metaphor"):
-        problems = resolve_setting(store, eid)
+        try:
+            problems = resolve_setting(store, eid)
+        except (TypeError, AttributeError):
+            return "partial"   # malformed contract: has a contract block but not clean-lockable
         if not problems:
             return "locked"
         contract = e.raw.get("contract", {}) or {}
+        if not isinstance(contract, dict):
+            return "stub"
         has_any = any(
             isinstance(contract.get(f), str) and (store.asset_root / contract[f]).exists()
             for f in ("turnaround", "blueprint")
@@ -123,6 +128,8 @@ def lock_level(store: CanonStore, eid: str) -> str:
 
     root = store.asset_root
     sheets = (e.raw.get("structured") or {}).get("sheets") or {}
+    if not isinstance(sheets, dict):
+        return "stub"
     if not sheets:
         return "stub"
 

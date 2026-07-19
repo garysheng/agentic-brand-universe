@@ -130,6 +130,71 @@ class TestLockLevel(unittest.TestCase):
         self.assertEqual(lock_level(store, "ghost"), "stub")
         self.assertEqual(lock_level(store, "nonexistent"), "stub")
 
+    def test_lock_level_never_raises_on_malformed_canon(self):
+        """lock_level must never raise, even on malformed sheets or contract fields."""
+        import tempfile, json
+        from pathlib import Path
+        from agenticstory import CanonStore
+        from agenticstory.refs import lock_level
+        d = Path(tempfile.mkdtemp())
+        (d / "canon" / "entities").mkdir(parents=True)
+        (d / "stories").mkdir()
+        (d / "canon" / "relations").mkdir()
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        art = d / "art"; art.mkdir()
+        def png(name):
+            p = art / name; p.write_bytes(b"x"); return f"art/{name}"
+
+        # Character with sheets as a list instead of dict (malformed)
+        malformed_sheets_list = {
+            "id": "bad-sheets-list", "kind": "character",
+            "structured": {
+                "sheets": ["face.png", "body.png"],  # WRONG: should be dict
+                "requiredForRender": []
+            }
+        }
+
+        # Character with sheets as an empty list (malformed)
+        malformed_sheets_empty = {
+            "id": "bad-sheets-empty", "kind": "character",
+            "structured": {
+                "sheets": [],  # WRONG: should be dict
+                "requiredForRender": []
+            }
+        }
+
+        # Setting with contract having non-string field value (malformed)
+        malformed_setting = {
+            "id": "bad-setting", "kind": "setting",
+            "status": "locked",
+            "contract": {
+                "turnaround": 123,  # WRONG: should be string path
+                "blueprint": "path/to/blueprint.png",
+                "emptyPlates": [png("empty1.png")],
+                "map": "A hall",
+                "blocking": "Characters stand here",
+                "dressing": "Props scattered"
+            }
+        }
+
+        for e in (malformed_sheets_list, malformed_sheets_empty, malformed_setting):
+            (d / "canon" / "entities" / f"{e['id']}.json").write_text(json.dumps(e))
+
+        store = CanonStore(d)
+
+        # All should return a valid level string, never raise
+        result1 = lock_level(store, "bad-sheets-list")
+        self.assertIn(result1, ("stub", "partial", "locked"),
+                      f"malformed sheets list should return valid level, got {result1}")
+
+        result2 = lock_level(store, "bad-sheets-empty")
+        self.assertIn(result2, ("stub", "partial", "locked"),
+                      f"malformed sheets empty should return valid level, got {result2}")
+
+        result3 = lock_level(store, "bad-setting")
+        self.assertIn(result3, ("stub", "partial", "locked"),
+                      f"malformed setting contract should return valid level, got {result3}")
+
 
 class TestScaffold(unittest.TestCase):
     """`init` must produce a universe that loads and validates GREEN out of the box,
