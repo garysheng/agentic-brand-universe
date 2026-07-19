@@ -4,24 +4,24 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>The Agentic Brand Universe Standard</title>
-<meta name="description" content="An open standard for version-controlled, agentically-generated brands. A brand universe (the cartridge) plus a Brand OS (the console) projects one canon into any deliverable — story, flyer, merch, meme — on brand, on demand, with provenance." />
+<meta name="description" content="An open standard for version-controlled, agentically-generated brands. A brand universe (the cartridge) plus a Brand OS (the console) projects one canon into any deliverable: story, flyer, merch, meme. On brand, on demand, with provenance." />
 <link rel="canonical" href="https://agenticbranduniverse.com/" />
 
 <!-- Open Graph -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Agentic Brand Universe" />
 <meta property="og:title" content="The Agentic Brand Universe Standard" />
-<meta property="og:description" content="The end of brand slop. A version-controlled brand universe (cartridge) + a Brand OS (console) → any deliverable, on brand, on demand, with provenance." />
+<meta property="og:description" content="The end of brand slop. A version-controlled brand universe (cartridge) plus a Brand OS (console) renders any deliverable, on brand, on demand, with provenance." />
 <meta property="og:url" content="https://agenticbranduniverse.com/" />
 <meta property="og:image" content="https://agenticbranduniverse.com/og.jpg" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="The Agentic Brand Universe Standard — cartridge plus console projects one canon into any deliverable." />
+<meta property="og:image:alt" content="The Agentic Brand Universe Standard. Cartridge plus console projects one canon into any deliverable." />
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="The Agentic Brand Universe Standard" />
-<meta name="twitter:description" content="A version-controlled brand universe (cartridge) + a Brand OS (console) → any deliverable, on brand, on demand, with provenance." />
+<meta name="twitter:description" content="A version-controlled brand universe (cartridge) plus a Brand OS (console) renders any deliverable, on brand, on demand, with provenance." />
 <meta name="twitter:image" content="https://agenticbranduniverse.com/og.jpg" />
 
 <meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)" />
@@ -34,6 +34,7 @@
     --ground:#0e1117; --surface:#171d26; --surface-2:#1e2530; --line:#2b3542;
     --struct:#3f4c5a; --text:#c9d3df; --muted:#7d8896; --bright:#eef3f9;
     --gold:#e3b341; --gold-soft:#f0cd78; --good:#5bbf8f; --warn:#d98a4a; --iris:#7aa2f7;
+    --brand:#ff5a1f; --brand-soft:#ff7a45;
     --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
     --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --maxw:66rem;
@@ -43,22 +44,26 @@
       --ground:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --line:#dde3ea;
       --struct:#c2ccd6; --text:#26303c; --muted:#5c6976; --bright:#0f1620;
       --gold:#b5851a; --gold-soft:#caa03a; --good:#2f8f66; --warn:#b96a26; --iris:#3f6ad8;
+      --brand:#e5480f; --brand-soft:#ff5a1f;
     }
   }
   :root[data-theme="dark"]{
     --ground:#0e1117; --surface:#171d26; --surface-2:#1e2530; --line:#2b3542;
     --struct:#3f4c5a; --text:#c9d3df; --muted:#7d8896; --bright:#eef3f9;
     --gold:#e3b341; --gold-soft:#f0cd78; --good:#5bbf8f; --warn:#d98a4a; --iris:#7aa2f7;
+    --brand:#ff5a1f; --brand-soft:#ff7a45;
   }
   :root[data-theme="light"]{
     --ground:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --line:#dde3ea;
     --struct:#c2ccd6; --text:#26303c; --muted:#5c6976; --bright:#0f1620;
     --gold:#b5851a; --gold-soft:#caa03a; --good:#2f8f66; --warn:#b96a26; --iris:#3f6ad8;
+    --brand:#e5480f; --brand-soft:#ff5a1f;
   }
 
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{margin:0}
+  img{max-width:100%; display:block}
   .page{
     background:var(--ground); color:var(--text); font-family:var(--sans);
     line-height:1.6; -webkit-font-smoothing:antialiased;
@@ -77,7 +82,7 @@
   .nav .links{display:flex; gap:1.2rem; font-family:var(--mono); font-size:.76rem; letter-spacing:.02em}
   .nav .links a{color:var(--muted); text-decoration:none}
   .nav .links a:hover{color:var(--gold)}
-  @media (max-width:32rem){.nav .links{display:none}}
+  @media (max-width:40rem){.nav .links{display:none}}
 
   .eyebrow{
     font-family:var(--mono); font-size:.72rem; letter-spacing:.22em; text-transform:uppercase;
@@ -103,14 +108,31 @@
   .btn.ghost{background:var(--surface); color:var(--text); border:1px solid var(--line)}
   .btn.ghost:hover{border-color:var(--gold); color:var(--bright)}
 
-  section{margin-top:clamp(3rem,7vw,4.6rem)}
+  /* hero proof strip */
+  .heroshots{display:flex; gap:.75rem; margin-top:2.2rem; flex-wrap:wrap}
+  .heroshots figure{margin:0; flex:1 1 8.5rem; min-width:7.5rem}
+  .heroshots .frame{
+    border-radius:12px; overflow:hidden; border:1px solid var(--line); background:var(--surface);
+    box-shadow:0 22px 44px -30px rgba(0,0,0,.7); aspect-ratio:3/4; transition:.2s;
+  }
+  .heroshots figure:nth-child(odd) .frame{transform:rotate(-1.4deg)}
+  .heroshots figure:nth-child(even) .frame{transform:rotate(1.4deg)}
+  .heroshots figure:hover .frame{transform:rotate(0) translateY(-4px); border-color:var(--brand)}
+  .heroshots img{width:100%; height:100%; object-fit:cover}
+  .heroshots figcaption{font-family:var(--mono); font-size:.66rem; color:var(--muted); text-align:center; margin-top:.5rem; letter-spacing:.02em}
+  .heronote{font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-top:1rem; letter-spacing:.02em; display:flex; align-items:center; gap:.5rem}
+  .heronote .mk{width:16px;height:16px;flex:none}
+
+  section{margin-top:clamp(3.2rem,7.5vw,5rem)}
   .kicker{
     font-family:var(--mono); font-size:.72rem; letter-spacing:.2em; text-transform:uppercase;
     color:var(--gold); margin:0 0 1.1rem; display:flex; align-items:center; gap:.7rem;
   }
   .kicker::after{content:""; flex:1; height:1px; background:var(--line)}
-  h2.h{font-size:clamp(1.4rem,3.2vw,1.9rem); font-weight:800; letter-spacing:-.02em; margin-bottom:.5rem}
-  .sub{color:var(--muted); max-width:62ch; margin:.2rem 0 0}
+  .kicker.brandk{color:var(--brand)}
+  h2.h{font-size:clamp(1.4rem,3.2vw,1.95rem); font-weight:800; letter-spacing:-.02em; margin-bottom:.5rem}
+  h2.h em{font-style:normal; color:var(--gold)}
+  .sub{color:var(--muted); max-width:64ch; margin:.2rem 0 0}
   .sub b{color:var(--text); font-weight:600}
 
   /* the model diagram */
@@ -149,6 +171,60 @@
   .def .body{font-size:.92rem; color:var(--muted)}
   .def .body b{color:var(--text); font-weight:600}
 
+  /* ===== the compounding loop ===== */
+  .loopwrap{
+    margin-top:1.8rem; background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:clamp(1.3rem,3.5vw,2.2rem); box-shadow:0 24px 60px -40px rgba(0,0,0,.6);
+  }
+  .loop{display:grid; grid-template-columns:auto 2.2rem auto 2.2rem auto; align-items:center; gap:.4rem}
+  @media (max-width:56rem){.loop{grid-template-columns:1fr; gap:.9rem}}
+  .stage{background:var(--surface-2); border:1px solid var(--line); border-radius:13px; padding:1rem 1rem 1.1rem}
+  .stage .st{font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); display:flex; gap:.5rem; align-items:center; margin-bottom:.7rem}
+  .stage .st .no{color:var(--gold)}
+  /* atoms shelf */
+  .atoms{display:grid; grid-template-columns:repeat(2,1fr); gap:.5rem}
+  .atom{border-radius:9px; overflow:hidden; border:1px solid var(--line); background:var(--ground); position:relative}
+  .atom img{width:100%; height:5.2rem; object-fit:cover; object-position:top}
+  .atom.mono{display:grid; place-items:center; height:5.2rem; background:var(--ground)}
+  .atom.mono img{height:2.6rem; width:auto; object-fit:contain}
+  .atom.swatch{display:grid; place-items:center; height:5.2rem; background:linear-gradient(135deg,var(--brand),#0c0c0c 65%,#fff)}
+  .atom .lbl{position:absolute; left:0; right:0; bottom:0; font-family:var(--mono); font-size:.56rem; letter-spacing:.02em; color:#fff; background:linear-gradient(transparent,rgba(0,0,0,.72)); padding:.5rem .4rem .3rem; text-align:center}
+  .atomcap{font-family:var(--mono); font-size:.64rem; color:var(--muted); margin-top:.7rem; text-align:center; letter-spacing:.02em}
+  /* compile node */
+  .compile{text-align:center; padding:1.3rem 1rem}
+  .compile .gear{font-size:1.7rem}
+  .compile .cn{color:var(--bright); font-weight:800; margin-top:.5rem; letter-spacing:-.01em}
+  .compile .cd{font-size:.82rem; color:var(--muted); margin-top:.35rem}
+  .compile .req{font-family:var(--mono); font-size:.66rem; color:var(--gold-soft); margin-top:.7rem; background:color-mix(in srgb,var(--gold) 12%,transparent); border:1px solid color-mix(in srgb,var(--gold) 26%,transparent); border-radius:7px; padding:.45rem .5rem; line-height:1.5}
+  /* output */
+  .outshot{border-radius:10px; overflow:hidden; border:1px solid var(--line); position:relative}
+  .outshot img{width:100%; height:9.6rem; object-fit:cover; object-position:top}
+  .goldbadge{position:absolute; top:.5rem; right:.5rem; font-family:var(--mono); font-size:.62rem; font-weight:700; color:#1a1206; background:var(--gold); border-radius:999px; padding:.28rem .55rem; box-shadow:0 6px 18px -6px var(--gold); display:flex; gap:.3rem; align-items:center}
+  .outcap{font-size:.82rem; color:var(--muted); margin-top:.7rem}
+  .outcap b{color:var(--text); font-weight:600}
+  /* connectors */
+  .lk{display:grid; place-items:center; color:var(--struct); font-family:var(--mono); font-size:1.3rem; font-weight:700}
+  @media (max-width:56rem){.lk{transform:rotate(90deg)}}
+  /* the return arc */
+  .return{
+    margin-top:1.1rem; border-top:1px dashed color-mix(in srgb,var(--gold) 42%,var(--line)); padding-top:1rem;
+    display:flex; gap:.7rem; align-items:flex-start; font-size:.9rem; color:var(--muted);
+  }
+  .return .loopico{font-size:1.15rem; color:var(--gold); flex:none; margin-top:.05rem}
+  .return b{color:var(--text); font-weight:600}
+  .return .k{color:var(--gold); font-weight:600}
+
+  /* compounding curve */
+  .compound{display:grid; grid-template-columns:1.15fr 1fr; gap:1.2rem; align-items:center; margin-top:1.2rem; background:var(--surface); border:1px solid var(--line); border-radius:13px; padding:clamp(1.1rem,3vw,1.6rem)}
+  @media (max-width:44rem){.compound{grid-template-columns:1fr}}
+  .compound h3{color:var(--bright); font-size:1.05rem; letter-spacing:-.01em; margin:0 0 .5rem}
+  .compound p{font-size:.92rem; color:var(--muted); margin:.4rem 0 0}
+  .compound p b{color:var(--text); font-weight:600}
+  .curve{width:100%; height:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px}
+  .legend{display:flex; gap:1rem; margin-top:.7rem; font-family:var(--mono); font-size:.68rem; color:var(--muted); flex-wrap:wrap}
+  .legend span{display:inline-flex; gap:.4rem; align-items:center}
+  .legend .sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+
   /* principle grid */
   .bets{display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:.9rem; margin-top:1.5rem}
   .bet{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1.05rem 1.15rem}
@@ -156,6 +232,57 @@
   .bet .t{color:var(--bright); font-weight:700; margin:0 0 .25rem; letter-spacing:-.01em}
   .bet .d{font-size:.9rem; color:var(--muted)}
   .bet .d b{color:var(--text); font-weight:600}
+
+  /* ===== case study ===== */
+  .casehead{display:flex; align-items:center; gap:1rem; flex-wrap:wrap}
+  .caselogo{height:2rem; width:auto}
+  .badge{font-family:var(--mono); font-size:.68rem; letter-spacing:.06em; color:var(--brand); background:color-mix(in srgb,var(--brand) 13%,transparent); border:1px solid color-mix(in srgb,var(--brand) 32%,transparent); border-radius:999px; padding:.32rem .7rem}
+  /* before/after */
+  .ba{display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1.6rem}
+  @media (max-width:40rem){.ba{grid-template-columns:1fr}}
+  .bacol{background:var(--surface); border:1px solid var(--line); border-radius:13px; overflow:hidden}
+  .bacol.bad{border-color:color-mix(in srgb,var(--warn) 35%,var(--line))}
+  .bacol.good{border-color:color-mix(in srgb,var(--good) 42%,var(--line)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--good) 10%,transparent)}
+  .bacol .imgwrap{aspect-ratio:1/1; overflow:hidden; background:var(--ground)}
+  .bacol.good .imgwrap{aspect-ratio:auto}
+  .bacol img{width:100%; height:100%; object-fit:cover; object-position:top}
+  .balabel{padding:.85rem 1rem 1rem}
+  .balabel .tag{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase}
+  .bacol.bad .tag{color:var(--warn)} .bacol.good .tag{color:var(--good)}
+  .balabel .d{font-size:.86rem; color:var(--muted); margin-top:.3rem}
+  .bacaption{font-family:var(--mono); font-size:.74rem; color:var(--muted); text-align:center; margin-top:1rem; letter-spacing:.01em; line-height:1.7}
+  .bacaption b{color:var(--text); font-weight:600}
+
+  /* case gallery */
+  .casegrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(11rem,1fr)); gap:.8rem; margin-top:1.6rem}
+  .casegrid figure{margin:0; background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden; transition:.18s}
+  .casegrid figure:hover{border-color:var(--brand); transform:translateY(-3px)}
+  .casegrid .ph{aspect-ratio:1/1; overflow:hidden; background:var(--ground)}
+  .casegrid .ph.tall{aspect-ratio:3/4}
+  .casegrid img{width:100%; height:100%; object-fit:cover; object-position:top}
+  .casegrid figcaption{padding:.6rem .7rem .75rem}
+  .casegrid .ct{color:var(--bright); font-weight:600; font-size:.86rem}
+  .casegrid .cm{font-family:var(--mono); font-size:.62rem; color:var(--muted); margin-top:.2rem}
+
+  /* provenance recipe */
+  .recipe{margin-top:1.6rem; background:var(--surface); border:1px solid var(--line); border-radius:13px; overflow:hidden; display:grid; grid-template-columns:12rem 1fr}
+  @media (max-width:40rem){.recipe{grid-template-columns:1fr}}
+  .recipe .rimg{background:var(--ground); overflow:hidden}
+  .recipe .rimg img{width:100%; height:100%; object-fit:cover; object-position:top; min-height:100%}
+  @media (max-width:40rem){.recipe .rimg{aspect-ratio:1/1}}
+  .recipe .rbody{padding:1.2rem 1.35rem}
+  .recipe .rt{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold)}
+  .recipe h3{color:var(--bright); font-size:1.1rem; margin:.3rem 0 .8rem; letter-spacing:-.01em}
+  .rrow{display:grid; grid-template-columns:5.5rem 1fr; gap:.6rem; font-size:.84rem; padding:.42rem 0; border-top:1px solid var(--line)}
+  .rrow .rk{font-family:var(--mono); font-size:.66rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding-top:.1rem}
+  .rrow .rv{color:var(--text)}
+  .rrow code{font-family:var(--mono); font-size:.82em; color:var(--gold-soft)}
+  .rrow .prompt{color:var(--muted); font-style:italic; line-height:1.55}
+  .pinned{display:inline-flex; gap:.35rem; align-items:center; font-family:var(--mono); font-size:.74rem; color:var(--good); background:color-mix(in srgb,var(--good) 12%,transparent); border:1px solid color-mix(in srgb,var(--good) 28%,transparent); border-radius:6px; padding:.14rem .45rem; margin:.15rem .3rem .15rem 0}
+
+  /* adopters */
+  .adopters{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.3rem}
+  .adopter{font-family:var(--mono); font-size:.76rem; color:var(--text); background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:.4rem .85rem}
 
   /* projection gallery */
   .gallery{display:grid; grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr)); gap:.7rem; margin-top:1.5rem}
@@ -165,10 +292,6 @@
   .tile .m{font-size:.8rem; color:var(--muted); margin-top:.15rem}
   .tile.story{border-color:color-mix(in srgb,var(--gold) 45%,var(--line)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 10%,transparent)}
   .tile.story .k{color:var(--gold-soft)}
-
-  /* adopters */
-  .adopters{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.3rem}
-  .adopter{font-family:var(--mono); font-size:.76rem; color:var(--text); background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:.4rem .85rem}
 
   /* proof cards */
   .proof{display:grid; grid-template-columns:repeat(auto-fit,minmax(18rem,1fr)); gap:1rem; margin-top:1.6rem}
@@ -217,7 +340,8 @@
     <div class="brandmark"><span class="glyph">◆</span> agenticbranduniverse</div>
     <div class="links">
       <a href="#model">The model</a>
-      <a href="#projections">Projections</a>
+      <a href="#loop">The loop</a>
+      <a href="#case">Case study</a>
       <a href="#proof">Live universes</a>
       <a href="#spec">The spec</a>
     </div>
@@ -228,35 +352,46 @@
     <p class="eyebrow"><span class="dot"></span> An open standard · v0.5 · 2026</p>
     <h1 class="thesis">Every brand becomes a <em>version-controlled universe</em> its agent can render on demand.</h1>
     <p class="lede">
-      <b>The Agentic Brand Universe</b> is an open standard for building brands as living, version-controlled canon
-      instead of a static PDF. Define the brand once — its characters, settings, motifs, rules, and blessed
-      "golden" assets — and an agent projects that canon into <b>any</b> deliverable, on brand, on demand,
-      with provenance. It's the end of brand slop.
+      <b>The Agentic Brand Universe</b> is an open standard for building a brand as living, version-controlled canon
+      instead of a static PDF. You define the brand once: its characters, settings, motifs, rules, and blessed
+      "golden" assets. Then an agent projects that canon into <b>any</b> deliverable, on brand, on demand,
+      with provenance. It is the end of brand slop.
     </p>
     <div class="cta">
-      <a class="btn primary" href="#model">See how it works</a>
+      <a class="btn primary" href="#loop">See how it compounds</a>
       <a class="btn ghost" href="https://github.com/garysheng/agenticstory/blob/master/SPEC.md" target="_blank" rel="noopener">Read the spec →</a>
     </div>
+
+    <div class="heroshots">
+      <figure><div class="frame"><img src="/aitx/golden-flyer.jpg" alt="AITX hackathon poster generated from the universe" loading="lazy" /></div><figcaption>event flyer</figcaption></figure>
+      <figure><div class="frame"><img src="/aitx/meme.jpg" alt="AITX community meme" loading="lazy" /></div><figcaption>community meme</figcaption></figure>
+      <figure><div class="frame"><img src="/aitx/jacket.jpg" alt="AITX varsity jacket merch mockup" loading="lazy" /></div><figcaption>merch</figcaption></figure>
+      <figure><div class="frame"><img src="/aitx/book.jpg" alt="AITX origin story picture book cover" loading="lazy" /></div><figcaption>picture book</figcaption></figure>
+    </div>
+    <p class="heronote">
+      <img class="mk" src="/aitx/atom-mark.png" alt="" aria-hidden="true" />
+      Four mediums. One canon. Every asset above was rendered from a single AITX universe.
+    </p>
   </header>
 
   <!-- THE MODEL -->
   <section id="model">
     <p class="kicker">The model</p>
-    <h2 class="h">Cartridge + console → anything you want</h2>
-    <p class="sub">Three distinct things, and once you see them apart, the whole standard clicks. A <b>brand universe</b> is the data. A <b>Brand OS</b> is the runtime that loads it. A <b>projection</b> is whatever it renders.</p>
+    <h2 class="h">Cartridge plus console renders anything you want</h2>
+    <p class="sub">Three distinct things, and once you see them apart the whole standard clicks. A <b>brand universe</b> is the data. A <b>Brand OS</b> is the runtime that loads it. A <b>projection</b> is whatever it renders.</p>
 
     <div class="model">
       <div class="flow">
         <div class="node cartridge">
           <span class="tag">The cartridge · data</span>
           <span class="name">Brand Universe</span>
-          <span class="desc">A portable, version-controlled brand: canon (characters, settings, motifs, rules) + blessed golden assets. Forkable. Rentable. This is what the standard defines.</span>
+          <span class="desc">A portable, version-controlled brand: canon (characters, settings, motifs, rules) plus blessed golden assets. Forkable. Rentable. This is what the standard defines.</span>
         </div>
         <div class="plus">+</div>
         <div class="node console">
           <span class="tag">The console · runtime</span>
           <span class="name">Brand OS</span>
-          <span class="desc">A deployed engine that loads a universe and generates any on-brand deliverable from it — in plain language, held to the brand's rules, every output carrying provenance.</span>
+          <span class="desc">A deployed engine that loads a universe and generates any on-brand deliverable from it. Plain language in, held to the brand's rules, every output carrying provenance.</span>
         </div>
         <div class="arrow">→</div>
         <div class="node">
@@ -281,20 +416,172 @@
         <div class="n">1 · the data</div>
         <div class="term">Agentic Brand Universe</div>
         <div class="eq">the cartridge</div>
-        <div class="body">A brand as a <b>typed, git-versioned canon</b> plus its golden assets. Portable enough to fork or rent. This is the object the spec standardizes — the cartridge format every OS can read.</div>
+        <div class="body">A brand as a <b>typed, git-versioned canon</b> plus its golden assets. Portable enough to fork or rent. This is the object the spec standardizes, the cartridge format every OS can read.</div>
       </div>
       <div class="def c2">
         <div class="n">2 · the software</div>
         <div class="term">Agentic Brand OS</div>
         <div class="eq">the console</div>
-        <div class="body">A deployed runtime that <b>loads a universe and generates deliverables</b> from plain-language requests — on brand, held to the rules, with provenance. The working example: the <b>AITX Brand OS</b>.</div>
+        <div class="body">A deployed runtime that <b>loads a universe and generates deliverables</b> from plain-language requests. On brand, held to the rules, with provenance. The working example is the <b>AITX Brand OS</b>.</div>
       </div>
       <div class="def c3">
         <div class="n">3 · the output</div>
         <div class="term">Projection</div>
         <div class="eq">the deliverable</div>
-        <div class="body">Any single thing the OS spits out from a universe — a book, a flyer, merch, a meme, a thank-you. <b>Medium-neutral</b>: same canon, same spec, many projections.</div>
+        <div class="body">Any single thing the OS renders from a universe: a book, a flyer, merch, a meme, a thank-you. <b>Medium-neutral</b>. Same canon, same spec, many projections.</div>
       </div>
+    </div>
+  </section>
+
+  <!-- ===== THE COMPOUNDING LOOP ===== -->
+  <section id="loop">
+    <p class="kicker">The compounding loop</p>
+    <h2 class="h">Every golden asset becomes an <em>atom</em> for the next one.</h2>
+    <p class="sub">This is the whole magic, and the part people miss. A <b>Golden Atomic Brand Reference</b> is a small, locked piece of your brand: a character sheet, the mark, a style swatch. The agent compiles atoms into a new asset. You bless the good ones. A blessed asset is <b>itself a new atom</b>, and a reusable recipe. So your brand pulls toward your best work instead of drifting toward the average.</p>
+
+    <div class="loopwrap">
+      <div class="loop">
+        <!-- 1: atoms -->
+        <div class="stage">
+          <div class="st"><span class="no">01</span> Atomic references</div>
+          <div class="atoms">
+            <div class="atom"><img src="/aitx/atom-michael.jpg" alt="Michael character sheet" loading="lazy" /><span class="lbl">character</span></div>
+            <div class="atom"><img src="/aitx/atom-chip.jpg" alt="Chip agent character sheet" loading="lazy" /><span class="lbl">character</span></div>
+            <div class="atom mono"><img src="/aitx/atom-mark.png" alt="AITX mark" loading="lazy" /><span class="lbl">the mark</span></div>
+            <div class="atom swatch"><span class="lbl">style swatch</span></div>
+          </div>
+          <p class="atomcap">locked, blessed, hash-pinned</p>
+        </div>
+
+        <div class="lk">→</div>
+
+        <!-- 2: compile -->
+        <div class="stage compile">
+          <div class="st"><span class="no">02</span> Compile</div>
+          <div class="gear">⚙️</div>
+          <div class="cn">The Brand OS</div>
+          <div class="cd">assembles the atoms plus your request into one deterministic render.</div>
+          <div class="req">"make a hackathon flyer for Austin, sponsors NVIDIA + Antler"</div>
+        </div>
+
+        <div class="lk">→</div>
+
+        <!-- 3: output becomes golden -->
+        <div class="stage">
+          <div class="st"><span class="no">03</span> New asset · you bless it</div>
+          <div class="outshot">
+            <img src="/aitx/golden-flyer.jpg" alt="On-brand AITX hackathon flyer" loading="lazy" />
+            <span class="goldbadge">★ golden</span>
+          </div>
+          <p class="outcap">On brand, first try, <b>with provenance</b>. You keep the good ones.</p>
+        </div>
+      </div>
+
+      <div class="return">
+        <span class="loopico">↺</span>
+        <div>
+          <span class="k">The loop:</span> a golden is not a one-off. It becomes a <b>new atom</b> and a <b>reusable recipe</b>.
+          Get one hackathon flyer right, and you have a golden recipe for hackathon flyers. The next one, change the
+          city and the sponsors, and it falls right out. Every render since inherits your taste, so drift trends to zero.
+        </div>
+      </div>
+    </div>
+
+    <!-- compounding curve -->
+    <div class="compound">
+      <div>
+        <h3>Taste compounds. Slop does not.</h3>
+        <p>Raw prompting starts near the average and <b>drifts a little further off every time</b>. A universe does the opposite: every blessed asset becomes an anchor the next render is pulled toward, so quality climbs and drift falls with each iteration.</p>
+        <p><b>Capture taste once. Reuse it forever.</b> That is the compounding.</p>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--gold)"></span> on-brand quality, from a universe</span>
+          <span><span class="sw" style="background:var(--warn)"></span> raw prompting, no universe</span>
+        </div>
+      </div>
+      <svg class="curve" viewBox="0 0 320 200" role="img" aria-label="Chart: with a universe, on-brand quality rises with each iteration while raw prompting drifts flat and low.">
+        <defs>
+          <linearGradient id="gq" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--gold)" stop-opacity=".28"/>
+            <stop offset="1" stop-color="var(--gold)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- axes -->
+        <line x1="34" y1="14" x2="34" y2="168" stroke="var(--line)" stroke-width="1"/>
+        <line x1="34" y1="168" x2="304" y2="168" stroke="var(--line)" stroke-width="1"/>
+        <text x="34" y="186" fill="var(--muted)" font-family="var(--mono)" font-size="9">iteration →</text>
+        <text x="10" y="20" fill="var(--muted)" font-family="var(--mono)" font-size="9" transform="rotate(-90 10 20)" text-anchor="end">quality →</text>
+        <!-- universe area + curve (rising, compounding) -->
+        <path d="M34 150 C 90 138, 130 96, 170 74 S 250 34, 304 24 L304 168 L34 168 Z" fill="url(#gq)"/>
+        <path d="M34 150 C 90 138, 130 96, 170 74 S 250 34, 304 24" fill="none" stroke="var(--gold)" stroke-width="2.4" stroke-linecap="round"/>
+        <!-- raw prompting (flat, drifting slightly down/noisy) -->
+        <path d="M34 152 C 90 150, 130 156, 170 152 S 250 160, 304 156" fill="none" stroke="var(--warn)" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="5 4"/>
+        <!-- golden dots on the rising curve -->
+        <circle cx="34" cy="150" r="3.4" fill="var(--gold)"/>
+        <circle cx="132" cy="94" r="3.4" fill="var(--gold)"/>
+        <circle cx="218" cy="52" r="3.4" fill="var(--gold)"/>
+        <circle cx="304" cy="24" r="3.8" fill="var(--gold)"/>
+        <text x="300" y="16" fill="var(--gold)" font-family="var(--mono)" font-size="9" text-anchor="end">★ each golden</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ===== CASE STUDY: AITX ===== -->
+  <section id="case">
+    <p class="kicker brandk">Case study</p>
+    <div class="casehead">
+      <img class="caselogo" src="/aitx/wordmark.png" alt="AITX" />
+      <span class="badge">the largest AI builder community in Texas</span>
+    </div>
+    <h2 class="h" style="margin-top:1rem">One universe runs the whole brand, and the founders talk to the agent, not a designer.</h2>
+    <p class="sub">AITX built its brand universe at an NVIDIA hackathon. Now Michael and Jake, the founders, do not commission assets one at a time. They ask <b>Chip</b>, the AITX brand agent, in plain language. Chip holds the canon, the goldens, and the rules, and makes it on brand. They stay in charge of taste. He does the making.</p>
+
+    <!-- before / after -->
+    <div class="ba">
+      <div class="bacol bad">
+        <div class="imgwrap"><img src="/aitx/slop.jpg" alt="Off-brand raw-AI graphic, garbled and generic" loading="lazy" /></div>
+        <div class="balabel">
+          <div class="tag">✕ raw AI · no universe</div>
+          <div class="d">Garbled type, off-brand, generic. You cannot even tell how it was made or rebuild it.</div>
+        </div>
+      </div>
+      <div class="bacol good">
+        <div class="imgwrap"><img src="/aitx/golden-flyer.jpg" alt="On-brand AITX hackathon poster rendered from the universe" loading="lazy" /></div>
+        <div class="balabel">
+          <div class="tag">✓ same ask · from the AITX universe</div>
+          <div class="d">On brand, correct, sponsors and all. Rendered in minutes, carrying its full recipe.</div>
+        </div>
+      </div>
+    </div>
+    <p class="bacaption">Same request. Same underlying model. <b>The difference is the universe behind it.</b></p>
+
+    <!-- gallery: one canon, many projections -->
+    <div class="casegrid">
+      <figure><div class="ph"><img src="/aitx/meme.jpg" alt="AITX POV meme" loading="lazy" /></div><figcaption><div class="ct">Community meme</div><div class="cm">atoms: Michael · mark</div></figcaption></figure>
+      <figure><div class="ph"><img src="/aitx/social.jpg" alt="AITX Instagram post" loading="lazy" /></div><figcaption><div class="ct">Social post</div><div class="cm">atoms: mark · style</div></figcaption></figure>
+      <figure><div class="ph tall"><img src="/aitx/book.jpg" alt="AITX origin story book cover" loading="lazy" /></div><figcaption><div class="ct">Origin picture book</div><div class="cm">atoms: founders · skyline</div></figcaption></figure>
+      <figure><div class="ph"><img src="/aitx/jacket.jpg" alt="AITX varsity jacket" loading="lazy" /></div><figcaption><div class="ct">Varsity jacket</div><div class="cm">atoms: mark</div></figcaption></figure>
+      <figure><div class="ph"><img src="/aitx/tee.jpg" alt="AITX tee" loading="lazy" /></div><figcaption><div class="ct">Tee</div><div class="cm">atoms: mark</div></figcaption></figure>
+      <figure><div class="ph"><img src="/aitx/sticker.jpg" alt="AITX Texas loves AI sticker" loading="lazy" /></div><figcaption><div class="ct">Sticker</div><div class="cm">atoms: mark · style</div></figcaption></figure>
+      <figure><div class="ph"><img src="/aitx/mug.jpg" alt="AITX enamel mug" loading="lazy" /></div><figcaption><div class="ct">Enamel mug</div><div class="cm">atoms: mark</div></figcaption></figure>
+      <figure><div class="ph"><img src="/aitx/atom-chip.jpg" alt="Chip, the AITX brand agent" loading="lazy" /></div><figcaption><div class="ct">Chip, the agent</div><div class="cm">a character in the canon</div></figcaption></figure>
+    </div>
+
+    <!-- provenance recipe -->
+    <div class="recipe">
+      <div class="rimg"><img src="/aitx/golden-flyer.jpg" alt="AITX hackathon flyer" loading="lazy" /></div>
+      <div class="rbody">
+        <div class="rt">Provenance · every golden carries its recipe</div>
+        <h3>AITX Hackathon flyer</h3>
+        <div class="rrow"><div class="rk">Model</div><div class="rv"><code>openai:gpt-image-2</code> · high · 1024×1536</div></div>
+        <div class="rrow"><div class="rk">Prompt</div><div class="rv prompt">"Bold event poster in the AITX brand style: orange #ff4201 + black + white, strong hierarchy. Headline 'AITX HACKATHON'. A lively scene at the Antler office with builders at laptops, the open-arms mark rendered as the real mark, a sponsor strip at the bottom."</div></div>
+        <div class="rrow"><div class="rk">References</div><div class="rv"><span class="pinned">📌 aitx-logo</span><span class="pinned">📌 venue: antler</span></div></div>
+        <div class="rrow"><div class="rk">Result</div><div class="rv">reproducible by anyone with the universe. Nothing ships unsourced.</div></div>
+      </div>
+    </div>
+
+    <div class="cta" style="margin-top:1.6rem">
+      <a class="btn primary" href="https://aitx-brand-os.vercel.app" target="_blank" rel="noopener">Open the AITX Brand OS →</a>
+      <a class="btn ghost" href="https://aitx-brand-os.vercel.app/keynote" target="_blank" rel="noopener">Take the tour with Chip →</a>
     </div>
   </section>
 
@@ -302,12 +589,12 @@
   <section>
     <p class="kicker">Why it stays on brand</p>
     <h2 class="h">Canon is the source of truth. Everything else is a projection of it.</h2>
-    <p class="sub">Three mechanics keep a thousand outputs looking like one brand — wired as steps the OS runs, never left to a person to remember.</p>
+    <p class="sub">Six mechanics keep a thousand outputs looking like one brand, wired as steps the OS runs, never left to a person to remember.</p>
     <div class="bets">
       <div class="bet">
         <div class="ico">🧬</div>
         <div class="t">References carry identity</div>
-        <div class="d">Every character, setting, and motif resolves to a <b>real, blessed reference asset</b> — or the render fails loudly. A reference you can forget is a wish, not a standard. This is what kills drift.</div>
+        <div class="d">Every character, setting, and motif resolves to a <b>real, blessed reference asset</b>, or the render fails loudly. A reference you can forget is a wish, not a standard. This is what kills drift.</div>
       </div>
       <div class="bet">
         <div class="ico">🏅</div>
@@ -327,7 +614,7 @@
       <div class="bet">
         <div class="ico">🧭</div>
         <div class="t">A deterministic prompt compiler</div>
-        <div class="d">The OS assembles each render's prompt straight from canon, so a rule the brand already carries can't be silently dropped. The input is deterministic; a read-back gate still checks the output.</div>
+        <div class="d">The OS assembles each render's prompt straight from canon, so a rule the brand already carries cannot be silently dropped. The input is deterministic. A read-back gate still checks the output.</div>
       </div>
       <div class="bet">
         <div class="ico">🚦</div>
@@ -341,7 +628,7 @@
   <section>
     <p class="kicker">Why a standard, not a tool</p>
     <h2 class="h">Brand-neutral and medium-neutral, by construction.</h2>
-    <p class="sub">A tool locks you into one vendor, one look, one medium. A standard defines the <b>cartridge format</b> — so any OS can load any universe, and any universe can render into any medium. Your brand is data you own, not a subscription you rent.</p>
+    <p class="sub">A tool locks you into one vendor, one look, one medium. A standard defines the <b>cartridge format</b>, so any OS can load any universe, and any universe can render into any medium. Your brand is data you own, not a subscription you rent.</p>
     <div class="adopters">
       <span class="adopter">personal brands</span>
       <span class="adopter">churches &amp; ministries</span>
@@ -358,9 +645,9 @@
   <section id="projections">
     <p class="kicker">The broader win</p>
     <h2 class="h">Agentic storytelling is <em>one</em> projection. Agentic brand <em>management</em> is the whole game.</h2>
-    <p class="sub">Picture books and comics were the first thing the standard enabled — a proof that one canon can carry a whole illustrated world. But the same universe renders your entire visual identity. One canon, one spec, many projections.</p>
+    <p class="sub">Picture books and comics were the first thing the standard enabled, a proof that one canon can carry a whole illustrated world. The same universe renders your entire visual identity. One canon, one spec, many projections.</p>
     <div class="gallery">
-      <div class="tile story"><div class="k">projection · 01</div><div class="v">Agentic Story</div><div class="m">picture books, comics — the first proof</div></div>
+      <div class="tile story"><div class="k">projection · 01</div><div class="v">Agentic Story</div><div class="m">picture books, comics, the first proof</div></div>
       <div class="tile"><div class="k">projection</div><div class="v">Flyers &amp; posters</div><div class="m">events, drops, announcements</div></div>
       <div class="tile"><div class="k">projection</div><div class="v">Merch</div><div class="m">tees, stickers, packaging</div></div>
       <div class="tile"><div class="k">projection</div><div class="v">Memes</div><div class="m">on-brand, on the timeline</div></div>
@@ -380,13 +667,13 @@
       <a class="card" href="https://aitx-brand-os.vercel.app" target="_blank" rel="noopener">
         <div class="role">Console · a live Brand OS</div>
         <div class="title">AITX Brand OS</div>
-        <div class="desc">An Agentic Brand OS running the AITX universe — ask it in plain language and it generates on-brand deliverables from the loaded canon, with provenance. The clearest picture of cartridge + console in one place.</div>
+        <div class="desc">An Agentic Brand OS running the AITX universe. Ask it in plain language and it generates on-brand deliverables from the loaded canon, with provenance. The clearest picture of cartridge plus console in one place.</div>
         <div class="link">aitx-brand-os.vercel.app →</div>
       </a>
       <a class="card" href="https://soulsoftech.vercel.app" target="_blank" rel="noopener">
         <div class="role">Cartridge · a shipped universe</div>
         <div class="title">Souls of Tech</div>
-        <div class="desc">A brand universe projected into a body of illustrated picture books — the Agentic Story projection in the wild. One shared canon carrying a whole illustrated world across many books.</div>
+        <div class="desc">A brand universe projected into a body of illustrated picture books, the Agentic Story projection in the wild. One shared canon carrying a whole illustrated world across many books.</div>
         <div class="link">soulsoftech.vercel.app →</div>
       </a>
     </div>
@@ -396,17 +683,17 @@
   <section id="spec">
     <p class="kicker">For builders</p>
     <h2 class="h">The cartridge format is a real spec. Five layers.</h2>
-    <p class="sub">If you want the architecture beneath the standard — the primitives, the invariants, the load-bearing reference gate, the reference-matrix and provenance model — it's all written down and versioned.</p>
+    <p class="sub">If you want the architecture beneath the standard, the primitives, the invariants, the load-bearing reference gate, the reference-matrix and provenance model, it is all written down and versioned.</p>
     <div class="stack">
-      <div class="layer cross"><div class="lname">Quality</div><div class="ldesc">taste gates · craft-canon · provenance — <b>cross-cuts every layer</b></div></div>
-      <div class="layer"><div class="lname">Renderer</div><div class="ldesc">the OS that projects canon + a request into a medium — <b>one deliverable at a time</b></div></div>
-      <div class="layer"><div class="lname">Brief</div><div class="ldesc">a composition: selects canon + the deliverable's beats + a declared <b>spine</b> + provenance</div></div>
-      <div class="layer load"><div class="lname">Refs</div><div class="ldesc">the load-bearing resolver: entity → real blessed asset, or <b>crash</b> — this kills silent drift</div></div>
-      <div class="layer"><div class="lname">Canon</div><div class="ldesc">typed entities + relations, git-versioned — <b>the universe itself</b></div></div>
+      <div class="layer cross"><div class="lname">Quality</div><div class="ldesc">taste gates · craft-canon · provenance, <b>cross-cuts every layer</b></div></div>
+      <div class="layer"><div class="lname">Renderer</div><div class="ldesc">the OS that projects canon plus a request into a medium, <b>one deliverable at a time</b></div></div>
+      <div class="layer"><div class="lname">Brief</div><div class="ldesc">a composition: selects canon plus the deliverable's beats plus a declared <b>spine</b> plus provenance</div></div>
+      <div class="layer load"><div class="lname">Refs</div><div class="ldesc">the load-bearing resolver: entity to a real blessed asset, or <b>crash</b>. This kills silent drift</div></div>
+      <div class="layer"><div class="lname">Canon</div><div class="ldesc">typed entities plus relations, git-versioned, <b>the universe itself</b></div></div>
     </div>
     <p class="specnote">
       <b>The spec is v0.5</b>, backtested against a real 24-property roster and dogfooded on live universes.
-      Read <code>SPEC.md</code> for the full architecture — canon as source of truth, references that carry
+      Read <code>SPEC.md</code> for the full architecture: canon as source of truth, references that carry
       identity, golden assets, the deterministic prompt compiler, the read-back gate, and provenance.
       &nbsp;→ <a href="https://github.com/garysheng/agenticstory/blob/master/SPEC.md" target="_blank" rel="noopener">github.com/garysheng/agenticstory</a>
     </p>
@@ -421,7 +708,7 @@
   </div>
 
   <footer>
-    <b>The Agentic Brand Universe</b> — a version-controlled brand, projected into anything, on demand, with provenance.<br />
+    <b>The Agentic Brand Universe</b>, a version-controlled brand, projected into anything, on demand, with provenance.<br />
     The standard: <a href="https://github.com/garysheng/agenticstory" target="_blank" rel="noopener">github.com/garysheng/agenticstory</a> &nbsp;·&nbsp;
     Live universes: <a href="https://aitx-brand-os.vercel.app" target="_blank" rel="noopener">AITX Brand OS</a>, <a href="https://soulsoftech.vercel.app" target="_blank" rel="noopener">Souls of Tech</a>
   </footer>
