@@ -41,3 +41,7 @@ python3 -m agenticstory.cli assert-story ../../nation-of-fire/nof-universe not-e
 
 Next: `new-story` scaffolders, graduated craft-canon checks, migrate the standalone
 `nof-universe/canon/resolve_gabr.py` onto this engine, `agenticbranduniverse.com`.
+
+## License
+
+MIT — see [`LICENSE`](./LICENSE). The Agentic Brand Universe is an open standard: fork it, build on it, run your own Brand OS.
