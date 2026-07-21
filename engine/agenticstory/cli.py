@@ -8,6 +8,7 @@ Agentic Story CLI.
   agenticstory assert-story <universe> <id>   # THE pre-render gate for a whole story
   agenticstory assert-spread <universe> --characters a,b [--location X]
   agenticstory lock-level <universe> <entity>  # advisory reference-completeness report
+  agenticstory build-canon <universe> [--check|--adopt]  # regenerate CANON.md from per-record files
   agenticstory add-entity <universe> <kind> <eid> [--name N] [--origin S] [--photo path ...]
                                                # scaffold a schema-valid entity stub
 
@@ -22,7 +23,7 @@ import sys
 from pathlib import Path
 
 from .store import CanonStore
-from . import refs, scaffold, SPEC_VERSION, SPEC_WIKI
+from . import canonfile, refs, scaffold, SPEC_VERSION, SPEC_WIKI
 
 
 def _print_problems(title: str, problems: list[str]) -> int:
@@ -53,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
     ae.add_argument("universe"); ae.add_argument("kind"); ae.add_argument("eid")
     ae.add_argument("--name", default=""); ae.add_argument("--origin", default=None)
     ae.add_argument("--photo", action="append", default=None, help="a photo-stack path (repeatable)")
+    bc = sub.add_parser("build-canon", help="regenerate CANON.md from canon/properties + canon/crossovers")
+    bc.add_argument("universe")
+    bc.add_argument("--check", action="store_true", help="fail if stale or if any crossover number is duplicated")
+    bc.add_argument("--adopt", action="store_true", help="create records for hand-appended rows with no backing record")
     ini = sub.add_parser("init", help="scaffold a new universe (conforms to spec v" + SPEC_VERSION + ")")
     ini.add_argument("universe", help="target directory for the new universe")
     ini.add_argument("--name", required=True, help="universe name (slug)")
@@ -78,6 +83,26 @@ def main(argv: list[str] | None = None) -> int:
         print("next: `validate` →", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
         print("      then `assert-story <id>` before rendering (it refuses until real assets exist).")
         return 0 if not problems else 1
+
+    if args.cmd == "build-canon":
+        from pathlib import Path as _P
+        uroot = _P(args.universe)
+        if args.adopt:
+            made = canonfile.adopt(uroot)
+            print(f"build-canon: adopted {len(made)} orphan row(s)")
+            for m in made:
+                print(f"  + {m}")
+        problems = canonfile.check(uroot)
+        if args.check:
+            return _print_problems("build-canon --check", problems)
+        dupes = [p for p in problems if p.startswith("duplicate")]
+        if dupes:
+            return _print_problems("build-canon", dupes)
+        (uroot / "CANON.md").write_text(canonfile.build(uroot))
+        props = len(canonfile.load_properties(uroot))
+        xs = len(canonfile.load_crossovers(uroot))
+        print(f"build-canon: CANON.md regenerated from {props} property + {xs} crossover record(s)")
+        return 0
 
     store = CanonStore(args.universe)
 

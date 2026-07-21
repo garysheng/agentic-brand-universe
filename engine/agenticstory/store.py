@@ -92,4 +92,23 @@ class CanonStore:
             for fid in s.features:
                 if fid not in known:
                     problems.append(f"story '{s.id}' features unknown entity '{fid}'")
+        problems += self._validate_canon_records()
         return problems
+
+    def _validate_canon_records(self) -> list[str]:
+        """Duplicate crossover display numbers.
+
+        Numbers used to be assigned by each run reading the last one and adding
+        one, so two concurrent runs produced two rows with the same number on
+        different lines: git merged them cleanly and nothing ever complained.
+        Only checked for universes that have migrated to the record store, so
+        an unmigrated universe is unaffected."""
+        from . import canonfile
+        if not canonfile.xover_dir(self.dir).is_dir():
+            return []
+        out = []
+        recs = canonfile.load_crossovers(self.dir)
+        for n in canonfile.duplicate_numbers(recs):
+            ids = ", ".join(r["id"] for r in recs if r.get("n") == n)
+            out.append(f"duplicate crossover number {n}: {ids}")
+        return out
