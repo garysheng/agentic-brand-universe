@@ -125,4 +125,4 @@ plugin and was never tracked here, plus two skills whose scripts *and tests* exi
 
 - [SPEC.md](../SPEC.md), the normative standard.
 - [PROJECTION.json](https://appliedai.wiki/reference/standards/projection-json), the contract format on its own.
-- [hyperagentic-age](https://github.com/garysheng/hyperagentic-age), a universe with eight projections and real committed output.
+- [hyperagentic-age](https://github.com/garysheng/hyperagentic-age), a universe with seven projections and real committed output.
