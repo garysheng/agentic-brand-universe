@@ -199,7 +199,9 @@ def _run_slot(unit, proj, comp, work):
     mode = "identity" if goldens else "style"
     reference = goldens[0] if goldens else refs[0]
 
-    roll = int((spec_state(work, sid, idx) or {}).get("roll", 0))
+    prev = spec_state(work, sid, idx) or {}
+    roll = int(prev.get("roll", 0))
+    prev_status = prev.get("status")
 
     # ORDER MATTERS, and getting it wrong throws away work you already paid for.
     #
@@ -221,9 +223,16 @@ def _run_slot(unit, proj, comp, work):
             if roll >= max_rolls:
                 return ("DEFECT",
                         f"exhausted {max_rolls} rolls against its judged invariants", roll)
-        elif os.path.exists(out) and roll > 0:
-            # generated, nobody has judged it. Never regenerate: re-rolling something
-            # unjudged pays twice and discards the artifact the judge was about to see.
+        elif os.path.exists(out) and roll > 0 and prev_status == "NEEDS-JUDGMENT":
+            # An artifact on disk with no verdict is AMBIGUOUS, and the roll counter
+            # cannot disambiguate it. It is either (a) awaiting its first look, or
+            # (b) already judged, rejected, and its verdict consumed. The prior STATUS
+            # is what tells them apart, and using the roll count alone silently
+            # re-briefed a known-rejected plate instead of re-rolling it, so a repaired
+            # beat and a raised roll budget both had no effect.
+            #
+            # Only case (a) must not regenerate: re-rolling something unjudged pays
+            # twice and discards the artifact the judge was about to see.
             brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
             return "NEEDS-JUDGMENT", (f"awaiting an independent judge; brief at {brief}. "
                                       f"Dispatch a fresh judge with the brief ALONE, write "

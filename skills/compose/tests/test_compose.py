@@ -297,5 +297,40 @@ class TestExhaustionNeverDiscardsAPass(unittest.TestCase):
             self.assertIsNone(compose.verdict_for(work, "art", 0))
 
 
+class TestStaleArtifactIsNotMistakenForAnUnjudgedOne(unittest.TestCase):
+    """An artifact on disk with no verdict is AMBIGUOUS and the roll counter cannot
+    disambiguate it. It is either awaiting its first look, or already judged, rejected,
+    and its verdict consumed. The prior STATUS is what tells them apart.
+
+    Using the roll count alone silently re-briefed a known-rejected plate instead of
+    re-rolling it, so repairing the beat AND raising the roll budget both had no
+    effect: the composer reported it as awaiting judgment and never regenerated."""
+
+    def state(self, tmp, status, roll):
+        w = pathlib.Path(tmp); (w / "state").mkdir(parents=True)
+        (w / "state" / "art-0.json").write_text(json.dumps({"status": status, "roll": roll}))
+        (w / "art-0.png").write_bytes(b"\x89PNG")
+        return str(w)
+
+    def test_a_slot_previously_needing_judgment_is_still_awaiting_one(self):
+        with tempfile.TemporaryDirectory() as t:
+            w = self.state(t, "NEEDS-JUDGMENT", 1)
+            self.assertEqual(compose.spec_state(w, "art", 0)["status"], "NEEDS-JUDGMENT")
+
+    def test_a_slot_previously_DEFECT_is_stale_and_must_not_be_re_briefed(self):
+        with tempfile.TemporaryDirectory() as t:
+            w = self.state(t, "DEFECT", 3)
+            self.assertEqual(compose.spec_state(w, "art", 0)["status"], "DEFECT")
+            self.assertIsNone(compose.verdict_for(w, "art", 0),
+                              "a consumed verdict must read as absent, which is exactly "
+                              "why status rather than verdict presence has to decide")
+
+    def test_status_survives_a_round_trip_through_state(self):
+        with tempfile.TemporaryDirectory() as t:
+            w = self.state(t, "DEFECT", 3)
+            d = compose.spec_state(w, "art", 0)
+            self.assertEqual((d["status"], d["roll"]), ("DEFECT", 3))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
