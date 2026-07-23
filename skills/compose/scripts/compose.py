@@ -349,12 +349,27 @@ def compile_slot(proj, comp, slot_id, scene, pack, goldens):
     refs = [str(pack["_dir"] / pack["anchor"])]
     for r in pack.get("refs", [])[1:3]:
         refs.append(str(pack["_dir"] / r))
-    refs += goldens                      # locked masters LAST, so identity rides on top
+    # Goldens are declared relative to the UNIVERSE ROOT and must be joined to it. Left
+    # verbatim they only resolved when the process happened to be run from that
+    # directory, and from anywhere else the identity anchors silently failed to attach:
+    # a book of strangers, with every style gate still green because the LOOK was never
+    # the thing that broke. Silent identity loss is the exact failure goldens exist to
+    # prevent, so it must not depend on a working directory.
+    root = pathlib.Path(comp["universe"])
+    refs += [g if os.path.isabs(g) else str(root / g) for g in goldens]
     qa = [i["id"] for i in proj["invariants"]["perSlot"] if i["check"] == "judged"]
     qa += [q["id"] for q in qk if q.get("check") == "judged"]   # countering is never assumed to have worked
     return prompt, refs, qa
 
 def generate(prompt, refs, out, size):
+    # SPEC layer 2, the load-bearing reference resolver: every reference resolves to a
+    # real asset or the render REFUSES. A missing golden that is merely skipped produces
+    # a plausible image of the wrong person, which is worse than no image at all because
+    # it passes every check that is not about identity.
+    missing = [r for r in refs if not os.path.exists(r)]
+    if missing:
+        return False, ("reference(s) do not resolve, refusing to render rather than "
+                       "generate without them: " + ", ".join(missing))
     cmd = [GEN_SCRIPT, "--prompt", prompt, "--filename", out, "--size", size,
            "--quality", "high", "--no-open"]
     for r in refs: cmd += ["--input-image", r]

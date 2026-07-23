@@ -8,7 +8,7 @@ here is the part most likely to rot because it only runs on the unhappy path.
 No generation and no API: every test exercises pure planning, resolution, and
 feasibility logic.
 """
-import importlib.util, json, pathlib, sys, tempfile, unittest
+import importlib.util, json, os, pathlib, sys, tempfile, unittest
 
 HERE = pathlib.Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("compose", HERE.parent / "scripts" / "compose.py")
@@ -517,6 +517,58 @@ class TestReadbackCatchesTheEmptyFrame(unittest.TestCase):
             self.assertEqual(pair["judgeSaw"], "a blank white rectangle")
             self.assertNotIn("artifact", pair)
             self.assertIn("withheld", pair)
+
+
+class TestGoldensResolveAgainstTheUniverse(unittest.TestCase):
+    """A golden is declared relative to the UNIVERSE ROOT. Left verbatim it resolved only
+    when the process happened to be run from that directory; from anywhere else the
+    identity anchor silently failed to attach and the render produced a plausible image
+    of the WRONG PERSON, with every style gate still green because the look was never
+    what broke.
+
+    Silent identity loss is the precise failure goldens exist to prevent, so it must not
+    depend on a working directory."""
+
+    def test_a_relative_golden_is_joined_to_the_universe_root(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = pathlib.Path(t)
+            pk = root / "p"; (pk / "refs").mkdir(parents=True)
+            (pk / "refs" / "a.png").write_bytes(b"\x89PNG")
+            (pk / "pack.json").write_text(json.dumps({
+                "id": "p", "anchor": "refs/a.png", "refs": ["refs/a.png"],
+                "styleLine": "s", "rejectedPoles": []}))
+            (root / "reference").mkdir()
+            (root / "reference" / "m.png").write_bytes(b"\x89PNG")
+            pack = compose.load_pack(str(root), "p")
+            _, refs, _ = compose.compile_slot(
+                {"generators": [], "invariants": {"perSlot": [], "crossSlot": []}},
+                {"universe": str(root)}, "spread", "a scene", pack,
+                ["reference/m.png"])
+            self.assertTrue(any(r.endswith("reference/m.png") for r in refs))
+            self.assertTrue(all(os.path.isabs(r) for r in refs),
+                            f"every reference must be absolute, got {refs}")
+
+    def test_an_absolute_golden_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = pathlib.Path(t)
+            pk = root / "p"; (pk / "refs").mkdir(parents=True)
+            (pk / "refs" / "a.png").write_bytes(b"\x89PNG")
+            (pk / "pack.json").write_text(json.dumps({
+                "id": "p", "anchor": "refs/a.png", "refs": ["refs/a.png"],
+                "styleLine": "s", "rejectedPoles": []}))
+            abs_g = str(root / "abs.png")
+            pack = compose.load_pack(str(root), "p")
+            _, refs, _ = compose.compile_slot(
+                {"generators": [], "invariants": {"perSlot": [], "crossSlot": []}},
+                {"universe": str(root)}, "spread", "a scene", pack, [abs_g])
+            self.assertIn(abs_g, refs)
+
+    def test_generate_REFUSES_when_a_reference_does_not_resolve(self):
+        """A missing golden that is merely skipped yields a plausible picture of the
+        wrong person, which passes every check that is not about identity."""
+        ok, detail = compose.generate("p", ["/nonexistent/golden.png"], "/tmp/x.png", "1024x1024")
+        self.assertFalse(ok)
+        self.assertIn("refusing to render", detail)
 
 
 if __name__ == "__main__":
