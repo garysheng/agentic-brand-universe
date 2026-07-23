@@ -81,12 +81,29 @@ def run_slot(unit, proj, comp, work):
     # generated slot: compile -> generate -> judge -> repair, per SPEC 4.10
     if spec.get("art"):                                   # art supplied by the composition
         return "PASS", spec["art"]
-    pack_ref = comp.get("bind", {}).get("style-pack")
+    # A composition may bind ONE pack, or a pack PER SLOT. A book that weaves a
+    # narrative register and a diagram register is one composition in two registers.
+    b = comp.get("bind", {}).get("style-pack")
+    pack_ref = b.get(sid, b.get("default")) if isinstance(b, dict) else b
     if not pack_ref:
-        return "DEFECT", "generated slot needs a style-pack binding"
+        return "DEFECT", f"slot '{sid}' has no style-pack binding"
     pack = load_pack(comp["universe"], pack_ref)
-    goldens = comp.get("goldens", [])
-    prompt, refs, qa = compile_slot(proj, comp, sid, spec.get("scene", ""), pack, goldens)
+
+    # Goldens are per-slot too. A register that REJECTS the cast must not be handed
+    # the cast: passing Gary's master into a characterless plate is a contradiction
+    # the compiler should refuse, not something the model has to resist.
+    g = comp.get("goldens", {})
+    goldens = (g.get(sid, g.get("default", [])) if isinstance(g, dict) else g)
+    rejected = [r.lower() for r in pack.get("rejectedPoles", [])]
+    if goldens and any(("character" in r) or ("storybook-register" in r) for r in rejected):
+        return "DEFECT", (f"slot '{sid}' binds pack '{pack['id']}' which rejects characters, "
+                          f"but was handed {len(goldens)} character golden(s). Registers disagree.")
+    scene = spec.get("scene", "")
+    if comp.get("beats") and sid == "spread" and idx < len(comp["beats"]):
+        scene = comp["beats"][idx]                       # one beat per repeated slot
+    if comp.get("_lock") and goldens:                    # only where a character is actually bound
+        scene = comp["_lock"] + " Scene: " + scene
+    prompt, refs, qa = compile_slot(proj, comp, sid, scene, pack, goldens)
     size = spec.get("size", "1024x1024")
     max_rolls = proj.get("maxRolls", 3)
     for roll in range(1, max_rolls + 1):

@@ -446,6 +446,28 @@ both found 2026-07-23 by generating three spreads of a locked character and insp
 text panel beside a generated art panel. The pre-v0.6 "renderer" concept could not express this at
 all, which is why composite deliverables kept being hand-assembled.
 
+**Registers bind PER SLOT, and a composition may weave several.** A book is not written in one
+visual language: narrative spreads carry a painterly storybook register while the diagram woven
+between them is a flat characterless plate. Binding one style pack per composition makes that
+inexpressible and quietly forces every artifact into a single voice. `bind.style-pack` therefore takes
+either a single pack or a map of slot id to pack, with a `default`. Goldens bind the same way.
+
+**A register that rejects the cast must never be handed the cast.** The plate register in the
+reference universe lists the storybook characters among its `rejectedPoles`, because a plate is a
+diagrammatic gesture and not a scene. Passing a character's locked master into that slot is a
+contradiction between two parts of canon, and it must be **refused by the compiler**, not left for the
+model to resist while holding a reference image that argues the opposite. Verified 2026-07-23: one
+composition produced three narrative spreads carrying the character golden and one plate carrying
+none, in two registers, from a single contract.
+
+**Feasibility must cover the SCENE against canon, not only geometry.** Plan-time checking currently
+catches an undeliverable surface and stops. It does not catch a composition whose *content*
+contradicts a declared invariant. Earned the same day: a book brief about serving churches was planned
+against a character whose canon states `no-religious-iconography-anywhere-in-this-universe`, and the
+render duly produced steeples. Nothing was broken except the plan, and the plan was never checked. A
+composition that asks for what canon forbids should be refused before generation, exactly like a bad
+aspect ratio.
+
 **A `deterministic` slot MUST name its emitter.** A slot typed `deterministic` with no `emitter`
 field is not deterministic, it is unspecified: nothing can produce it and the type is decoration.
 Earned 2026-07-23 by trying to execute a contract whose text panel declared `{recipient, body,
