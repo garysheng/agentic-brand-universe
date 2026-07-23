@@ -367,5 +367,47 @@ class TestVerdictIsBoundToTheArtifactItJudged(unittest.TestCase):
             self.assertEqual(compose.verdict_for(w, "art", 0)["verdict"], "PASS")
 
 
+class TestImpliedPolesAreCaughtToo(unittest.TestCase):
+    """Some words do not NAME a rejected pole but reliably summon one. On a six-plate
+    run, three plates failed for exactly this reason and the literal check caught none
+    of them: an 'open book' and an 'open door' are inherently volumetric, and a scene
+    saying 'glowing' and 'dark' produced a radial glow and a vignette on a pack that
+    requires one flat ground colour."""
+
+    def comp(self, tmp, poles, beats):
+        d = pathlib.Path(tmp) / "reference" / "style" / "p"
+        d.mkdir(parents=True)
+        (d / "pack.json").write_text(json.dumps({
+            "id": "p", "anchor": "a.png", "refs": ["a.png"],
+            "styleLine": "flat", "rejectedPoles": poles}))
+        return {"universe": tmp, "bind": {"style-pack": "reference/style/p"}, "beats": beats}
+
+    def test_open_book_is_caught_by_a_pack_rejecting_perspective(self):
+        with tempfile.TemporaryDirectory() as t:
+            errs = compose.scene_contradictions(
+                {}, self.comp(t, ["perspective"], ["one open book lying on the ground"]))
+            self.assertTrue(errs)
+            self.assertIn("perspective", errs[0])
+
+    def test_glowing_is_caught_by_a_pack_rejecting_gradients(self):
+        with tempfile.TemporaryDirectory() as t:
+            errs = compose.scene_contradictions(
+                {}, self.comp(t, ["gradients"], ["a small rectangle glowing in the centre"]))
+            self.assertTrue(errs)
+
+    def test_a_flat_description_of_the_same_object_passes(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["perspective", "gradients"],
+                              ["one closed book lying face-on as a flat rectangle"])), [])
+
+    def test_an_implied_word_only_fires_for_a_pole_the_pack_actually_rejects(self):
+        """A pack that permits perspective must not be told off for saying 'open book'.
+        A check that fires where the brand does not care is noise."""
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["neon"], ["one open book lying on the ground"])), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

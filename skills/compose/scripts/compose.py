@@ -59,6 +59,22 @@ def feasibility(proj, comp):
 # "perspective". Catching implication needs a model, and that check belongs to the
 # gate, which already has it. The point of this one is that it costs nothing and
 # runs before a single image is paid for.
+# Words that do not NAME a rejected pole but reliably summon one. The literal check
+# caught nothing on a six-plate run where three plates failed for exactly this reason:
+# an "open" book and an "open" doorway are inherently volumetric, and a scene that said
+# "glowing" and "dark" got a radial glow and a vignette on a pack that requires one flat
+# ground colour. None of those words is "perspective" or "gradient", and all three
+# produced one.
+#
+# Kept deliberately small and specific. A big fuzzy list would fire constantly and get
+# switched off, which is worse than not having it.
+IMPLIES = {
+    "perspective": ["receding", "three-quarter", "angled", "tilted", "rotated",
+                    "open book", "open door", "ajar", "swung", "depth", "vanishing"],
+    "shading":     ["glowing", "glow", "lit", "shadow", "shadowed", "dim"],
+    "gradients":   ["glowing", "glow", "fading", "faded", "dark", "darkness", "halo"],
+}
+
 def scene_contradictions(proj, comp):
     errs = []
     b = comp.get("bind", {}) or {}
@@ -81,6 +97,11 @@ def scene_contradictions(proj, comp):
                 errs.append(f"scene {i} names '{pole}', which this style pack REJECTS. "
                             f"The compiled prompt would say '{pole}' and 'no {pole}' at once. "
                             f"Rewrite the scene; do not rely on the negative to win.")
+            for word in IMPLIES.get(pole, []):
+                if re.search(r"\b" + re.escape(word) + r"\b", low):
+                    errs.append(f"scene {i} says '{word}', which does not name '{pole}' but "
+                                f"reliably produces it, and this pack REJECTS '{pole}'. "
+                                f"Describe the shape flat instead.")
     return errs
 
 def plan(proj, comp):
