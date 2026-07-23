@@ -470,5 +470,54 @@ class TestNegatedPolesAreNotContradictions(unittest.TestCase):
             self.assertTrue(errs)
 
 
+class TestReadbackCatchesTheEmptyFrame(unittest.TestCase):
+    """Every invariant in a typical projection is NEGATIVE: no text, no perspective, at
+    most N elements, one flat ground. Nothing asserts the artifact means anything, so
+    repairing a slot against that gate walks it toward the artifact that satisfies every
+    rule most easily: the EMPTY FRAME.
+
+    This is not hypothetical. A plate for "a great-grandfather preaching under
+    persecution" passed all eight of its invariants as a blank rectangle. The gate cannot
+    catch it, because the judge is blind to the plan, which is exactly what makes it
+    honest about style and blind to a missing subject."""
+
+    def test_a_contract_declaring_depicts_its_subject_is_detected(self):
+        self.assertTrue(compose.wants_readback(
+            {"invariants": {"perSlot": [{"id": "depicts-its-subject", "check": "judged"}],
+                            "crossSlot": []}}))
+
+    def test_a_contract_without_it_is_not(self):
+        self.assertFalse(compose.wants_readback(
+            {"invariants": {"perSlot": [{"id": "no-text", "check": "judged"}], "crossSlot": []}}))
+
+    def test_a_verdict_with_no_depicts_fails_CLOSED_when_readback_is_required(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t) / "verdicts"; d.mkdir()
+            (d / "art-0.json").write_text(json.dumps({"verdict": "PASS"}))
+            self.assertIsNone(compose.verdict_for(t, "art", 0, require_depicts=True))
+            # ...but the same verdict is fine when the contract does not ask for it
+            self.assertIsNotNone(compose.verdict_for(t, "art", 0))
+
+    def test_an_empty_depicts_string_also_fails_closed(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t) / "verdicts"; d.mkdir()
+            (d / "art-0.json").write_text(json.dumps({"verdict": "PASS", "depicts": "   "}))
+            self.assertIsNone(compose.verdict_for(t, "art", 0, require_depicts=True))
+
+    def test_the_readback_pair_withholds_the_image_from_the_comparer(self):
+        """Stage 2 must never see the picture, or it starts judging the art instead of
+        the match, which is stage 1's job and a different question."""
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t) / "verdicts"; d.mkdir()
+            (d / "art-0.json").write_text(json.dumps(
+                {"verdict": "PASS", "depicts": "a blank white rectangle"}))
+            f = compose.readback(t, "art", 0, "a great-grandfather preaching")
+            pair = json.loads(pathlib.Path(f).read_text())
+            self.assertEqual(pair["intended"], "a great-grandfather preaching")
+            self.assertEqual(pair["judgeSaw"], "a blank white rectangle")
+            self.assertNotIn("artifact", pair)
+            self.assertIn("withheld", pair)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

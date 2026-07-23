@@ -266,7 +266,7 @@ def _run_slot(unit, proj, comp, work):
         if os.path.exists(out):
             return "PASS", out, roll                       # nothing judged is declared
     else:
-        v = verdict_for(work, sid, idx, out)
+        v = verdict_for(work, sid, idx, out, require_depicts=wants_readback(proj))
         if v and os.path.exists(out):
             if v["verdict"] == "PASS":
                 return "PASS", out, roll
@@ -387,7 +387,9 @@ def judge_request(work, sid, idx, reference, slot_png, checklist, mode, roll):
              "instruction": ("Judge the pixels only. For EACH checklist item return PASS or "
                              "DEFECT with one sentence of evidence describing what you SEE. "
                              "If you cannot tell, return DEFECT and say what is ambiguous: "
-                             "never pass an item you cannot verify."),
+                             "never pass an item you cannot verify. ALSO return a field "
+                             "`depicts`: one plain sentence naming what the image actually "
+                             "shows, as you would describe it to someone who cannot see it."),
              "withheld": ("the plan, the beats, the compiled prompt, and the intent, "
                           "deliberately. A maker shown its own reasoning defends it.")}
     (d / f"{sid}-{idx}.json").write_text(json.dumps(brief, indent=2))
@@ -401,7 +403,48 @@ def digest(path):
     except Exception:
         return None
 
-def verdict_for(work, sid, idx, artifact=None):
+def readback(work, sid, idx, intended):
+    """Pair what the blind judge SAW with what the scene INTENDED, for a separate check.
+
+    Every invariant in a typical projection is NEGATIVE: no text, no perspective, at most
+    N elements, one flat ground. Nothing asserts the artifact means anything. Repairing a
+    slot against a purely negative gate therefore walks it toward the artifact that
+    satisfies every rule most easily, which is the EMPTY FRAME. That is not a thought
+    experiment: a plate for "a great-grandfather preaching under persecution" passed all
+    eight of its invariants as a blank rectangle.
+
+    The gate cannot catch this by design. The judge is blind to the plan, which is what
+    makes it honest about style and simultaneously unable to notice that the subject is
+    missing.
+
+    So the check is split in two, and NEITHER half can rationalise:
+      stage 1  a judge sees the IMAGE and no intent, and reports what it depicts.
+      stage 2  a comparer sees the INTENT and that sentence, and never the image.
+    A compliance gate proves nothing off-brand shipped. Only this proves something
+    shipped at all.
+    """
+    d = pathlib.Path(work) / "readback"; d.mkdir(parents=True, exist_ok=True)
+    v = verdict_for(work, sid, idx)
+    pair = {"slot": sid, "index": idx,
+            "intended": intended,
+            "judgeSaw": (v or {}).get("depicts"),
+            "question": ("Do these describe the same picture? Answer MATCH or MISMATCH. "
+                         "You are deliberately not shown the image: judge only whether the "
+                         "description could plausibly be a description of the intent."),
+            "withheld": "the image itself, deliberately"}
+    (d / f"{sid}-{idx}.json").write_text(json.dumps(pair, indent=2))
+    return str(d / f"{sid}-{idx}.json")
+
+def wants_readback(proj):
+    """True when the contract declares that the artifact must DEPICT its subject."""
+    inv = proj.get("invariants", {})
+    for scope in ("perSlot", "crossSlot"):
+        for i in inv.get(scope, []):
+            if str(i.get("id", "")).startswith("depicts-its-subject"):
+                return True
+    return False
+
+def verdict_for(work, sid, idx, artifact=None, require_depicts=False):
     """A verdict the runtime wrote back, or None. Absent is NOT a pass.
 
     If the brief recorded which bytes were judged and those bytes have since changed,
@@ -412,6 +455,9 @@ def verdict_for(work, sid, idx, artifact=None):
     try: v = json.loads(f.read_text())
     except Exception: return None
     if v.get("verdict") not in ("PASS", "DEFECT"): return None   # unparseable fails CLOSED
+    # A contract that demands the artifact depict its subject needs the judge's own
+    # description to compare against. No description, no verdict: fails CLOSED.
+    if require_depicts and not str(v.get("depicts", "")).strip(): return None
     if artifact:
         b = pathlib.Path(work) / "judge" / f"{sid}-{idx}.json"
         if b.exists():
