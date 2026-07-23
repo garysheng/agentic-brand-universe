@@ -271,6 +271,55 @@ removes that step.
   and renders every spread through the existing `render_spread.sh` guard (no-self-reference). First
   entity migrated: `jerry-man.render`.
 
+### 4.7 Style Pack (the portable look)
+
+A **Style Pack** is a self-contained folder that defines ONE look and is consumable **without a
+universe**. It is the register's paint-language (§3.5, glossary) extracted into a portable artifact so
+that generating an on-brand image needs only *a style*, never a canon. This is the layer that makes
+the framework useful for the common case — "here is a folder of images, make more that look like
+them" — which has no recurring-identity requirement and therefore no need for entities.
+
+```
+<pack>/
+  pack.json         # the manifest (below)
+  refs/*.png        # 3-8 style reference images: the load-bearing source of the look
+```
+
+```jsonc
+{
+  "id": "anthropic-plate",
+  "name": "Anthropic ink-line plate",
+  "anchor": "refs/hands-blocks.png",          // the one ref always passed FIRST
+  "refs": ["refs/hands-blocks.png", "..."],   // 3-8, pack-relative; a subject-matched one is chosen per render
+  "palette": { "ground": ["#CC785C","#F5F1E9","#B9C7BA","#C9C3DE"], "fill": ["#F5F1E9"], "line": ["#1A1A17"] },
+  "styleLine": "single-weight wobbly black ink brush line, flat cream fills, flat solid ground, face-on",
+  "rejectedPoles": ["neon","3D/CGI/Pixar","perspective","isometric","shading","gradients","coloured linework","any text"],
+  "gate": [                                    // read-back assertions, checked against the OUTPUT
+    "single-weight wobbly black ink line only, no coloured linework",
+    "flat cream fills; no shading, gradients, or painterly texture",
+    "ground is one flat pack-palette colour",
+    "<= 4 elements, generous negative space",
+    "NO text, letters, or numbers anywhere",
+    "any hands are loopy and non-anatomical (this look has no realistic finger-count to get wrong)"
+  ],
+  "maxElements": 4
+}
+```
+
+- **Consumed two ways.** (a) **Quick mode** — the `on-brand-image` skill takes a pack path + a scene
+  and generates + reads-back, no `universe.json` in sight. (b) **Full mode** — a `register` MAY set
+  `stylePack: "<id-or-path>"` to source its `anchor` + `rejectedPoles` from a pack instead of inlining
+  them, so a universe's canon renders and a one-off image share ONE definition of the look. Registers
+  that inline their anchor stay valid; the field is additive.
+- **Portable (mirrors §3a self-containment).** A pack resolves every ref within its own folder, so it
+  can be copied anywhere and still generate. A pack may live standalone OR inside a universe
+  (`reference/style/<pack>/`); the skill only ever needs the pack path.
+- **The gate is the load-bearing half.** A pack without a `gate` is a mood board. The gate is what
+  turns "looks roughly right" into a checkable read-back (§3.5): generate, verify each assertion
+  against the pixels, re-roll the specific failure. The finger-count defect is a gate concern, not a
+  prompt concern — and an ink-line look whose hands are deliberately non-anatomical sidesteps it by
+  construction.
+
 ## 5. Evolution & versioning
 
 - **Every canon change is a commit** in the canon repo. The diff *is* the changelog.
@@ -463,6 +512,10 @@ unchanged: a missing REQUIRED sheet is still a hard error. A renderer MAY requir
   (the locked scale, the bazaar of cages); the book's spine-object.
 - **Register** — a story's paint-language: a first-class per-story renderer config, sometimes anchored
   to a real artist's own work, locked via experiments and passed as a content-neutral style anchor.
+- **Style Pack (§4.7)** — a register's look extracted into a portable, universe-free folder (refs +
+  anchor + palette + rejected poles + read-back gate). What "generate more images in this style"
+  consumes when there is no recurring identity to pin, so no canon is needed. A register may point at
+  one; the `on-brand-image` skill runs off one directly.
 - **realPerson dossier** — the sub-block on a real-subject character: photo stack, approval state,
   sensitive list, activity-wardrobe eras, exact group count.
 - **Self-containment (§3a)** — a universe owns its assets inside its own repo; you can clone the
