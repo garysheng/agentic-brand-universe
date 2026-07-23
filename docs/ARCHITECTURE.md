@@ -144,6 +144,23 @@ composition and not just the universe: a scene may not *name* something its styl
 described a grid as "receding" for a pack that rejects perspective, and the compiler dutifully
 appended "no perspective" to the same prompt, so the model received both instructions and picked one.
 
+### Risk compounds per instance, so compose around the fragile rule
+
+Not everything is a check. One finding from the same run is guidance rather than code, and it saved
+more re-rolls than any check did.
+
+A per-slot invariant is evaluated over the whole artifact, so **every instance of the risky element in
+a scene is an independent chance to fail it**. On the hardest invariant in this universe, a hand with
+exactly five digits, the plates asking for one hand passed quickly. The plate asking for two hands
+failed three consecutive rolls, because it had to get the same fragile thing right twice in a row.
+Rewriting that scene to use one hand was worth more than any amount of prompt strengthening, and it
+cost nothing.
+
+The general rule: when a judged invariant has a known failure rate, the composition controls its own
+exposure. Invoke the fragile element fewer times and the expected number of re-rolls drops with it.
+That is an authoring decision, not a contract change, and it is the cheapest lever available before
+anyone reaches for relaxing the rule or repinning the provider.
+
 ## Provider quirks
 
 A **quirk** is what a specific model gets reliably wrong regardless of brand. It belongs to the
