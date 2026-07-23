@@ -174,6 +174,46 @@ def plan(proj, comp):
                         "emitter": slot.get("emitter")})
     return out
 
+def goldens_for(comp, sid, idx):
+    """Which locked sheets this slot binds, AT THIS INDEX.
+
+    Goldens could previously be bound per SLOT only, which cannot express a character
+    whose state changes partway through a book. That is not an edge case: a wardrobe
+    marker that ARRIVES at the turn is one of the cheapest ways to make a reader feel a
+    change before they read it, and it is unrepresentable if every spread must share one
+    sheet.
+
+    So a slot's goldens may be a LIST (every index) or a MAPPING of index ranges to
+    lists:
+
+        "goldens": {
+          "spread": { "0-20": ["reference/maya/master.png"],
+                      "21-23": ["reference/maya/master-rust.png"] },
+          "cover":  ["reference/maya/master.png"]
+        }
+
+    Ranges are inclusive. An index matching no range binds nothing, which fails loudly
+    at the reference resolver rather than silently rendering a character with no anchor.
+    """
+    g = comp.get("goldens", {})
+    if not isinstance(g, dict):
+        return list(g or [])
+    spec = g.get(sid, g.get("default", []))
+    if isinstance(spec, list):
+        return list(spec)
+    if not isinstance(spec, dict):
+        return []
+    for key, val in spec.items():
+        k = str(key)
+        if "-" in k:
+            lo, hi = k.split("-", 1)
+            if lo.strip().isdigit() and hi.strip().isdigit():
+                if int(lo) <= idx <= int(hi):
+                    return list(val)
+        elif k.isdigit() and int(k) == idx:
+            return list(val)
+    return []
+
 def root_of(comp):
     return comp["universe"]
 
@@ -240,7 +280,7 @@ def _run_slot(unit, proj, comp, work):
     # the cast: passing Gary's master into a characterless plate is a contradiction
     # the compiler should refuse, not something the model has to resist.
     g = comp.get("goldens", {})
-    goldens = (g.get(sid, g.get("default", [])) if isinstance(g, dict) else g)
+    goldens = goldens_for(comp, sid, idx)
     rejected = [r.lower() for r in pack.get("rejectedPoles", [])]
     if goldens and any(("character" in r) or ("storybook-register" in r) for r in rejected):
         return "DEFECT", (f"slot '{sid}' binds pack '{pack['id']}' which rejects characters, "

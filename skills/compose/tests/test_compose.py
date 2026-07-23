@@ -608,5 +608,48 @@ class TestSurfaceShrinkIsCalledOut(unittest.TestCase):
             {"surface": {"geometry": {"aspect": "2:3"}}}, {"surface": {"aspect": "1:1"}}), [])
 
 
+class TestStagedGoldens(unittest.TestCase):
+    """Goldens could only be bound per SLOT, which cannot express a character whose state
+    changes partway through a book. A wardrobe marker that ARRIVES at the turn is one of
+    the cheapest ways to make a reader feel a change before they read it, and it was
+    unrepresentable when every spread had to share one sheet."""
+
+    STAGED = {"goldens": {"spread": {"0-20": ["a.png"], "21-23": ["b.png"]},
+                          "cover": ["a.png"]}}
+
+    def test_an_index_before_the_turn_binds_the_first_sheet(self):
+        self.assertEqual(compose.goldens_for(self.STAGED, "spread", 0), ["a.png"])
+        self.assertEqual(compose.goldens_for(self.STAGED, "spread", 20), ["a.png"])
+
+    def test_an_index_after_the_turn_binds_the_second(self):
+        self.assertEqual(compose.goldens_for(self.STAGED, "spread", 21), ["b.png"])
+        self.assertEqual(compose.goldens_for(self.STAGED, "spread", 23), ["b.png"])
+
+    def test_ranges_are_inclusive_on_both_ends(self):
+        one = {"goldens": {"s": {"5-5": ["x.png"]}}}
+        self.assertEqual(compose.goldens_for(one, "s", 5), ["x.png"])
+        self.assertEqual(compose.goldens_for(one, "s", 4), [])
+        self.assertEqual(compose.goldens_for(one, "s", 6), [])
+
+    def test_a_plain_list_still_applies_to_every_index(self):
+        flat = {"goldens": {"spread": ["m.png"]}}
+        for i in (0, 7, 99):
+            self.assertEqual(compose.goldens_for(flat, "spread", i), ["m.png"])
+
+    def test_default_is_used_when_the_slot_is_not_named(self):
+        self.assertEqual(compose.goldens_for({"goldens": {"default": ["d.png"]}}, "spread", 3),
+                         ["d.png"])
+
+    def test_an_uncovered_index_binds_NOTHING_rather_than_guessing(self):
+        """It then fails loudly at the reference resolver, which is far better than
+        silently rendering a character with no identity anchor."""
+        gap = {"goldens": {"s": {"0-2": ["a.png"]}}}
+        self.assertEqual(compose.goldens_for(gap, "s", 9), [])
+
+    def test_a_single_index_key_works(self):
+        self.assertEqual(compose.goldens_for({"goldens": {"s": {"4": ["q.png"]}}}, "s", 4),
+                         ["q.png"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
