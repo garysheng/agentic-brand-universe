@@ -11,7 +11,7 @@ hour into one.
 
 Exit 0 clean, 1 warnings only, 2 errors.
 """
-import json, pathlib, sys
+import json, pathlib, re, sys
 
 E, W = [], []
 def err(code, msg): E.append((code, msg))
@@ -140,6 +140,38 @@ def lint(root):
                     err("INVARIANT-UNTYPED", f"{pid}: invariant '{i.get('id')}' is not computed or judged")
         if not inv.get("perSlot") and not inv.get("crossSlot"):
             warn("NO-INVARIANTS", f"{pid}: declares no invariants; nothing can fail, so nothing is checked")
+
+        # A contract can be internally coherent and, in practice, undeliverable. Feasibility
+        # already catches that for GEOMETRY: an aspect no generator can produce. It could not
+        # catch it for BEHAVIOUR: an invariant the pinned provider is known to break.
+        #
+        # Earned 2026-07-23. A projection declared "hands: four fingers plus a thumb" and
+        # pinned a provider whose registry entry says it loses a digit on stylized hands.
+        # Six artifacts went to independent judges and six failed on that one item, twice
+        # each, prompt counter included. Nothing was wrong with the projection in isolation
+        # and nothing was wrong with the registry in isolation; the contradiction lived
+        # BETWEEN them, which is the same shape as the infeasible-surface class.
+        #
+        # This is a WARNING, not an error. A brand is allowed to demand something hard, and a
+        # known quirk is a re-roll cost rather than an impossibility. What it must not be is a
+        # surprise discovered after paying for generation.
+        quirk_terms = {}
+        for g in p.get("generators", []):
+            prov = g.get("pin")
+            if not prov: continue
+            for q in providers.get(prov, {}).get("quirks", []):
+                for w in re.findall(r"[a-z]{4,}", q["id"].lower()):
+                    quirk_terms.setdefault(w, []).append((prov, q["id"]))
+        for scope in ("perSlot", "crossSlot"):
+            for i in inv.get(scope, []):
+                words = set(re.findall(r"[a-z]{4,}", str(i.get("id", "")).lower()))
+                hits = {(prov, qid) for w in words for prov, qid in quirk_terms.get(w, [])}
+                for prov, qid in sorted(hits):
+                    if qid == i.get("id"): continue          # the quirk itself, already handled
+                    warn("INVARIANT-VS-QUIRK",
+                         f"{pid}: invariant '{i.get('id')}' overlaps a known quirk of its pinned "
+                         f"provider {prov} ('{qid}'). Expect re-rolls; budget for them or relax "
+                         f"the rule, but do not discover this after paying for generation.")
 
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "."

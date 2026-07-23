@@ -171,6 +171,63 @@ class TestLinter(unittest.TestCase):
                   "generators": [OK_GEN], "invariants": OK_INV}})
         self.assertIn("EXTENDS-UNRESOLVED", errs)
 
+    def test_warns_when_an_invariant_collides_with_a_pinned_providers_quirk(self):
+        """A contract can be internally coherent and, in practice, undeliverable.
+        Feasibility caught that for geometry. This catches it for behaviour: a rule
+        the pinned provider is registered as breaking. Earned after six artifacts
+        failed the same item twice each, prompt counter included."""
+        with tempfile.TemporaryDirectory() as t:
+            root = build(t, projections={"p": {
+                "id": "p", "surface": {"geometry": {"w": 2, "h": 3}},
+                "slots": [OK_SLOT],
+                "generators": [{**OK_GEN, "pin": "fakeprov"}],
+                "invariants": {"perSlot": [
+                    {"id": "hands have four fingers plus a thumb", "check": "judged"}],
+                    "crossSlot": []}}})
+            lint.E.clear(); lint.W.clear()
+            real = lint.jload
+            reg = {"providers": {"fakeprov": {"quirks": [
+                {"id": "stylized-hands-lose-a-digit", "counter": "c", "check": "judged"}]}}}
+            lint.jload = lambda f: reg if str(f).endswith("providers.json") else real(f)
+            try:
+                lint.lint(str(root))
+            finally:
+                lint.jload = real
+            self.assertIn("INVARIANT-VS-QUIRK", {c for c, _ in lint.W})
+
+    def test_it_is_a_warning_not_an_error(self):
+        """A brand is allowed to demand something hard. A known quirk is a re-roll
+        cost, not an impossibility. What it must not be is a surprise found after
+        paying for generation."""
+        with tempfile.TemporaryDirectory() as t:
+            root = build(t, projections={"p": {
+                "id": "p", "surface": {"geometry": {"w": 2, "h": 3}},
+                "slots": [OK_SLOT], "generators": [{**OK_GEN, "pin": "fakeprov"}],
+                "invariants": {"perSlot": [
+                    {"id": "hands have four fingers plus a thumb", "check": "judged"}],
+                    "crossSlot": []}}})
+            lint.E.clear(); lint.W.clear()
+            real = lint.jload
+            reg = {"providers": {"fakeprov": {"quirks": [
+                {"id": "stylized-hands-lose-a-digit", "counter": "c", "check": "judged"}]}}}
+            lint.jload = lambda f: reg if str(f).endswith("providers.json") else real(f)
+            try:
+                lint.lint(str(root))
+            finally:
+                lint.jload = real
+            self.assertNotIn("INVARIANT-VS-QUIRK", {c for c, _ in lint.E})
+
+    def test_an_unpinned_generator_raises_no_collision_warning(self):
+        """Quirks bind to the RESOLVED provider at run time, but a projection with no
+        pin has no provider to check against statically. Guessing one would be noise."""
+        errs, warns = self.lint_with(projections={"p": {
+            "id": "p", "surface": {"geometry": {"w": 2, "h": 3}},
+            "slots": [OK_SLOT], "generators": [OK_GEN],
+            "invariants": {"perSlot": [
+                {"id": "hands have four fingers plus a thumb", "check": "judged"}],
+                "crossSlot": []}}})
+        self.assertNotIn("INVARIANT-VS-QUIRK", warns)
+
     def test_catches_null_register_anchor(self):
         """A null anchor means the style is not locked; generation should refuse."""
         errs, _ = self.lint_with(anchor=False, projections={"p": {

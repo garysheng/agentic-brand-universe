@@ -21,8 +21,8 @@
         },
         {
           "id": "stylized-hands-lose-a-digit",
-          "seen": "When hands are drawn in a stylized non-anatomical register (loops, no knuckles), the model reliably renders FOUR digits total or fewer, dropping the thumb or one finger. Observed on 4 of 4 plates in one run, on every hand that failed. It is the exact inverse of the sixth-digit quirk and far more common in a flat line register, because the stylization removes the anatomical cues the model uses to count.",
-          "counter": "EVERY hand must show exactly FIVE digits: four fingers and one clearly separate thumb. Count them before finishing. A stylized loop-drawn hand still has five.",
+          "seen": "When hands are drawn in a stylized non-anatomical register (loops, no knuckles), the model reliably renders FOUR digits total or fewer, dropping the thumb or one finger. Observed on 4 of 4 plates in one run, on every hand that failed. It is the exact inverse of the sixth-digit quirk and far more common in a flat line register, because the stylization removes the anatomical cues the model uses to count. Refinement 2026-07-23 after a second consecutive failure: the counter must lead with the TOTAL of five. Phrasing it as 'four fingers plus a thumb' reliably produced four digits, because the model appears to anchor on the first number it reads and stop there.",
+          "counter": "Every hand must have FIVE digits in total. Count to five on each hand. Draw four finger loops AND one additional separate thumb stroke set apart from them, five strokes in all.",
           "check": "judged",
           "provider": "gpt-image-2",
           "observedBy": "independent judges, 4 of 4 plates",
