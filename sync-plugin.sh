@@ -50,9 +50,7 @@ if [ "$dirty" != "0" ] || [ "$ahead" != "0" ]; then
   echo "STALE: the files match, but they have NOT been delivered."
   [ "$dirty" != "0" ] && echo "  $dirty uncommitted file(s) in $PLUGIN_REPO"
   [ "$ahead" != "0" ] && echo "  $ahead commit(s) not pushed to the remote"
-  echo "  The installed plugin is a clone of the REMOTE, so until this is pushed every"
-  echo "  agenticstory:* invocation runs the old code. Commit and push, then run"
-  echo "  /plugin update in Claude Code to refresh the installed copy."
+  echo "  Commit them, then bump the version in the plugin manifest and run /plugin update."
   exit 1
 fi
 
@@ -68,7 +66,12 @@ if [ -n "$CACHE" ] && [ -d "$CACHE" ]; then
   else
     echo
     echo "INSTALLED PLUGIN IS STALE: $CACHE differs from source."
-    echo "  Pushed, but the local cache has not refreshed. Run /plugin update in Claude Code."
+    echo "  This marketplace is a DIRECTORY source, not a git remote, so pushing does"
+    echo "  nothing for it. The cache refreshes on a VERSION CHANGE, so a manifest with"
+    echo "  no version (or an unchanged one) makes /plugin update a silent no-op."
+    echo "  Fix: bump \"version\" in"
+    echo "    <marketplace>/plugins/agenticstory/.claude-plugin/plugin.json"
+    echo "  then run /plugin update in Claude Code."
     exit 1
   fi
 else
