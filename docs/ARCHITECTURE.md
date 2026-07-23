@@ -49,6 +49,31 @@ shipped with one element missing its defining feature, because the maker "knew" 
 intentional variety and read its own intent rather than the pixels. An observer with no access to the
 plan caught it instantly.
 
+**The judge is a subagent, and that is the whole implementation.** Independence is a property of
+context, not of vendor or billing account. A fresh subagent inside the runtime that is already
+composing has never seen the plan, which is the only thing the rule asks for, and it needs no second
+credential. An earlier implementation required an API key and shelled out to a separate process; with
+no key present every slot parked as unjudgeable, which made the correct architecture look like a
+blocked one. It was neither. It was the cheapest judge being unreachable.
+
+So the composer does not judge. Per slot it writes a **brief** naming exactly what a judge is shown,
+and exactly what it is not:
+
+```jsonc
+{ "artifact": "...", "reference": "...", "mode": "identity" | "style",
+  "checklist": ["no-text-in-art", "hands-loopy-non-anatomical, four fingers plus a thumb"],
+  "withheld": "the plan, the beats, the compiled prompt, and the intent" }
+```
+
+The brief is the enforcement. Asking an agent to disregard what it already knows is not a control;
+handing a different agent a bounded brief is. `mode` matters because there are two different
+questions: `identity` judges against a character golden (*is this the same subject?*), `style` judges
+against a pack anchor whose subject is irrelevant (*is this the same visual voice?*).
+
+A slot awaiting a verdict is **`NEEDS-JUDGMENT`**, which is neither PASS nor DEFECT: the artifact
+exists and is sound, and one check has not run. Re-running never regenerates it, because re-rolling
+something nobody has judged pays twice and throws away the artifact the judge was about to inspect.
+
 ## Why the runtime is Managed Agents
 
 ![Why Managed Agents](./diagrams/why-managed-agents.svg)

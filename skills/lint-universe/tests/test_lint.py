@@ -126,6 +126,51 @@ class TestLinter(unittest.TestCase):
             "generators": [OK_GEN], "invariants": OK_INV}})
         self.assertIn("EXTENDS-UNRESOLVED", errs)
 
+    def test_a_fork_INHERITS_its_parents_generator(self):
+        """The bug this locks: the linter checked the child's RAW fields, so a fork
+        that inherited a generator instead of redeclaring one false-failed with
+        SLOT-NO-GENERATOR. The field was absent from the file and present at run
+        time, because the composer merges `extends` and the linter did not. The one
+        prior fork overrode every field it used, which is why this went unseen until
+        a fork that inherits."""
+        errs, _ = self.lint_with(projections={
+            "base": {"id": "base", "surface": {"geometry": {"w": 2, "h": 3}},
+                     "slots": [OK_SLOT], "generators": [OK_GEN], "invariants": OK_INV},
+            "fork": {"id": "fork", "extends": "base@1.0.0",
+                     "description": "adds nothing but a name"}})
+        self.assertNotIn("SLOT-NO-GENERATOR", errs)
+        self.assertNotIn("INVARIANT-UNTYPED", errs)
+        self.assertEqual(errs, set())
+
+    def test_a_fork_is_still_checked_on_what_it_OVERRIDES(self):
+        """Inheritance must not become a way to smuggle a defect past the linter."""
+        errs, _ = self.lint_with(projections={
+            "base": {"id": "base", "surface": {"geometry": {"w": 2, "h": 3}},
+                     "slots": [OK_SLOT], "generators": [OK_GEN], "invariants": OK_INV},
+            "fork": {"id": "fork", "extends": "base@1.0.0",
+                     "invariants": {"perSlot": [{"id": "i", "check": "vibes"}],
+                                    "crossSlot": []}}})
+        self.assertIn("INVARIANT-UNTYPED", errs)
+
+    def test_a_fork_that_adds_a_slot_its_parent_cannot_produce_still_errors(self):
+        errs, _ = self.lint_with(projections={
+            "base": {"id": "base", "surface": {"geometry": {"w": 2, "h": 3}},
+                     "slots": [OK_SLOT], "generators": [OK_GEN], "invariants": OK_INV},
+            "fork": {"id": "fork", "extends": "base@1.0.0",
+                     "slots": [OK_SLOT, {"id": "orphan", "type": "generated",
+                                         "geometry": {"w": 2, "h": 3}}]}})
+        self.assertIn("SLOT-NO-GENERATOR", errs)
+
+    def test_an_extends_cycle_is_reported_not_hung_on(self):
+        """Two projections extending each other used to recurse forever. A linter
+        that hangs is a linter nobody runs."""
+        errs, _ = self.lint_with(projections={
+            "a": {"id": "a", "extends": "b@1.0.0", "slots": [OK_SLOT],
+                  "generators": [OK_GEN], "invariants": OK_INV},
+            "b": {"id": "b", "extends": "a@1.0.0", "slots": [OK_SLOT],
+                  "generators": [OK_GEN], "invariants": OK_INV}})
+        self.assertIn("EXTENDS-UNRESOLVED", errs)
+
     def test_catches_null_register_anchor(self):
         """A null anchor means the style is not locked; generation should refuse."""
         errs, _ = self.lint_with(anchor=False, projections={"p": {

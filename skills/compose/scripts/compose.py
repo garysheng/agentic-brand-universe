@@ -54,6 +54,19 @@ def plan(proj, comp):
                         "emitter": slot.get("emitter")})
     return out
 
+def root_of(comp):
+    return comp["universe"]
+
+def spec_state(work, sid, idx):
+    f = state_path(work, sid, idx)
+    if not f.exists(): return None
+    try: return json.loads(f.read_text())
+    except Exception: return None
+
+def clear_verdict(work, sid, idx):
+    f = pathlib.Path(work) / "verdicts" / f"{sid}-{idx}.json"
+    if f.exists(): f.unlink()
+
 def state_path(work, sid, idx):
     return pathlib.Path(work) / "state" / f"{sid}-{idx}.json"
 
@@ -122,20 +135,61 @@ def _run_slot(unit, proj, comp, work):
         scene = comp["_lock"] + " Scene: " + scene
     prompt, refs, qa = compile_slot(proj, comp, sid, scene, pack, goldens)
     size = spec.get("size", "1024x1024")
-    max_rolls = proj.get("maxRolls", 3)
-    for roll in range(1, max_rolls + 1):
+    max_rolls = proj.get("maxRolls", comp.get("maxRolls", 3))
+
+    # The checklist a judge is held to comes from the CONTRACT: this projection's
+    # judged invariants plus the resolved provider's quirk checks, which `qa` already
+    # holds. It used to be read from a bound entity's invariant list instead, so a
+    # projection with no cast had no checkable rules at all and `qa` was computed and
+    # then discarded. Found by the first characterless BOOK; every earlier
+    # characterless deliverable was a single plate with nothing to judge across.
+    checklist = list(qa)
+    if goldens and comp.get("invariantsFile"):
+        try:
+            raw = json.loads(pathlib.Path(root_of(comp)).joinpath(comp["invariantsFile"]).read_text()) \
+                  if not os.path.isabs(comp["invariantsFile"]) else json.loads(open(comp["invariantsFile"]).read())
+            checklist += (raw if isinstance(raw, list)
+                          else raw.get("structured", {}).get("invariants", []))
+        except Exception as ex:
+            return "DEFECT", f"invariantsFile declared but unreadable: {type(ex).__name__}: {ex}"
+
+    # Identity is judged against a character golden; style is judged against the pack
+    # anchor. Asking "is this the same subject?" of a plate with no subject is nonsense,
+    # and asking only "does the linework match?" of a character lets a stranger through.
+    mode = "identity" if goldens else "style"
+    reference = goldens[0] if goldens else refs[0]
+
+    roll = int((spec_state(work, sid, idx) or {}).get("roll", 0))
+    while roll < max_rolls:
+        # A slot already generated and awaiting a verdict must NEVER be regenerated:
+        # re-rolling something nobody has judged yet pays twice and discards the
+        # artifact the judge was about to look at.
+        if not os.path.exists(out) or roll == 0:
+            roll += 1
+            ok, detail = generate(prompt, refs, out, size)
+            if not ok:
+                return "DEFECT", f"generation failed: {detail}"
+        if not checklist:
+            return "PASS", out                            # nothing judged is declared
+
+        v = verdict_for(work, sid, idx)
+        if v is None:
+            brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
+            return "NEEDS-JUDGMENT", (f"awaiting an independent judge; brief at {brief}. "
+                                      f"Dispatch a fresh judge with the brief ALONE, write "
+                                      f"the verdict to {work}/verdicts/{sid}-{idx}.json, re-run.")
+        if v["verdict"] == "PASS":
+            return "PASS", out
+        print(f"      roll {roll}/{max_rolls} DEFECT: {str(v.get('why',''))[:110]}")
+        clear_verdict(work, sid, idx)                     # the next roll needs a fresh look
+        if roll >= max_rolls:
+            break
+        roll += 1
         ok, detail = generate(prompt, refs, out, size)
         if not ok:
             return "DEFECT", f"generation failed: {detail}"
-        if not qa:
-            return "PASS", out
-        verdict, why = judge(goldens[0] if goldens else refs[0], out,
-                             comp.get("invariantsFile", ""))
-        if verdict == "PASS":
-            return "PASS", out
-        if verdict == "UNJUDGED":
-            return "UNJUDGED", why                        # fails closed, never silently PASS
-        print(f"      roll {roll}/{max_rolls} DEFECT: {why[:110]}")
+        brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
+        return "NEEDS-JUDGMENT", (f"re-rolled after a DEFECT verdict; brief at {brief}")
     return "DEFECT", f"exhausted {max_rolls} rolls against its judged invariants"
 
 SKILLS = pathlib.Path(__file__).resolve().parents[2]
@@ -195,16 +249,40 @@ def generate(prompt, refs, out, size):
     r = subprocess.run(["uv", "run"] + cmd, capture_output=True, text=True)
     return r.returncode == 0, (r.stdout + r.stderr).strip().splitlines()[-1][:160] if r.returncode else out
 
-def judge(golden, slot_png, invariants_file):
-    """A judged check is a ROLE. Here it is filled out-of-band. With no way to run it,
-    the slot is UNJUDGED, which is NOT a pass: the gate fails closed."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return "UNJUDGED", "no independent judge available; a gate you cannot run is not a pass"
-    r = subprocess.run(["uv", "run", "--with", "anthropic", sys.executable,
-                        str(SKILLS / "judge-slot/scripts/judge.py"),
-                        "--golden", golden, "--slot", slot_png, "--invariants", invariants_file],
-                       capture_output=True, text=True)
-    return ("PASS", "all declared invariants held") if r.returncode == 0 else ("DEFECT", r.stdout.strip()[-300:])
+def judge_request(work, sid, idx, reference, slot_png, checklist, mode, roll):
+    """Write the judging BRIEF for one slot, and nothing else.
+
+    A judged check is a ROLE, not a service. The cheapest correct way to fill it is a
+    fresh subagent inside whatever runtime is already composing: it costs no key, no
+    separate process, and no second vendor, and it is independent for the only reason
+    independence matters, which is that it never sees the plan.
+
+    So the composer does not judge. It states, per slot, exactly what a judge must be
+    shown (the artifact, the reference, the checklist) and exactly what it must NOT be
+    shown (this file, the beats, the prompt, the intent). The runtime dispatches one
+    judge per brief and writes a verdict back. That separation is enforced by the shape
+    of the brief rather than by asking an agent to please forget what it knows.
+    """
+    d = pathlib.Path(work) / "judge"; d.mkdir(parents=True, exist_ok=True)
+    brief = {"slot": sid, "index": idx, "roll": roll, "mode": mode,
+             "artifact": slot_png, "reference": reference, "checklist": checklist,
+             "instruction": ("Judge the pixels only. For EACH checklist item return PASS or "
+                             "DEFECT with one sentence of evidence describing what you SEE. "
+                             "If you cannot tell, return DEFECT and say what is ambiguous: "
+                             "never pass an item you cannot verify."),
+             "withheld": ("the plan, the beats, the compiled prompt, and the intent, "
+                          "deliberately. A maker shown its own reasoning defends it.")}
+    (d / f"{sid}-{idx}.json").write_text(json.dumps(brief, indent=2))
+    return str(d / f"{sid}-{idx}.json")
+
+def verdict_for(work, sid, idx):
+    """A verdict the runtime wrote back, or None. Absent is NOT a pass."""
+    f = pathlib.Path(work) / "verdicts" / f"{sid}-{idx}.json"
+    if not f.exists(): return None
+    try: v = json.loads(f.read_text())
+    except Exception: return None
+    if v.get("verdict") not in ("PASS", "DEFECT"): return None   # unparseable fails CLOSED
+    return v
 
 
 
@@ -236,22 +314,41 @@ def main():
             if prev["status"] in ("PASS", "SKIP"):
                 print(f"  {u['slot']}-{u['index']}: {prev['status']} (resumed, not recomputed)")
                 results.append(prev); continue
-            print(f"  {u['slot']}-{u['index']}: retrying previously DEFECT slot")
+            elif prev["status"] == "NEEDS-JUDGMENT":
+                print(f"  {u['slot']}-{u['index']}: checking for a verdict (no regeneration)")
+            else:
+                print(f"  {u['slot']}-{u['index']}: retrying previously DEFECT slot")
         try:
             status, detail = run_slot(u, proj, comp, work)
         except Exception as ex:                          # a slot must NEVER take the run down
             status, detail = "DEFECT", f"{type(ex).__name__}: {ex}"
-        rec = {"slot": u["slot"], "index": u["index"], "status": status, "detail": detail}
+        prev_roll = (spec_state(work, u["slot"], u["index"]) or {}).get("roll", 0)
+        rec = {"slot": u["slot"], "index": u["index"], "status": status, "detail": detail,
+               "roll": prev_roll + 1 if status == "NEEDS-JUDGMENT" else prev_roll}
         sp.write_text(json.dumps(rec, indent=2))
         print(f"  {u['slot']}-{u['index']}: {status}  {detail if status!='PASS' else ''}")
         results.append(rec)                               # park and CONTINUE, never halt
 
-    defects = [r for r in results if r["status"] not in ("PASS", "SKIP")]
-    print(f"\n{len(results)-len(defects)}/{len(results)} slots passed")
+    pending = [r for r in results if r["status"] == "NEEDS-JUDGMENT"]
+    defects = [r for r in results if r["status"] not in ("PASS", "SKIP", "NEEDS-JUDGMENT")]
+    print(f"\n{len(results)-len(defects)-len(pending)}/{len(results)} slots passed")
+
+    if pending:
+        # Not a failure. The artifacts exist and are waiting on the one check the
+        # composer is structurally forbidden to perform on itself.
+        print(f"\n{len(pending)} slot(s) AWAITING AN INDEPENDENT JUDGE. Nothing is re-generated by")
+        print("re-running; each judged slot resumes from the artifact already on disk.")
+        print(f"  briefs:   {work}/judge/*.json")
+        print(f"  verdicts: {work}/verdicts/<slot>-<index>.json   {{\"verdict\":\"PASS\"|\"DEFECT\",\"why\":\"...\"}}")
+        print("  Give each judge the brief ALONE. It must not see this composition,")
+        print("  the beats, or the compiled prompt. That is the entire point.")
+        for r in pending: print(f"  - {r['slot']}-{r['index']}")
+
     if defects:
-        print("artifact emitted INCOMPLETE. Repair these slots and re-run; passing slots resume free:")
+        print("\nartifact emitted INCOMPLETE. Repair these slots and re-run; passing slots resume free:")
         for d in defects: print(f"  - {d['slot']}-{d['index']}: {d['detail']}")
-    return 1 if defects else 0
+    if defects: return 1
+    return 3 if pending else 0
 
 if __name__ == "__main__":
     sys.exit(main())

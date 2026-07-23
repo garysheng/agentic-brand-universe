@@ -26,10 +26,21 @@ def b64(path):
 def media(path):
     return "image/png" if path.lower().endswith(".png") else "image/jpeg"
 
+FRAME = {
+    # Two genuinely different questions. Asking the identity question of a
+    # characterless plate produces nonsense ("is this the same person?" of a drawing
+    # with no person in it), and asking the style question of a character lets a
+    # stranger through as long as the linework matches.
+    "identity": ("IMAGE 1 is the LOCKED GOLDEN: the identity of record.\n"
+                 "IMAGE 2 is a GENERATED SLOT that claims to depict the same subject."),
+    "style":    ("IMAGE 1 is the STYLE ANCHOR: the visual voice of record. It is NOT a\n"
+                 "subject to be matched. Its content is irrelevant; only its manner is.\n"
+                 "IMAGE 2 is a GENERATED SLOT that claims to speak in that same visual voice."),
+}
+
 PROMPT = """You are a verification gate. You are given TWO images and a checklist.
 
-IMAGE 1 is the LOCKED GOLDEN: the identity of record.
-IMAGE 2 is a GENERATED SLOT that claims to depict the same subject.
+{frame}
 
 You have deliberately NOT been told how image 2 was produced, what it was intended to
 show, or what anyone hoped it would look like. Do not speculate about intent. Judge the
@@ -50,6 +61,9 @@ def main():
     ap.add_argument("--golden", required=True); ap.add_argument("--slot", required=True)
     ap.add_argument("--invariants", required=True, help="JSON file: entity, or a bare list")
     ap.add_argument("--entity", default=None)
+    ap.add_argument("--mode", choices=("identity", "style"), default="identity",
+                    help="identity: image 1 is a character golden. style: image 1 is a "
+                         "style anchor and its SUBJECT is irrelevant.")
     a = ap.parse_args()
 
     key = os.environ.get("ANTHROPIC_API_KEY")
@@ -70,7 +84,7 @@ def main():
     msg = c.messages.create(model=MODEL, max_tokens=2000, messages=[{"role":"user","content":[
         {"type":"image","source":{"type":"base64","media_type":media(a.golden),"data":b64(a.golden)}},
         {"type":"image","source":{"type":"base64","media_type":media(a.slot),"data":b64(a.slot)}},
-        {"type":"text","text":PROMPT.format(checklist=checklist)}]}])
+        {"type":"text","text":PROMPT.format(frame=FRAME[a.mode], checklist=checklist)}]}])
 
     text = "".join(b.text for b in msg.content if b.type == "text").strip()
     text = text[text.find("{"): text.rfind("}") + 1]

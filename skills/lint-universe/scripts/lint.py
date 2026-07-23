@@ -70,13 +70,36 @@ def lint(root):
     if not pdir.exists():
         warn("NO-PROJECTIONS", "universe declares no projections; it can only make storybooks by hand")
         return
-    for pj in sorted(pdir.glob("*.json")):
+    def resolve(pj, seen=()):
+        """Merge the `extends` chain before checking anything, exactly as the composer
+        does. Checking the child's RAW fields makes every fork that INHERITS a
+        generator, an emitter, or a surface false-fail: the field is absent from the
+        file and present at run time. The one prior fork happened to override every
+        field it used, which is why this went unseen until a fork that inherits.
+        Returns (merged, error_or_None)."""
         p = jload(pj)
-        if not p: continue
-        pid = p.get("id", pj.stem)
-        if p.get("extends"):
-            base = pdir/(p["extends"].split("@")[0] + ".json")
-            if not base.exists(): err("EXTENDS-UNRESOLVED", f"{pid}: extends {p['extends']} not found")
+        if not p: return None, None
+        ref = p.get("extends")
+        if not ref: return p, None
+        name = ref.split("@")[0]
+        if name in seen:
+            return p, f"{p.get('id', pj.stem)}: extends cycle through '{name}'"
+        base_f = pdir/(name + ".json")
+        if not base_f.exists():
+            return p, f"{p.get('id', pj.stem)}: extends {ref} not found"
+        base, e = resolve(base_f, seen + (name,))
+        if base is None: return p, e
+        merged = {**base, **{k: v for k, v in p.items() if v is not None}}
+        return merged, e
+
+    for pj in sorted(pdir.glob("*.json")):
+        raw = jload(pj)
+        if not raw: continue
+        p, chain_err = resolve(pj)
+        pid = raw.get("id", pj.stem)
+        if chain_err:
+            err("EXTENDS-UNRESOLVED", chain_err)
+            continue          # every downstream check would be noise against a broken chain
         gens = {g.get("for"): g for g in p.get("generators", [])}
         for s in p.get("slots", []):
             sid = s.get("id")

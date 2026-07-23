@@ -116,5 +116,67 @@ class TestFailureModel(unittest.TestCase):
         self.assertEqual(status, "DEFECT")
 
 
+class TestJudgeIsARole(unittest.TestCase):
+    """The judge must not be the maker. The composer therefore does not judge at all:
+    it writes a BRIEF stating what a judge must see, and refuses to call the slot a
+    pass until an independent verdict comes back."""
+
+    def brief(self, tmp, checklist=("no text in the art",), mode="style"):
+        f = compose.judge_request(tmp, "art", 0, "/ref.png", "/out.png",
+                                  list(checklist), mode, roll=1)
+        return json.loads(pathlib.Path(f).read_text())
+
+    def test_the_brief_carries_the_artifact_reference_and_checklist(self):
+        with tempfile.TemporaryDirectory() as t:
+            b = self.brief(t)
+            self.assertEqual(b["artifact"], "/out.png")
+            self.assertEqual(b["reference"], "/ref.png")
+            self.assertEqual(b["checklist"], ["no text in the art"])
+
+    def test_the_brief_withholds_the_plan(self):
+        """If the brief carried the beats or the compiled prompt, the judge would be
+        reading intent instead of pixels, which is the exact failure the rule exists
+        for: a maker shown its own reasoning defends it."""
+        with tempfile.TemporaryDirectory() as t:
+            b = self.brief(t)
+            for leak in ("prompt", "beats", "scene", "plan", "intent", "composition"):
+                self.assertNotIn(leak, b, f"the brief leaks '{leak}' to the judge")
+
+    def test_mode_distinguishes_identity_from_style(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(self.brief(t, mode="identity")["mode"], "identity")
+            self.assertEqual(self.brief(t, mode="style")["mode"], "style")
+
+    def test_absent_verdict_is_not_a_pass(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertIsNone(compose.verdict_for(t, "art", 0))
+
+    def test_unparseable_verdict_fails_closed(self):
+        """A gate whose answer you cannot read is not a gate."""
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t) / "verdicts"; d.mkdir()
+            (d / "art-0.json").write_text("{not json")
+            self.assertIsNone(compose.verdict_for(t, "art", 0))
+
+    def test_a_verdict_of_an_unknown_word_fails_closed(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t) / "verdicts"; d.mkdir()
+            (d / "art-0.json").write_text(json.dumps({"verdict": "probably fine"}))
+            self.assertIsNone(compose.verdict_for(t, "art", 0))
+
+    def test_a_real_verdict_is_read_back(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = pathlib.Path(t) / "verdicts"; d.mkdir()
+            (d / "art-0.json").write_text(json.dumps({"verdict": "PASS", "why": "clean"}))
+            self.assertEqual(compose.verdict_for(t, "art", 0)["verdict"], "PASS")
+
+    def test_no_api_key_is_consulted_anywhere(self):
+        """The judge role is filled by a subagent in the runtime that is already
+        composing. Requiring a key made the cheapest correct judge unreachable and
+        parked every slot as unjudgeable."""
+        src = pathlib.Path(compose.__file__).read_text()
+        self.assertNotIn("ANTHROPIC_API_KEY", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

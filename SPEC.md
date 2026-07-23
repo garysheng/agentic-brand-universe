@@ -590,6 +590,40 @@ shipped with one element deliberately missing its defining feature, because the 
 omission was intentional variety and read its own intent instead of the output; an observer with no
 access to the plan caught it instantly.
 
+**A subagent is the default judge (normative).** Independence is a property of *context*, not of
+vendor, process, or billing account. A fresh subagent dispatched inside the runtime that is already
+composing satisfies the rule completely: it never sees the plan, and that is the only thing the rule
+asks for. It also costs no second credential and no second provider.
+
+An implementation MUST therefore be able to fill the judge role without an API key. The composer
+itself MUST NOT judge; it emits, per slot, a **judging brief** naming exactly what a judge is shown:
+
+```jsonc
+{ "artifact": "<path>", "reference": "<path>", "mode": "identity" | "style",
+  "checklist": ["<invariant id>", "..."],
+  "withheld": "the plan, the beats, the compiled prompt, and the intent" }
+```
+
+The brief is what enforces the separation. Asking an agent to disregard what it already knows is not
+a control; handing a different agent a bounded brief is.
+
+- **`mode: identity`** judges against a character golden: *is this the same subject?*
+- **`mode: style`** judges against a style-pack anchor, whose SUBJECT is explicitly irrelevant: *is
+  this the same visual voice?* Asking the identity question of a characterless plate is nonsense, and
+  asking only the style question of a character lets a stranger through with matching linework.
+
+**The checklist comes from the contract, not from a bound entity.** It is this projection's `judged`
+invariants plus the resolved provider's quirk checks, unioned with a bound entity's itemized
+invariants only where one is actually bound. Sourcing it from an entity alone means a projection with
+no cast has no checkable rules, so its declared invariants are computed and then discarded. Found
+2026-07-23 by the first characterless *book*; every earlier characterless deliverable was a single
+plate with nothing to judge across.
+
+**An absent verdict is not a pass, and neither is an unreadable one.** A slot awaiting judgment is
+`NEEDS-JUDGMENT`, which is distinct from both PASS and DEFECT: the artifact exists and is sound, and
+one check has not run. Re-running MUST NOT regenerate it, because re-rolling something nobody has
+judged pays twice and discards the very artifact the judge was about to look at.
+
 **Failure model: park the slot, finish the composition, report.** When a slot exhausts its re-rolls,
 it is marked DEFECT, the remaining slots continue, and the artifact emits as incomplete with a precise
 per-slot report. A human then repairs one slot rather than re-running a book. This requires **durable
