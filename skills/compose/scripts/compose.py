@@ -200,37 +200,48 @@ def _run_slot(unit, proj, comp, work):
     reference = goldens[0] if goldens else refs[0]
 
     roll = int((spec_state(work, sid, idx) or {}).get("roll", 0))
-    while roll < max_rolls:
-        # A slot already generated and awaiting a verdict must NEVER be regenerated:
-        # re-rolling something nobody has judged yet pays twice and discards the
-        # artifact the judge was about to look at.
-        if not os.path.exists(out) or roll == 0:
-            roll += 1
-            ok, detail = generate(prompt, refs, out, size)
-            if not ok:
-                return "DEFECT", f"generation failed: {detail}", roll, roll
-        if not checklist:
-            return "PASS", out, roll                      # nothing judged is declared
 
+    # ORDER MATTERS, and getting it wrong throws away work you already paid for.
+    #
+    # A VERDICT IS READ BEFORE THE ROLL BUDGET IS CONSULTED. A slot that has spent its
+    # last roll still has an artifact on disk and may well have a PASSING verdict
+    # waiting; declaring it exhausted without reading that verdict discards a good
+    # plate and reports a defect that does not exist. This is the same failure as
+    # resume logic that restores defects: the bookkeeping outranking the result.
+    if not checklist:
+        if os.path.exists(out):
+            return "PASS", out, roll                       # nothing judged is declared
+    else:
         v = verdict_for(work, sid, idx)
-        if v is None:
+        if v and os.path.exists(out):
+            if v["verdict"] == "PASS":
+                return "PASS", out, roll
+            print(f"      roll {roll}/{max_rolls} DEFECT: {str(v.get('why',''))[:110]}")
+            clear_verdict(work, sid, idx)                  # the next roll needs a fresh look
+            if roll >= max_rolls:
+                return ("DEFECT",
+                        f"exhausted {max_rolls} rolls against its judged invariants", roll)
+        elif os.path.exists(out) and roll > 0:
+            # generated, nobody has judged it. Never regenerate: re-rolling something
+            # unjudged pays twice and discards the artifact the judge was about to see.
             brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
             return "NEEDS-JUDGMENT", (f"awaiting an independent judge; brief at {brief}. "
                                       f"Dispatch a fresh judge with the brief ALONE, write "
                                       f"the verdict to {work}/verdicts/{sid}-{idx}.json, re-run."), roll
-        if v["verdict"] == "PASS":
-            return "PASS", out, roll
-        print(f"      roll {roll}/{max_rolls} DEFECT: {str(v.get('why',''))[:110]}")
-        clear_verdict(work, sid, idx)                     # the next roll needs a fresh look
-        if roll >= max_rolls:
-            break
-        roll += 1
-        ok, detail = generate(prompt, refs, out, size)
-        if not ok:
-            return "DEFECT", f"generation failed: {detail}", roll
-        brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
-        return "NEEDS-JUDGMENT", (f"re-rolled after a DEFECT verdict; brief at {brief}"), roll
-    return "DEFECT", f"exhausted {max_rolls} rolls against its judged invariants", roll
+
+    if roll >= max_rolls:
+        return "DEFECT", f"exhausted {max_rolls} rolls against its judged invariants", roll
+
+    roll += 1
+    ok, detail = generate(prompt, refs, out, size)
+    if not ok:
+        return "DEFECT", f"generation failed: {detail}", roll
+    if not checklist:
+        return "PASS", out, roll
+    brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
+    return "NEEDS-JUDGMENT", (f"generated roll {roll}; brief at {brief}. Dispatch a fresh "
+                              f"judge with the brief ALONE and write the verdict to "
+                              f"{work}/verdicts/{sid}-{idx}.json, then re-run."), roll
 
 SKILLS = pathlib.Path(__file__).resolve().parents[2]
 GEN_SCRIPT = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")

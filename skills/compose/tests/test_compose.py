@@ -258,5 +258,44 @@ class TestRollAccounting(unittest.TestCase):
         self.assertEqual(st, "DEFECT")
 
 
+class TestExhaustionNeverDiscardsAPass(unittest.TestCase):
+    """A slot that has spent its last roll still has an artifact on disk and may have a
+    PASSING verdict waiting. Declaring it exhausted before reading that verdict throws
+    away a good result and reports a defect that does not exist.
+
+    This actually happened: a plate passed all eight of its items and was reported
+    DEFECT because the roll budget was consulted first. It is the same failure as resume
+    logic that restores defects, the bookkeeping outranking the result."""
+
+    def setup_slot(self, tmp, verdict, roll):
+        work = pathlib.Path(tmp)
+        (work / "state").mkdir(parents=True)
+        (work / "verdicts").mkdir()
+        (work / "state" / "art-0.json").write_text(json.dumps({"roll": roll}))
+        (work / "verdicts" / "art-0.json").write_text(json.dumps({"verdict": verdict}))
+        (work / "art-0.png").write_bytes(b"\x89PNG")
+        return str(work)
+
+    def test_a_pass_at_max_rolls_is_still_a_pass(self):
+        with tempfile.TemporaryDirectory() as t:
+            work = self.setup_slot(t, "PASS", roll=3)
+            self.assertEqual(compose.verdict_for(work, "art", 0)["verdict"], "PASS")
+            # the state file says the budget is spent; the verdict must still win
+            self.assertEqual(json.loads(
+                (pathlib.Path(work) / "state" / "art-0.json").read_text())["roll"], 3)
+
+    def test_a_defect_at_max_rolls_is_exhaustion(self):
+        with tempfile.TemporaryDirectory() as t:
+            work = self.setup_slot(t, "DEFECT", roll=3)
+            self.assertEqual(compose.verdict_for(work, "art", 0)["verdict"], "DEFECT")
+
+    def test_clearing_a_verdict_leaves_no_stale_pass_behind(self):
+        """A cleared verdict must read as absent, not as the previous answer."""
+        with tempfile.TemporaryDirectory() as t:
+            work = self.setup_slot(t, "PASS", roll=1)
+            compose.clear_verdict(work, "art", 0)
+            self.assertIsNone(compose.verdict_for(work, "art", 0))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
