@@ -523,6 +523,13 @@ agentic-versus-not, it is **generative versus adjudicating**. Every invariant is
 - **`judged`** — requires a model to look (no text anywhere in the image, hands non-anatomical, the
   digit count, character identity across spreads).
 
+**A `judged` check is a ROLE, not a service, and inside the composer it is free.** The load-bearing
+property is that the judge has not seen the plan, which is a fact about context rather than about
+transport. In the runtime the composer already has model access, so a verification step scoped to
+golden plus slot plus checklist is simply another turn. Treating the judge as an external service to
+call is a modelling error: it invents a dependency the runtime does not have, and it makes
+verification look like something bolted on rather than something an agent does by default.
+
 A projection's token cost is approximately its count of `judged` invariants times its slots, which is
 a useful thing to be able to read off a contract before running it.
 

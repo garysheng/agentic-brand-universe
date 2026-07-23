@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-The judged-invariant runner (SPEC 4.10).
+ONE implementation of the judge-slot role (SPEC 4.10), for judging OUT OF BAND.
+
+Prefer the role over this script. Inside a composer the judge is simply another
+turn with a scoped context, which costs nothing extra and needs no key. This file
+exists for the case where you are verifying outside any agent runtime.
 
 Evaluates ONE slot against an entity's itemized invariants, in a FRESH context that
 is given the golden, the slot, and the checklist, and NEVER the plan that produced
