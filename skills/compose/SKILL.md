@@ -30,10 +30,29 @@ the artifact emits INCOMPLETE with a per-slot report. Exit code 1. One defect co
 only PASS and SKIP resume; a defective slot is always re-attempted. Repair the composition, re-run,
 and pay only for the slot you fixed.
 
+**The full slot loop.** A generated slot runs compile, generate, judge, repair. The compiler
+assembles the prompt and ref list from the style pack and the locked goldens, so nothing load-bearing
+is retyped. Locked masters are passed LAST, so identity rides on top of style. A judged DEFECT
+re-rolls that slot up to `maxRolls`.
+
+**UNJUDGED is not a pass.** When a slot carries judged invariants and no independent judge can be
+reached, the slot is recorded UNJUDGED and the artifact emits incomplete. A gate you cannot run is not
+a gate, and silently promoting an unverified slot to PASS is the exact failure the gate exists to
+prevent. Inside a composer that has model access this never arises, because judging is another turn.
+
+## Slot states
+
+| State | Meaning |
+|---|---|
+| PASS | produced and, where required, judged clean |
+| SKIP | nothing to do for this slot in this run |
+| DEFECT | failed its gate, or exhausted its rolls. Parked; the run continues |
+| UNJUDGED | produced, but its judged invariants could not be checked. Not a pass |
+
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
 | 0 | every slot passed |
-| 1 | emitted incomplete; defective slots listed |
+| 1 | emitted incomplete; defective or unjudged slots listed |
 | 2 | refused at plan time; nothing was generated |

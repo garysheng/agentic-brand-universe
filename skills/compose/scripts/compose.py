@@ -78,9 +78,75 @@ def run_slot(unit, proj, comp, work):
         if r.returncode != 0:
             return "DEFECT", (r.stdout + r.stderr).strip().splitlines()[-1][:200]
         return "PASS", out
-    return "SKIP", "generated slot: art supplied by the composition in this run"
+    # generated slot: compile -> generate -> judge -> repair, per SPEC 4.10
+    if spec.get("art"):                                   # art supplied by the composition
+        return "PASS", spec["art"]
+    pack_ref = comp.get("bind", {}).get("style-pack")
+    if not pack_ref:
+        return "DEFECT", "generated slot needs a style-pack binding"
+    pack = load_pack(comp["universe"], pack_ref)
+    goldens = comp.get("goldens", [])
+    prompt, refs, qa = compile_slot(proj, comp, sid, spec.get("scene", ""), pack, goldens)
+    size = spec.get("size", "1024x1024")
+    max_rolls = proj.get("maxRolls", 3)
+    for roll in range(1, max_rolls + 1):
+        ok, detail = generate(prompt, refs, out, size)
+        if not ok:
+            return "DEFECT", f"generation failed: {detail}"
+        if not qa:
+            return "PASS", out
+        verdict, why = judge(goldens[0] if goldens else refs[0], out,
+                             comp.get("invariantsFile", ""))
+        if verdict == "PASS":
+            return "PASS", out
+        if verdict == "UNJUDGED":
+            return "UNJUDGED", why                        # fails closed, never silently PASS
+        print(f"      roll {roll}/{max_rolls} DEFECT: {why[:110]}")
+    return "DEFECT", f"exhausted {max_rolls} rolls against its judged invariants"
 
 SKILLS = pathlib.Path(__file__).resolve().parents[2]
+GEN_SCRIPT = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")
+
+def load_pack(root, pack_ref):
+    """A style pack is the look, as data. Resolve it and its refs to real paths."""
+    base = pathlib.Path(root) / pack_ref
+    pack = json.loads((base / "pack.json").read_text())
+    pack["_dir"] = base
+    return pack
+
+def compile_slot(proj, comp, slot_id, scene, pack, goldens):
+    """Deterministic: nothing load-bearing is retyped, it is assembled from canon."""
+    neg = ", ".join("no " + p for p in pack.get("rejectedPoles", []))
+    prompt = (f"Create a NEW illustration in EXACTLY the visual style of the reference images. "
+              f"STRICT STYLE: {pack['styleLine']}. "
+              f"Subject: {scene}. "
+              f"{neg}. ABSOLUTELY NO text, no letters, no numbers.")
+    refs = [str(pack["_dir"] / pack["anchor"])]
+    for r in pack.get("refs", [])[1:3]:
+        refs.append(str(pack["_dir"] / r))
+    refs += goldens                      # locked masters LAST, so identity rides on top
+    qa = [i["id"] for i in proj["invariants"]["perSlot"] if i["check"] == "judged"]
+    return prompt, refs, qa
+
+def generate(prompt, refs, out, size):
+    cmd = [GEN_SCRIPT, "--prompt", prompt, "--filename", out, "--size", size,
+           "--quality", "high", "--no-open"]
+    for r in refs: cmd += ["--input-image", r]
+    r = subprocess.run(["uv", "run"] + cmd, capture_output=True, text=True)
+    return r.returncode == 0, (r.stdout + r.stderr).strip().splitlines()[-1][:160] if r.returncode else out
+
+def judge(golden, slot_png, invariants_file):
+    """A judged check is a ROLE. Here it is filled out-of-band. With no way to run it,
+    the slot is UNJUDGED, which is NOT a pass: the gate fails closed."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return "UNJUDGED", "no independent judge available; a gate you cannot run is not a pass"
+    r = subprocess.run(["uv", "run", "--with", "anthropic", sys.executable,
+                        str(SKILLS / "judge-slot/scripts/judge.py"),
+                        "--golden", golden, "--slot", slot_png, "--invariants", invariants_file],
+                       capture_output=True, text=True)
+    return ("PASS", "all declared invariants held") if r.returncode == 0 else ("DEFECT", r.stdout.strip()[-300:])
+
+
 
 def main():
     comp = json.load(open(sys.argv[1]))
@@ -117,7 +183,7 @@ def main():
         print(f"  {u['slot']}-{u['index']}: {status}  {detail if status!='PASS' else ''}")
         results.append(rec)                               # park and CONTINUE, never halt
 
-    defects = [r for r in results if r["status"] == "DEFECT"]
+    defects = [r for r in results if r["status"] not in ("PASS", "SKIP")]
     print(f"\n{len(results)-len(defects)}/{len(results)} slots passed")
     if defects:
         print("artifact emitted INCOMPLETE. Repair these slots and re-run; passing slots resume free:")
