@@ -112,7 +112,7 @@ def _run_slot(unit, proj, comp, work):
         return "DEFECT", (f"slot '{sid}' binds pack '{pack['id']}' which rejects characters, "
                           f"but was handed {len(goldens)} character golden(s). Registers disagree.")
     scene = spec.get("scene", "")
-    if comp.get("beats") and sid == "spread" and idx < len(comp["beats"]):
+    if comp.get("beats") and sid in ("spread", "art") and idx < len(comp["beats"]):
         scene = comp["beats"][idx]                       # one beat per repeated slot
     if comp.get("plateScenes") and sid == "plate" and idx < len(comp["plateScenes"]):
         scene = comp["plateScenes"][idx]

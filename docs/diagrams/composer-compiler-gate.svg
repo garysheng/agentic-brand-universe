@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 292" role="img" width="900" height="292">
+<title>The composer plans, the compiler assembles deterministically, and the gate adjudicates. Only the first is open-ended.</title>
+<style>
+  .bg{fill:#f7f4ed} .ink{fill:#1a1a17} .mute{fill:#6b6862} .clay{fill:#cc785c}
+  .row,.card{fill:#ece7dc;stroke:#e6dfd1;stroke-width:2}
+  .you{fill:#6b6862} .ant{fill:#cc785c} .markfill{fill:#f7f4ed}
+  .on{fill:#cc785c} .off{fill:none;stroke:#d9d2c4;stroke-width:2}
+  .rule{stroke:#e6dfd1;stroke-width:2;stroke-linecap:round}
+  .onclay{fill:#f7f4ed}
+  .chip{font:600 12.5px system-ui,-apple-system,sans-serif;letter-spacing:.06em;fill:#f7f4ed}
+  .h{font:600 11.5px system-ui,-apple-system,sans-serif;letter-spacing:.13em}
+  .n{font:600 15px system-ui,-apple-system,sans-serif} .s{font:12.5px system-ui,-apple-system,sans-serif} .t{font:15px system-ui,-apple-system,sans-serif}
+  .k{font:600 26px Georgia,serif} .b{font:600 13px system-ui,-apple-system,sans-serif;letter-spacing:.06em}
+  @media (prefers-color-scheme: dark){
+    .bg{fill:#141312} .ink{fill:#f0ede8} .mute{fill:#9a948c}
+    .row,.card{fill:#1e1c1a;stroke:#2f2c28}
+    .you{fill:#5d5a55} .ant,.on{fill:#e08a5f} .off{stroke:#2f2c28}
+    .rule{stroke:#2f2c28} .markfill,.chip,.onclay{fill:#141312}
+    .clay{fill:#e08a5f}
+  }
+</style>
+<rect class="bg" width="900" height="292" rx="10"/>
+<text class="h mute" x="34" y="32">ONE RENDER STEP, THREE DIFFERENT NATURES</text>
+<rect class="ant" x="28" y="58" width="844" height="54" rx="8"/>
+<text class="n onclay" x="48" y="81">COMPOSER</text>
+<text class="s onclay" x="48" y="100">what should exist? plans slots, order, and which goldens each needs</text>
+<text class="b onclay" x="844" y="90" text-anchor="end">GENERATIVE</text>
+<rect class="row" x="28" y="120" width="844" height="54" rx="8"/>
+<text class="n ink" x="48" y="143">COMPILER</text>
+<text class="s mute" x="48" y="162">what exactly do I send? one slot to an exact prompt and ref list</text>
+<text class="b mute" x="844" y="152" text-anchor="end">DETERMINISTIC</text>
+<rect class="row" x="28" y="182" width="844" height="54" rx="8"/>
+<text class="n ink" x="48" y="205">GATE</text>
+<text class="s mute" x="48" y="224">does this satisfy the stated rule? re-rolls the slot, never the artifact</text>
+<text class="b mute" x="844" y="214" text-anchor="end">ADJUDICATING</text>
+<text class="s mute" x="28" y="270">Collapsing these gives a rigid template engine (no composer) or an unaccountable one (no gate).</text>
+</svg>

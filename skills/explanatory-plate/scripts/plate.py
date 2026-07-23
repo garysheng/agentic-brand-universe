@@ -113,7 +113,22 @@ def split(spec, out, y):
             out.append(f'<text class="s mute" x="{x+24}" y="{y+spec.get("h",320)-22}">{esc(panel["foot"])}</text>')
     return y + spec.get("h", 320)
 
-PRIMITIVES = {"rows": rows, "dotgrid": dotgrid, "split": split}
+
+def stack(spec, out, y):
+    """A labelled layer stack, optionally with one layer emphasised."""
+    out.append(f'<text class="h mute" x="34" y="{y}">{esc(spec["eyebrow"])}</text>')
+    y += 26
+    for row in spec["layers"]:
+        hot = row.get("accent")
+        out.append(f'<rect class="{"ant" if hot else "row"}" x="28" y="{y}" width="844" height="54" rx="8"/>')
+        out.append(f'<text class="n {"onclay" if hot else "ink"}" x="48" y="{y+23}">{esc(row["name"])}</text>')
+        out.append(f'<text class="s {"onclay" if hot else "mute"}" x="48" y="{y+42}">{esc(row["sub"])}</text>')
+        if row.get("tag"):
+            out.append(f'<text class="b {"onclay" if hot else "mute"}" x="844" y="{y+32}" text-anchor="end">{esc(row["tag"])}</text>')
+        y += 62
+    return y
+
+PRIMITIVES = {"stack": stack, "rows": rows, "dotgrid": dotgrid, "split": split}
 
 # --- emit ----------------------------------------------------------------------
 def style(dark):

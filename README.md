@@ -7,24 +7,31 @@ rendered from.
 > *A deliverable is a query over an evolving canon, rendered into a medium, held to craft and to human
 > taste.*
 
-- **The spec:** [`SPEC.md`](./SPEC.md) — the cartridge architecture (five layers, primitives, invariants).
+- **The spec:** [`SPEC.md`](./SPEC.md) — the cartridge architecture (six layers, primitives, invariants).
+- **The architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — how the layers fit, what the
+  linter checks, and why the runtime is Managed Agents. Diagrams included, all machine-emitted.
 - **The engine spec:** [`BRAND-OS-SPEC.md`](./BRAND-OS-SPEC.md) — the Agentic Brand OS (the console/runtime that loads a cartridge and generates on-brand deliverables). **v0.1, early draft.**
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
-- **Reference implementation:** the Nation of Fire universe (~15 illustrated books over one shared
-  canon). The standard is the act of naming the system those books already use. An **Agentic Story**
-  is one projection of a universe — the picture-book / comic deliverable.
+- **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
+  canon), and [`hyperagentic-age`](https://github.com/garysheng/hyperagentic-age), a public universe
+  declaring eight projections across image, text, and audio.
 
-## The five layers
+## The six layers
 
 1. **Canon** — the living universe: typed entities + relations, git-versioned (evolvable).
-2. **Refs** — load-bearing resolver: every entity resolves to a real asset or the build fails.
-3. **Story spec** — a medium-neutral composition: selects canon + beats + spine + provenance.
-4. **Renderer** — projects canon + composition into a medium (picture-book first).
-5. **Quality** — taste gates × craft-canon × provenance, wired as steps, not memory.
+2. **Goldens** — locked reference assets: the visual answer of record, passed rather than described.
+3. **Projection** — the typed contract for a KIND of deliverable (surface, requires, slots, invariants).
+4. **Composition** — ONE instance of a projection, binding actual canon ids to its requirements.
+5. **Composer** — the agentic layer: plans, compiles, generates, and repairs, answering to a gate.
+6. **Quality** — taste gates × craft-canon × provenance, wired as steps, not memory.
+
+Layers 3 and 4 arrived in v0.6 and are what let the standard express a flyer, a diagram, or a
+thank-you card rather than only a story. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## Status
 
-- **Spec v0.5** ([`SPEC.md`](./SPEC.md)) — backtested against the real 24-property roster.
+- **Spec v0.6** ([`SPEC.md`](./SPEC.md)) — the projection release. Backtested against the 24-property
+  roster, then re-proven against eight deliberately unlike deliverables.
 - **Engine v0** ([`engine/`](./engine/)) — RUNNING: typed canon store + model validation + the
   load-bearing reference gate, stdlib only, 11 tests green (against a self-contained fixture, no
   content-repo dependency).

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 416" role="img" width="900" height="416">
+<title>The six layers of a brand universe: canon is what is true, goldens are what it looks like once locked, a projection is a kind of thing you can make, a composition is one of them, and the composer is the agent that makes it and answers to a gate.</title>
+<style>
+  .bg{fill:#f7f4ed} .ink{fill:#1a1a17} .mute{fill:#6b6862} .clay{fill:#cc785c}
+  .row,.card{fill:#ece7dc;stroke:#e6dfd1;stroke-width:2}
+  .you{fill:#6b6862} .ant{fill:#cc785c} .markfill{fill:#f7f4ed}
+  .on{fill:#cc785c} .off{fill:none;stroke:#d9d2c4;stroke-width:2}
+  .rule{stroke:#e6dfd1;stroke-width:2;stroke-linecap:round}
+  .onclay{fill:#f7f4ed}
+  .chip{font:600 12.5px system-ui,-apple-system,sans-serif;letter-spacing:.06em;fill:#f7f4ed}
+  .h{font:600 11.5px system-ui,-apple-system,sans-serif;letter-spacing:.13em}
+  .n{font:600 15px system-ui,-apple-system,sans-serif} .s{font:12.5px system-ui,-apple-system,sans-serif} .t{font:15px system-ui,-apple-system,sans-serif}
+  .k{font:600 26px Georgia,serif} .b{font:600 13px system-ui,-apple-system,sans-serif;letter-spacing:.06em}
+  @media (prefers-color-scheme: dark){
+    .bg{fill:#141312} .ink{fill:#f0ede8} .mute{fill:#9a948c}
+    .row,.card{fill:#1e1c1a;stroke:#2f2c28}
+    .you{fill:#5d5a55} .ant,.on{fill:#e08a5f} .off{stroke:#2f2c28}
+    .rule{stroke:#2f2c28} .markfill,.chip,.onclay{fill:#141312}
+    .clay{fill:#e08a5f}
+  }
+</style>
+<rect class="bg" width="900" height="416" rx="10"/>
+<text class="h mute" x="34" y="32">READ IT BOTTOM UP AS A SENTENCE</text>
+<rect class="ant" x="28" y="58" width="844" height="54" rx="8"/>
+<text class="n onclay" x="48" y="81">COMPOSER</text>
+<text class="s onclay" x="48" y="100">the agent that plans, compiles, generates, and repairs</text>
+<text class="b onclay" x="844" y="90" text-anchor="end">AGENTIC</text>
+<rect class="row" x="28" y="120" width="844" height="54" rx="8"/>
+<text class="n ink" x="48" y="143">COMPOSITION</text>
+<text class="s mute" x="48" y="162">ONE instance: this book, this flyer, this card</text>
+<rect class="row" x="28" y="182" width="844" height="54" rx="8"/>
+<text class="n ink" x="48" y="205">PROJECTION</text>
+<text class="s mute" x="48" y="224">the typed contract for a KIND of deliverable</text>
+<rect class="row" x="28" y="244" width="844" height="54" rx="8"/>
+<text class="n ink" x="48" y="267">GOLDENS</text>
+<text class="s mute" x="48" y="286">locked assets; the visual answer of record</text>
+<rect class="row" x="28" y="306" width="844" height="54" rx="8"/>
+<text class="n ink" x="48" y="329">CANON</text>
+<text class="s mute" x="48" y="348">typed entities and relations, git-versioned</text>
+<text class="s mute" x="28" y="394">Quality cross-cuts all of it: taste gates, craft canon, and read-back.</text>
+</svg>
