@@ -6,6 +6,14 @@
 # leaves the two out of sync with nothing to notice it: `explanatory-plate` lived
 # in this repo for hours while the plugin had never heard of it. Assume nothing;
 # diff at the end and fail loudly.
+#
+# COPYING IS NOT DELIVERING. This script once printed "in sync: 23 skills, scripts
+# verified" for an entire day while every `agenticstory:*` invocation ran the previous
+# morning's code, because the files had been copied into the marketplace repo and never
+# committed or pushed, and the INSTALLED plugin is a separate clone of that remote. The
+# check was true and useless. So the copy check now runs to the end of the chain:
+#   source repo  ->  marketplace repo  ->  git remote  ->  installed plugin cache
+# and anything short of the remote is reported as STALE.
 set -uo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)/skills"
 DST="$HOME/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/skills"
@@ -30,3 +38,44 @@ for d in "$SRC"/*/; do
 done
 
 echo "in sync: $(ls "$SRC" | wc -l | tr -d ' ') skills, scripts verified"
+
+# --- delivery, not just copying -------------------------------------------------
+PLUGIN_REPO="$(dirname "$(dirname "$DST")")"          # .../plugins/agenticstory -> repo root
+cd "$PLUGIN_REPO" || exit 1
+dirty=$(git status --porcelain | wc -l | tr -d ' ')
+ahead=$(git log --oneline @{u}..HEAD 2>/dev/null | wc -l | tr -d ' ')
+
+if [ "$dirty" != "0" ] || [ "$ahead" != "0" ]; then
+  echo
+  echo "STALE: the files match, but they have NOT been delivered."
+  [ "$dirty" != "0" ] && echo "  $dirty uncommitted file(s) in $PLUGIN_REPO"
+  [ "$ahead" != "0" ] && echo "  $ahead commit(s) not pushed to the remote"
+  echo "  The installed plugin is a clone of the REMOTE, so until this is pushed every"
+  echo "  agenticstory:* invocation runs the old code. Commit and push, then run"
+  echo "  /plugin update in Claude Code to refresh the installed copy."
+  exit 1
+fi
+
+# The installed cache is the thing users actually invoke. Compare it directly.
+# The cache lives under a VERSIONED hash directory, not directly under the plugin name.
+# The first version of this check hardcoded the wrong path, found nothing, and cheerfully
+# reported "nothing to compare" about a cache that was in fact stale. A check that cannot
+# find its target must say so loudly, never pass.
+CACHE=$(ls -d "$HOME"/.claude/plugins/cache/garysheng/agenticstory/*/skills 2>/dev/null | head -1)
+if [ -n "$CACHE" ] && [ -d "$CACHE" ]; then
+  if diff -rq --exclude='__pycache__' --exclude='*.pyc' "$SRC" "$CACHE" >/dev/null 2>&1; then
+    echo "installed plugin matches source"
+  else
+    echo
+    echo "INSTALLED PLUGIN IS STALE: $CACHE differs from source."
+    echo "  Pushed, but the local cache has not refreshed. Run /plugin update in Claude Code."
+    exit 1
+  fi
+else
+  echo
+  echo "CANNOT VERIFY: no installed plugin cache found under"
+  echo "  ~/.claude/plugins/cache/garysheng/agenticstory/*/skills"
+  echo "  Either the plugin is not installed, or the layout moved. Do not assume it is"
+  echo "  current: an unverifiable check is not a passing one."
+  exit 1
+fi
