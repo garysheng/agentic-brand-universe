@@ -58,7 +58,20 @@ def state_path(work, sid, idx):
     return pathlib.Path(work) / "state" / f"{sid}-{idx}.json"
 
 def run_slot(unit, proj, comp, work):
-    """Execute ONE slot. Returns (status, detail). Never raises past the caller."""
+    """Execute ONE slot. Returns (status, detail). NEVER raises.
+
+    The contract is enforced here rather than relying on the caller to box it. A
+    function that promises not to raise and relies on someone else's try/except is
+    lying to every other caller, and this exact gap was found by a test asserting
+    the promise directly.
+    """
+    try:
+        return _run_slot(unit, proj, comp, work)
+    except Exception as ex:
+        return "DEFECT", f"{type(ex).__name__}: {ex}"
+
+
+def _run_slot(unit, proj, comp, work):
     sid, idx = unit["slot"], unit["index"]
     spec = comp["slots"].get(sid)
     if spec is None:
@@ -101,6 +114,8 @@ def run_slot(unit, proj, comp, work):
     scene = spec.get("scene", "")
     if comp.get("beats") and sid == "spread" and idx < len(comp["beats"]):
         scene = comp["beats"][idx]                       # one beat per repeated slot
+    if comp.get("plateScenes") and sid == "plate" and idx < len(comp["plateScenes"]):
+        scene = comp["plateScenes"][idx]
     if not scene:
         return "DEFECT", "no scene for this slot"
     if comp.get("_lock") and goldens:                    # only where a character is actually bound
