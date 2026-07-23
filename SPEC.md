@@ -426,6 +426,21 @@ a matter of taste**: a meme has zero cross-slot invariants, a share card has zer
 (brand consistency), a storybook has the hardest one there is. Complexity is cross-slot invariant
 count, and a projection declares its own.
 
+**A cross-slot invariant is ITEMIZED and checked against the golden, never pairwise.** Two failures,
+both found 2026-07-23 by generating three spreads of a locked character and inspecting them:
+
+- *Itemized.* A projection that declares one invariant reading "character identity holds across every
+  spread" throws away all its resolution. The entity carried twelve specific invariants; ten held and
+  one (`translucent-holographic-digital-being`) failed in every spread, rendering as opaque felt
+  instead of a hologram. A judge asked "is this the same character?" says yes and ships it. A judge
+  asked about each declared invariant catches it. **The cross-slot rule therefore names the entity's
+  invariant list as its checklist and is evaluated per item per slot**, rather than as one holistic
+  question.
+- *Against the golden, never pairwise.* All three spreads drifted the SAME way, because each
+  inherited the same drift in the master-to-generation step. A spread-to-spread consistency check
+  finds them perfectly consistent with one another and uniformly wrong. **Consistency is not
+  fidelity.** Every slot is judged against the locked golden.
+
 **Slots are heterogeneous.** A slot is `deterministic` (emitted by code, e.g. an SVG layout) or
 `generated` (a model produces it). A share card is one projection containing both: a deterministic
 text panel beside a generated art panel. The pre-v0.6 "renderer" concept could not express this at
