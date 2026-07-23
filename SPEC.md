@@ -1,9 +1,31 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.5 — 2026-07-18.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.6 — 2026-07-23.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
-Reference implementation: the Nation of Fire universe.
+Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
+documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.6 changelog — the projection release.** The spec claimed (§3.3) that a composition was
+> "medium-neutral" while the primitive (§4.3) *required* `logline`, `spine`, `refrain`, and `beats`.
+> A flyer has no beats; a meme has no refrain. So the standard could only actually express STORIES,
+> which is why a brand framework kept reading as a storybook tool no matter how it was described.
+> The fix names the missing layer:
+> - **§4.8 Projection** — a typed contract for a KIND of deliverable (storybook, flyer, meme, share
+>   card, explanatory plate, slide deck), with `surface` / `requires` / `slots` / `generators` /
+>   `invariants` / `emits`. Adding a new kind of deliverable is now filling in a contract, not
+>   inventing a renderer.
+> - **§4.9 Composition** — one INSTANCE of a projection. Narrative fields move out of the generic
+>   primitive into the storybook projection's slot schema, where they always belonged. `Story Spec`
+>   is retained as an alias so existing universes validate unchanged.
+> - **§4.10 The Composer** — the render step splits into three parts with genuinely different
+>   natures: an *agentic* composer that PLANS, a *deterministic* compiler (§4.6) that turns one
+>   planned slot into an exact prompt, and a *verifying* gate that re-rolls the slot on defect.
+>   This is the only layer where model intelligence belongs.
+> - **§14 Why this runtime is Managed Agents** — the composer is a long-running, multi-step,
+>   multi-modal loop holding state and secrets. That is not a preference, it is the workload.
+> - **Per-slot vs cross-slot invariants** (§4.8) make "simple deliverable" versus "complex
+>   deliverable" a property of the ontology rather than a vibe.
 
 > **v0.5 changelog:** **§4.6 Prompt compiler (the render step) + entity `render` block.** The
 > resolver asserted that refs *exist* (§4.4), but the load-bearing PROMPT was still hand-assembled by
@@ -37,8 +59,12 @@ Reference implementation: the Nation of Fire universe.
 > a universe ships *data*, the framework ships *skills*. Both were earned making the Nation of Fire
 > universe self-contained and auditing its skills for multi-universe reuse.
 
-> **Thesis, in one line:** *A deliverable is a query over an evolving canon, rendered into a medium,
-> held to craft and to human taste.*
+> **Thesis, in one line:** *A deliverable is a **projection** of an evolving canon: planned by an
+> agent, compiled deterministically, and held to craft and to human taste.*
+>
+> The four nouns are the whole standard. **Canon** is what is true. **Goldens** are what it looks
+> like, locked. A **projection** is a kind of thing you can make from them. The **composer** is the
+> agent that makes one, and is answerable to a gate.
 
 ---
 
@@ -86,21 +112,31 @@ taste is irreducible. (An **Agentic Story** — the picture-book / comic — is 
    against a schema, or prose in a known slot. Nothing load-bearing lives only in a human's head or an
    unparseable blob.
 
-## 3. The five layers
+## 3. The six layers
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  QUALITY        taste gates · craft-canon · provenance       │  (cross-cuts all)
+│  QUALITY      taste gates · craft-canon · read-back          │  (cross-cuts all)
 ├─────────────────────────────────────────────────────────────┤
-│  RENDERER       canon+story → a medium (picture-book first)  │
+│  COMPOSER     agentic: plan → compile → generate → gate      │  §4.10
 ├─────────────────────────────────────────────────────────────┤
-│  STORY SPEC     a composition: selects canon + beats + spine │
+│  COMPOSITION  ONE instance: this book, this flyer, this meme │  §4.9
 ├─────────────────────────────────────────────────────────────┤
-│  REFS           load-bearing resolver: entity → real asset   │
+│  PROJECTION   the typed contract for a KIND of deliverable   │  §4.8
 ├─────────────────────────────────────────────────────────────┤
-│  CANON          typed entities + relations; git-versioned    │
+│  GOLDENS      load-bearing resolver: entity → real asset     │  §4.4
+├─────────────────────────────────────────────────────────────┤
+│  CANON        typed entities + relations; git-versioned      │  §4.1
 └─────────────────────────────────────────────────────────────┘
 ```
+
+Read it bottom-up as a sentence: *canon* is what is true, *goldens* are what it looks like once
+locked, a *projection* is a kind of thing you can make, a *composition* is one of them, and the
+*composer* is the agent that makes it and answers to the gate.
+
+The split that v0.6 introduces is between the middle two. **A projection is a type; a composition is
+an instance.** Conflating them is what made this standard storybook-shaped: the one primitive that
+existed carried a story's required fields, so every deliverable had to be a story to be expressible.
 
 ### 3.1 Canon (the universe)
 The living graph. **Entities** (characters, settings, doctrines, motifs, beats, props, groups) and
@@ -114,16 +150,21 @@ A resolver maps every entity to its real assets and **asserts** them before any 
 renamed, or unlocked → hard error. This is the layer that kills silent drift. (The Nation of Fire
 `resolve_gabr.py` + `gabr-index.json` are the v0 of this layer.)
 
-### 3.3 Story spec (a composition)
-A single work, medium-neutral. It **selects** canon entities to feature, declares a **beat sheet**
-(the running order) and a **spine** (the arc invariant it must satisfy), and names its **provenance**
-(what each beat traces to). It reads canon and, on completion, **writes back** (a new locked
-character, a new crossover, a new doctrine occurrence).
+### 3.3 Projection (a kind of deliverable)
+The typed contract for a KIND of artifact: what surface it occupies, which canon it requires before it
+may render, what slots it composes, which generators it invokes, and which invariants it is held to.
+A storybook, a flyer, a meme, a share card, an explanatory plate and a slide deck are six projections
+of the same canon. Defining a new one is filling in a contract (§4.8), not writing a renderer.
 
-### 3.4 Renderer (projection into a medium)
-Takes canon + a story spec and produces a medium artifact. The **picture-book renderer** is first and
-only (the existing `create-brand-os-picture-book` + `picture-book-platform` pipeline). A renderer
-declares which entity fields it consumes; adding a novel/script/comic renderer never edits canon.
+### 3.4 Composition (one instance) and the Composer (who makes it)
+A **composition** is one flyer, one book: it names its projection, selects the canon entities to
+feature, and fills the projection's slots. It reads canon and, on completion, **writes back** (a new
+locked character, a new crossover, a new doctrine occurrence).
+
+The **composer** (§4.10) is the agent that turns a composition into the artifact. It plans the slots
+and their order, calls the deterministic compiler (§4.6) per slot, invokes generators across
+modalities, and repairs against the gate. It never mutates canon; it emits medium output plus a
+`writesBack` proposal.
 
 ### 3.5 Quality (cross-cutting)
 Three wired mechanisms, applied at defined points:
@@ -242,10 +283,17 @@ every render — never left implicit inside the renderer.
 - `assert-spread(characters[], location?) → ok | non-zero exit listing what's missing`
 - **Invariant:** no renderer may generate a unit whose `assert` has not passed.
 
-### 4.5 Renderer interface
-A renderer declares `consumes` (which entity fields it reads) and `produces` (medium artifacts), and
-must call `assert-spread` before every unit. It never mutates canon; it only reads canon + story spec
-and emits medium output + a `writesBack` proposal for the author to accept.
+### 4.5 Renderer interface (superseded by §4.10; invariants retained)
+
+**v0.6:** what this section called a *renderer* is now the **composer** (§4.10), and a *story spec* is
+now a **composition** (§4.9). The rename matters because "renderer" implies a deterministic template
+engine, and the layer that plans a composition is not one. Three invariants from this section survive
+unchanged and remain normative for the composer:
+
+- It declares `consumes` (which entity fields it reads) and `produces` (medium artifacts).
+- It **must assert refs before every unit** (§4.4). No unit is generated whose `assert` has not passed.
+- It **never mutates canon.** It reads canon plus a composition and emits medium output plus a
+  `writesBack` proposal for the author to accept.
 
 ### 4.6 Prompt compiler (the render step)
 `assert-spread` guarantees the refs *exist*; it says nothing about the **prompt**. Left to a human or
@@ -319,6 +367,137 @@ them" — which has no recurring-identity requirement and therefore no need for 
   against the pixels, re-roll the specific failure. The finger-count defect is a gate concern, not a
   prompt concern — and an ink-line look whose hands are deliberately non-anatomical sidesteps it by
   construction.
+
+### 4.8 Projection (a KIND of deliverable)
+
+A **Projection** is a typed contract for a kind of artifact. It is the layer the standard was missing:
+`Story Spec` (§4.3) conflated *what kind of thing this is* with *this particular one*, and baked a
+story's required fields into the generic primitive, so only stories were expressible.
+
+A projection is a **distributable artifact**, not a config block: it carries an id, a semantic version,
+an author, and may `extend` another projection rather than copying it. The framework ships a starter
+set; it is explicitly **not a closed set**. The intended shape is a registry others publish into.
+
+```jsonc
+{
+  "id": "storybook", "version": "2.1.0",
+  "extends": null,                       // "storybook@2.0.0" to fork without copying
+  "author": "agenticbranduniverse.com/registry",
+
+  "surface": { "medium": "picture-book", "geometry": { "spreads": 24, "aspect": "2:3" } },
+
+  // BY KIND, never by id. A marketplace projection cannot know your canon.
+  "requires": [ { "kind": "character", "min": 1 }, { "kind": "setting", "min": 1 },
+                { "kind": "style-pack", "min": 1 } ],
+
+  "slots": [ { "id": "spread", "repeat": "$.spreads", "type": "generated",
+               "schema": { "beat": "string", "characters": "entity[]", "location": "entity" } },
+             { "id": "cover", "type": "generated" } ],
+
+  // capability, not provider. `pin` only where the model IS the look (see below).
+  "generators": [ { "for": "spread", "capability": "image", "accepts": "reference-images",
+                    "pin": null },
+                  { "for": "spread", "capability": "text" },
+                  { "for": "spread", "capability": "audio", "optional": true } ],
+
+  "invariants": {
+    "perSlot":   [ { "id": "no-text-in-art", "check": "judged" },
+                   { "id": "palette-only",   "check": "computed" } ],
+    "crossSlot": [ { "id": "character-identity", "check": "judged",
+                     "scope": "all slots binding the same character entity" } ]
+  },
+
+  "emits": [ "book-manifest.json", "spreads/*.webp", "narration/*.mp3" ]
+}
+```
+
+**`requires` names kinds; the composition binds ids.** This is the whole mechanism that lets a
+projection ship to a brand it has never seen. The projection says "I need at least one character";
+the composition says "the character is `jerry-man`".
+
+**Per-slot vs cross-slot invariants, and why it matters.** A per-slot invariant is checkable against
+one output in isolation ("this image contains no text"). A **cross-slot** invariant is only checkable
+across several ("the character on spread 19 is the same person as on spread 3"), and it is the
+expensive, hard class: it is what forces locked goldens, it is what the reference matrix (§12) exists
+to serve, and it cannot be satisfied by making each slot individually good.
+
+This makes "simple deliverable" versus "complex deliverable" a **property of the ontology rather than
+a matter of taste**: a meme has zero cross-slot invariants, a share card has zero, a flyer has one
+(brand consistency), a storybook has the hardest one there is. Complexity is cross-slot invariant
+count, and a projection declares its own.
+
+**Slots are heterogeneous.** A slot is `deterministic` (emitted by code, e.g. an SVG layout) or
+`generated` (a model produces it). A share card is one projection containing both: a deterministic
+text panel beside a generated art panel. The pre-v0.6 "renderer" concept could not express this at
+all, which is why composite deliverables kept being hand-assembled.
+
+**Generators declare a capability, with an optional pin.** Faithful reproduction does not come from
+pinning a provider, because generative output is stochastic regardless (§4.6, determinism ceiling). It
+comes from three other places: the **goldens** (pass the same locked reference, get the same
+character), the **gate** (verify and re-roll, which is what converts stochastic output into reliably
+correct output), and recorded **provenance**. So a slot declares what it needs and the runtime binds a
+provider, EXCEPT where the model itself is the aesthetic. Where a locked golden carries the look, any
+competent provider works. Where there is no golden and the model's own hand is the register (a fresh
+ink-line illustration), the provider is part of the brand and must be pinned. Every render records
+provider, model version, params, and the exact refs passed, so drift is always diagnosable.
+
+### 4.9 Composition (ONE instance)
+
+```jsonc
+{
+  "id": "not-every-fire-is-holy",
+  "projection": "storybook@2.1.0",
+  "bind": { "character": ["jerry-man", "brenda-gentry"], "setting": ["the-yard"],
+            "style-pack": "warm-oil-curdles-cold" },
+  "slots": { "spread": [ { "beat": "…", "characters": ["jerry-man"], "location": "the-yard" } ] },
+  "writesBack": [ { "kind": "character", "id": "anjali-sambalu", "locked": true } ],
+  "gates": { "wordsBlessed": "2026-07-15", "subjectApproval": "gated:brenda-gentry" }
+}
+```
+
+`logline`, `spine`, `refrain`, and `beats` are **not** universal fields. They belong to the storybook
+projection's slot schema and craft-canon (§13), which is where they were always story-specific. A
+flyer composition has none of them and is now expressible.
+
+**Back-compatible:** `StorySpec` is retained as an alias for a composition whose projection resolves
+to `storybook`. A universe with existing `stories/*.json` and no `projection` field validates
+unchanged, and is treated as `storybook@1`.
+
+### 4.10 The Composer, the Compiler, and the Gate
+
+The render step is three parts with genuinely different natures. Collapsing them is what produces
+either a rigid template engine (no composer) or an unaccountable one (no gate).
+
+| Part | Nature | Answers |
+|---|---|---|
+| **Composer** | agentic, generative | *What should exist?* Plans slots and their order, decides which goldens each slot needs, sequences modalities, handles composite slots. |
+| **Compiler** (§4.6) | deterministic | *What exactly do I send?* One planned slot → exact prompt + ref list + QA checklist, compiled from canon so nothing load-bearing is retyped. |
+| **Gate** | adjudicating | *Does this artifact satisfy this stated invariant?* Returns PASS or DEFECT with evidence; a defect re-rolls THAT SLOT, never the artifact. |
+
+**The gate is agentic wherever the invariant is perceptual.** The meaningful split is not
+agentic-versus-not, it is **generative versus adjudicating**. Every invariant is therefore typed:
+
+- **`computed`** — checkable by pure code against the artifact (palette-only, content fits the
+  viewBox, a column header fits its column, required metadata present). Free, and it runs every time.
+- **`judged`** — requires a model to look (no text anywhere in the image, hands non-anatomical, the
+  digit count, character identity across spreads).
+
+A projection's token cost is approximately its count of `judged` invariants times its slots, which is
+a useful thing to be able to read off a contract before running it.
+
+**The judge must not be the maker (normative).** A `judged` invariant is evaluated in fresh context,
+given the artifact and the invariant ONLY, never the plan that produced it. An agent shown its own
+reasoning defends it rather than inspecting the pixels. Earned 2026-07-23: a three-element graphic
+shipped with one element deliberately missing its defining feature, because the maker "knew" the
+omission was intentional variety and read its own intent instead of the output; an observer with no
+access to the plan caught it instantly.
+
+**Failure model: park the slot, finish the composition, report.** When a slot exhausts its re-rolls,
+it is marked DEFECT, the remaining slots continue, and the artifact emits as incomplete with a precise
+per-slot report. A human then repairs one slot rather than re-running a book. This requires **durable
+per-slot state across a long unattended run**, which is a load-bearing requirement on the runtime and
+the subject of §14.
+
 
 ## 5. Evolution & versioning
 
@@ -496,6 +675,53 @@ its own sheet-key names, reports `partial` when its own `requiredForRender` reso
 broken, just not matrix-complete. The load-bearing gate (`assert_story` / `assert_spread`) is
 unchanged: a missing REQUIRED sheet is still a hard error. A renderer MAY require `locked`.
 
+## 14. Why this runtime is Managed Agents (v0.6)
+
+This section is normative about the *shape* of the workload, not about a vendor. It exists because
+"use a hosted agent runtime" is the kind of claim that sounds like a preference, and it is not one:
+the composer's requirements fall out of §4.8 and §4.10 mechanically.
+
+**What composing one non-trivial projection actually is.** Not a request. A storybook composition is
+tens of slots; each slot is a compiler pass, one or more generator calls across different modalities,
+then one or more gate evaluations, some of which are themselves model calls in fresh context. Slots
+that fail re-roll. The whole thing runs for tens of minutes to hours, and the operator is not watching.
+
+Five requirements, each traceable to a section above:
+
+1. **Long-running and unattended.** From the failure model (§4.10): the composition continues past a
+   defective slot and reports at the end. There is no human in the loop mid-run to answer a question,
+   so the runtime must not depend on one.
+2. **Durable state per slot.** Parking slot 19 and finishing slots 20 through 24 is only possible if
+   per-slot state survives. A restart in the middle of an hour-long composition must not lose the
+   nineteen slots that already passed their gate.
+3. **Isolation.** A composer runs generated content, fetches references, and writes artifacts. Where
+   one runtime serves several brands, one brand's canon and outputs must never reach another's.
+4. **Secrets it holds but never sees.** Generators are third-party providers and publishing targets.
+   The composer needs credentials at call time and must not embed them, which is what a vault is for.
+5. **Skills, not a mega-prompt.** §4.10 requires the compiler to be deterministic and the craft to
+   live in canon. In practice that means the agent carries the craft as *attached skills* it reads,
+   with the doctrine that **the skill wins over the prompt** on conflict. A prompt that paraphrases a
+   skill loses detail, and every defect traced back to the paraphrase (earned on the reference
+   implementation's first unattended run).
+
+**The honest scope of the claim.** Most work on a model platform is a single call, and most people
+integrating an LLM into an app correctly need nothing from this section: one request, one response, no
+state, no isolation problem. That is the overwhelmingly common case and it is well served by any SDK.
+
+The claim here is narrower and therefore checkable: **once a deliverable requires many interdependent
+generations, held to cross-slot invariants, over a run long enough that nobody watches it, the
+workload has changed kind.** At that point the choice is to operate that infrastructure yourself, or
+to rent it. Both are legitimate. The standard takes no position on which, and only insists that the
+requirements above be met by whatever runs the composer.
+
+**Reference implementation.** `yourparables-book-builder`: an agent created against the Messages API
+with an agent toolset, a vault holding scoped credentials with a limited-networking allowlist, and
+five attached craft skills (`canon-resolve`, `casting-sweep`, `compose-spread`, `cover`,
+`render-readback`). Its doctrine states that it runs unattended, that it finishes or reports failure
+clearly, that it never asks a human a question mid-run, and that the skill wins where the prompt and a
+skill disagree. It composes and publishes illustrated, narrated books while the operator's machine is
+closed.
+
 ## 10. Glossary
 
 - **Universe / Canon** — the evolving graph of everything true in a story world.
@@ -510,6 +736,21 @@ unchanged: a missing REQUIRED sheet is still a hard error. A renderer MAY requir
   a single assumed shape.
 - **Visual-metaphor** — an entity kind: the central object a whole book zooms into and argues through
   (the locked scale, the bazaar of cages); the book's spine-object.
+- **Projection (§4.8)** — a typed, versioned, distributable contract for a KIND of deliverable
+  (storybook, flyer, meme, share card, explanatory plate). Declares surface, required canon BY KIND,
+  slots, generator capabilities, invariants, and outputs. Defining a new kind of deliverable is
+  filling in this contract, not writing a renderer.
+- **Composition (§4.9)** — ONE instance of a projection: it names the projection, binds real canon
+  entity ids to the projection's required kinds, and fills its slots. Supersedes `Story Spec`, which
+  remains a back-compatible alias for a composition whose projection is `storybook`.
+- **Composer (§4.10)** — the agentic layer that plans a composition into slots and sequences their
+  generation. The only layer where open-ended model intelligence belongs.
+- **Gate, `computed` vs `judged` (§4.10)** — an invariant checkable by pure code versus one requiring
+  a model to look. A `judged` invariant is evaluated in fresh context by an agent that never sees the
+  plan, because the maker defends its own intent.
+- **Cross-slot invariant (§4.8)** — an invariant only checkable across several slots at once (a
+  character being the same person on spread 3 and spread 19). The expensive class, and the thing
+  locked goldens exist to serve. A deliverable's complexity is its cross-slot invariant count.
 - **Register** — a story's paint-language: a first-class per-story renderer config, sometimes anchored
   to a real artist's own work, locked via experiments and passed as a content-neutral style anchor.
 - **Style Pack (§4.7)** — a register's look extracted into a portable, universe-free folder (refs +
