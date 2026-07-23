@@ -53,14 +53,30 @@ def deslug(inv: str) -> str:
     return inv.replace("-", " ")
 
 
-def resolve_ref(uroot: Path, p: str) -> str:
-    """Resolve a ref path that may be absolute, universe-relative, or relative to
-    the universe's PARENT (cross-repo anchors live beside the universe)."""
+# Real-person entities declare `photoStack` as a DIRECTORY of bare-face photos, by
+# convention (see any realPerson entity). A directory is not a reference the image model
+# can accept, so it must be expanded to the actual image files here. Left unexpanded, the
+# generator crashed with IsADirectoryError on EVERY real-person spread, which is every
+# Nation of Fire book about a real friend. Found 2026-07-23 rendering the Russ book
+# through the real pipeline (the reason to use the pipeline and not a hand-rolled script).
+_IMG_EXTS = (".png", ".jpg", ".jpeg", ".webp")
+
+def resolve_ref(uroot: Path, p: str) -> list[str]:
+    """Resolve a ref path to a LIST of on-disk image files. A path may be absolute,
+    universe-relative, or relative to the universe's PARENT (cross-repo anchors live
+    beside the universe). A DIRECTORY expands to the image files directly inside it,
+    sorted, so a realPerson photoStack directory becomes its photos."""
     cand = Path(p)
     tries = [cand] if cand.is_absolute() else [uroot / p, uroot.parent / p, cand]
     for t in tries:
         if t.exists():
-            return str(t.resolve())
+            if t.is_dir():
+                imgs = sorted(str(f.resolve()) for f in t.iterdir()
+                              if f.suffix.lower() in _IMG_EXTS)
+                if not imgs:
+                    raise Refuse(f"ref directory has no images: {p}")
+                return imgs
+            return [str(t.resolve())]
     raise Refuse(f"ref does not resolve on disk: {p}")
 
 
@@ -274,9 +290,11 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             negs.append(g["text"])
 
     # Resolve every ref to an absolute on-disk path (register anchor stays first).
-    resolved = [resolve_ref(uroot, refs[0])]
-    for p in refs[1:]:
-        resolved.append(resolve_ref(uroot, p))
+    resolved: list[str] = []
+    for p in refs:
+        for r in resolve_ref(uroot, p):
+            if r not in resolved:
+                resolved.append(r)
 
     style = spec.get("style", "")
     scene = sp.get("scene", "")
