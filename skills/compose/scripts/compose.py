@@ -81,16 +81,28 @@ IMPLIES = {
 # that false-fires is worse than no check, and this one false-fired on the very
 # repairs written to satisfy it.
 NEGATORS = ("no", "not", "never", "without", "nothing", "none", "avoid", "zero")
+ARTICLES = ("a", "an", "the")
 
 def _negated(text, start):
-    """Is the match at `start` preceded by a negation within the last few words?"""
-    # Six words, not four: "no object may be turned or tilted" puts the negator six
-    # words back, and that is an ordinary way to write an exclusion. Six is still short
-    # enough that an unrelated "no" earlier in the sentence does not excuse a later
-    # genuine mention, which is pinned by a test.
-    before = text[max(0, start - 60):start]
+    """Is the match at `start` governed by a negation?
+
+    A fixed word window cannot decide this. "No object may be turned, angled, opened,
+    or tilted" puts the negator EIGHT words back and plainly negates the whole list,
+    while "no text anywhere, and a big glowing box" puts one four words back and does
+    NOT negate the glow. Distance is the wrong signal.
+
+    Scope is. Scan backwards and stop at an ARTICLE, because "a" or "the" starts a
+    fresh noun phrase and ends the reach of any earlier negator. A negator found
+    before an article governs the match; one found after it does not.
+    """
+    before = text[max(0, start - 200):start]
     words = re.findall(r"[a-z']+", before)
-    return any(w in NEGATORS for w in words[-6:])
+    for w in reversed(words[-12:]):
+        if w in ARTICLES:
+            return False                      # a new noun phrase began; negation ended
+        if w in NEGATORS:
+            return True
+    return False
 
 def scene_contradictions(proj, comp):
     errs = []

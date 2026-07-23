@@ -445,6 +445,21 @@ class TestNegatedPolesAreNotContradictions(unittest.TestCase):
                 {}, self.comp(t, ["gradients"], ["a rectangle glowing in the centre"]))
             self.assertTrue(errs)
 
+    def test_a_negator_governing_a_LONG_coordinated_list_still_negates(self):
+        """The case that broke a fixed word window: the negator is eight words back and
+        plainly governs the whole list. Distance is the wrong signal; scope is."""
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["perspective"],
+                              ["no object may be turned, angled, opened, or tilted"])), [])
+
+    def test_an_article_ends_the_reach_of_an_earlier_negator(self):
+        """'a' starts a fresh noun phrase, so the earlier 'no' does not excuse it."""
+        with tempfile.TemporaryDirectory() as t:
+            errs = compose.scene_contradictions(
+                {}, self.comp(t, ["gradients"], ["no text at all, and a big glowing box"]))
+            self.assertTrue(errs, "an article must end the negation scope")
+
     def test_a_negation_far_away_does_not_excuse_a_later_mention(self):
         """'No text anywhere. A glowing rectangle.' must still fire on the glow: the
         negator has to be NEAR the word, not merely somewhere in the sentence."""
