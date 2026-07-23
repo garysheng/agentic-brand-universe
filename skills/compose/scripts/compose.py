@@ -118,9 +118,10 @@ def run_slot(unit, proj, comp, work):
     the promise directly.
     """
     try:
-        return _run_slot(unit, proj, comp, work)
+        r = _run_slot(unit, proj, comp, work)
+        return r if len(r) == 3 else (r[0], r[1], 0)
     except Exception as ex:
-        return "DEFECT", f"{type(ex).__name__}: {ex}"
+        return "DEFECT", f"{type(ex).__name__}: {ex}", 0
 
 
 def _run_slot(unit, proj, comp, work):
@@ -151,7 +152,7 @@ def _run_slot(unit, proj, comp, work):
     b = comp.get("bind", {}).get("style-pack")
     pack_ref = b.get(sid, b.get("default")) if isinstance(b, dict) else b
     if not pack_ref:
-        return "DEFECT", f"slot '{sid}' has no style-pack binding"
+        return "DEFECT", f"slot '{sid}' has no style-pack binding", 0
     pack = load_pack(comp["universe"], pack_ref)
 
     # Goldens are per-slot too. A register that REJECTS the cast must not be handed
@@ -162,14 +163,14 @@ def _run_slot(unit, proj, comp, work):
     rejected = [r.lower() for r in pack.get("rejectedPoles", [])]
     if goldens and any(("character" in r) or ("storybook-register" in r) for r in rejected):
         return "DEFECT", (f"slot '{sid}' binds pack '{pack['id']}' which rejects characters, "
-                          f"but was handed {len(goldens)} character golden(s). Registers disagree.")
+                          f"but was handed {len(goldens)} character golden(s). Registers disagree."), 0
     scene = spec.get("scene", "")
     if comp.get("beats") and sid in ("spread", "art") and idx < len(comp["beats"]):
         scene = comp["beats"][idx]                       # one beat per repeated slot
     if comp.get("plateScenes") and sid == "plate" and idx < len(comp["plateScenes"]):
         scene = comp["plateScenes"][idx]
     if not scene:
-        return "DEFECT", "no scene for this slot"
+        return "DEFECT", "no scene for this slot", 0
     if comp.get("_lock") and goldens:                    # only where a character is actually bound
         scene = comp["_lock"] + " Scene: " + scene
     prompt, refs, qa = compile_slot(proj, comp, sid, scene, pack, goldens)
@@ -190,7 +191,7 @@ def _run_slot(unit, proj, comp, work):
             checklist += (raw if isinstance(raw, list)
                           else raw.get("structured", {}).get("invariants", []))
         except Exception as ex:
-            return "DEFECT", f"invariantsFile declared but unreadable: {type(ex).__name__}: {ex}"
+            return "DEFECT", f"invariantsFile declared but unreadable: {type(ex).__name__}: {ex}", 0
 
     # Identity is judged against a character golden; style is judged against the pack
     # anchor. Asking "is this the same subject?" of a plate with no subject is nonsense,
@@ -207,18 +208,18 @@ def _run_slot(unit, proj, comp, work):
             roll += 1
             ok, detail = generate(prompt, refs, out, size)
             if not ok:
-                return "DEFECT", f"generation failed: {detail}"
+                return "DEFECT", f"generation failed: {detail}", roll, roll
         if not checklist:
-            return "PASS", out                            # nothing judged is declared
+            return "PASS", out, roll                      # nothing judged is declared
 
         v = verdict_for(work, sid, idx)
         if v is None:
             brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
             return "NEEDS-JUDGMENT", (f"awaiting an independent judge; brief at {brief}. "
                                       f"Dispatch a fresh judge with the brief ALONE, write "
-                                      f"the verdict to {work}/verdicts/{sid}-{idx}.json, re-run.")
+                                      f"the verdict to {work}/verdicts/{sid}-{idx}.json, re-run."), roll
         if v["verdict"] == "PASS":
-            return "PASS", out
+            return "PASS", out, roll
         print(f"      roll {roll}/{max_rolls} DEFECT: {str(v.get('why',''))[:110]}")
         clear_verdict(work, sid, idx)                     # the next roll needs a fresh look
         if roll >= max_rolls:
@@ -226,10 +227,10 @@ def _run_slot(unit, proj, comp, work):
         roll += 1
         ok, detail = generate(prompt, refs, out, size)
         if not ok:
-            return "DEFECT", f"generation failed: {detail}"
+            return "DEFECT", f"generation failed: {detail}", roll
         brief = judge_request(work, sid, idx, reference, out, checklist, mode, roll)
-        return "NEEDS-JUDGMENT", (f"re-rolled after a DEFECT verdict; brief at {brief}")
-    return "DEFECT", f"exhausted {max_rolls} rolls against its judged invariants"
+        return "NEEDS-JUDGMENT", (f"re-rolled after a DEFECT verdict; brief at {brief}"), roll
+    return "DEFECT", f"exhausted {max_rolls} rolls against its judged invariants", roll
 
 SKILLS = pathlib.Path(__file__).resolve().parents[2]
 GEN_SCRIPT = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")
@@ -358,12 +359,14 @@ def main():
             else:
                 print(f"  {u['slot']}-{u['index']}: retrying previously DEFECT slot")
         try:
-            status, detail = run_slot(u, proj, comp, work)
+            status, detail, roll = run_slot(u, proj, comp, work)
         except Exception as ex:                          # a slot must NEVER take the run down
-            status, detail = "DEFECT", f"{type(ex).__name__}: {ex}"
-        prev_roll = (spec_state(work, u["slot"], u["index"]) or {}).get("roll", 0)
+            status, detail, roll = "DEFECT", f"{type(ex).__name__}: {ex}", 0
+        # The roll counter is owned by whoever GENERATES, never by the caller. Counting
+        # a re-run as a roll meant a slot merely WAITING on a judge burned through its
+        # budget and was eventually declared "exhausted its rolls" for waiting.
         rec = {"slot": u["slot"], "index": u["index"], "status": status, "detail": detail,
-               "roll": prev_roll + 1 if status == "NEEDS-JUDGMENT" else prev_roll}
+               "roll": roll}
         sp.write_text(json.dumps(rec, indent=2))
         print(f"  {u['slot']}-{u['index']}: {status}  {detail if status!='PASS' else ''}")
         results.append(rec)                               # park and CONTINUE, never halt

@@ -102,7 +102,7 @@ class TestFailureModel(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             root = universe(t, {"base": BASE})
             comp = {"universe": str(root), "slots": {"art": {}}, "bind": {"style-pack": "nope"}}
-            status, detail = compose.run_slot(
+            status, detail, _ = compose.run_slot(
                 {"slot": "art", "index": 0, "type": "generated", "emitter": None},
                 BASE, comp, t)
         self.assertEqual(status, "DEFECT")
@@ -110,7 +110,7 @@ class TestFailureModel(unittest.TestCase):
 
     def test_missing_composition_data_is_a_defect(self):
         with tempfile.TemporaryDirectory() as t:
-            status, _ = compose.run_slot(
+            status, _, _ = compose.run_slot(
                 {"slot": "ghost", "index": 0, "type": "deterministic", "emitter": "a:brand-card"},
                 BASE, {"universe": t, "slots": {}}, t)
         self.assertEqual(status, "DEFECT")
@@ -228,6 +228,34 @@ class TestSceneContradictions(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(compose.scene_contradictions(
                 {}, {"universe": t, "beats": ["anything"]}), [])
+
+
+class TestRollAccounting(unittest.TestCase):
+    """The roll counter belongs to whoever GENERATES. Counting a re-run as a roll made
+    a slot that was merely WAITING on a judge burn through its budget and eventually
+    get declared "exhausted its rolls" for waiting. A gate that punishes you for
+    running it is not a gate."""
+
+    def test_run_slot_always_returns_a_roll(self):
+        """Every exit path carries the roll it ended on, so main never has to guess."""
+        st, detail, roll = compose.run_slot(
+            {"slot": "x", "index": 0, "type": "generated", "emitter": None},
+            {"slots": [], "invariants": {"perSlot": [], "crossSlot": []}},
+            {"universe": "/nonexistent", "bind": {}}, "/tmp/nope")
+        self.assertEqual(st, "DEFECT")
+        self.assertIsInstance(roll, int)
+
+    def test_a_slot_never_generated_reports_roll_zero(self):
+        _, _, roll = compose.run_slot(
+            {"slot": "x", "index": 0, "type": "generated", "emitter": None},
+            {"slots": [], "invariants": {"perSlot": [], "crossSlot": []}},
+            {"universe": "/nonexistent", "bind": {}}, "/tmp/nope")
+        self.assertEqual(roll, 0)
+
+    def test_run_slot_still_never_raises(self):
+        st, _, _ = compose.run_slot({"slot": "x", "index": 0, "type": "generated"},
+                                    {}, {}, "/tmp/nope")
+        self.assertEqual(st, "DEFECT")
 
 
 if __name__ == "__main__":
