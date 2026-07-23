@@ -431,6 +431,32 @@ count, and a projection declares its own.
 text panel beside a generated art panel. The pre-v0.6 "renderer" concept could not express this at
 all, which is why composite deliverables kept being hand-assembled.
 
+**A `deterministic` slot MUST name its emitter.** A slot typed `deterministic` with no `emitter`
+field is not deterministic, it is unspecified: nothing can produce it and the type is decoration.
+Earned 2026-07-23 by trying to execute a contract whose text panel declared `{recipient, body,
+signoff}` and could not be laid out, because field NAMES are not a layout. `explanatory-plate` was
+runnable only because it happened to name one. Normative: `type: "deterministic"` requires `emitter`.
+
+**A projection's `surface` must be FEASIBLE against its own generators.** A contract can be
+internally coherent and still describe an artifact nobody can make. Earned the same day: a card
+declared a 1200x1200 surface with a two-thirds text split, which makes its art panel 400x1200, an
+aspect of 0.333. No image generator produces 0.333; the tallest commonly available is 0.667. The
+contract was valid, reviewed, and undeliverable.
+
+So a projection carries the producible aspects of the capability it depends on, and **feasibility is
+checked before the run, not discovered inside it**:
+
+```jsonc
+"generators": [ { "for": "art-panel", "capability": "image",
+                  "producibleAspects": [1.0, 0.667, 1.5],   // what the capability can actually emit
+                  "tolerance": 0.25 } ]
+```
+
+The composer resolves each generated slot's geometry from `surface`, compares it to
+`producibleAspects`, and refuses to start if no aspect is within tolerance. This is a **`computed`**
+invariant and it belongs at plan time: the alternative is discovering it an hour into a composition,
+or worse, silently cropping to fit and losing exactly the edges the composition needed.
+
 **Generators declare a capability, with an optional pin.** Faithful reproduction does not come from
 pinning a provider, because generative output is stochastic regardless (§4.6, determinism ceiling). It
 comes from three other places: the **goldens** (pass the same locked reference, get the same
