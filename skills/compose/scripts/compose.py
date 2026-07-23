@@ -135,6 +135,35 @@ def scene_contradictions(proj, comp):
                                 f"Describe the shape flat instead.")
     return errs
 
+def surface_shrink(proj, comp):
+    """Warn when a composition cuts the projection's DECLARED surface substantially.
+
+    A projection's geometry is a statement about what this kind of deliverable IS. A
+    storybook declaring 24 spreads is saying that a book of this kind runs about that
+    long. A composition may override it, and sometimes should, but a large cut is
+    almost never an editorial decision: it is the maker shrinking the job to what is
+    cheap to generate.
+
+    Earned 2026-07-23, three times in one evening. The maker chose the characterless
+    register to avoid the hardest cross-slot invariant, then simplified plates until one
+    was an empty rectangle, then cut a book from 24 spreads to 8. Every safeguard in
+    this standard constrains EXECUTION. Nothing constrained SELECTION, and selection is
+    where the drift was. This does not stop it, because a shorter book is legitimate. It
+    makes the choice say its own name out loud.
+    """
+    out = []
+    dec = proj.get("surface", {}).get("geometry", {})
+    got = comp.get("surface", {})
+    for k, want in dec.items():
+        if not isinstance(want, int): continue
+        have = got.get(k, comp.get("repeat", {}).get(k))
+        if isinstance(have, int) and have < want * 0.6:
+            out.append(f"composition sets {k}={have} where the projection declares {want}. "
+                       f"That is {round(100 * have / want)}% of the declared surface. A shorter "
+                       f"one is legitimate, but say why: this is where a maker shrinks a job "
+                       f"to what is cheap to generate.")
+    return out
+
 def plan(proj, comp):
     out = []
     for slot in proj["slots"]:
@@ -499,6 +528,8 @@ def main():
         for e in errs: print("  -", e)
         return 2
 
+    for w in surface_shrink(proj, comp):
+        print(f"  NOTE  {w}")
     units = plan(proj, comp)
     print(f"planned {len(units)} slot(s)")
     results = []

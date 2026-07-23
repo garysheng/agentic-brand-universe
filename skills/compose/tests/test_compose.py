@@ -571,5 +571,42 @@ class TestGoldensResolveAgainstTheUniverse(unittest.TestCase):
         self.assertIn("refusing to render", detail)
 
 
+class TestSurfaceShrinkIsCalledOut(unittest.TestCase):
+    """A projection's geometry states what this KIND of deliverable is. A storybook
+    declaring 24 spreads says a book of this kind runs about that long. Overriding it is
+    allowed, but a large cut is rarely editorial: it is the maker shrinking the job to
+    what is cheap to generate.
+
+    Earned three times in one evening: the characterless register chosen to avoid the
+    hardest invariant, plates simplified until one was an empty rectangle, and a book cut
+    from 24 spreads to 8. Every other safeguard here constrains EXECUTION. Nothing
+    constrained SELECTION, and selection is where the drift was."""
+
+    PROJ = {"surface": {"geometry": {"spreads": 24}}}
+
+    def test_a_large_cut_is_called_out(self):
+        w = compose.surface_shrink(self.PROJ, {"surface": {"spreads": 8}})
+        self.assertTrue(w)
+        self.assertIn("24", w[0])
+        self.assertIn("33%", w[0])
+
+    def test_the_declared_length_is_silent(self):
+        self.assertEqual(compose.surface_shrink(self.PROJ, {"surface": {"spreads": 24}}), [])
+
+    def test_a_modest_trim_is_silent(self):
+        """18 of 24 is an editorial choice, not a flinch."""
+        self.assertEqual(compose.surface_shrink(self.PROJ, {"surface": {"spreads": 18}}), [])
+
+    def test_a_LONGER_book_is_never_flagged(self):
+        self.assertEqual(compose.surface_shrink(self.PROJ, {"surface": {"spreads": 40}}), [])
+
+    def test_it_reads_repeat_when_surface_is_not_overridden(self):
+        self.assertTrue(compose.surface_shrink(self.PROJ, {"repeat": {"spreads": 6}}))
+
+    def test_non_numeric_geometry_is_ignored(self):
+        self.assertEqual(compose.surface_shrink(
+            {"surface": {"geometry": {"aspect": "2:3"}}}, {"surface": {"aspect": "1:1"}}), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
