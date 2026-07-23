@@ -403,9 +403,31 @@ def quirks_for(proj, slot_id, resolved_provider):
             if not any(o["id"] == q["id"] for o in out): out.append(q)
     return out
 
+# What a slot may be exempted from. A rule that is right for interior art can be flatly
+# wrong for a cover: every book cover ever printed carries its own title, so a blanket
+# "no text or lettering" turns the one slot that MUST have type into a defect.
+#
+# Earned 2026-07-23. A style pack copied "text or lettering" into its rejected poles from
+# a wordless-plate context, the cover came back bare, and the first instinct was to design
+# around the rule with a deterministic overlay. Gary: "if the style pack rejects lettering
+# outright, the style pack is wrong... we just got to update our code, not listen to rules
+# that we need to update." A canon rule is not physics. When a rule and the work disagree,
+# check which one is wrong before building scaffolding around it.
+PERMIT_POLES = {"text": ("text or lettering", "text", "lettering", "words", "type")}
+
+def applies_to(inv, slot_id):
+    """A perSlot invariant applies to every slot UNLESS it names the ones it governs."""
+    only = inv.get("slots")
+    return True if not only else slot_id in only
+
 def compile_slot(proj, comp, slot_id, scene, pack, goldens):
     """Deterministic: nothing load-bearing is retyped, it is assembled from canon."""
-    neg = ", ".join("no " + p for p in pack.get("rejectedPoles", []))
+    slot = next((x for x in proj.get("slots", []) if x.get("id") == slot_id), {})
+    permitted = set()
+    for perm in slot.get("permits", []):
+        permitted |= set(PERMIT_POLES.get(perm, (perm,)))
+    poles = [x for x in pack.get("rejectedPoles", []) if str(x).lower() not in permitted]
+    neg = ", ".join("no " + p for p in poles)
     provider = next((g.get("pin") for g in proj.get("generators", [])
                      if g.get("for") == slot_id), None) or comp.get("provider", "gpt-image-2")
     qk = quirks_for(proj, slot_id, provider)
@@ -414,7 +436,8 @@ def compile_slot(proj, comp, slot_id, scene, pack, goldens):
               f"STRICT STYLE: {pack['styleLine']}. "
               f"Subject: {scene}. "
               f"{counters} "
-              f"{neg}. ABSOLUTELY NO text, no letters, no numbers.")
+              f"{neg}." + ("" if "text" in slot.get("permits", [])
+                           else " ABSOLUTELY NO text, no letters, no numbers."))
     refs = [str(pack["_dir"] / pack["anchor"])]
     for r in pack.get("refs", [])[1:3]:
         refs.append(str(pack["_dir"] / r))
@@ -426,7 +449,8 @@ def compile_slot(proj, comp, slot_id, scene, pack, goldens):
     # prevent, so it must not depend on a working directory.
     root = pathlib.Path(comp["universe"])
     refs += [g if os.path.isabs(g) else str(root / g) for g in goldens]
-    qa = [i["id"] for i in proj["invariants"]["perSlot"] if i["check"] == "judged"]
+    qa = [i["id"] for i in proj["invariants"]["perSlot"]
+          if i["check"] == "judged" and applies_to(i, slot_id)]
     qa += [q["id"] for q in qk if q.get("check") == "judged"]   # countering is never assumed to have worked
     return prompt, refs, qa
 

@@ -651,5 +651,62 @@ class TestStagedGoldens(unittest.TestCase):
                          ["q.png"])
 
 
+class TestSlotScopedRulesAndPermits(unittest.TestCase):
+    """A rule that is right for interior art can be flatly wrong for a cover. Every book
+    cover ever printed carries its own title, so a blanket "no text or lettering" turns
+    the one slot that MUST have type into a defect.
+
+    Gary, on finding the cover bare: "if the style pack rejects lettering outright, the
+    style pack is wrong... we just got to update our code, not listen to rules that we
+    need to update." A canon rule is not physics."""
+
+    def pack(self, tmp):
+        d = pathlib.Path(tmp) / "p"; (d / "refs").mkdir(parents=True)
+        (d / "refs" / "a.png").write_bytes(b"\x89PNG")
+        (d / "pack.json").write_text(json.dumps({
+            "id": "p", "anchor": "refs/a.png", "refs": ["refs/a.png"],
+            "styleLine": "warm", "rejectedPoles": ["neon", "text or lettering"]}))
+        return compose.load_pack(tmp, "p")
+
+    PROJ = {"slots": [{"id": "cover", "permits": ["text"]}, {"id": "spread"}],
+            "generators": [],
+            "invariants": {"perSlot": [
+                {"id": "no-text-in-art", "check": "judged", "slots": ["spread"]},
+                {"id": "flat", "check": "judged"}], "crossSlot": []}}
+
+    def test_the_cover_prompt_does_not_forbid_text(self):
+        with tempfile.TemporaryDirectory() as t:
+            prompt, _, _ = compose.compile_slot(
+                self.PROJ, {"universe": t}, "cover", "a scene", self.pack(t), [])
+            self.assertNotIn("ABSOLUTELY NO text", prompt)
+            self.assertNotIn("no text or lettering", prompt)
+            self.assertIn("no neon", prompt, "other poles must still be enforced")
+
+    def test_an_interior_spread_still_forbids_text(self):
+        with tempfile.TemporaryDirectory() as t:
+            prompt, _, _ = compose.compile_slot(
+                self.PROJ, {"universe": t}, "spread", "a scene", self.pack(t), [])
+            self.assertIn("ABSOLUTELY NO text", prompt)
+            self.assertIn("no text or lettering", prompt)
+
+    def test_the_no_text_invariant_is_not_checked_on_the_cover(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, _, qa = compose.compile_slot(
+                self.PROJ, {"universe": t}, "cover", "a scene", self.pack(t), [])
+            self.assertNotIn("no-text-in-art", qa)
+            self.assertIn("flat", qa, "unscoped invariants still apply everywhere")
+
+    def test_it_IS_checked_on_a_spread(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, _, qa = compose.compile_slot(
+                self.PROJ, {"universe": t}, "spread", "a scene", self.pack(t), [])
+            self.assertIn("no-text-in-art", qa)
+
+    def test_an_invariant_naming_no_slots_applies_to_all_of_them(self):
+        self.assertTrue(compose.applies_to({"id": "x"}, "anything"))
+        self.assertTrue(compose.applies_to({"id": "x", "slots": ["a", "b"]}, "b"))
+        self.assertFalse(compose.applies_to({"id": "x", "slots": ["a"]}, "b"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
