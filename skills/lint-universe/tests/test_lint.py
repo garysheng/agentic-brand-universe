@@ -95,6 +95,25 @@ class TestLinter(unittest.TestCase):
             "id": "p", "slots": [OK_SLOT], "generators": [], "invariants": OK_INV}})
         self.assertIn("SLOT-NO-GENERATOR", errs)
 
+    def test_does_not_demand_an_aspect_from_a_text_or_audio_slot(self):
+        """Aspect is a visual property. Warning on prose or audio is a false
+        positive, and false positives train people to ignore the linter."""
+        _, warns = self.lint_with(projections={"p": {
+            "id": "p",
+            "slots": [{"id": "chapter", "type": "generated"},
+                      {"id": "narration", "type": "generated"}],
+            "generators": [{"for": "chapter", "capability": "text"},
+                           {"for": "narration", "capability": "audio"}],
+            "invariants": OK_INV}})
+        self.assertNotIn("NO-PRODUCIBLE-ASPECTS", warns)
+
+    def test_still_warns_when_an_IMAGE_slot_lacks_aspects(self):
+        _, warns = self.lint_with(projections={"p": {
+            "id": "p", "slots": [{"id": "art", "type": "generated"}],
+            "generators": [{"for": "art", "capability": "image"}],
+            "invariants": OK_INV}})
+        self.assertIn("NO-PRODUCIBLE-ASPECTS", warns)
+
     def test_catches_untyped_invariant(self):
         errs, _ = self.lint_with(projections={"p": {
             "id": "p", "slots": [OK_SLOT], "generators": [OK_GEN],

@@ -93,6 +93,12 @@ def lint(root):
                 if not g:
                     err("SLOT-NO-GENERATOR", f"{pid}.{sid}: generated but no generator declares for='{sid}'")
                     continue
+                # Aspect ratio is a VISUAL property. Demanding one from a text or
+                # audio slot is a false positive, and false positives are how a
+                # linter teaches people to ignore it. Found by the first
+                # text-dominant projection; every prior one was image-dominant.
+                if g.get("capability") not in ("image", "video"):
+                    continue
                 geo, asp = s.get("geometry"), g.get("producibleAspects")
                 if geo and asp:
                     want = geo["w"]/geo["h"]; tol = g.get("tolerance", 0.25)
