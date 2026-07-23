@@ -1,0 +1,23 @@
+{
+  "_note": "Provider knowledge, not brand knowledge. A quirk is what a specific model gets reliably wrong regardless of what you are making. It attaches to the PROVIDER, so it applies whether a generator pinned that provider or merely resolved to it at run time. Universes do not own this file; the framework does, and every universe benefits when one project learns something.",
+  "providers": {
+    "gpt-image-2": {
+      "quirks": [
+        {
+          "id": "artwork-within-artwork-renders-inverted",
+          "seen": "When a person is depicted drawing, holding, or displaying a picture, the depicted picture renders upside down relative to the viewer.",
+          "counter": "Any picture, page, book, drawing, or artwork shown INSIDE the scene must be RIGHT SIDE UP and correctly oriented to the viewer. Never inverted, never rotated, never upside down.",
+          "check": "judged",
+          "observedBy": "gary", "observedOn": "2026-07-23"
+        },
+        {
+          "id": "hands-gain-a-sixth-digit",
+          "seen": "Realistic or semi-realistic hands frequently render with six fingers.",
+          "counter": "Every hand has EXACTLY four fingers plus one thumb, five digits total.",
+          "check": "judged",
+          "observedBy": "gary", "observedOn": "2026-07-23"
+        }
+      ]
+    }
+  }
+}

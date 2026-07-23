@@ -101,6 +101,8 @@ def run_slot(unit, proj, comp, work):
     scene = spec.get("scene", "")
     if comp.get("beats") and sid == "spread" and idx < len(comp["beats"]):
         scene = comp["beats"][idx]                       # one beat per repeated slot
+    if not scene:
+        return "DEFECT", "no scene for this slot"
     if comp.get("_lock") and goldens:                    # only where a character is actually bound
         scene = comp["_lock"] + " Scene: " + scene
     prompt, refs, qa = compile_slot(proj, comp, sid, scene, pack, goldens)
@@ -131,18 +133,44 @@ def load_pack(root, pack_ref):
     pack["_dir"] = base
     return pack
 
+REGISTRY = SKILLS.parent / "registry" / "providers.json"
+
+def quirks_for(proj, slot_id, resolved_provider):
+    """Known failure modes of the model this slot ACTUALLY runs on.
+
+    Quirks bind to the RESOLVED provider, not to the pin. An unpinned generator is
+    provider-agnostic by design, but at run time it still executes on some specific
+    model, and that model's quirks are just as real. Binding them to the pin meant
+    the one projection that deliberately stayed portable was also the one left
+    unguarded, which is backwards.
+    """
+    out = []
+    for g in proj.get("generators", []):
+        if g.get("for") == slot_id: out += g.get("quirks", [])
+    if REGISTRY.exists() and resolved_provider:
+        reg = json.loads(REGISTRY.read_text())["providers"].get(resolved_provider, {})
+        for q in reg.get("quirks", []):
+            if not any(o["id"] == q["id"] for o in out): out.append(q)
+    return out
+
 def compile_slot(proj, comp, slot_id, scene, pack, goldens):
     """Deterministic: nothing load-bearing is retyped, it is assembled from canon."""
     neg = ", ".join("no " + p for p in pack.get("rejectedPoles", []))
+    provider = next((g.get("pin") for g in proj.get("generators", [])
+                     if g.get("for") == slot_id), None) or comp.get("provider", "gpt-image-2")
+    qk = quirks_for(proj, slot_id, provider)
+    counters = " ".join(q["counter"] for q in qk)          # appended automatically, never recalled
     prompt = (f"Create a NEW illustration in EXACTLY the visual style of the reference images. "
               f"STRICT STYLE: {pack['styleLine']}. "
               f"Subject: {scene}. "
+              f"{counters} "
               f"{neg}. ABSOLUTELY NO text, no letters, no numbers.")
     refs = [str(pack["_dir"] / pack["anchor"])]
     for r in pack.get("refs", [])[1:3]:
         refs.append(str(pack["_dir"] / r))
     refs += goldens                      # locked masters LAST, so identity rides on top
     qa = [i["id"] for i in proj["invariants"]["perSlot"] if i["check"] == "judged"]
+    qa += [q["id"] for q in qk if q.get("check") == "judged"]   # countering is never assumed to have worked
     return prompt, refs, qa
 
 def generate(prompt, refs, out, size):
@@ -194,7 +222,10 @@ def main():
                 print(f"  {u['slot']}-{u['index']}: {prev['status']} (resumed, not recomputed)")
                 results.append(prev); continue
             print(f"  {u['slot']}-{u['index']}: retrying previously DEFECT slot")
-        status, detail = run_slot(u, proj, comp, work)
+        try:
+            status, detail = run_slot(u, proj, comp, work)
+        except Exception as ex:                          # a slot must NEVER take the run down
+            status, detail = "DEFECT", f"{type(ex).__name__}: {ex}"
         rec = {"slot": u["slot"], "index": u["index"], "status": status, "detail": detail}
         sp.write_text(json.dumps(rec, indent=2))
         print(f"  {u['slot']}-{u['index']}: {status}  {detail if status!='PASS' else ''}")

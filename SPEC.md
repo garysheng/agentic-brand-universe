@@ -446,6 +446,34 @@ both found 2026-07-23 by generating three spreads of a locked character and insp
 text panel beside a generated art panel. The pre-v0.6 "renderer" concept could not express this at
 all, which is why composite deliverables kept being hand-assembled.
 
+**Provider quirks are first-class, and they belong to the generator, not the style.** A style pack's
+`rejectedPoles` say what is off-brand. A **quirk** says what a specific model gets reliably wrong
+regardless of brand, and it is therefore a property of the *capability binding*, not of the look. It
+survives a change of brand and dies with a change of provider, which is the opposite of a rejected
+pole.
+
+```jsonc
+"generators": [ { "for": "spread", "capability": "image", "pin": "gpt-image-2",
+    "quirks": [
+      { "id": "artwork-within-artwork-renders-inverted",
+        "seen": "When a person is depicted drawing or holding a picture, the depicted picture is rendered upside down relative to the viewer.",
+        "counter": "Any picture, page, book, or artwork shown inside the scene must be RIGHT SIDE UP and correctly oriented to the viewer. Never inverted, never rotated.",
+        "check": "judged" } ] } ]
+```
+
+Three rules make this useful rather than a notes file:
+
+- **The `counter` is appended to every compiled prompt for that slot**, automatically. A quirk you have
+  to remember is a quirk you will ship.
+- **The `check` becomes a gate item**, so countering it in the prompt is never assumed to have worked.
+  Prompts do not reliably beat a model's priors; that is why the gate exists at all.
+- **Quirks travel with the pin.** Removing the pin removes the quirks, because they were never true of
+  the capability, only of that model.
+
+This is where hard-won provider knowledge accumulates instead of being re-learned per project. It is
+the same discipline as the rest of the standard: the thing that must not be forgotten becomes data
+that is passed, rather than prose someone is supposed to recall.
+
 **Registers bind PER SLOT, and a composition may weave several.** A book is not written in one
 visual language: narrative spreads carry a painterly storybook register while the diagram woven
 between them is a flat characterless plate. Binding one style pack per composition makes that
