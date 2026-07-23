@@ -9,7 +9,7 @@ Implements the parts the spec asserted and nothing ran:
   * DURABLE per-slot state, so a restart resumes rather than redoing
   * park-the-slot-and-continue, so one defect costs one slot and not the artifact
 """
-import json, os, pathlib, subprocess, sys, hashlib
+import json, os, pathlib, re, subprocess, sys, hashlib
 
 def load_projection(root, ref):
     """Resolve a projection and its `extends` chain. Child overrides parent key-wise."""
@@ -42,6 +42,45 @@ def feasibility(proj, comp):
         if not any(abs(want - a) / want <= tol for a in g["producibleAspects"]):
             errs.append(f"slot '{slot['id']}': needs aspect {want:.3f}; capability produces "
                         f"{g['producibleAspects']}. Surface is undeliverable, fix geometry not by cropping.")
+    errs += scene_contradictions(proj, comp)
+    return errs
+
+# Words a scene must not use, because the compiler is simultaneously appending
+# "no <pole>" to the very same prompt. The model is then handed both instructions
+# at once and picks one. Earned 2026-07-23: a beat described a grid "receding
+# across the frame" for a projection whose pack rejects perspective outright; the
+# compiled prompt said "receding" and "no perspective" in the same breath, and the
+# render came back in one-point perspective. The judge caught it, having never seen
+# the beat. The maker wrote the contradiction, which is exactly why the maker is
+# not allowed to be the judge.
+#
+# This is a CHEAP LITERAL check and it says so: it catches a scene that NAMES a
+# rejected pole, not one that merely implies it. "Receding" is not the word
+# "perspective". Catching implication needs a model, and that check belongs to the
+# gate, which already has it. The point of this one is that it costs nothing and
+# runs before a single image is paid for.
+def scene_contradictions(proj, comp):
+    errs = []
+    b = comp.get("bind", {}) or {}
+    ref = b.get("style-pack") if isinstance(b, dict) else None
+    if not ref: return errs
+    try:
+        pack = load_pack(comp["universe"], ref)
+    except Exception:
+        return errs                                  # a missing pack is another check's job
+    poles = [str(x).lower() for x in pack.get("rejectedPoles", [])]
+    scenes = list(comp.get("beats", [])) + list(comp.get("plateScenes", []))
+    for sl in (comp.get("slots", {}) or {}).values():
+        if isinstance(sl, dict) and sl.get("scene"): scenes.append(sl["scene"])
+    for i, sc in enumerate(scenes):
+        low = str(sc).lower()
+        for pole in poles:
+            # single-word poles only; a phrase like "3D/CGI/Pixar" would false-fire
+            if " " in pole or "/" in pole: continue
+            if re.search(r"\b" + re.escape(pole) + r"\b", low):
+                errs.append(f"scene {i} names '{pole}', which this style pack REJECTS. "
+                            f"The compiled prompt would say '{pole}' and 'no {pole}' at once. "
+                            f"Rewrite the scene; do not rely on the negative to win.")
     return errs
 
 def plan(proj, comp):

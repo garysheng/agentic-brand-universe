@@ -178,5 +178,57 @@ class TestJudgeIsARole(unittest.TestCase):
         self.assertNotIn("ANTHROPIC_API_KEY", src)
 
 
+class TestSceneContradictions(unittest.TestCase):
+    """A scene must not name something the style pack rejects. The compiler appends
+    "no <pole>" to the same prompt, so the model receives both instructions at once
+    and picks one. Free to check, and it runs before anything is generated."""
+
+    def pack(self, tmp, poles):
+        d = pathlib.Path(tmp) / "reference" / "style" / "p"
+        d.mkdir(parents=True)
+        (d / "pack.json").write_text(json.dumps({
+            "id": "p", "anchor": "a.png", "refs": ["a.png"],
+            "styleLine": "flat", "rejectedPoles": poles}))
+        return "reference/style/p"
+
+    def comp(self, tmp, poles, beats):
+        return {"universe": tmp, "bind": {"style-pack": self.pack(tmp, poles)},
+                "beats": beats}
+
+    def test_a_scene_naming_a_rejected_pole_is_refused_before_generating(self):
+        with tempfile.TemporaryDirectory() as t:
+            errs = compose.scene_contradictions(
+                {}, self.comp(t, ["perspective", "shading"],
+                              ["a flat grid drawn in perspective"]))
+            self.assertTrue(errs)
+            self.assertIn("perspective", errs[0])
+
+    def test_a_clean_scene_passes(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["perspective"], ["two hands holding a cream block"])), [])
+
+    def test_it_matches_whole_words_only(self):
+        """'perspectives' in a sentence about points of view must not trip a pack
+        that rejects the rendering technique. False positives are how a check gets
+        switched off."""
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["3d"], ["a hand holding a 3dimensional-looking block"])), [])
+
+    def test_multiword_and_slashed_poles_are_skipped_not_guessed(self):
+        """'3D/CGI/Pixar' as a literal substring would fire on almost anything. This
+        check is deliberately literal and single-word; implication is the gate's job."""
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["3D/CGI/Pixar", "neo-comic action-zine"],
+                              ["a pixar style hand"])), [])
+
+    def test_no_style_pack_binding_is_not_an_error_here(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, {"universe": t, "beats": ["anything"]}), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
