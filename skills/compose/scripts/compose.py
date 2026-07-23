@@ -75,6 +75,23 @@ IMPLIES = {
     "gradients":   ["glowing", "glow", "fading", "faded", "dark", "darkness", "halo"],
 }
 
+# A scene that says "no glow" or "with no depth" is EXCLUDING the pole, not summoning
+# it. Matching the bare word flagged every careful exclusion as a contradiction and
+# refused the whole composition at plan time, which blocked a run entirely. A check
+# that false-fires is worse than no check, and this one false-fired on the very
+# repairs written to satisfy it.
+NEGATORS = ("no", "not", "never", "without", "nothing", "none", "avoid", "zero")
+
+def _negated(text, start):
+    """Is the match at `start` preceded by a negation within the last few words?"""
+    # Six words, not four: "no object may be turned or tilted" puts the negator six
+    # words back, and that is an ordinary way to write an exclusion. Six is still short
+    # enough that an unrelated "no" earlier in the sentence does not excuse a later
+    # genuine mention, which is pinned by a test.
+    before = text[max(0, start - 60):start]
+    words = re.findall(r"[a-z']+", before)
+    return any(w in NEGATORS for w in words[-6:])
+
 def scene_contradictions(proj, comp):
     errs = []
     b = comp.get("bind", {}) or {}
@@ -93,12 +110,14 @@ def scene_contradictions(proj, comp):
         for pole in poles:
             # single-word poles only; a phrase like "3D/CGI/Pixar" would false-fire
             if " " in pole or "/" in pole: continue
-            if re.search(r"\b" + re.escape(pole) + r"\b", low):
+            m = re.search(r"\b" + re.escape(pole) + r"\b", low)
+            if m and not _negated(low, m.start()):
                 errs.append(f"scene {i} names '{pole}', which this style pack REJECTS. "
                             f"The compiled prompt would say '{pole}' and 'no {pole}' at once. "
                             f"Rewrite the scene; do not rely on the negative to win.")
             for word in IMPLIES.get(pole, []):
-                if re.search(r"\b" + re.escape(word) + r"\b", low):
+                mw = re.search(r"\b" + re.escape(word) + r"\b", low)
+                if mw and not _negated(low, mw.start()):
                     errs.append(f"scene {i} says '{word}', which does not name '{pole}' but "
                                 f"reliably produces it, and this pack REJECTS '{pole}'. "
                                 f"Describe the shape flat instead.")

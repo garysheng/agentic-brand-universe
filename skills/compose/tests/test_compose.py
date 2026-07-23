@@ -409,5 +409,51 @@ class TestImpliedPolesAreCaughtToo(unittest.TestCase):
                 {}, self.comp(t, ["neon"], ["one open book lying on the ground"])), [])
 
 
+class TestNegatedPolesAreNotContradictions(unittest.TestCase):
+    """A scene that says "no glow" is EXCLUDING the pole, not summoning it. Matching the
+    bare word flagged every careful exclusion as a contradiction and refused a whole
+    composition at plan time, blocking a real run. The check false-fired on the very
+    repairs that were written to satisfy it."""
+
+    def comp(self, tmp, poles, beats):
+        d = pathlib.Path(tmp) / "reference" / "style" / "p"
+        d.mkdir(parents=True)
+        (d / "pack.json").write_text(json.dumps({
+            "id": "p", "anchor": "a.png", "refs": ["a.png"],
+            "styleLine": "flat", "rejectedPoles": poles}))
+        return {"universe": tmp, "bind": {"style-pack": "reference/style/p"}, "beats": beats}
+
+    def test_no_glow_is_not_a_contradiction(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["gradients"], ["a flat shape. No glow, no darkness."])), [])
+
+    def test_with_no_depth_is_not_a_contradiction(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["perspective"], ["a square seen straight on with no depth"])), [])
+
+    def test_never_tilted_is_not_a_contradiction(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(compose.scene_contradictions(
+                {}, self.comp(t, ["perspective"], ["no object may be turned or tilted"])), [])
+
+    def test_an_UNNEGATED_pole_still_fires(self):
+        """The negation guard must not defeat the check it protects."""
+        with tempfile.TemporaryDirectory() as t:
+            errs = compose.scene_contradictions(
+                {}, self.comp(t, ["gradients"], ["a rectangle glowing in the centre"]))
+            self.assertTrue(errs)
+
+    def test_a_negation_far_away_does_not_excuse_a_later_mention(self):
+        """'No text anywhere. A glowing rectangle.' must still fire on the glow: the
+        negator has to be NEAR the word, not merely somewhere in the sentence."""
+        with tempfile.TemporaryDirectory() as t:
+            errs = compose.scene_contradictions(
+                {}, self.comp(t, ["gradients"],
+                              ["no text anywhere in this picture at all, and a big glowing box"]))
+            self.assertTrue(errs)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
