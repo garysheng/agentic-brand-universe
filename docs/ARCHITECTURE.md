@@ -117,10 +117,32 @@ Every check corresponds to a failure that actually shipped:
 | `REGISTER-UNLOCKED` | a null style anchor, meaning generation should refuse |
 | `GOLDEN-MISSING` | a required reference that will crash at render time |
 | `PACK-NO-GATE` | a style pack with no read-back rules, which is a mood board |
+| `INVARIANT-VS-QUIRK` | a rule the pinned provider is registered as breaking (warning, not error) |
 
 It earned itself on its first run by finding a generated slot with **no generator declared for it**, a
 bug that had been silently parking every cover as a defect. Parking works so well that a real defect
 hid behind it, which is an argument for linting rather than against parking.
+
+**`extends` is merged before anything is checked**, exactly as the composer merges it. Checking a
+child's raw fields makes every fork that *inherits* a generator, an emitter, or a surface false-fail:
+the field is absent from the file and present at run time. This survived until the first fork that
+inherited rather than overrode.
+
+**`INVARIANT-VS-QUIRK` is the behavioural twin of `SURFACE-INFEASIBLE`.** One catches a contract that
+is internally coherent and geometrically undeliverable; the other catches one that is internally
+coherent and *behaviourally* expensive. A projection demanded "four fingers plus a thumb" and pinned a
+provider whose registry entry says it loses a digit on stylized hands. Seven artifacts went to
+independent judges and six failed on that one item, twice each, with the prompt counter attached.
+Nothing was wrong with either file alone; the contradiction lived between them.
+
+It is deliberately a warning. The seventh artifact passed every item, so the rule is satisfiable and
+the true cost is re-rolls. A brand is allowed to demand something hard. What it must not be is a
+surprise discovered after paying for generation.
+
+There is one more check that runs in the **composer** rather than the linter, because it needs the
+composition and not just the universe: a scene may not *name* something its style pack rejects. A beat
+described a grid as "receding" for a pack that rejects perspective, and the compiler dutifully
+appended "no perspective" to the same prompt, so the model received both instructions and picked one.
 
 ## Provider quirks
 
@@ -150,4 +172,4 @@ plugin and was never tracked here, plus two skills whose scripts *and tests* exi
 
 - [SPEC.md](../SPEC.md), the normative standard.
 - [PROJECTION.json](https://appliedai.wiki/reference/standards/projection-json), the contract format on its own.
-- [hyperagentic-age](https://github.com/garysheng/hyperagentic-age), a universe with seven projections and real committed output.
+- [hyperagentic-age](https://github.com/garysheng/hyperagentic-age), a universe with eight projections and real committed output.

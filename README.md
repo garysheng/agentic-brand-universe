@@ -14,7 +14,7 @@ rendered from.
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
   canon), and [`hyperagentic-age`](https://github.com/garysheng/hyperagentic-age), a public universe
-  declaring seven projections across image, text, and audio.
+  declaring eight projections across image, text, and audio.
 
 ## The six layers
 
@@ -31,11 +31,11 @@ thank-you card rather than only a story. See [ARCHITECTURE.md](./docs/ARCHITECTU
 ## Status
 
 - **Spec v0.6** ([`SPEC.md`](./SPEC.md)) — the projection release. Backtested against the 24-property
-  roster, then re-proven against seven deliberately unlike deliverables.
+  roster, then re-proven against eight deliberately unlike deliverables.
 - **Engine v0** ([`engine/`](./engine/)) — RUNNING: typed canon store + model validation + the
   load-bearing reference gate, stdlib only, 34 tests green (against a self-contained fixture, no
   content-repo dependency).
-- **Tests: 127 green** across the engine and seven skill suites. `./run-tests.sh` needs no API key,
+- **Tests: 165 green** across the engine and seven skill suites. `./run-tests.sh` needs no API key,
   no network, and generates nothing. It discovers test files rather than listing them, so a new
   test file cannot sit unrun.
 
