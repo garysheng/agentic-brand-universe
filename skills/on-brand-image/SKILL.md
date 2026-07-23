@@ -60,6 +60,12 @@ the right skill.
 - **Anatomy is a gate concern, not a prompt concern.** You cannot reliably prompt away a bad hand.
   Either the look is deliberately non-anatomical (loopy ink hands have no finger-count to get wrong,
   which is why this style sidesteps the defect by construction), or the gate catches it and re-rolls.
+  When a hand IS anatomical enough to count, state the digit budget explicitly ("exactly four fingers
+  plus one thumb") AND count it in the read-back; the prompt alone will not hold.
+- **A set must be uniform in kind.** When the scene contains several of the same element, give every
+  one of them the defining feature. Varying a set by OMISSION reads as failure, not as variety: three
+  winged towers where one lacks wings does not say "these are different companies", it says "that one
+  is broken". Vary size, height, spacing, or angle instead, and never the thing that defines the set.
 
 ## Not this skill
 
