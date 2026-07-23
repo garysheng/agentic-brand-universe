@@ -332,5 +332,40 @@ class TestStaleArtifactIsNotMistakenForAnUnjudgedOne(unittest.TestCase):
             self.assertEqual((d["status"], d["roll"]), ("DEFECT", 3))
 
 
+class TestVerdictIsBoundToTheArtifactItJudged(unittest.TestCase):
+    """A verdict is only ever valid for the bytes it looked at. Without binding, a PASS
+    on roll 2 could silently authorise a completely different roll-3 image."""
+
+    def setup(self, tmp, content=b"\x89PNG-one"):
+        w = pathlib.Path(tmp)
+        (w / "verdicts").mkdir(parents=True); (w / "judge").mkdir()
+        art = w / "art-0.png"; art.write_bytes(content)
+        (w / "verdicts" / "art-0.json").write_text(json.dumps({"verdict": "PASS"}))
+        (w / "judge" / "art-0.json").write_text(json.dumps(
+            {"artifactDigest": compose.digest(str(art))}))
+        return str(w), str(art)
+
+    def test_a_verdict_matching_its_artifact_is_honoured(self):
+        with tempfile.TemporaryDirectory() as t:
+            w, art = self.setup(t)
+            self.assertEqual(compose.verdict_for(w, "art", 0, art)["verdict"], "PASS")
+
+    def test_a_verdict_whose_artifact_changed_is_STALE_and_reads_as_absent(self):
+        with tempfile.TemporaryDirectory() as t:
+            w, art = self.setup(t)
+            pathlib.Path(art).write_bytes(b"\x89PNG-a-completely-different-image")
+            self.assertIsNone(compose.verdict_for(w, "art", 0, art),
+                              "a PASS must not carry over to a re-rolled image")
+
+    def test_digest_of_a_missing_file_is_None_rather_than_a_crash(self):
+        self.assertIsNone(compose.digest("/nonexistent/nope.png"))
+
+    def test_binding_is_skipped_when_no_artifact_is_supplied(self):
+        """Callers that only want to know whether a verdict exists still work."""
+        with tempfile.TemporaryDirectory() as t:
+            w, _ = self.setup(t)
+            self.assertEqual(compose.verdict_for(w, "art", 0)["verdict"], "PASS")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

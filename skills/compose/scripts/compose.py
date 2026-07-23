@@ -214,7 +214,7 @@ def _run_slot(unit, proj, comp, work):
         if os.path.exists(out):
             return "PASS", out, roll                       # nothing judged is declared
     else:
-        v = verdict_for(work, sid, idx)
+        v = verdict_for(work, sid, idx, out)
         if v and os.path.exists(out):
             if v["verdict"] == "PASS":
                 return "PASS", out, roll
@@ -324,7 +324,13 @@ def judge_request(work, sid, idx, reference, slot_png, checklist, mode, roll):
     of the brief rather than by asking an agent to please forget what it knows.
     """
     d = pathlib.Path(work) / "judge"; d.mkdir(parents=True, exist_ok=True)
+    # Bind the brief to the EXACT bytes being judged. A verdict is only ever valid for
+    # the artifact it looked at, and without this there is nothing stopping a verdict
+    # from being applied to a later re-roll. A poisoned state file already caused a
+    # judge to be dispatched against a known-rejected image; a digest makes that
+    # detectable rather than silent.
     brief = {"slot": sid, "index": idx, "roll": roll, "mode": mode,
+             "artifactDigest": digest(slot_png),
              "artifact": slot_png, "reference": reference, "checklist": checklist,
              "instruction": ("Judge the pixels only. For EACH checklist item return PASS or "
                              "DEFECT with one sentence of evidence describing what you SEE. "
@@ -335,13 +341,32 @@ def judge_request(work, sid, idx, reference, slot_png, checklist, mode, roll):
     (d / f"{sid}-{idx}.json").write_text(json.dumps(brief, indent=2))
     return str(d / f"{sid}-{idx}.json")
 
-def verdict_for(work, sid, idx):
-    """A verdict the runtime wrote back, or None. Absent is NOT a pass."""
+def digest(path):
+    """Short content hash of an artifact, for binding a verdict to what it judged."""
+    try:
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()[:16]
+    except Exception:
+        return None
+
+def verdict_for(work, sid, idx, artifact=None):
+    """A verdict the runtime wrote back, or None. Absent is NOT a pass.
+
+    If the brief recorded which bytes were judged and those bytes have since changed,
+    the verdict is STALE and is treated as absent. A verdict is only ever valid for the
+    artifact it actually looked at."""
     f = pathlib.Path(work) / "verdicts" / f"{sid}-{idx}.json"
     if not f.exists(): return None
     try: v = json.loads(f.read_text())
     except Exception: return None
     if v.get("verdict") not in ("PASS", "DEFECT"): return None   # unparseable fails CLOSED
+    if artifact:
+        b = pathlib.Path(work) / "judge" / f"{sid}-{idx}.json"
+        if b.exists():
+            try: want = json.loads(b.read_text()).get("artifactDigest")
+            except Exception: want = None
+            if want and want != digest(artifact):
+                return None                       # judged a different image; fails CLOSED
     return v
 
 
