@@ -50,6 +50,9 @@ def main(argv: list[str] | None = None) -> int:
     ll = sub.add_parser("lock-level"); ll.add_argument("universe"); ll.add_argument("entity")
     ls2 = sub.add_parser("lock-shot", help="lock a generated reference shot into an entity")
     ls2.add_argument("universe"); ls2.add_argument("eid"); ls2.add_argument("shot"); ls2.add_argument("path")
+    ls2.add_argument("--recipe", default=None,
+                     help="path to the recipe JSON that produced this shot; freezes provenance "
+                          "at approval as <path>.recipe.json so a divergence check can run later")
     ae = sub.add_parser("add-entity", help="scaffold a schema-valid entity stub with reference-matrix slots")
     ae.add_argument("universe"); ae.add_argument("kind"); ae.add_argument("eid")
     ae.add_argument("--name", default=""); ae.add_argument("--origin", default=None)
@@ -169,13 +172,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {dest.relative_to(uni)}  (lock_level: {refs.lock_level(store, args.eid)})")
         return 0
     if args.cmd == "lock-shot":
-        from .authoring import lock_shot
+        from .authoring import lock_shot, recipe_sidecar_path
         uni = Path(args.universe)
         entp = uni / "canon" / "entities" / f"{args.eid}.json"
         ent = json.loads(entp.read_text())
-        lock_shot(ent, args.shot, args.path)
+        recipe = None
+        if args.recipe:
+            recipe = json.loads(Path(args.recipe).read_text())
+        lock_shot(ent, args.shot, args.path, recipe=recipe, root=str(uni))
         entp.write_text(json.dumps(ent, indent=2) + "\n")
-        print(f"locked {args.eid}.{args.shot} -> {args.path}  (lock_level: {refs.lock_level(CanonStore(uni), args.eid)})")
+        prov = (f"  provenance -> {recipe_sidecar_path(uni / args.path).name}" if recipe is not None
+                else "  (no --recipe: un-auditable, no divergence check can run against it)")
+        print(f"locked {args.eid}.{args.shot} -> {args.path}  (lock_level: {refs.lock_level(CanonStore(uni), args.eid)}){prov}")
         return 0
     return 2
 

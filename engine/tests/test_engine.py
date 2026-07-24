@@ -384,6 +384,63 @@ class TestLockShot(unittest.TestCase):
         self.assertEqual(lock_level(store, "hero"), "locked")
         self.assertEqual(Entity.from_dict(ch).validate(), [])
 
+    def test_locking_without_a_recipe_writes_no_sidecar_and_stays_valid(self):
+        """A golden with no provenance is still a golden. It is only un-auditable, which
+        is the linter's concern, not the lock's."""
+        import json, tempfile
+        from pathlib import Path
+        from agenticstory import scaffold_entity, lock_shot
+        from agenticstory.authoring import recipe_sidecar_path
+        d = Path(tempfile.mkdtemp()); (d / "art").mkdir()
+        (d / "art" / "ff.png").write_bytes(b"golden-bytes")
+        ch = scaffold_entity("character", "hero", "Hero")
+        lock_shot(ch, "forward-fullbody", "art/ff.png", root=str(d))
+        self.assertFalse(recipe_sidecar_path(d / "art" / "ff.png").exists())
+
+    def test_locking_with_a_recipe_freezes_provenance_at_approval(self):
+        """The whole divergence loop rests on this: approval captures what was blessed
+        and what it was blessed against, by exact bytes."""
+        import json, tempfile
+        from pathlib import Path
+        from agenticstory import scaffold_entity, lock_shot
+        from agenticstory.authoring import recipe_sidecar_path
+        d = Path(tempfile.mkdtemp())
+        (d / "art").mkdir(); (d / "refs").mkdir()
+        (d / "art" / "ff.png").write_bytes(b"the-approved-golden")
+        (d / "refs" / "anchor.png").write_bytes(b"the-anchor-input")
+        ch = scaffold_entity("character", "hero", "Hero")
+        recipe = {"provider": "gpt-image-2", "prompt": "a hero, front, full body",
+                  "specVersion": "0.6",
+                  "refs": [{"path": "refs/anchor.png", "digest": "STALE-WILL-BE-RESTAMPED"}]}
+        lock_shot(ch, "forward-fullbody", "art/ff.png", recipe=recipe, root=str(d))
+        side = recipe_sidecar_path(d / "art" / "ff.png")
+        self.assertTrue(side.exists())
+        frozen = json.loads(side.read_text())
+        self.assertEqual(frozen["provider"], "gpt-image-2")
+        self.assertEqual(frozen["prompt"], "a hero, front, full body")
+        # the golden's OWN bytes are recorded: this is what the human blessed
+        import hashlib
+        want = hashlib.sha256(b"the-approved-golden").hexdigest()[:16]
+        self.assertEqual(frozen["goldenDigest"], want)
+        # input digests are re-stamped from real bytes NOW, never trusted from the recipe
+        anchor_now = hashlib.sha256(b"the-anchor-input").hexdigest()[:16]
+        self.assertEqual(frozen["inputs"][0]["digest"], anchor_now)
+        self.assertNotEqual(frozen["inputs"][0]["digest"], "STALE-WILL-BE-RESTAMPED")
+
+    def test_an_unresolvable_input_is_recorded_with_a_null_digest(self):
+        """Dropping it would make a missing input look like an input never wanted."""
+        import json, tempfile
+        from pathlib import Path
+        from agenticstory import scaffold_entity, lock_shot
+        from agenticstory.authoring import recipe_sidecar_path
+        d = Path(tempfile.mkdtemp()); (d / "art").mkdir()
+        (d / "art" / "ff.png").write_bytes(b"g")
+        ch = scaffold_entity("character", "hero", "Hero")
+        lock_shot(ch, "forward-fullbody", "art/ff.png",
+                  recipe={"refs": [{"path": "refs/gone.png"}]}, root=str(d))
+        frozen = json.loads(recipe_sidecar_path(d / "art" / "ff.png").read_text())
+        self.assertIsNone(frozen["inputs"][0]["digest"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

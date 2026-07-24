@@ -285,6 +285,68 @@ class TestLinter(unittest.TestCase):
             self.assertIn(lint.main(), (0, 1), "clean or warn-only must not exit 2")
 
 
+class TestGoldenProvenance(unittest.TestCase):
+    """A golden is Gary's approved answer of record. An approval that recorded only a
+    path could not say what it was approved AGAINST, so the taste corpus was
+    un-auditable. These checks make the `<golden>.recipe.json` sidecar load-bearing."""
+
+    def universe_with_golden(self, tmp, *, recipe=None, input_bytes=b"anchor-v1"):
+        """A universe with one character whose 'master' golden exists, optionally with a
+        provenance sidecar recording one input at `input_bytes`."""
+        root = build(tmp, projections={"p": {"id": "p", "slots": [OK_SLOT],
+                                             "generators": [OK_GEN], "invariants": OK_INV}})
+        (root / "reference" / "hero").mkdir(parents=True)
+        (root / "reference" / "hero" / "master.png").write_bytes(b"golden")
+        (root / "reference" / "hero" / "anchor.png").write_bytes(input_bytes)
+        (root / "canon" / "entities" / "hero.json").write_text(json.dumps({
+            "id": "hero", "kind": "character",
+            "structured": {"sheets": {"master": "reference/hero/master.png"},
+                           "requiredForRender": ["master"]}}))
+        if recipe is not None:
+            (root / "reference" / "hero" / "master.png.recipe.json").write_text(
+                json.dumps(recipe))
+        return root
+
+    def test_a_golden_with_no_sidecar_warns(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, warns = run(self.universe_with_golden(t, recipe=None))
+        self.assertIn("GOLDEN-NO-RECIPE", warns)
+
+    def test_a_golden_whose_input_is_unchanged_is_clean(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as t:
+            h = hashlib.sha256(b"anchor-v1").hexdigest()[:16]
+            recipe = {"inputs": [{"path": "reference/hero/anchor.png", "digest": h}]}
+            _, warns = run(self.universe_with_golden(t, recipe=recipe))
+        self.assertNotIn("GOLDEN-NO-RECIPE", warns)
+        self.assertNotIn("GOLDEN-STALE", warns)
+
+    def test_a_golden_whose_input_bytes_changed_is_stale(self):
+        """The free half of the divergence loop: an approval made against inputs that
+        have since changed, caught statically over the whole corpus."""
+        with tempfile.TemporaryDirectory() as t:
+            # sidecar records a digest that will NOT match anchor.png's real bytes
+            recipe = {"inputs": [{"path": "reference/hero/anchor.png",
+                                  "digest": "0000000000000000"}]}
+            _, warns = run(self.universe_with_golden(t, recipe=recipe))
+        self.assertIn("GOLDEN-STALE", warns)
+
+    def test_a_golden_whose_input_vanished_is_flagged(self):
+        with tempfile.TemporaryDirectory() as t:
+            recipe = {"inputs": [{"path": "reference/hero/deleted.png",
+                                  "digest": "abcdef0123456789"}]}
+            _, warns = run(self.universe_with_golden(t, recipe=recipe))
+        self.assertIn("GOLDEN-INPUT-GONE", warns)
+
+    def test_a_null_input_digest_is_not_treated_as_drift(self):
+        """A recipe may record an input that was unresolved at approval (null digest).
+        That is a fact about the approval, not a mismatch to re-flag every run."""
+        with tempfile.TemporaryDirectory() as t:
+            recipe = {"inputs": [{"path": "reference/hero/anchor.png", "digest": None}]}
+            _, warns = run(self.universe_with_golden(t, recipe=recipe))
+        self.assertNotIn("GOLDEN-STALE", warns)
+
+
 class TestSpecPin(unittest.TestCase):
     """A universe.json that pins no spec, or pins a version the engine no longer
     implements, conforms to nothing anyone can check. On 2026-07-24 three surfaces gave

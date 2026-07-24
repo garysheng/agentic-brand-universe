@@ -7,7 +7,74 @@ step (lock-references) fills paths and promotes the required set.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import pathlib
+
 from .matrix import matrix_for
+
+
+def _digest(path) -> str | None:
+    """Short content hash of a file, or None if it does not resolve.
+
+    None is recorded rather than omitted: a reference that failed to resolve at
+    approval time is a fact about the approval, and dropping it would make an
+    unresolved input look like an input that was never wanted.
+    """
+    try:
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()[:16]
+    except Exception:
+        return None
+
+
+def recipe_sidecar_path(golden_path) -> pathlib.Path:
+    """Where a golden's provenance lives: alongside it, as `<golden>.recipe.json`.
+
+    A sidecar, not a field inside the entity, for three reasons. It travels with the
+    asset file so a moved or copied golden keeps its provenance. It is git-diffable on
+    its own. And it does not touch the `sheets[shot] = path` string contract that the
+    compiler and resolver depend on.
+    """
+    p = pathlib.Path(golden_path)
+    return p.with_name(p.name + ".recipe.json")
+
+
+def freeze_recipe(golden_path, recipe: dict, root=None) -> dict:
+    """Stamp a golden's provenance AT APPROVAL: what made it, and what it was made
+    against, by exact bytes.
+
+    This is what turns the golden library into an auditable eval set. An approval that
+    records only a path cannot answer the one question the whole divergence loop rests
+    on: what did the human actually approve, and against which inputs? Two things are
+    frozen here that a bare recipe does not carry:
+
+      * `goldenDigest` - the exact bytes the human blessed. A golden re-locked in place
+        under the same filename changes these bytes; the approval was of the old ones.
+      * `inputs[].digest` re-stamped NOW - the bytes each input had at approval. Later,
+        `lint-universe` re-hashes those paths and flags a golden whose inputs have
+        since moved, because an approval made against inputs that no longer exist is an
+        approval that may no longer hold.
+
+    `root` joins universe-relative input paths so the digests are taken from the real
+    files, not from strings that only resolve in one working directory.
+    """
+    def resolve(p):
+        if root and not pathlib.Path(p).is_absolute():
+            return str(pathlib.Path(root) / p)
+        return p
+    raw_inputs = recipe.get("refs") or recipe.get("inputs") or []
+    inputs = []
+    for r in raw_inputs:
+        p = r["path"] if isinstance(r, dict) else r
+        inputs.append({"path": p, "digest": _digest(resolve(p))})
+    return {
+        "goldenDigest": _digest(resolve(golden_path)),
+        "provider": recipe.get("provider") or recipe.get("model"),
+        "prompt": recipe.get("prompt"),
+        "specVersion": recipe.get("specVersion"),
+        "inputs": inputs,
+    }
 
 
 def scaffold_entity(
@@ -67,7 +134,8 @@ def scaffold_entity(
     return ent
 
 
-def lock_shot(entity: dict, shot: str, path: str) -> dict:
+def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
+              root=None) -> dict:
     """Lock a generated reference shot into an entity (mutates + returns it).
 
     Sets `structured.sheets[shot] = path` and recomputes `requiredForRender` to the
@@ -75,6 +143,12 @@ def lock_shot(entity: dict, shot: str, path: str) -> dict:
     every step (a required key always resolves) and promotes the entity to gate-real
     only once its required shots are locked. Non-matrixed kinds keep any existing
     requiredForRender untouched.
+
+    When `recipe` is supplied, provenance is frozen alongside the golden as
+    `<path>.recipe.json`. Locking IS the approval act, so it is the correct and only
+    place to capture what the human blessed and what it was blessed against. A golden
+    locked without a recipe is still a valid golden, but it is un-auditable: no
+    divergence check can ever run against it, which `lint-universe` flags.
     """
     st = entity.setdefault("structured", {})
     sheets = st.setdefault("sheets", {})
@@ -83,4 +157,8 @@ def lock_shot(entity: dict, shot: str, path: str) -> dict:
     if m:
         required = m.get("required", [])
         st["requiredForRender"] = [k for k in required if sheets.get(k)]
+    if recipe is not None:
+        abspath = str(pathlib.Path(root) / path) if root and not pathlib.Path(path).is_absolute() else path
+        recipe_sidecar_path(abspath).write_text(
+            json.dumps(freeze_recipe(path, recipe, root=root), indent=2, sort_keys=True) + "\n")
     return entity

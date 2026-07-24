@@ -11,11 +11,20 @@ hour into one.
 
 Exit 0 clean, 1 warnings only, 2 errors.
 """
-import json, pathlib, re, sys
+import hashlib, json, pathlib, re, sys
 
 E, W = [], []
 def err(code, msg): E.append((code, msg))
 def warn(code, msg): W.append((code, msg))
+
+def _sha16(path):
+    """First 16 hex of a file's sha256, or None if it does not resolve. Must match the
+    engine's `_digest` so a golden's recorded input hashes compare equal here."""
+    try:
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()[:16]
+    except Exception:
+        return None
 
 def jload(p):
     try: return json.loads(pathlib.Path(p).read_text())
@@ -74,14 +83,54 @@ def lint(root):
         if n < 3: warn("PACK-THIN", f"{pj}: {n} ref(s); the spec expects 3 to 8")
 
     # ---- goldens declared by entities
+    #
+    # A golden is Gary's approved answer of record: the human-blessed output the whole
+    # divergence loop measures the generator against. But an approval that recorded only
+    # a path cannot answer what it was approved AGAINST, so the golden library was a
+    # taste corpus nothing could audit. `lock-shot --recipe` now freezes provenance as
+    # a `<golden>.recipe.json` sidecar; these two checks make that provenance load-bearing.
     for ej in (root/"canon"/"entities").glob("*.json"):
         e = jload(ej)
         if not e or e.get("kind") not in ("character","prop","motif","visual-metaphor"): continue
-        sheets = (e.get("structured") or {}).get("sheets") or {}
-        for name in (e.get("structured") or {}).get("requiredForRender", []):
+        st = e.get("structured") or {}
+        sheets = st.get("sheets") or {}
+
+        # Render-correctness: every REQUIRED sheet resolves. Scoped to requiredForRender
+        # because that is what the render gate depends on.
+        for name in st.get("requiredForRender", []):
             pth = sheets.get(name)
             if not pth: err("GOLDEN-UNDECLARED", f"{ej.name}: requires '{name}' but no sheet path")
             elif not (root/pth).exists(): err("GOLDEN-MISSING", f"{ej.name}: {name} -> {pth} missing")
+
+        # Auditability: every LOCKED sheet carries provenance, required or not. A golden
+        # is Gary's approved answer of record regardless of whether the render gate needs
+        # it, so every approved asset must be able to enter a divergence check.
+        for name, pth in sheets.items():
+            if not pth or not (root/pth).exists(): continue    # unlocked/missing: other checks own it
+            sidecar = (root/pth).with_name((root/pth).name + ".recipe.json")
+            if not sidecar.exists():
+                warn("GOLDEN-NO-RECIPE", f"{ej.name}: golden '{name}' ({pth}) has no provenance "
+                     f"sidecar; it is un-auditable and cannot be part of a divergence check. "
+                     f"Re-lock it with `lock-shot --recipe`.")
+                continue
+            rec = jload(sidecar)
+            if not rec: continue
+            # An input that has changed bytes since approval means this golden was
+            # blessed against something that no longer exists. The approval may not hold,
+            # and no human is looking. This is the free half of the divergence loop:
+            # detected statically, at zero cost, over the whole approved corpus.
+            for inp in rec.get("inputs", []):
+                ip, want = inp.get("path"), inp.get("digest")
+                if want is None: continue
+                ap = ip if pathlib.Path(ip).is_absolute() else str(root/ip)
+                now = _sha16(ap)
+                if now is None:
+                    warn("GOLDEN-INPUT-GONE", f"{ej.name}: golden '{name}' was approved against "
+                         f"input '{ip}', which no longer resolves.")
+                elif now != want:
+                    warn("GOLDEN-STALE", f"{ej.name}: golden '{name}' was approved when input '{ip}' "
+                         f"had bytes {want}; it is now {now}. The approval was of a different input; "
+                         f"re-judge and re-lock, or confirm the golden still holds.")
 
     # ---- provider quirk registry
     regf = SKILLS.parent/"registry"/"providers.json"

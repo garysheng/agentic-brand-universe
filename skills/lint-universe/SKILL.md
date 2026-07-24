@@ -42,7 +42,19 @@ a pack without one is a mood board; `styleLine` exists. Warns under three refs.
 - Every invariant is typed `computed` or `judged`. A projection with no invariants is flagged: nothing
   can fail, so nothing is checked.
 
-**Goldens.** Every sheet named in an entity's `requiredForRender` resolves to a file.
+**Goldens.** Every sheet named in an entity's `requiredForRender` resolves to a file
+(`GOLDEN-UNDECLARED`, `GOLDEN-MISSING`). And every LOCKED sheet, required or not, carries a
+`<golden>.recipe.json` provenance sidecar:
+- `GOLDEN-NO-RECIPE` (warn): the approval recorded only a path, so nothing can say what it was
+  approved against. It is un-auditable and cannot enter a divergence check. Re-lock with
+  `lock-shot --recipe`.
+- `GOLDEN-STALE` / `GOLDEN-INPUT-GONE` (warn): the sidecar recorded each input's bytes at approval;
+  one of them has since changed or vanished. The golden was blessed against an input that no longer
+  exists, and no human is looking. This is the free half of the divergence loop: the whole approved
+  corpus audited statically at zero cost.
+
+A golden is Gary's approved answer of record. These checks make the golden library an auditable eval
+set rather than a pile of images with no memory of how they were judged.
 
 **Quirks.** The provider registry parses, and a pinned provider that the registry has never heard of is
 flagged, because it will silently inherit no quirks.
