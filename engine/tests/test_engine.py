@@ -238,15 +238,20 @@ class TestScaffold(unittest.TestCase):
             self.assertIn("the-first-step", store.stories)
 
     def test_example_gate_refuses_until_assets_exist(self):
-        # The example character's sheets are placeholder paths not on disk, so the
-        # load-bearing gate must refuse the story — that refusal is the feature.
+        # The example story must still be REFUSED by the load-bearing gate — that
+        # refusal is the feature. It now refuses on the deliberately-unlocked
+        # setting rather than on a dangling character sheet path: since validate
+        # enforces principle 3 (a declared asset exists under assetRoot), shipping
+        # a placeholder path in the scaffold would mean `init` produces a universe
+        # that fails its own validator. Refusing via the setting contract keeps a
+        # fresh scaffold green AND still demonstrates the gate.
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "exverse"
             scaffold.scaffold_universe(target, name="exverse", example=True)
             store = CanonStore(target)
             problems = refs.assert_story(store, "the-first-step")
             self.assertTrue(problems, "gate should refuse: example assets are placeholders")
-            self.assertTrue(any("protagonist" in p for p in problems), problems)
+            self.assertTrue(any("the-crossroads" in p for p in problems), problems)
 
     def test_refuses_overwrite_without_force(self):
         with tempfile.TemporaryDirectory() as d:
@@ -291,6 +296,8 @@ class TestScaffold(unittest.TestCase):
         self.assertNotIn("realPerson", ch)
         self.assertEqual(Entity.from_dict(ch).validate(), [])
         # real person: photo stack required -> realPerson gated
+        (d / "reference" / "vip" / "photos").mkdir(parents=True, exist_ok=True)
+        (d / "reference" / "vip" / "photos" / "01.jpg").write_bytes(b"\xff\xd8")
         rp = scaffold_entity("character", "vip", "Vip", photo_stack=["reference/vip/photos/01.jpg"])
         self.assertEqual(rp["realPerson"]["approval"]["state"], "gated")
         self.assertEqual(rp["realPerson"]["photoStack"], ["reference/vip/photos/01.jpg"])
@@ -380,3 +387,78 @@ class TestLockShot(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestAssetExistence(unittest.TestCase):
+    """Principle 3: a declared asset resolves to a real file, or validate says so.
+
+    Regression: a universe once validated GREEN while eight declared paths pointed
+    at nothing (a lock step that joined four shot names into one key, slots on
+    `status: locked` entities whose art was never generated, and paths into
+    directories a consolidation sweep had deleted).
+    """
+
+    def _universe(self):
+        import json, tempfile
+        from pathlib import Path
+        d = Path(tempfile.mkdtemp())
+        (d / "canon" / "entities").mkdir(parents=True)
+        (d / "canon" / "relations").mkdir(); (d / "stories").mkdir()
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        return d
+
+    def _write(self, d, ent):
+        import json
+        (d / "canon" / "entities" / f"{ent['id']}.json").write_text(json.dumps(ent))
+
+    def test_stub_with_null_sheets_still_validates_clean(self):
+        from agenticstory import CanonStore
+        from agenticstory.authoring import scaffold_entity
+        d = self._universe()
+        self._write(d, scaffold_entity("character", "hero", "Hero"))
+        self.assertEqual(CanonStore(d).validate_canon(), [],
+                         "an unlocked stub declares no paths and must stay clean")
+
+    def test_declared_sheet_with_no_file_is_a_problem(self):
+        from agenticstory import CanonStore
+        d = self._universe()
+        self._write(d, {"id": "ghost", "kind": "character",
+                        "structured": {"sheets": {"master": "reference/ghost/master.png"},
+                                       "requiredForRender": [], "invariants": []}})
+        problems = CanonStore(d).validate_canon()
+        self.assertTrue(any("ghost" in p and "NOT ON DISK" in p for p in problems), problems)
+
+    def test_present_file_validates_clean(self):
+        from agenticstory import CanonStore
+        d = self._universe()
+        (d / "reference" / "ghost").mkdir(parents=True)
+        (d / "reference" / "ghost" / "master.png").write_bytes(b"\x89PNG")
+        self._write(d, {"id": "ghost", "kind": "character",
+                        "structured": {"sheets": {"master": "reference/ghost/master.png"},
+                                       "requiredForRender": ["master"], "invariants": []}})
+        self.assertEqual(CanonStore(d).validate_canon(), [])
+
+    def test_path_outside_the_universe_fails_self_containment(self):
+        from agenticstory import CanonStore
+        d = self._universe()
+        sib = d.parent / "some-book" / "reference"
+        sib.mkdir(parents=True, exist_ok=True)
+        (sib / "photo.jpg").write_bytes(b"\xff\xd8")
+        self._write(d, {"id": "real", "kind": "character",
+                        "structured": {"sheets": {"master": "reference/real/m.png"},
+                                       "requiredForRender": [], "invariants": []},
+                        "realPerson": {"photoStack": ["../some-book/reference/photo.jpg"],
+                                       "approval": {"state": "approved"}}})
+        problems = CanonStore(d).validate_canon()
+        self.assertTrue(any("photoStack" in p for p in problems),
+                        f"a ref resolving only outside the universe breaks the clone test: {problems}")
+
+    def test_contract_empty_plates_are_checked(self):
+        from agenticstory import CanonStore
+        d = self._universe()
+        self._write(d, {"id": "hall", "kind": "setting", "status": "locked",
+                        "structured": {"invariants": []},
+                        "contract": {"turnaround": None, "emptyPlates": ["reference/hall/a.png"],
+                                     "blueprint": None, "map": "", "blocking": "", "dressing": ""}})
+        problems = CanonStore(d).validate_canon()
+        self.assertTrue(any("emptyPlates" in p and "NOT ON DISK" in p for p in problems), problems)

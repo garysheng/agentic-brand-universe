@@ -105,15 +105,17 @@ def _example_files() -> dict[str, object]:
         "originStory": "the-first-step",
         "authority": {"lockedBy": "TODO-you", "lockedOn": None},
         "structured": {
-            "sheets": {"body": "assets/protagonist-body.png", "face": "assets/protagonist-face.png"},
-            "requiredForRender": ["body", "face"],
+            "sheets": {"body": None, "face": None},
+            "requiredForRender": [],
             "invariants": ["EXAMPLE-replace-me"],
         },
         "prose": {
             "voice": "TODO — how they speak / what they want",
-            "rules": "EXAMPLE ENTITY. The sheet paths above are PLACEHOLDERS — `assert-story` "
-                     "will refuse to render until you drop the real reference art at those paths "
-                     "(under the universe's assetRoot). That refusal is the load-bearing gate working.",
+            "rules": "EXAMPLE ENTITY, deliberately UNLOCKED: its sheet slots are empty because no "
+                     "art exists yet. Generate each shot, then `lock-shot` it, then add the key to "
+                     "requiredForRender. A slot must never name a path whose file is not on disk "
+                     "under assetRoot: `validate` treats a declared-but-missing asset as a problem "
+                     "(principle 3), so a placeholder path is a broken universe, not a TODO.",
         },
     }
     the_crossroads = {
@@ -143,10 +145,10 @@ def _example_files() -> dict[str, object]:
             "anchoredToRealArt": None,
             "rejectedPoles": [],
         },
-        "features": ["protagonist"],
+        "features": ["protagonist", "the-crossroads"],
         "beats": [
             {"n": 1, "text": "The protagonist takes the first step.",
-             "location": None, "characters": ["protagonist"],
+             "location": "the-crossroads", "characters": ["protagonist"],
              "provenance": "EXAMPLE — every beat cites a real source (testimony, research, the author's words)."}
         ],
         "writesBack": [],

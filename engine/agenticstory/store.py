@@ -93,7 +93,84 @@ class CanonStore:
                 if fid not in known:
                     problems.append(f"story '{s.id}' features unknown entity '{fid}'")
         problems += self._validate_canon_records()
+        problems += self._validate_assets()
         return problems
+
+    ASSET_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp3", ".wav", ".m4a")
+
+    def _validate_assets(self) -> list[str]:
+        """Principle 3: a declared asset resolves to a real file under assetRoot, or it is a problem.
+
+        Entity.validate() is deliberately filesystem-free, and refs.resolve_entity_assets()
+        only walks `requiredForRender` at render time. Between them sat a gap wide enough
+        that a universe could validate GREEN while eight declared paths pointed at nothing:
+        a lock step that joined four shot names into one key, three slots declared on
+        `status: locked` entities whose art was never generated, and two paths into
+        book-folder directories a consolidation sweep had deleted. None of it was caught
+        because nothing ever checked that a declared path exists.
+
+        This also enforces 3a (self-containment): a path that resolves only OUTSIDE the
+        universe fails here, because it is not under assetRoot. Cloning the universe
+        alone must not break a reference.
+        """
+        root = self.asset_root
+        problems: list[str] = []
+
+        def check(eid: str, slot: str, val: object) -> None:
+            if not isinstance(val, str) or not val:
+                return
+            if not val.lower().endswith(self.ASSET_SUFFIXES) and "/" not in val:
+                return  # a prose field, not a path
+            target = val.split("#", 1)[0]
+            if not target:
+                return
+            p = root / target
+            if not (p.exists() or p.is_dir()):
+                problems.append(f"{eid}: {slot} -> {target} (NOT ON DISK under assetRoot)")
+            elif not self._under_root(p, root):
+                problems.append(f"{eid}: {slot} -> {target} (OUTSIDE the universe; breaks self-containment)")
+
+        def walk(eid: str, obj: object, slot: str) -> None:
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    walk(eid, v, f"{slot}.{k}")
+            elif isinstance(obj, list):
+                for i, v in enumerate(obj):
+                    walk(eid, v, f"{slot}[{i}]")
+            elif isinstance(obj, str) and obj.lower().endswith(self.ASSET_SUFFIXES):
+                check(eid, slot, obj)
+
+        for e in self.entities.values():
+            walk(e.id, e.structured, "structured")
+            if e.raw.get("contract"):
+                walk(e.id, e.raw["contract"], "contract")
+            rp = e.real_person
+            if rp:
+                for i, ph in enumerate(rp.get("photoStack") or []):
+                    if isinstance(ph, str) and ph:
+                        p = root / ph.split("#", 1)[0]
+                        if not (p.is_file() or p.is_dir()):
+                            problems.append(
+                                f"{e.id}: realPerson.photoStack[{i}] -> {ph} (NOT ON DISK under assetRoot)"
+                            )
+                        elif not self._under_root(p, root):
+                            problems.append(
+                                f"{e.id}: realPerson.photoStack[{i}] -> {ph} (OUTSIDE the universe; breaks self-containment)"
+                            )
+        return sorted(problems)
+
+    @staticmethod
+    def _under_root(p, root) -> bool:
+        """3a: existing is not enough, it must live UNDER assetRoot.
+
+        A `../sibling/photo.jpg` resolves fine on the authoring machine and still
+        breaks the clone test, so existence alone cannot enforce self-containment.
+        """
+        try:
+            p.resolve().relative_to(root.resolve())
+            return True
+        except ValueError:
+            return False
 
     def _validate_canon_records(self) -> list[str]:
         """Duplicate crossover display numbers.
