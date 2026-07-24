@@ -23,6 +23,13 @@ for it**, which had been silently parking every cover as a defect for an entire 
 **Universe.** `universe.json` parses. `identity.register.anchor` is set and resolves. A null anchor
 means the style is not locked and generation should refuse.
 
+**The spec pin.** `spec.version` is declared (error if absent: an unpinned universe conforms to nothing
+anyone can check, and cannot detect its own drift), and it matches the engine's `SPEC_VERSION` (warns
+if the universe is behind). This catches the class where three surfaces each give a consistent but
+different answer: on 2026-07-24 `SPEC.md` said v0.6, the engine constant said 0.4.1, and the reference
+universe pinned 0.5, and every one was internally consistent. Consistency is not truth; the pin is now
+verified against the engine rather than trusted.
+
 **Style packs.** `pack.json` parses; the anchor and every ref resolve on disk; a `gate` exists, because
 a pack without one is a mood board; `styleLine` exists. Warns under three refs.
 

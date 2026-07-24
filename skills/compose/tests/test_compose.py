@@ -708,5 +708,194 @@ class TestSlotScopedRulesAndPermits(unittest.TestCase):
         self.assertFalse(compose.applies_to({"id": "x", "slots": ["a"]}, "b"))
 
 
+class TestProvenanceRecipes(unittest.TestCase):
+    """Every generated asset must carry its recipe: the model, the exact prompt, and
+    every input by path. The composer built all three in memory, sent them to the image
+    model, and kept none of them, so the one pipeline that assembles prompts from canon
+    was also the one that could not say what it had sent."""
+
+    PROJ = {"id": "proj", "_extends_chain": [],
+            "slots": [{"id": "art", "type": "generated"}],
+            "generators": [{"for": "art", "pin": "gpt-image-2"}],
+            "invariants": {"perSlot": [], "crossSlot": []}}
+
+    def universe(self, tmp, *, scene="a warm room", golden=b"\x89PNG-v1"):
+        root = pathlib.Path(tmp)
+        d = root / "p"; (d / "refs").mkdir(parents=True, exist_ok=True)
+        (d / "refs" / "a.png").write_bytes(b"\x89PNG-anchor")
+        (d / "pack.json").write_text(json.dumps({
+            "id": "p", "anchor": "refs/a.png", "refs": ["refs/a.png"],
+            "styleLine": "flat", "rejectedPoles": ["neon"]}))
+        (root / "reference").mkdir(exist_ok=True)
+        (root / "reference" / "hero.png").write_bytes(golden)
+        (root / "universe.json").write_text(json.dumps({"spec": {"version": "0.6"}}))
+        return {"universe": str(root), "id": "c", "projection": "proj",
+                "bind": {"style-pack": "p"}, "goldens": {"art": ["reference/hero.png"]},
+                "slots": {"art": {"scene": scene, "size": "1024x1536"}}}
+
+    def assemble(self, comp):
+        rec, err = compose.assemble_one(self.PROJ, comp, "art", 0, "generated")
+        self.assertIsNone(err, err)
+        return rec
+
+    def test_the_recipe_records_model_prompt_and_every_input(self):
+        with tempfile.TemporaryDirectory() as t:
+            r = self.assemble(self.universe(t))
+        self.assertEqual(r["provider"], "gpt-image-2")
+        self.assertEqual(r["size"], "1024x1536")
+        self.assertIn("a warm room", r["prompt"])
+        self.assertTrue(all(x["path"] and x["digest"] for x in r["refs"]))
+        self.assertEqual(r["specVersion"], "0.6")
+
+    def test_the_recorded_prompt_is_the_one_that_would_be_sent(self):
+        """Provenance that does not match what ran is worse than none: it is a record
+        that will be trusted and is wrong."""
+        with tempfile.TemporaryDirectory() as t:
+            comp = self.universe(t)
+            r = self.assemble(comp)
+            pack = compose.load_pack(comp["universe"], "p")
+            prompt, refs, _ = compose.compile_slot(
+                self.PROJ, comp, "art", "a warm room", pack, ["reference/hero.png"])
+        self.assertEqual(r["prompt"], prompt)
+        self.assertEqual([x["path"] for x in r["refs"]], refs)
+
+    def test_the_same_canon_assembles_to_the_same_digest(self):
+        """The whole drift check rests on this. If assembly is not deterministic, a
+        digest comparison reports drift that is only noise, and a check that cries
+        wolf gets switched off."""
+        with tempfile.TemporaryDirectory() as t:
+            comp = self.universe(t)
+            self.assertEqual(self.assemble(comp)["recipeDigest"],
+                             self.assemble(comp)["recipeDigest"])
+
+    def test_a_golden_changing_its_BYTES_changes_the_digest(self):
+        """The drift most likely to happen, and the one a path cannot see: goldens get
+        re-locked in place, under the same filename."""
+        with tempfile.TemporaryDirectory() as t:
+            a = self.assemble(self.universe(t, golden=b"\x89PNG-v1"))
+        with tempfile.TemporaryDirectory() as t:
+            b = self.assemble(self.universe(t, golden=b"\x89PNG-v2-relocked"))
+        self.assertNotEqual(a["recipeDigest"], b["recipeDigest"])
+
+    def test_a_changed_scene_changes_the_digest(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = self.assemble(self.universe(t, scene="a warm room"))
+            b = self.assemble(self.universe(t, scene="a cold room"))
+        self.assertNotEqual(a["recipeDigest"], b["recipeDigest"])
+
+    def test_no_machine_specific_path_enters_a_recipe(self):
+        """A recipe carrying a work directory or an output path would differ on every
+        machine, so the drift check would fail everywhere and mean nothing anywhere."""
+        with tempfile.TemporaryDirectory() as t:
+            comp = self.universe(t)
+            comp["work"] = "/tmp/some-work-dir"
+            blob = json.dumps(self.assemble(comp))
+        self.assertNotIn("some-work-dir", blob)
+        self.assertNotIn('"out"', blob)
+
+    def test_a_deterministic_slot_records_its_emitter_and_payload_without_out(self):
+        proj = {"id": "p", "_extends_chain": [],
+                "slots": [{"id": "text", "type": "deterministic"}]}
+        with tempfile.TemporaryDirectory() as t:
+            comp = {"universe": t, "slots": {"text": {"title": "hello"}}}
+            r, err = compose.assemble_one(proj, comp, "text", 0, "deterministic",
+                                          "agenticstory:brand-card")
+        self.assertIsNone(err)
+        self.assertEqual(r["emitter"], "brand-card")
+        self.assertNotIn("out", r["payload"])
+
+    def test_an_unknown_emitter_is_an_error_not_a_recipe(self):
+        with tempfile.TemporaryDirectory() as t:
+            r, err = compose.assemble_one({"id": "p"}, {"universe": t, "slots": {"x": {}}},
+                                          "x", 0, "deterministic", "agenticstory:nope")
+        self.assertIsNone(r)
+        self.assertIn("unknown emitter", err)
+
+    def test_the_recipe_is_written_before_generation_so_a_failure_still_says_what_it_tried(self):
+        """A slot that dies mid-generation is exactly the one whose recipe you want."""
+        with tempfile.TemporaryDirectory() as t:
+            comp = self.universe(t)
+            comp["goldens"] = {"art": ["reference/does-not-exist.png"]}
+            status, detail, _ = compose.run_slot(
+                {"slot": "art", "index": 0, "type": "generated", "emitter": None},
+                self.PROJ, comp, t)
+            self.assertEqual(status, "DEFECT")
+            self.assertIn("do not resolve", detail)
+            self.assertTrue(compose.recipe_path(t, "art", 0).exists(),
+                            "the failed slot left no record of what it attempted")
+
+    def test_an_unresolvable_reference_is_recorded_with_a_null_digest(self):
+        """Dropping it from the provenance would make a refused render look like a
+        render that never wanted the reference at all."""
+        with tempfile.TemporaryDirectory() as t:
+            comp = self.universe(t)
+            comp["goldens"] = {"art": ["reference/does-not-exist.png"]}
+            r = self.assemble(comp)
+        missing = [x for x in r["refs"] if x["digest"] is None]
+        self.assertEqual(len(missing), 1)
+
+
+class TestDriftCheck(unittest.TestCase):
+    """A generated artifact cannot be byte-reproduced, so re-running the composer
+    proves nothing about drift. The RECIPE reproduces exactly. Unchanged canon plus an
+    unchanged spec must assemble to an identical recipe; anything else is drift in the
+    canon or non-determinism in the compiler, and both are worth finding for free."""
+
+    def recs(self, digests):
+        return [{"slot": "art", "index": i, "recipeDigest": d, "prompt": f"p{i}"}
+                for i, d in enumerate(digests)]
+
+    def freeze(self, tmp, recs):
+        d = pathlib.Path(tmp) / "baseline"; d.mkdir(parents=True, exist_ok=True)
+        for r in recs:
+            (d / f"{r['slot']}-{r['index']}.json").write_text(json.dumps(r))
+        return str(d)
+
+    def test_identical_recipes_report_no_drift(self):
+        with tempfile.TemporaryDirectory() as t:
+            recs = self.recs(["aaa", "bbb"])
+            changed, unfrozen, vanished = compose.check_drift(recs, self.freeze(t, recs))
+        self.assertEqual((changed, unfrozen, vanished), ([], [], []))
+
+    def test_a_changed_digest_is_drift_and_names_the_field(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = self.freeze(t, [{"slot": "art", "index": 0,
+                                    "recipeDigest": "aaa", "prompt": "old"}])
+            changed, _, _ = compose.check_drift(
+                [{"slot": "art", "index": 0, "recipeDigest": "zzz", "prompt": "new"}], base)
+        self.assertEqual(len(changed), 1)
+        self.assertIn("prompt", changed[0][1])   # the diff names the field that moved
+
+    def test_a_recipe_with_no_baseline_is_unfrozen_not_silently_ok(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = self.freeze(t, self.recs(["aaa"]))
+            _, unfrozen, _ = compose.check_drift(self.recs(["aaa", "bbb"]), base)
+        self.assertEqual(unfrozen, ["art-1"])
+
+    def test_a_slot_that_stopped_being_planned_is_reported(self):
+        """The one a naive "did anything change?" check misses entirely: nothing
+        differs, because the slot is simply gone."""
+        with tempfile.TemporaryDirectory() as t:
+            base = self.freeze(t, self.recs(["aaa", "bbb"]))
+            _, _, vanished = compose.check_drift(self.recs(["aaa"]), base)
+        self.assertEqual(vanished, ["art-1"])
+
+    def test_an_unreadable_baseline_counts_as_drift_rather_than_a_pass(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = self.freeze(t, self.recs(["aaa"]))
+            (pathlib.Path(base) / "art-0.json").write_text("{not json")
+            changed, _, _ = compose.check_drift(self.recs(["aaa"]), base)
+        self.assertEqual(len(changed), 1)
+
+    def test_neither_mode_can_reach_a_generator(self):
+        """Both modes run in CI on every push, so both must be free. If either could
+        call the image model, nobody would leave it turned on."""
+        import inspect
+        for fn in (compose.assemble_one, compose.assemble_all, compose.check_drift):
+            src = inspect.getsource(fn)
+            self.assertNotIn("generate(", src)
+            self.assertNotIn("subprocess", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

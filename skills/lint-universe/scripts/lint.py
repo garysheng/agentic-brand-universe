@@ -29,6 +29,29 @@ def lint(root):
 
     u = jload(root/"universe.json")
     if not u: return
+
+    # ---- the spec pin
+    #
+    # A universe declares the spec version it conforms to. Nothing checked that the
+    # declaration was true, and on 2026-07-24 three surfaces gave three answers:
+    # SPEC.md said v0.6, the engine constant said 0.4.1, and a universe pinned 0.5.
+    # Every one of them was internally consistent, which is exactly why nobody caught
+    # it: consistency is not truth. A pin that nothing verifies is a comment.
+    pin = (u.get("spec") or {}).get("version")
+    engine = None
+    initf = SKILLS.parent/"engine"/"agenticstory"/"__init__.py"
+    if initf.exists():
+        m = re.search(r'SPEC_VERSION\s*=\s*"([^"]+)"', initf.read_text())
+        engine = m.group(1) if m else None
+    if not pin:
+        err("NO-SPEC-PIN", "universe.json declares no spec.version; it conforms to nothing in "
+                           "particular, and an unpinned universe cannot detect drift")
+    elif engine and pin != engine:
+        warn("SPEC-PIN-BEHIND", f"universe pins spec v{pin}; this engine implements v{engine}. "
+                                f"Bump deliberately and re-lint, or pin the engine back. Do not "
+                                f"leave them disagreeing: the recipes this engine writes will "
+                                f"record a version the universe never conformed to.")
+
     reg = u.get("identity", {}).get("register", {})
     if not reg.get("anchor"):
         err("REGISTER-UNLOCKED", "identity.register.anchor is null; generation should refuse")

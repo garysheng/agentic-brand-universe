@@ -11,6 +11,12 @@ __version__ = "0.0.1"
 # truth for provenance — a universe.json records these so it always names the
 # spec version it follows and points back to the wiki that defines it (like a
 # BOOMERANG.md `conforms_to`). Bump SPEC_VERSION in lockstep with SPEC.md.
-SPEC_VERSION = "0.4.1"
+#
+# It went out of lockstep, which is the failure this constant exists to prevent.
+# SPEC.md reached v0.6 (the projection release) while this still said 0.4.1, so every
+# universe the engine scaffolded claimed conformance to a spec two releases old.
+# `lint-universe` now checks a universe's pin against this value, so the two can no
+# longer disagree quietly.
+SPEC_VERSION = "0.6"
 SPEC_WIKI = "https://agenticstory.wiki"
 SPEC_URL = "https://agenticstory.wiki/spec"

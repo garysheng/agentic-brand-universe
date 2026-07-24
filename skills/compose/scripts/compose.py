@@ -8,6 +8,12 @@ Implements the parts the spec asserted and nothing ran:
     time, because discovering it an hour in is the failure it exists to prevent
   * DURABLE per-slot state, so a restart resumes rather than redoing
   * park-the-slot-and-continue, so one defect costs one slot and not the artifact
+  * PROVENANCE: every slot writes its recipe (model, exact prompt, every input by
+    path and by content hash) before anything is generated
+
+    python3 compose.py <composition.json>                      compose
+    python3 compose.py <composition.json> --recipes-only        freeze a baseline, no generation
+    python3 compose.py <composition.json> --check-drift <dir>   compare to a baseline, exit 1 on drift
 """
 import json, os, pathlib, re, subprocess, sys, hashlib
 
@@ -230,6 +236,184 @@ def clear_verdict(work, sid, idx):
 def state_path(work, sid, idx):
     return pathlib.Path(work) / "state" / f"{sid}-{idx}.json"
 
+EMITTERS = {"brand-card": "brand-card/scripts/card.py",
+            "explanatory-plate": "explanatory-plate/scripts/plate.py"}
+
+
+def spec_version(comp):
+    """The spec version the UNIVERSE pins, never the engine's own constant.
+
+    A recipe records what the universe claimed to conform to at the moment it was
+    assembled. Reading the engine constant instead would make every recipe agree with
+    whatever engine happened to run it, which is precisely the drift this is here to
+    detect.
+    """
+    try:
+        u = json.loads((pathlib.Path(comp["universe"]) / "universe.json").read_text())
+        return (u.get("spec") or {}).get("version")
+    except Exception:
+        return None
+
+
+def ref_stack(refs):
+    """Every input by path AND by content hash.
+
+    A golden whose BYTES change while its path stays the same is drift that a path
+    alone cannot see, and it is the likeliest kind: goldens get re-locked in place.
+    `digest` returns None for a path that does not resolve, so a missing reference is
+    recorded rather than silently dropped from the provenance.
+    """
+    return [{"path": r, "digest": digest(r)} for r in refs]
+
+
+def recipe_digest(rec):
+    """Digest of everything that determines the artifact, and nothing else.
+
+    No clock, no run id, no work directory. A provenance record that changes on every
+    run is a log line; only one that changes when the INPUTS change can answer "did
+    anything drift?".
+    """
+    body = {k: v for k, v in rec.items() if k != "recipeDigest"}
+    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def recipe_path(work, sid, idx):
+    return pathlib.Path(work) / "recipes" / f"{sid}-{idx}.json"
+
+
+def write_recipe(work, rec):
+    p = recipe_path(work, rec["slot"], rec["index"])
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(rec, indent=2, sort_keys=True))
+    return str(p)
+
+
+def assemble_one(proj, comp, sid, idx, stype, emitter=None):
+    """Resolve ONE slot into its provenance recipe. Generates nothing, costs nothing.
+
+    Returns (recipe, error). This is the SINGLE assembly path: `_run_slot` executes
+    what this returns rather than resolving the same things a second time. Two
+    assembly paths would drift apart, and the drift check would then be verifying the
+    path nobody renders from.
+
+    Two things depend on this existing at all:
+
+    1. **Provenance.** Every generated asset must carry its recipe: the model, the
+       exact prompt, and every input by path. The composer previously built all three
+       in memory, passed them to the image model, and kept none of them, so the one
+       pipeline that assembles prompts from canon was also the one that could not say
+       what it had sent.
+    2. **The drift check.** A generated artifact cannot be byte-reproduced, so
+       re-running the composer proves nothing about drift. The RECIPE can be
+       reproduced exactly. Unchanged canon plus an unchanged spec must assemble to an
+       identical recipe, and anything else is either drift in the canon or
+       non-determinism in this function.
+
+    Nothing machine-specific may enter a recipe: no work directory, no output path, no
+    absolute temp path. That is why the deterministic payload here carries no `out`.
+    """
+    spec = (comp.get("slots") or {}).get(sid)
+    if spec is None:
+        return None, "no composition data for this slot"
+    rec = {"slot": sid, "index": idx, "type": stype,
+           "specVersion": spec_version(comp),
+           "projection": proj.get("id"),
+           "extendsChain": proj.get("_extends_chain", [])}
+
+    if stype != "generated":
+        em = (emitter or "").split(":")[-1]
+        script = EMITTERS.get(em)
+        if not script:
+            return None, f"unknown emitter '{em}'"
+        rec.update({"emitter": em, "emitterScript": str(SKILLS / script),
+                    "payload": spec})
+        rec["recipeDigest"] = recipe_digest(rec)
+        return rec, None
+
+    if spec.get("art"):                                   # art supplied by the composition
+        rec["art"] = spec["art"]
+        rec["recipeDigest"] = recipe_digest(rec)
+        return rec, None
+
+    # A composition may bind ONE pack, or a pack PER SLOT. A book that weaves a
+    # narrative register and a diagram register is one composition in two registers.
+    b = comp.get("bind", {}).get("style-pack")
+    pack_ref = b.get(sid, b.get("default")) if isinstance(b, dict) else b
+    if not pack_ref:
+        return None, f"slot '{sid}' has no style-pack binding"
+    pack = load_pack(comp["universe"], pack_ref)
+
+    # Goldens are per-slot too. A register that REJECTS the cast must not be handed
+    # the cast: passing a character master into a characterless plate is a
+    # contradiction the compiler should refuse, not one the model has to resist.
+    goldens = goldens_for(comp, sid, idx)
+    rejected = [r.lower() for r in pack.get("rejectedPoles", [])]
+    if goldens and any(("character" in r) or ("storybook-register" in r) for r in rejected):
+        return None, (f"slot '{sid}' binds pack '{pack['id']}' which rejects characters, "
+                      f"but was handed {len(goldens)} character golden(s). Registers disagree.")
+    scene = spec.get("scene", "")
+    if comp.get("beats") and sid in ("spread", "art") and idx < len(comp["beats"]):
+        scene = comp["beats"][idx]                       # one beat per repeated slot
+    if comp.get("plateScenes") and sid == "plate" and idx < len(comp["plateScenes"]):
+        scene = comp["plateScenes"][idx]
+    if not scene:
+        return None, "no scene for this slot"
+    if comp.get("_lock") and goldens:                    # only where a character is actually bound
+        scene = comp["_lock"] + " Scene: " + scene
+
+    prompt, refs, qa = compile_slot(proj, comp, sid, scene, pack, goldens)
+    rec.update({"provider": provider_for(proj, comp, sid),
+                "size": spec.get("size", "1024x1024"),
+                "pack": {"id": pack.get("id"), "ref": pack_ref},
+                "prompt": prompt, "refs": ref_stack(refs),
+                "goldens": goldens, "checklist": qa})
+    rec["recipeDigest"] = recipe_digest(rec)
+    return rec, None
+
+
+def assemble_all(proj, comp):
+    """Every slot's recipe, in plan order. No generation, no API, no cost."""
+    out, errs = [], []
+    for u in plan(proj, comp):
+        rec, err = assemble_one(proj, comp, u["slot"], u["index"], u["type"], u.get("emitter"))
+        if err:
+            errs.append(f"{u['slot']}-{u['index']}: {err}")
+        else:
+            out.append(rec)
+    return out, errs
+
+
+def check_drift(recipes, baseline):
+    """Compare freshly assembled recipes against a committed baseline.
+
+    Reports THREE distinct conditions, because collapsing them hides the interesting
+    one. A changed digest is drift. A recipe with no baseline is new work nobody
+    froze. A baseline with no recipe is a slot that silently stopped being planned,
+    which is the one a "did anything change?" check most easily misses.
+    """
+    base = pathlib.Path(baseline)
+    changed, unfrozen, vanished = [], [], []
+    seen = set()
+    for r in recipes:
+        key = f"{r['slot']}-{r['index']}"
+        seen.add(key)
+        f = base / f"{key}.json"
+        if not f.exists():
+            unfrozen.append(key); continue
+        try:
+            old = json.loads(f.read_text())
+        except Exception as ex:
+            changed.append((key, f"baseline unreadable: {type(ex).__name__}: {ex}")); continue
+        if old.get("recipeDigest") != r["recipeDigest"]:
+            fields = sorted({k for k in set(old) | set(r)
+                             if k != "recipeDigest" and old.get(k) != r.get(k)})
+            changed.append((key, "differs in: " + (", ".join(fields) or "recipeDigest only")))
+    for f in sorted(base.glob("*.json")):
+        if f.stem not in seen:
+            vanished.append(f.stem)
+    return changed, unfrozen, vanished
+
+
 def run_slot(unit, proj, comp, work):
     """Execute ONE slot. Returns (status, detail). NEVER raises.
 
@@ -247,55 +431,26 @@ def run_slot(unit, proj, comp, work):
 
 def _run_slot(unit, proj, comp, work):
     sid, idx = unit["slot"], unit["index"]
-    spec = comp["slots"].get(sid)
-    if spec is None:
-        return "DEFECT", "no composition data for this slot"
+    rec, err = assemble_one(proj, comp, sid, idx, unit["type"], unit.get("emitter"))
+    if err:
+        return "DEFECT", err, 0
+    write_recipe(work, rec)          # BEFORE generating: a slot that then fails still
+                                     # has to say what it was about to make.
     out = str(pathlib.Path(work) / f"{sid}-{idx}.png")
     if unit["type"] == "deterministic":
-        emitter = (unit["emitter"] or "").split(":")[-1]
-        payload = {**spec, "out": out}
         pf = pathlib.Path(work) / f"{sid}-{idx}.spec.json"
-        pf.write_text(json.dumps(payload, indent=2))
-        script = {"brand-card": "brand-card/scripts/card.py",
-                  "explanatory-plate": "explanatory-plate/scripts/plate.py"}.get(emitter)
-        if not script:
-            return "DEFECT", f"unknown emitter '{emitter}'"
-        r = subprocess.run([sys.executable, str(SKILLS / script), str(pf)],
+        pf.write_text(json.dumps({**rec["payload"], "out": out}, indent=2))
+        r = subprocess.run([sys.executable, rec["emitterScript"], str(pf)],
                            capture_output=True, text=True)
         if r.returncode != 0:
             return "DEFECT", (r.stdout + r.stderr).strip().splitlines()[-1][:200]
         return "PASS", out
     # generated slot: compile -> generate -> judge -> repair, per SPEC 4.10
-    if spec.get("art"):                                   # art supplied by the composition
-        return "PASS", spec["art"]
-    # A composition may bind ONE pack, or a pack PER SLOT. A book that weaves a
-    # narrative register and a diagram register is one composition in two registers.
-    b = comp.get("bind", {}).get("style-pack")
-    pack_ref = b.get(sid, b.get("default")) if isinstance(b, dict) else b
-    if not pack_ref:
-        return "DEFECT", f"slot '{sid}' has no style-pack binding", 0
-    pack = load_pack(comp["universe"], pack_ref)
-
-    # Goldens are per-slot too. A register that REJECTS the cast must not be handed
-    # the cast: passing Gary's master into a characterless plate is a contradiction
-    # the compiler should refuse, not something the model has to resist.
-    g = comp.get("goldens", {})
-    goldens = goldens_for(comp, sid, idx)
-    rejected = [r.lower() for r in pack.get("rejectedPoles", [])]
-    if goldens and any(("character" in r) or ("storybook-register" in r) for r in rejected):
-        return "DEFECT", (f"slot '{sid}' binds pack '{pack['id']}' which rejects characters, "
-                          f"but was handed {len(goldens)} character golden(s). Registers disagree."), 0
-    scene = spec.get("scene", "")
-    if comp.get("beats") and sid in ("spread", "art") and idx < len(comp["beats"]):
-        scene = comp["beats"][idx]                       # one beat per repeated slot
-    if comp.get("plateScenes") and sid == "plate" and idx < len(comp["plateScenes"]):
-        scene = comp["plateScenes"][idx]
-    if not scene:
-        return "DEFECT", "no scene for this slot", 0
-    if comp.get("_lock") and goldens:                    # only where a character is actually bound
-        scene = comp["_lock"] + " Scene: " + scene
-    prompt, refs, qa = compile_slot(proj, comp, sid, scene, pack, goldens)
-    size = spec.get("size", "1024x1024")
+    if rec.get("art"):                                    # art supplied by the composition
+        return "PASS", rec["art"]
+    spec = comp["slots"][sid]
+    goldens, prompt, refs = rec["goldens"], rec["prompt"], [r["path"] for r in rec["refs"]]
+    qa, size = rec["checklist"], rec["size"]
     max_rolls = proj.get("maxRolls", comp.get("maxRolls", 3))
 
     # The checklist a judge is held to comes from the CONTRACT: this projection's
@@ -415,6 +570,14 @@ def quirks_for(proj, slot_id, resolved_provider):
 # check which one is wrong before building scaffolding around it.
 PERMIT_POLES = {"text": ("text or lettering", "text", "lettering", "words", "type")}
 
+def provider_for(proj, comp, slot_id):
+    """The model this slot ACTUALLY runs on: the generator's pin, else the
+    composition's choice, else the default. One definition, because the compiled
+    prompt and the recorded recipe must never disagree about what ran."""
+    return next((g.get("pin") for g in proj.get("generators", [])
+                 if g.get("for") == slot_id), None) or comp.get("provider", "gpt-image-2")
+
+
 def applies_to(inv, slot_id):
     """A perSlot invariant applies to every slot UNLESS it names the ones it governs."""
     only = inv.get("slots")
@@ -428,8 +591,7 @@ def compile_slot(proj, comp, slot_id, scene, pack, goldens):
         permitted |= set(PERMIT_POLES.get(perm, (perm,)))
     poles = [x for x in pack.get("rejectedPoles", []) if str(x).lower() not in permitted]
     neg = ", ".join("no " + p for p in poles)
-    provider = next((g.get("pin") for g in proj.get("generators", [])
-                     if g.get("for") == slot_id), None) or comp.get("provider", "gpt-image-2")
+    provider = provider_for(proj, comp, slot_id)
     qk = quirks_for(proj, slot_id, provider)
     counters = " ".join(q["counter"] for q in qk)          # appended automatically, never recalled
     prompt = (f"Create a NEW illustration in EXACTLY the visual style of the reference images. "
@@ -578,7 +740,20 @@ def verdict_for(work, sid, idx, artifact=None, require_depicts=False):
 
 
 def main():
-    comp = json.load(open(sys.argv[1]))
+    argv = sys.argv[1:]
+    recipes_only = "--recipes-only" in argv
+    baseline = None
+    if "--check-drift" in argv:
+        i = argv.index("--check-drift")
+        if i + 1 >= len(argv):
+            print("--check-drift needs a baseline directory"); return 2
+        baseline = argv[i + 1]
+        del argv[i:i + 2]
+    argv = [a for a in argv if a != "--recipes-only"]
+    if not argv:
+        print(__doc__.strip().splitlines()[-1] if __doc__ else "usage: compose.py <composition.json>")
+        return 2
+    comp = json.load(open(argv[0]))
     root = comp["universe"]
     work = comp.get("work", "/tmp/compose-" + comp["id"])
     (pathlib.Path(work) / "state").mkdir(parents=True, exist_ok=True)
@@ -591,6 +766,32 @@ def main():
         print("PLAN-TIME REFUSAL, nothing generated:")
         for e in errs: print("  -", e)
         return 2
+
+    if recipes_only or baseline:
+        # Assembly only. No image model is reached on either path, so both are free
+        # and both are safe to run in CI on every push.
+        recs, aerrs = assemble_all(proj, comp)
+        if aerrs:
+            print("ASSEMBLY FAILED, so there is nothing to compare:")
+            for e in aerrs: print("  -", e)
+            return 2
+        if baseline:
+            changed, unfrozen, vanished = check_drift(recs, baseline)
+            for k, why in changed:   print(f"  DRIFT     {k}: {why}")
+            for k in unfrozen:       print(f"  UNFROZEN  {k}: no baseline recipe")
+            for k in vanished:       print(f"  VANISHED  {k}: baseline has it, the plan no longer does")
+            if changed or unfrozen or vanished:
+                print(f"\n{len(changed)} drifted, {len(unfrozen)} unfrozen, {len(vanished)} vanished")
+                print("Unchanged canon and an unchanged spec must assemble to identical recipes.")
+                print("If this change is intended, re-freeze the baseline with --recipes-only.")
+                return 1
+            print(f"\n{len(recs)} recipe(s) identical to the baseline. No drift.")
+            return 0
+        for r in recs:
+            write_recipe(work, r)
+            print(f"  {r['slot']}-{r['index']}  {r['recipeDigest']}  {r.get('provider', r.get('emitter', '-'))}")
+        print(f"\n{len(recs)} recipe(s) written to {work}/recipes/. Nothing generated.")
+        return 0
 
     for w in surface_shrink(proj, comp):
         print(f"  NOTE  {w}")

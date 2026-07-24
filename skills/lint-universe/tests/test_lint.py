@@ -14,8 +14,20 @@ spec = importlib.util.spec_from_file_location("lint", HERE.parent / "scripts" / 
 lint = importlib.util.module_from_spec(spec); spec.loader.exec_module(lint)
 
 
+def engine_spec_version():
+    """The engine's own SPEC_VERSION, read from source, so a valid fixture pins the
+    version the linter will accept without warning."""
+    import re
+    initf = HERE.parents[2] / "engine" / "agenticstory" / "__init__.py"
+    return re.search(r'SPEC_VERSION\s*=\s*"([^"]+)"', initf.read_text()).group(1)
+
+
 def build(tmp, *, projections=None, pack=True, anchor=True, entity=None):
-    """Minimal valid universe, then break exactly what a test asks to break."""
+    """Minimal valid universe, then break exactly what a test asks to break.
+
+    A valid universe pins the current spec version. Tests that care about the pin
+    (TestSpecPin) override it; everything else stays clean so an unrelated break is
+    the only error a test sees."""
     root = pathlib.Path(tmp)
     (root / "canon" / "entities").mkdir(parents=True)
     (root / "projections").mkdir()
@@ -31,6 +43,7 @@ def build(tmp, *, projections=None, pack=True, anchor=True, entity=None):
     (root / "reference" / "register").mkdir(parents=True, exist_ok=True)
     (root / "reference" / "register" / "anchor.png").write_bytes(b"\x89PNG")
     (root / "universe.json").write_text(json.dumps({
+        "spec": {"version": engine_spec_version()},
         "identity": {"register": {"id": "r",
                                   "anchor": "reference/register/anchor.png" if anchor else None}}}))
     if entity:
@@ -270,6 +283,42 @@ class TestLinter(unittest.TestCase):
                                                "generators": [OK_GEN], "invariants": OK_INV}})
             sys.argv = ["lint", str(root)]
             self.assertIn(lint.main(), (0, 1), "clean or warn-only must not exit 2")
+
+
+class TestSpecPin(unittest.TestCase):
+    """A universe.json that pins no spec, or pins a version the engine no longer
+    implements, conforms to nothing anyone can check. On 2026-07-24 three surfaces gave
+    three answers and every one was internally consistent, which is why nobody caught
+    it. Consistency is not truth; this makes the pin verifiable."""
+
+    def universe_with(self, tmp, spec):
+        """A minimal valid universe whose spec block is set to `spec`, or removed
+        entirely when `spec` is None."""
+        root = build(tmp, projections={"p": {"id": "p", "slots": [OK_SLOT],
+                                             "generators": [OK_GEN], "invariants": OK_INV}})
+        uf = root / "universe.json"
+        u = json.loads(uf.read_text())
+        if spec is None:
+            u.pop("spec", None)
+        else:
+            u["spec"] = spec
+        uf.write_text(json.dumps(u))
+        return root
+
+    def test_no_pin_is_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            errs, _ = run(self.universe_with(t, None))
+        self.assertIn("NO-SPEC-PIN", errs)
+
+    def test_a_pin_behind_the_engine_warns(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, warns = run(self.universe_with(t, {"version": "0.4.1"}))
+        self.assertIn("SPEC-PIN-BEHIND", warns)
+
+    def test_the_engine_version_does_not_warn(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, warns = run(self.universe_with(t, {"version": engine_spec_version()}))
+        self.assertNotIn("SPEC-PIN-BEHIND", warns)
 
 
 if __name__ == "__main__":
