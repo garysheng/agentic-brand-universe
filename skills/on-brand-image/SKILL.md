@@ -66,6 +66,8 @@ A universe binds a lookbook everywhere via a `craft-canon` register-rule that na
 
 - **A render is NOT reproducible.** gpt-image-2 has no seed parameter; nano's `seed` is not pixel-deterministic. So **never delete an un-locked candidate** — once a good roll is gone it cannot be regenerated. Stage candidates, prune only AFTER the winner is locked. (A blessed yoke roll was lost exactly this way.)
 - **Batch renders in the background.** gpt-image-2 at `--quality high` is ~2 minutes per image; a foreground call under a 2-minute cap, or several in parallel, gets killed mid-generation with nothing saved. Run multi-image batches detached and collect them when they finish.
+- **A logo/mark destined for a transparent cutout must be rendered on a GREEN SCREEN, not a "nice" ground.** Prompt it FLOATING on a flat chroma-key green (`#00B140`) with NO shadow, NO reflection, NO surface — then key it (`greenness = G - max(R,B) > threshold`, border-connected flood so interior highlights survive, + green despill). A warm/bone background bakes a floor reflection or contact-shadow that reads as high-chroma gold and defeats every heuristic cutout (a whole cutout was lost fighting one). Green makes the key trivial and artifact-free.
+- **Verify a rendered mark's geometry against its spec; the model exaggerates.** An image model reliably over-stretches a deliberate proportion (a North Star Cross with a 1.48x-longer bottom rendered at ~1.7x). Measure the actual arm ratios in the output (isolate the shape by chroma, find the tip extents) and, since a render is not reproducible, DETERMINISTICALLY correct it (e.g. scale only the region past the crossing to hit the exact ratio) rather than re-rolling and hoping.
 
 ## Gates honored
 
