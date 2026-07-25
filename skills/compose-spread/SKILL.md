@@ -23,6 +23,19 @@ The atomic per-spread unit: turn one spread descriptor into a read-back-clean re
 ```
 `look` is omitted for a character's default look, or names a `structured.altLooks.<key>` in that character's canon. No character description is ever written here.
 
+### The four guards the assembler enforces for you (SPEC v0.8)
+
+Each was paid for with defective renders. You do not write any of them into a book's style text; the assembler emits or enforces them on every job, which is the point of having a compiler at all.
+
+1. **Anchor-style guard.** The register anchor is ref[0] on every render, so on a spread that casts nothing its *subject* leaks as content (a pure-vision beat once came back as a room full of period strangers holding the anchor's own props). The guard is always emitted alongside the anchor.
+2. **Single-image guard.** Canon legitimately supplies multi-panel references (a turnaround, a states sheet) and the model copies their *layout*. Emitted by default; set `allowMultiPanel` on the book or one spread to opt out.
+3. **Uncast-character refusal.** A character NAMED in the scene text but not cast is rendered as a confident invented stranger. The assembler matches every character entity's given name against the scene and **refuses before spending**. An over-the-shoulder single needs BOTH people cast: the shoulder is a person. Set `allowUncast` when the mention is genuinely not an in-frame person.
+4. **Per-spread preamble override.** A book may carry MORE THAN ONE visual register when the change is **diegetic**: a game world on a screen, a vision blooming out of a canon device, a memory, a dream. A spread may override `style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`, `allowMultiPanel`, `allowUncast`. Anything it does not name falls back to the book preamble. Do NOT reach for a second render-spec to get a second register: that duplicates the whole preamble and drifts the moment one copy is edited. The universe's own `rejectedPoles` are identity and are never shed by a spread.
+
+### Never fork this into a universe-local compiler
+
+A per-universe `compile_render.py` / `gen-spread.py` is the failure this skill exists to prevent, and it is not hypothetical: Nation of Fire ran one for months (SPEC v0.5 even named it the reference impl). The two implementations drifted into **disjoint** feature sets. The fork held all four guards above; the framework held alt-looks, auto-disambiguation, guarded negatives and `anchorRef`. Neither could see the other's, so every guard earned in one universe was invisible to every other, and every framework capability was invisible to the universe doing the most rendering. If the assembler is missing something you need, add it HERE with a test (`evolve-agentic-story`), never in a universe.
+
 ## Procedure
 
 1. **Resolve (gate).** Invoke `canon-resolve` on the spread's cast + setting: it resolves each entity's locked references + invariants and runs `assert-spread`. A non-zero exit BLOCKS the render — lock the missing reference, never render around it.

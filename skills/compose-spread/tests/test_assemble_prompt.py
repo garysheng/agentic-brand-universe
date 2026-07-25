@@ -255,10 +255,6 @@ class TestAssemble(unittest.TestCase):
         self.assertNotIn("copper compass", out["prompt"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestAltLookDropSheets(unittest.TestCase):
     """An alt look must be able to drop base sheets it CONTRADICTS.
 
@@ -364,3 +360,142 @@ class TestAltLookRenderBlock(unittest.TestCase):
         self.assertNotIn("FRONT: the adult jacket.", p)
         # and the default look is untouched
         self.assertIn("ADULT PROSE", self._prompt([{"id": "stache"}]))
+
+
+class TestPromotedGuards(unittest.TestCase):
+    """The four guards promoted OUT of the Nation of Fire fork into the framework
+    compiler on 2026-07-25, plus the per-spread register override earned on
+    jerry-and-the-game-that-beat-gta. Each was paid for with defective renders and
+    each lived in exactly one universe until now, invisible to every other."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def spec(self, spreads, **book):
+        s = {"size": "1536x1024", "style": "warm test style.",
+             "negatives": ["no text anywhere"], "spreads": spreads}
+        s.update(book)
+        p = self.root / "render-spec.json"
+        p.write_text(json.dumps(s))
+        return p
+
+    def out(self, spreads, spread="s1", **book):
+        r = run(self.root, self.spec(spreads, **book), spread)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def refuse(self, spreads, spread="s1", **book):
+        r = run(self.root, self.spec(spreads, **book), spread)
+        self.assertEqual(r.returncode, 2, f"expected REFUSE, got 0:\n{r.stdout[:400]}")
+        return r.stderr
+
+    # --- ANCHOR_STYLE_GUARD (earned: the-vision-of-the-ocean) ---------------------
+
+    def test_anchor_style_guard_is_always_emitted(self):
+        """The anchor is ref[0] on EVERY render, so its subject leaks on a bare
+        spread. The guard is a property of passing an anchor at all."""
+        out = self.out([{"id": "s1", "scene": "an empty room", "cast": []}])
+        self.assertIn("STYLE ANCHOR ONLY", out["prompt"])
+        self.assertIn("take NO subject from it", out["prompt"])
+
+    def test_anchor_style_guard_survives_a_bare_spread(self):
+        """The exact shape that failed: no setting, no characters, two refs total."""
+        out = self.out([{"id": "s1", "scene": "look down into the water", "cast": []}])
+        self.assertEqual(len(out["refs"]), 1)          # anchor only
+        self.assertIn("STYLE ANCHOR ONLY", out["prompt"])
+
+    # --- SINGLE_IMAGE_GUARD (earned: why-do-i-get-to-meet-them) -------------------
+
+    def test_single_image_guard_on_by_default(self):
+        out = self.out([{"id": "s1", "scene": "a quiet room", "cast": [{"id": "clean"}]}])
+        self.assertIn("ONE SINGLE CONTINUOUS FULL-BLEED PAINTING", out["prompt"])
+
+    def test_single_image_guard_opt_out_book_level(self):
+        out = self.out([{"id": "s1", "scene": "a quiet room", "cast": []}],
+                       allowMultiPanel=True)
+        self.assertNotIn("ONE SINGLE CONTINUOUS", out["prompt"])
+
+    def test_single_image_guard_opt_out_per_spread(self):
+        out = self.out([{"id": "s1", "scene": "a quiet room", "cast": [],
+                         "allowMultiPanel": True}])
+        self.assertNotIn("ONE SINGLE CONTINUOUS", out["prompt"])
+
+    # --- uncast-character refusal (earned: why-do-i-get-to-meet-them, 5 spreads) --
+
+    def test_uncast_character_named_in_scene_refuses(self):
+        """The most expensive silent defect: the model invents a stranger."""
+        err = self.refuse([{"id": "s1", "scene": "clean sits with stache at the table",
+                            "cast": [{"id": "clean"}]}])
+        self.assertIn("UNCAST CHARACTERS", err)
+        self.assertIn("stache", err)
+
+    def test_uncast_refusal_costs_nothing_when_everyone_is_cast(self):
+        out = self.out([{"id": "s1", "scene": "clean sits with stache at the table",
+                         "cast": [{"id": "clean"}, {"id": "stache"}]}])
+        self.assertIn("SCENE:", out["prompt"])
+
+    def test_uncast_allows_an_explicit_override(self):
+        """A mention that is genuinely not an in-frame person."""
+        out = self.out([{"id": "s1", "scene": "clean thinks about stache",
+                         "cast": [{"id": "clean"}], "allowUncast": True}])
+        self.assertIn("SCENE:", out["prompt"])
+
+    def test_uncast_does_not_flag_a_setting(self):
+        """`home` is a setting, not a character: naming it is never a missing person."""
+        out = self.out([{"id": "s1", "setting": "home", "plate": "kitchen",
+                         "scene": "a warm home in the evening", "cast": []}])
+        self.assertIn("SCENE:", out["prompt"])
+
+    # --- per-spread register override (earned: jerry-and-the-game-that-beat-gta) --
+
+    def test_spread_overrides_anchor_style_and_negatives(self):
+        """A book that argues in its own paint: one spread renders a SECOND
+        register (a game world, a vision, a dream) without a second render-spec."""
+        png(self.root / "reference" / "register" / "anime.png")
+        out = self.out([{"id": "s1", "scene": "inside the game", "cast": [],
+                         "anchorRef": "reference/register/anime.png",
+                         "style": "blazing heroic anime.",
+                         "negatives": ["never soft oil painting"]}])
+        self.assertTrue(out["refs"][0].endswith("register/anime.png"))
+        self.assertIn("blazing heroic anime.", out["prompt"])
+        self.assertIn("never soft oil painting", out["prompt"])
+        self.assertNotIn("warm test style.", out["prompt"])
+        self.assertNotIn("no text anywhere", out["prompt"])
+
+    def test_a_spread_that_overrides_nothing_is_unchanged(self):
+        """Backward compatibility: every existing spec compiles as before."""
+        png(self.root / "reference" / "register" / "anime.png")
+        out = self.out([
+            {"id": "s1", "scene": "the real world", "cast": []},
+            {"id": "s2", "scene": "inside the game", "cast": [],
+             "anchorRef": "reference/register/anime.png", "style": "anime."},
+        ], spread="s1")
+        self.assertTrue(out["refs"][0].endswith("register/anchor.png"))
+        self.assertIn("warm test style.", out["prompt"])
+        self.assertNotIn("anime.", out["prompt"])
+
+    def test_spread_override_of_size(self):
+        out = self.out([{"id": "s1", "scene": "a tall plate", "cast": [],
+                         "size": "1024x1536"}])
+        self.assertEqual(out["size"], "1024x1536")
+
+    def test_universe_rejected_poles_survive_a_spread_negatives_override(self):
+        """A spread may replace the BOOK's negatives; it may not shed the
+        universe's own rejectedPoles, which are identity, not book style."""
+        out = self.out([{"id": "s1", "scene": "inside the game", "cast": [],
+                         "negatives": ["never soft oil painting"]}])
+        self.assertIn("photoreal", out["prompt"])
+
+
+# MUST be the LAST statement in this file. Any test class defined AFTER it never
+# runs: unittest.main() executes and exits at import time. TestAltLookDropSheets and
+# TestAltLookRenderBlock sat below it and were dead for weeks while the suite still
+# reported ALL GREEN, which is the same silent-omission failure run-tests.sh was
+# hardened against one level up. Append new classes ABOVE this block, never below.
+if __name__ == "__main__":
+    unittest.main()

@@ -1,11 +1,30 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.7 — 2026-07-25.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.8 — 2026-07-25.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.8 changelog — the compiler guards come home, and a spread may carry its own register.**
+> §4.6 gains four NORMATIVE guards that had been living in one universe's private fork of the
+> compiler (`nof-universe/canon/scripts/compile_render.py`, which v0.5 named as the reference impl).
+> Each was paid for with defective renders, and each was invisible to every other universe:
+> **(1) anchor-style guard** — the register anchor is ref[0] on every render, so on a spread that
+> casts nothing its SUBJECT leaks as content; the guard is a property of passing an anchor at all,
+> not of a book's style text. **(2) single-image guard** — canon study sheets (turnarounds, states
+> sheets) are multi-panel, and the model copies their LAYOUT; emitted by default, `allowMultiPanel`
+> opts out. **(3) uncast-character refusal** — a character NAMED in scene text but not cast is
+> silently rendered as an invented stranger; a pure-text check now refuses before spending,
+> `allowUncast` overrides. **(4) per-spread preamble override** — a book may carry MORE THAN ONE
+> visual register when the change is DIEGETIC (a game world on a screen, a vision blooming out of a
+> canon device, a memory, a dream). A spread may override `style`, `negatives`, `guardedNegatives`,
+> `anchorRef`, `size`, `allowMultiPanel`, `allowUncast`; a spread naming none of them compiles
+> byte-identically to v0.7. The universe's own `rejectedPoles` are identity and can never be shed by
+> a spread. Earned on `jerry-and-the-game-that-beat-gta`, a book that argues its thesis in its own
+> paint. The reference impl is now the framework's own `assemble_prompt.py`, tested; a universe-local
+> compiler is a fork to be migrated, not a sanctioned pattern.
+>
 > **v0.7 changelog — the cover-conform convention.** Added a normative default (§ producible-vs-surface
 > aspect): when a producible aspect does not match the target surface, conform by **blurred self-bleed**
 > (`conform_cover.py --mode pad`), never by a flat-color bar and never by cropping load-bearing content.
@@ -327,9 +346,38 @@ removes that step.
   stays stochastic. A compiled prompt is necessary, not sufficient — the read-back gate (§3.5) is
   still mandatory, and a drift-prone shape is guaranteed by *passing its reference image*, never by
   wording it harder.
-- **Reference impl:** `nof-universe/canon/scripts/compile_render.py` reads a book `render-spec.json`
-  and renders every spread through the existing `render_spread.sh` guard (no-self-reference). First
-  entity migrated: `jerry-man.render`.
+- **Normative guards (v0.8).** Four rules the compiler emits or enforces on every job, because each
+  is a property of *how the compiler works*, not of what a given book contains. A universe that
+  writes these into each book's style text will drop them the one time it forgets.
+  - **Anchor-style guard.** Whenever a register anchor is passed, the prompt states that ref[0] is a
+    style sample only: match its medium, brushwork, palette and light, take NO subject from it. The
+    anchor leads every render, so on a spread that casts no setting and no characters it is one of
+    only two references and the model reads it as CONTENT. A pure-vision beat came back as a room
+    full of period strangers holding the anchor's own props. Every other spread survived only
+    because setting plates and character sheets outweighed it, which is why this looked safe for
+    months.
+  - **Single-image guard.** Emitted by default: one continuous full-bleed image, never a grid,
+    contact sheet, comic page or panelled study. Canon legitimately supplies multi-panel references
+    (a character turnaround, a visual-metaphor's states sheet) and the model copies their layout.
+    `allowMultiPanel` (book- or spread-level) opts out.
+  - **Uncast-character refusal.** Before any spend, the compiler matches every character entity's
+    given name against the scene text and REFUSES on any name it does not cast, because the model
+    invents a confident stranger for each. An over-the-shoulder single needs both people cast: the
+    shoulder is a person. `allowUncast` overrides when the mention is genuinely not in frame. Name
+    tokens already covered by a cast entity do not fire (`chief-of-*` and `apostle-*` ids share a
+    head token).
+  - **Per-spread preamble override.** A book may carry more than one visual register when the change
+    is DIEGETIC. A spread may override `style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`,
+    `allowMultiPanel` and `allowUncast`; anything it does not name falls back to the book preamble.
+    The alternative (a second render-spec per register) duplicates the whole preamble and drifts the
+    moment one copy is edited. The universe's `rejectedPoles` are identity and are never shed by a
+    spread override.
+- **Reference impl:** the framework's own `skills/compose-spread/scripts/assemble_prompt.py`, with
+  tests. Superseded 2026-07-25: v0.5 named `nof-universe/canon/scripts/compile_render.py` here, and
+  sanctioning a universe-local compiler is how the two implementations diverged into disjoint
+  feature sets — the fork held the four guards above while the framework held alt-looks,
+  auto-disambiguation, guarded negatives and `anchorRef`, and neither could see the other's. A
+  universe-local compiler is now a FORK to be migrated, never a sanctioned pattern.
 
 ### 4.7 Style Pack (the portable look)
 

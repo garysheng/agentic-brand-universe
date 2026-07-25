@@ -42,6 +42,113 @@ NEG_MARKER = re.compile(r"clean-shaven|beardless|\bno-|-no-|never|bare|without",
 FACE_SHEET_KEYS = {"face-3q", "face-neutral", "face", "expressions"}
 
 
+# THE REGISTER ANCHOR IS A STYLE SAMPLE, AND ITS SUBJECT LEAKS ON A BARE SPREAD.
+# Promoted from the Nation of Fire fork 2026-07-25 (earned on the-vision-of-the-ocean).
+# The anchor is passed FIRST on every render, so on a spread that casts no setting and
+# no characters it is one of only TWO references and the model reads it as CONTENT: a
+# "look down into the water" beat came back as a first-century room full of robed
+# strangers carrying the anchor's own oil lamp and clay jar. Every other spread survived
+# only because setting plates and character sheets gave the model more to attend to,
+# which is why passing an anchor looked safe for months. This is a property of passing
+# an anchor AT ALL, so it belongs on every prompt rather than in each book's style text.
+ANCHOR_STYLE_GUARD = (
+    "THE FIRST REFERENCE IMAGE IS A STYLE ANCHOR ONLY. Match it for MEDIUM, BRUSHWORK, PALETTE and "
+    "LIGHT QUALITY ONLY, and take NO subject from it whatsoever: none of its objects, figures, "
+    "costume, props, furniture, architecture, period or location may appear in the output unless the "
+    "scene description below asks for them by name."
+)
+
+# A MULTI-PANEL REFERENCE MAKES A MULTI-PANEL SPREAD.
+# Promoted from the Nation of Fire fork 2026-07-25 (earned on why-do-i-get-to-meet-them).
+# Several canon references are legitimately study sheets: a character turnaround, a
+# visual-metaphor's states sheet. The model copies their panelled LAYOUT, and two spreads
+# came back as contact-sheet grids of six framed views instead of one scene. Opt out with
+# `allowMultiPanel` on the book or on one spread.
+SINGLE_IMAGE_GUARD = (
+    "ONE SINGLE CONTINUOUS FULL-BLEED PAINTING that fills the entire canvas edge to edge. This is "
+    "NEVER a grid, NEVER a multi-panel layout, NEVER a comic page, NEVER a contact sheet, NEVER a "
+    "study or turnaround sheet, NEVER a collage, and NEVER several framed views side by side. Some "
+    "reference images supplied to you are multi-panel study sheets; use them ONLY for the identity "
+    "and design of what they depict, and NEVER copy their panelled layout into the output. The "
+    "output has exactly ONE camera, ONE moment, and NO internal borders, frames, gutters, or "
+    "dividing lines of any kind."
+)
+
+# Preamble keys a SINGLE SPREAD may override. Everything else stays book-level on purpose.
+#
+# PER-SPREAD REGISTER OVERRIDE, promoted 2026-07-25 (earned on
+# jerry-and-the-game-that-beat-gta, a book that argues its thesis in its own paint).
+# A book may legitimately carry more than ONE visual register when the change is
+# DIEGETIC: a game world shown on a screen, a vision blooming out of a canon device, a
+# memory, a dream. Before this, `style` / `negatives` / `anchorRef` were book-level ONLY,
+# so the only way to render a second register was a SECOND render-spec, which duplicates
+# the whole preamble and drifts the moment one copy is edited. A spread that names none
+# of these compiles byte-identically to before.
+_SPREAD_OVERRIDES = (
+    "style", "negatives", "guardedNegatives", "anchorRef",
+    "allowMultiPanel", "allowUncast", "size",
+)
+
+
+def _name_tokens(eid: str) -> set[str]:
+    """The given name a scene would use for a character id.
+
+    ONLY the first token, because entity ids are `<given-name>-<qualifier>`
+    (`cynthia-gentry`, `jerry-man`, `silas-driver`) and the qualifier is usually a common
+    word: matching on it made the ordinary noun "driver" in a car scene flag
+    `silas-driver`. A surname is not worth the false-positive rate, since prose in these
+    universes addresses people by first name.
+    """
+    head = eid.split("-")[0]
+    return {head} if len(head) > 3 else set()
+
+
+def uncast_characters(uroot: Path, scene: str, cast_ids: set[str]) -> list[tuple[str, str]]:
+    """Character entities NAMED in the scene text but never CAST in this spread.
+
+    Promoted from the Nation of Fire fork 2026-07-25 (earned on why-do-i-get-to-meet-them).
+    THE most expensive defect class this pipeline produces, and it is silent: the model
+    happily invents a stranger for anyone the prose names but the refs do not supply. Five
+    spreads there said "a hint of Cynthia's near shoulder" or named Jerry without casting
+    them, and every one came back with a wrong human being in frame, discovered only after
+    paying for the render. An over-the-shoulder single still needs BOTH people cast,
+    because the shoulder is a person. This is a pure-text check, so it costs nothing and
+    runs before any image is generated.
+    """
+    ents = uroot / "canon" / "entities"
+    if not ents.is_dir():
+        return []
+    low = (scene or "").lower()
+
+    # A name token already ACCOUNTED FOR by something cast is not a missing character.
+    # Ids of the form `<role>-of-<x>` all share one head token, so a scene that casts
+    # chief-of-counterfeits and writes "the Chief of Counterfeits" was flagging the other
+    # four chiefs, and a scene casting apostle-lee that writes "the Apostle" flagged every
+    # other apostle. Both fired on real books and both are false: the word in the prose
+    # refers to the entity that IS cast, whose refs the model is already given.
+    cast_tokens: set[str] = set()
+    for cid in cast_ids:
+        cast_tokens |= _name_tokens(cid)
+
+    missing: list[tuple[str, str]] = []
+    for path in sorted(ents.glob("*.json")):
+        eid = path.stem
+        if eid in cast_ids:
+            continue
+        try:
+            if load(path).get("kind") != "character":
+                continue
+        except (ValueError, OSError):
+            continue
+        for tok in _name_tokens(eid):
+            if tok in cast_tokens:
+                continue
+            if re.search(rf"\b{re.escape(tok)}\b", low):
+                missing.append((eid, tok))
+                break
+    return missing
+
+
 def load(p: Path):
     with open(p) as f:
         return json.load(f)
@@ -195,16 +302,22 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     ident = uni.get("identity", {})
     reg = ident.get("register", {})
 
-    # Anchor: the book may override identity.register.anchor when that anchor is
-    # unsuitable (e.g. it points at a photograph, a painterly universe's own
-    # rejectedPole). The override is DATA in the render-spec, with a reason.
-    anchor = spec.get("anchorRef") or reg.get("anchor")
-    if not anchor:
-        raise Refuse("no anchor: identity.register.anchor is null and render-spec has no anchorRef")
-
     sp = next((s for s in spec.get("spreads", []) if s["id"] == spread_id), None)
     if sp is None:
         raise Refuse(f"spread '{spread_id}' not in render-spec")
+
+    # A spread may override the book preamble for the keys in _SPREAD_OVERRIDES, so ONE
+    # book can carry more than one register when the change is diegetic. A spread naming
+    # none of them resolves exactly as before.
+    eff = {**spec, **{k: sp[k] for k in _SPREAD_OVERRIDES if k in sp}}
+
+    # Anchor: the book (or one spread) may override identity.register.anchor when that
+    # anchor is unsuitable (e.g. it points at a photograph, a painterly universe's own
+    # rejectedPole, or this spread renders a second register). The override is DATA in
+    # the render-spec, with a reason.
+    anchor = eff.get("anchorRef") or reg.get("anchor")
+    if not anchor:
+        raise Refuse("no anchor: identity.register.anchor is null and render-spec has no anchorRef")
 
     refs: list[str] = [anchor]
     ent_blocks: list[str] = []
@@ -279,9 +392,9 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # GUARDED negatives — a blanket negative (e.g. "no facial hair") is emitted
     # ONLY when no in-frame character's selected look positively satisfies it.
     negs = list(reg.get("rejectedPoles", []))
-    negs += list(spec.get("negatives", []))
+    negs += list(eff.get("negatives", []))
     all_inv = set().union(*[set(v) for v in char_invsets.values()]) if char_invsets else set()
-    for g in spec.get("guardedNegatives", []):
+    for g in eff.get("guardedNegatives", []):
         pat = g.get("satisfiedByInvariantMatching")
         satisfied = bool(pat) and any(
             re.search(pat, i) and not NEG_MARKER.search(i) for i in all_inv
@@ -296,23 +409,38 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             if r not in resolved:
                 resolved.append(r)
 
-    style = spec.get("style", "")
+    style = eff.get("style", "")
     scene = sp.get("scene", "")
+
+    # Refuse BEFORE returning a job that will invent a stranger. Costs nothing: pure text.
+    if not eff.get("allowUncast"):
+        cast_ids = {c["id"] for c in entries}
+        uncast = uncast_characters(uroot, scene, cast_ids)
+        if uncast:
+            named = "; ".join(f"scene says '{tok}' but never casts '{eid}'" for eid, tok in uncast)
+            raise Refuse(
+                f"UNCAST CHARACTERS NAMED IN SCENE TEXT ({spread_id}): {named}. "
+                "The model invents a stranger for each. Cast them, or set allowUncast if the "
+                "mention is genuinely not an in-frame person."
+            )
+
     prompt = " ".join(
         x
         for x in [
             f"Picture-book spread painted in the {reg.get('name', 'locked')} register of the FIRST reference image.",
+            ANCHOR_STYLE_GUARD,
             style,
             ("SCENE: " + scene) if scene else "",
             *ent_blocks,
             disambig or "",
             sp.get("extra", ""),  # authored per-spread instruction (e.g. bake a title glyph); DATA, not improvisation
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
+            "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
         ]
         if x
     )
 
-    return {"prompt": prompt, "refs": resolved, "size": spec.get("size", "1536x1024"), "qa": qa}
+    return {"prompt": prompt, "refs": resolved, "size": eff.get("size", "1536x1024"), "qa": qa}
 
 
 def main() -> int:

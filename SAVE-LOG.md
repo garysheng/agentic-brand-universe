@@ -43,3 +43,37 @@ Promoted a hand-roll: make-a-hyperagent-book was padding covers with a FLAT CREA
 
 ## 2026-07-25 — retired the duplicated pad-cover.py (folded into conform_cover.py)
 Finished the cover-conform promotion: conform_cover.py's pad mode is now a SUPERSET of the ~19 duplicated per-book pad-cover.py copies. Added --keyline <color> (draws the crisp gold frame flush to the artwork), --inset <frac> (leaves a hair of matte so a keyline never kisses the edge), and switched the self-bleed backdrop from a width-stretch to a cover-crop (truer matte colors). Default stays self-bleed, no keyline (SPEC v0.7). Reproducing NoF's look is now `--mode pad --keyline "#BF9540" --inset 0.99`. +2 cover-skill tests (self-bleed 2:3->3:4, keyline draws a frame), 251 total green. Killed the duplication at SOURCE: create-brand-os-picture-book ("ship pad-cover.py in every book") and picture-book-platform ("reuse pad-cover.py from a prior book") now call conform_cover.py instead. Deleted 15 committed pad-cover.py copies from clean NoF book repos (14 pushed); skipped 3 no-repo/untracked and 1 archived copy (do not touch other sessions' dirty state). Plugin 0.8.0 -> 0.8.1.
+
+## 2026-07-25: the compiler guards come home (SPEC v0.8, plugin 0.9.0)
+Promoted the biggest hand-roll in the framework: Nation of Fire has been rendering every book
+through its OWN prompt compiler (`nof-universe/canon/scripts/compile_render.py`), which SPEC v0.5
+wrongly blessed as "the reference impl". Caught while adding a per-spread register override to it
+for `jerry-and-the-game-that-beat-gta` (a book that argues its thesis in its own paint: soft
+painterly oil for the real world, heroic anime for the game Jerry builds, cold neon-grime for the
+foil). The fork and the framework's `assemble_prompt.py` had drifted into DISJOINT feature sets, so
+every guard earned on a NoF book was invisible to every other universe, and every framework
+capability was invisible to the universe doing the most rendering. The fork held: anchor-style
+guard, single-image guard, uncast-character refusal, registerAnchor auto. The framework held:
+altLooks + dropSheets, auto-disambiguation, guardedNegatives, anchorRef. Neither could see the
+other's.
+
+All four fork guards are now NORMATIVE in SPEC 4.6 and implemented in assemble_prompt.py, plus the
+new per-spread preamble override (`style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`,
+`allowMultiPanel`, `allowUncast`), so ONE book can carry more than one register when the change is
+diegetic (a game world on a screen, a vision, a dream) without a second render-spec to drift against.
+A spread that overrides nothing compiles byte-identically to v0.7; a spread can never shed the
+universe's own rejectedPoles. 4.6's "reference impl" now points at the framework, and a
+universe-local compiler is named a fork to migrate rather than a pattern to copy. compose-spread's
+SKILL.md documents all four guards and carries an explicit "never fork this" section.
+
+Found while testing: `unittest.main()` sat in the MIDDLE of
+`skills/compose-spread/tests/test_assemble_prompt.py`, so TestAltLookDropSheets and
+TestAltLookRenderBlock had never run once, while the suite reported ALL GREEN. Same silent-omission
+failure run-tests.sh was hardened against, one level down. Moved to the true end with a comment
+saying why. 251 -> 270 tests green (14 new guard tests, 5 revived).
+
+The NoF fork is FROZEN, not yet deleted: 17 books' render-specs use its schema and parallel sessions
+are rendering through it right now. It carries a DEPRECATED header naming the migration (a schema
+adapter from `preamble`/`characters[].pose`/`extras[]` to compose-spread's `cast[].look`/`plate`),
+which needs a quiet window with no sibling renders in flight. SPEC_VERSION 0.7 -> 0.8, plugin
+0.8.1 -> 0.9.0.
