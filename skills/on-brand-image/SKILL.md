@@ -40,8 +40,11 @@ the right skill.
    ```
    Keep the element count at or under `pack.maxElements`; if the scene needs more, the scene is wrong
    for this look (split it, or it belongs on a diagram instead).
-4. **Generate** via the provider adapter (`chatgpt-images` today), passing the selected references in
-   order.
+4. **Generate via the framework provider adapter** `scripts/generate.py` — NEVER the raw model script.
+   It generates AND writes `<output>.recipe.json` (provider, prompt, specVersion, refs, sha256) in the
+   same shape `lock-references` freezes, so **every candidate is provenanced at birth**, not only at
+   lock. Pass the selected references in order (anchor first) plus `--style-pack <pack-id>`. Provenance
+   is a side effect of generating here; there is no un-provenanced image.
 5. **Read back against the gate (mandatory).** Open the output and check EACH `pack.gate` assertion
    against the actual pixels, returning PASS or DEFECT per item. This is the load-bearing half; a pack
    without a gate is a mood board.
