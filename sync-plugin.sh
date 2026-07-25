@@ -15,11 +15,25 @@
 #   source repo  ->  marketplace repo  ->  git remote  ->  installed plugin cache
 # and anything short of the remote is reported as STALE.
 set -uo pipefail
-SRC="$(cd "$(dirname "$0")" && pwd)/skills"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+SRC="$ROOT/skills"
 DST="$HOME/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/skills"
 
 [ -d "$DST" ] || { echo "plugin skills dir not found: $DST"; exit 2; }
 rsync -a --delete-excluded --exclude '__pycache__' --exclude '*.pyc' "$SRC"/ "$DST"/
+
+# agents/ ride the same chain as skills/: source -> marketplace -> remote -> cache.
+# A plugin ships agents from its agents/ dir; a copied-but-undelivered agent is as
+# useless as a copied-but-undelivered skill, so mirror + verify it the same way.
+AGENT_SRC="$ROOT/agents"
+AGENT_DST="$HOME/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/agents"
+if [ -d "$AGENT_SRC" ]; then
+  mkdir -p "$AGENT_DST"
+  rsync -a --delete-excluded --exclude '__pycache__' --exclude '*.pyc' "$AGENT_SRC"/ "$AGENT_DST"/
+  amissing=$(comm -23 <(ls "$AGENT_SRC" | sort) <(ls "$AGENT_DST" | sort))
+  [ -n "$amissing" ] && { echo "MISSING agents from plugin: $amissing"; exit 1; }
+  echo "agents synced: $(ls "$AGENT_SRC" | wc -l | tr -d ' ')"
+fi
 
 missing=$(comm -23 <(ls "$SRC" | sort) <(ls "$DST" | sort))
 extra=$(comm -13 <(ls "$SRC" | sort) <(ls "$DST" | sort))
