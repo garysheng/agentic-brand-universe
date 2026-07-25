@@ -59,6 +59,43 @@ Grade: A ≥90, B ≥80, C ≥70, D ≥60, F <60.
 4. **Re-grade after a work session** to confirm the score moved and nothing regressed. The grade
    is the definition of done: aim to raise it deliberately, not to "feel finished."
 
+## Doctor Mode (the autonomous loop — "keep doctoring until I say stop")
+
+The grade + punch-list is the brain; **Doctor Mode** is the persistence layer that runs it so the
+operator never has to decide what to build next. Activated by "activate doctor mode", "keep
+doctoring", "keep improving the universe until I say stop". It runs until told to stop
+("stop doctor mode", "that's enough").
+
+Each cycle:
+1. **Grade** the universe (`grade.py`). Note the score.
+2. **Pick the highest-impact item the loop can advance autonomously** (see the auto/propose split
+   below). Skip taste-gated items unless the operator has already blessed them.
+3. **Execute it with the right verb** — never hand-roll. Renders go to the background so the loop
+   isn't blocked; provenance is written by the adapter.
+4. **Read back + commit.** Honor the read-back gate; regenerate a defect from scratch, never lock a
+   failing plate.
+5. **Re-grade** and **send the operator ONE short text** (via `send-imsg` / `update-gary-on-imessage`):
+   what improved and the new score (e.g. "🩺 locked the divine-yoke turnaround + 2 plates — universe
+   B- → B, 82/100. next: glowing-jesus profiles."). Remote-control-friendly: they can veto or steer
+   from their phone.
+6. **Continue** to the next item. Stop only when the operator says so, or when every remaining item
+   is taste-gated (then send a text listing the forks and wait).
+
+**Auto vs propose (the load-bearing split):**
+- **Advance autonomously** (infrastructure, no taste): setting/visual-metaphor plates (turnaround,
+  empty plates, blueprint, **scale plate**) + descriptor prose; missing provenance sidecars; scaffolding
+  a scale descriptor; wiring existing blessed art into an entity's contract; cleaning cruft.
+- **Propose, don't auto-commit** (taste forks — text the operator candidates and proceed on their
+  pick, or hold): selecting a character/hero **golden**; a story's **logline + spine**; a **register**
+  or palette decision; anything that changes the universe's identity. Make a confident recommendation
+  so a one-word reply unblocks it.
+
+**Guardrails:** a render is not reproducible, so never delete an un-locked candidate before its winner
+is locked. Never fake a sub-score by writing a path that doesn't resolve (the grader checks
+resolution; faking just moves the lie downstream). Batch framework-shaped fixes to the
+`agenticstory-steward` agent when several are queued. Keep the operator's texts to one or two lines —
+the loop is the value, not the narration.
+
 ## Notes on reading a grade
 
 - A **low grade is a report, not a failure** — a young universe SHOULD grade low; the punch-list is the plan. The script always exits 0.
