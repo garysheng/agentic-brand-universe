@@ -16,7 +16,7 @@ from typing import Any
 ENTITY_KINDS = {
     "character", "setting", "visual-metaphor", "doctrine", "motif", "beat", "prop", "group",
 }
-SETTING_CONTRACT_FIELDS = ("turnaround", "emptyPlates", "blueprint", "map", "blocking", "dressing")
+SETTING_CONTRACT_FIELDS = ("turnaround", "emptyPlates", "blueprint", "scalePlate", "map", "blocking", "dressing", "scale")
 
 
 @dataclass

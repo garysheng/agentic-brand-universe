@@ -124,7 +124,12 @@ def scaffold_entity(
         ent["status"] = "unlocked"
         ent["contract"] = {
             "turnaround": None, "emptyPlates": [], "blueprint": None,
-            "map": "", "blocking": "", "dressing": "",
+            # SPEC v0.9: emptyPlates are people-free so a reference never bakes a face into a
+            # room, which means nothing in them proves how BIG the room is. scalePlate is the
+            # same room with anonymous scale figures; scale states the size in human terms and
+            # is passed in every prompt like dressing (prose survives a re-render, a plate does not).
+            "scalePlate": None,
+            "map": "", "blocking": "", "dressing": "", "scale": "",
         }
         ent["prose"] = {"rules": ""}
     else:  # doctrine, beat, group
