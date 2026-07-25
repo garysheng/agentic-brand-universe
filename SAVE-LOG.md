@@ -111,3 +111,5 @@ suspended hood over a central hearth is genuinely buildable at great-hall scale 
 unbuildable because the room read small. And `kingdom-property` had already SHIPPED against that
 geometry, so replacing it would have silently desynced a live book from every later one. Check who
 already depends on a setting before redesigning it.
+
+2026-07-25 · plugin v0.11.0 · Shipped the agenticstory-steward AGENT (agents/agenticstory-steward.md): a framework-aware subagent whose job is to reach for the right verb instead of hand-rolling and to FLAG (never silently work around) framework gaps, escalating them to evolve-agentic-story. First agent in the plugin; sync-plugin.sh now mirrors agents/ down the same source-marketplace-remote-cache chain as skills. Delivered (both repos pushed); needs /plugin update.
