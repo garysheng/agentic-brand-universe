@@ -211,7 +211,12 @@ Three wired mechanisms, applied at defined points:
   "realPerson": {                          // present ONLY when the entity is a real person (backtest finding 4)
     "photoStack": ["reference/photos/…"],  // 5+ real photos; GABR built from the stack, never a painting-of-a-painting
     "canonicalPhotos": { "face": "…", "fit": "…" },
-    "approval": { "state": "gated", "by": "brenda-gentry", "on": null },  // gated | approved
+    "approval": { "state": "gated", "by": "brenda-gentry", "on": null },  // gated | approved | none-required
+    // `none-required` (v0.6.1) is for a universe whose identity.subjectApproval.realLivingPerson
+    // is itself `none-required`: the per-subject blessing gate is abolished, so the whole
+    // `approval` block is optional and validation does not demand a state. Before this, such an
+    // entity had no honest value — `approved` asserts a blessing nobody asked for, and `gated`
+    // reinstates the retired gate.
     "sensitiveList": "RESEARCH.md#sensitive", // what never ships
     "wardrobeEras": { "default": "…", "activity": { "running": "…" } },   // activity-specific attire (rule: no street outfit while running)
     "groupCount": null                     // for a group/lineup: the EXACT member count (a research fact, not an art inference)
@@ -776,7 +781,9 @@ known by, that generic skills read.
   "theme": "gold-belongs-to-god",        // brand token set / palette id
   "closingOrnament": "wisp",             // a recurring closing motif, if any
   "voice": { "capitalize": ["Kingdom","Spirit"], "oneWord": ["Christofuturist"] }, // voice-gate rules
-  "subjectApproval": { "realLivingPerson": "requires-blessing" },
+  "subjectApproval": { "realLivingPerson": "requires-blessing" }, // requires-blessing | none-required
+  // `none-required` abolishes the per-subject blessing gate universe-wide. Entity validation then
+  // stops demanding realPerson.approval.state, because there is no gate left to enforce (v0.6.1).
   "register": {                              // the universe's illustrative style (v0.4)
     "name": "detailed comic book",           // named style, defaulted by start-universe
     "anchor": "reference/register/style-anchor.png", // content-neutral swatch, passed FIRST every render

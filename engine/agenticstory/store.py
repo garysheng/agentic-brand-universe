@@ -63,6 +63,16 @@ class CanonStore:
         p = Path(ar)
         return p if p.is_absolute() else (self.dir / p).resolve()
 
+    @property
+    def subject_approval(self) -> str | None:
+        """The universe's real-living-person approval policy, or None if it declares none.
+
+        'none-required' means the per-subject blessing gate is abolished universe-wide and
+        entity validation must not demand an approval state (see Entity.validate).
+        """
+        identity = self.manifest.get("identity") or {}
+        return (identity.get("subjectApproval") or {}).get("realLivingPerson")
+
     # --- queries ---
     def entity(self, eid: str) -> Entity | None:
         return self.entities.get(eid)
@@ -77,7 +87,7 @@ class CanonStore:
     def validate_canon(self) -> list[str]:
         problems: list[str] = []
         for e in self.entities.values():
-            problems += e.validate()
+            problems += e.validate(subject_approval=self.subject_approval)
         for c in self.craft.values():
             problems += c.validate()
         # a relation side may be an entity OR a story (e.g. `wisp appears-in <story>`)

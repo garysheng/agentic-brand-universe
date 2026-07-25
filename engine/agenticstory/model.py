@@ -57,7 +57,13 @@ class Entity:
     def from_dict(d: dict[str, Any]) -> "Entity":
         return Entity(id=d.get("id", ""), kind=d.get("kind", ""), raw=d)
 
-    def validate(self) -> list[str]:
+    def validate(self, subject_approval: str | None = None) -> list[str]:
+        """Validate the entity.
+
+        `subject_approval` is the universe's identity.subjectApproval.realLivingPerson policy.
+        When a universe sets it to 'none-required' the per-subject blessing gate is abolished
+        outright, so a real-person entity is NOT required to declare an approval state at all.
+        """
         p: list[str] = []
         if not self.id:
             p.append("entity missing 'id'")
@@ -79,8 +85,19 @@ class Entity:
         if rp is not None:
             if not rp.get("photoStack"):
                 p.append(f"{self.id}: realPerson needs a non-empty photoStack (multi-ref rule)")
-            if (rp.get("approval") or {}).get("state") not in ("gated", "approved"):
-                p.append(f"{self.id}: realPerson.approval.state must be 'gated' or 'approved'")
+            # APPROVAL IS POLICY-DRIVEN (2026-07-25). A universe that declares
+            # identity.subjectApproval.realLivingPerson = 'none-required' has abolished the
+            # per-subject blessing gate (nation-of-fire did so on 2026-07-24), so there is
+            # nothing to enforce here: no approval block is needed, and 'none-required' is a
+            # legal explicit value. Demanding 'gated' or 'approved' under that policy forced a
+            # dishonest choice, since 'approved' asserts a blessing nobody ever asked for and
+            # 'gated' reinstates the very gate the universe retired.
+            if subject_approval != "none-required":
+                if (rp.get("approval") or {}).get("state") not in ("gated", "approved", "none-required"):
+                    p.append(
+                        f"{self.id}: realPerson.approval.state must be "
+                        f"'gated', 'approved', or 'none-required'"
+                    )
         return p
 
 
