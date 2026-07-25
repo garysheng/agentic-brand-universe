@@ -113,3 +113,5 @@ geometry, so replacing it would have silently desynced a live book from every la
 already depends on a setting before redesigning it.
 
 2026-07-25 · plugin v0.11.0 · Shipped the agenticstory-steward AGENT (agents/agenticstory-steward.md): a framework-aware subagent whose job is to reach for the right verb instead of hand-rolling and to FLAG (never silently work around) framework gaps, escalating them to evolve-agentic-story. First agent in the plugin; sync-plugin.sh now mirrors agents/ down the same source-marketplace-remote-cache chain as skills. Delivered (both repos pushed); needs /plugin update.
+
+2026-07-25 · engine fix · add-entity scaffolder (authoring.py + model.py SETTING_CONTRACT_FIELDS) now emits scalePlate + scale for settings, matching SPEC v0.9 (scaffold.py already had them; the CLI path was behind). Every add-entity setting was born without the size contract. Caught by formalizing the christofuturism environments as settings. Tests green.
