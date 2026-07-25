@@ -307,6 +307,22 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(st["status"], "unlocked")
         self.assertIn("contract", st)
         self.assertEqual(Entity.from_dict(st).validate(), [])
+        # SPEC v0.9: a setting's contract MUST carry the size fields (scalePlate file + scale
+        # descriptor), not just the plates — an empty plate cannot prove its own size. Guards
+        # against the scaffolder drifting behind the spec (it did: add-entity emitted a setting
+        # with no scalePlate/scale for months while scaffold.py already had them).
+        from agenticstory.model import SETTING_CONTRACT_FIELDS
+        self.assertEqual(
+            set(st["contract"].keys()),
+            {"turnaround", "emptyPlates", "blueprint", "scalePlate",
+             "map", "blocking", "dressing", "scale"},
+        )
+        self.assertIn("scalePlate", SETTING_CONTRACT_FIELDS)
+        self.assertIn("scale", SETTING_CONTRACT_FIELDS)
+        # visual-metaphor shares the setting contract path, so it must carry the same size fields
+        vm = scaffold_entity("visual-metaphor", "the-yoke", "The Yoke")
+        self.assertIn("scalePlate", vm["contract"])
+        self.assertIn("scale", vm["contract"])
         # prop: hero+detail slots
         pr = scaffold_entity("prop", "the-key", "The Key")
         self.assertEqual(set(pr["structured"]["sheets"].keys()), {"hero","detail"})
