@@ -62,6 +62,11 @@ A scene with a **crowd or a wardrobe** takes an optional **Lookbook** alongside 
 - Pass `--lookbook <path>` to the provider adapter so the recipe records it.
 A universe binds a lookbook everywhere via a `craft-canon` register-rule that names it (e.g. `godly-aligned-dress` → `christofuturist-fashion`), so uniformity can never silently creep back in.
 
+## Rendering operations (hard-won)
+
+- **A render is NOT reproducible.** gpt-image-2 has no seed parameter; nano's `seed` is not pixel-deterministic. So **never delete an un-locked candidate** — once a good roll is gone it cannot be regenerated. Stage candidates, prune only AFTER the winner is locked. (A blessed yoke roll was lost exactly this way.)
+- **Batch renders in the background.** gpt-image-2 at `--quality high` is ~2 minutes per image; a foreground call under a 2-minute cap, or several in parallel, gets killed mid-generation with nothing saved. Run multi-image batches detached and collect them when they finish.
+
 ## Gates honored
 
 - **References-first** — the look is carried by the reference images, never by wording it harder. A
