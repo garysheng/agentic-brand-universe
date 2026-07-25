@@ -53,6 +53,15 @@ the right skill.
    stop and report the surviving defects rather than shipping a silent failure.
 7. **Report** the output path and the per-assertion verdict.
 
+## Lookbooks (curated variety, SPEC §4.7.1)
+
+A scene with a **crowd or a wardrobe** takes an optional **Lookbook** alongside the pack (`create-lookbook`). Where the pack sets the render medium, the lookbook sets a VARIED subject vocabulary (fashion, faces, home silhouettes). When given one:
+- **Sample 2-4 of its refs** (not all; and not the same subset every render) and pass them AFTER the pack refs.
+- **Prepend its `varietyRule`** to the prompt ("dress each person differently from this range; never a uniform, never two people matching").
+- **Add its `gate` assertions** to the read-back, and re-roll from scratch if the crowd comes back uniform.
+- Pass `--lookbook <path>` to the provider adapter so the recipe records it.
+A universe binds a lookbook everywhere via a `craft-canon` register-rule that names it (e.g. `godly-aligned-dress` → `christofuturist-fashion`), so uniformity can never silently creep back in.
+
 ## Gates honored
 
 - **References-first** — the look is carried by the reference images, never by wording it harder. A

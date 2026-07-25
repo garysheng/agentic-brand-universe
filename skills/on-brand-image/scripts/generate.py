@@ -42,6 +42,7 @@ def main():
     ap.add_argument("--quality", default="high")
     ap.add_argument("--spec-version", default="0.6")
     ap.add_argument("--style-pack", default="")
+    ap.add_argument("--lookbook", default="")
     a = ap.parse_args()
 
     prompt = open(a.prompt_file).read() if a.prompt_file else a.prompt
@@ -75,6 +76,8 @@ def main():
     }
     if a.style_pack:
         recipe["stylePack"] = a.style_pack
+    if a.lookbook:
+        recipe["lookbook"] = a.lookbook
     with open(out + ".recipe.json", "w") as f:
         json.dump(recipe, f, indent=2)
     print(f"[generate] {os.path.basename(out)} + {os.path.basename(out)}.recipe.json  (provenance written)")

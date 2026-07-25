@@ -368,6 +368,48 @@ them" — which has no recurring-identity requirement and therefore no need for 
   prompt concern — and an ink-line look whose hands are deliberately non-anatomical sidesteps it by
   construction.
 
+### 4.7.1 Lookbook (the portable VARIED vocabulary)
+
+A **Lookbook** is the complement of a Style Pack. A Style Pack defines ONE look and every render
+matches it; a Lookbook defines a curated but intentionally **varied** family — a wardrobe/fashion, a
+range of building silhouettes, a crowd of faces — and every render must draw from the range while
+**differing** from any single exemplar. It exists because the alternatives are wrong for variety: a
+`motif`/`prop` (SPEC §12) forces a thing to render *identically*, and a Style Pack is a render medium,
+not subject content. Improvising a bare folder of "clothing refs" is the drift it kills.
+
+```
+<lookbook>/
+  lookbook.json
+  refs/*.png   # 4-12 deliberately VARIED exemplars; range is the point
+```
+
+```jsonc
+{
+  "id": "christofuturist-fashion",
+  "kind": "lookbook",
+  "name": "Christofuturist Fashion",
+  "refs": ["refs/a.png", "..."],              // 4-12, pack-relative; NO single anchor (nothing to match)
+  "aesthetic": "modest, dignified, individual, timeless-yet-modern Kingdom dress",
+  "varietyRule": "dress each person differently, drawn from this range; never a uniform, never two people matching",
+  "gate": [                                    // checked against the OUTPUT — VARIETY assertions
+    "no two people are dressed alike",
+    "not one palette across the whole crowd",
+    "individual, dignified, modest dress (never a commune uniform)"
+  ],
+  "minRefs": 3
+}
+```
+
+- **Consumed** by a renderer (`on-brand-image --lookbook`): sample 2-4 refs (varying the subset), prepend
+  `varietyRule`, add the `gate` to the read-back, re-roll a uniform result from scratch. It rides
+  ALONGSIDE a Style Pack (pack = medium, lookbook = varied subject).
+- **Bound to a universe** through a **craft-canon register-rule** (§13) whose `rules` name the lookbook,
+  so uniformity can never silently return. (First use: rule `godly-aligned-dress` → lookbook
+  `christofuturist-fashion`, because a Christofuturist community that dresses in one beige linen reads as
+  a commune, not a flourishing Kingdom.)
+- **The gate is load-bearing, and it checks VARIETY.** A lookbook without a variety gate is a mood board
+  that drifts back to a uniform on the first render.
+
 ### 4.8 Projection (a KIND of deliverable)
 
 A **Projection** is a typed contract for a kind of artifact. It is the layer the standard was missing:
