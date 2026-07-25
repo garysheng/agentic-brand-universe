@@ -11,6 +11,11 @@ Modes:
         carried the compiler's SAFE MARGIN block; equal trim top+bottom)
   pad   self-bleed side panels (blurred edge extension) to widen to the aspect
 
+`pad` (blurred self-bleed, no keyline) is the DEFAULT cover fill per SPEC v0.7
+(§ producible-vs-surface aspect). A flat-color bar is BANNED: it passes the aspect
+check but seams visibly against the art's textured, vignetted background. Do not
+hand-roll a per-universe pad script; call this tool.
+
 Exits non-zero unless the OUTPUT file's aspect equals --aspect exactly (±0.5%).
 
 Usage:

@@ -1,10 +1,17 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.6 — 2026-07-23.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.7 — 2026-07-25.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.7 changelog — the cover-conform convention.** Added a normative default (§ producible-vs-surface
+> aspect): when a producible aspect does not match the target surface, conform by **blurred self-bleed**
+> (`conform_cover.py --mode pad`), never by a flat-color bar and never by cropping load-bearing content.
+> A flat side-bar passes the aspect check but seams visibly against the art and looks unintentional;
+> hand-rolling a per-universe pad script is the exact hand-roll the convention retires. Backward
+> compatible: universes conforming to 0.6 remain valid.
 
 > **v0.6 changelog — the projection release.** The spec claimed (§3.3) that a composition was
 > "medium-neutral" while the primitive (§4.3) *required* `logline`, `spine`, `refrain`, and `beats`.
@@ -568,6 +575,20 @@ The composer resolves each generated slot's geometry from `surface`, compares it
 `producibleAspects`, and refuses to start if no aspect is within tolerance. This is a **`computed`**
 invariant and it belongs at plan time: the alternative is discovering it an hour into a composition,
 or worse, silently cropping to fit and losing exactly the edges the composition needed.
+
+**When a producible aspect does not match the surface, CONFORM by self-bleed, never by flat bars
+and never by cropping load-bearing content (§cover-conform, earned 2026-07-25).** The common case is
+a cover: image models emit the tallest producible portrait at 2:3 (0.667), while the reader page is
+3:4 (0.75). The gap is bridged by `conform_cover.py` (in the `cover` skill), whose default `--mode
+pad` widens the render with **blurred self-bleed side panels**: the art's own colors, scaled and
+blurred, fill the panels so the padding reads as an intentional soft matte and vanishes into the
+composition. Two things are NORMATIVE and were both learned by shipping the wrong one: (1) the fill is
+a self-bleed, **never a flat color** — a flat bar seams visibly against the art's textured, vignetted
+background, and passing the aspect check does not make it look intentional; (2) `--mode crop` (equal
+top/bottom trim) is licensed ONLY when the render carried a safe-margin block, because cropping a
+cover's height eats its title. The default cover fill is self-bleed with no keyline; a keyline is a
+per-universe stylistic opt-in, not the default. Producing the conform by hand (a universe-local pad
+script, a flat-fill one-liner) is the hand-roll this convention exists to retire: call the tool.
 
 **Generators declare a capability, with an optional pin.** Faithful reproduction does not come from
 pinning a provider, because generative output is stochastic regardless (§4.6, determinism ceiling). It
