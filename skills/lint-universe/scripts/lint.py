@@ -39,6 +39,41 @@ def lint(root):
     u = jload(root/"universe.json")
     if not u: return
 
+    # ---- story types are DATA, not prose (craft-canon membership)
+    #
+    # A story declares its `spine` (arc invariant) and optional `genre` (book type). The SPEC
+    # (§13) says these are craft-canon records (`canon/craft/*.json`, kinds spine|genre), so
+    # "where are this universe's story types?" is answerable by listing them. But nothing tied
+    # a story's declared value back to that registry, so a typo ("expectant-biograhpy"), a
+    # near-duplicate ("teaching-testimony" vs "testimony-teaching"), or free-text prose in the
+    # genre field ("testimony (Jerry-voiced ...)") passed silently. This check makes an
+    # unregistered spine/genre a loud finding: register it as a craft record (one JSON file, so
+    # the mode becomes discoverable data) or fix the typo. A WARNING, not an error: a universe
+    # mid-normalization still validates and composes, it just gets told what to canonize.
+    craft_dir = root/"canon"/"craft"
+    reg_spine, reg_genre = set(), set()
+    if craft_dir.exists():
+        for cf in craft_dir.glob("*.json"):
+            c = jload(cf) or {}
+            if c.get("kind") == "spine": reg_spine.add(c.get("id"))
+            elif c.get("kind") == "genre": reg_genre.add(c.get("id"))
+    stories_dir = root/"stories"
+    if stories_dir.exists() and (reg_spine or reg_genre):
+        for sf in sorted(stories_dir.glob("*.json")):
+            s = jload(sf)
+            if not s: continue
+            sid = s.get("id", sf.stem)
+            spine = s.get("spine")
+            if spine and spine not in reg_spine:
+                warn("STORY-SPINE-UNREGISTERED", f"{sid}: spine '{spine}' is not a registered "
+                     f"craft record. Register it (canon/craft/<id>.json kind 'spine') or fix the "
+                     f"value; known: {sorted(x for x in reg_spine if x)}")
+            genre = s.get("genre")
+            if genre and genre not in reg_genre:
+                warn("STORY-GENRE-UNREGISTERED", f"{sid}: genre '{genre}' is not a registered "
+                     f"craft record. Register it (canon/craft/<id>.json kind 'genre') or fix the "
+                     f"value; known: {sorted(x for x in reg_genre if x)}")
+
     # ---- the spec pin
     #
     # A universe declares the spec version it conforms to. Nothing checked that the
@@ -120,6 +155,11 @@ def lint(root):
             # and no human is looking. This is the free half of the divergence loop:
             # detected statically, at zero cost, over the whole approved corpus.
             for inp in rec.get("inputs", []):
+                # A recipe's inputs may be bare path strings (older lock-shot) or
+                # {path,digest} dicts (with provenance). Only the dict form carries a
+                # digest to compare; a bare string has nothing to check, and calling
+                # .get on it used to crash the whole linter mid-run.
+                if not isinstance(inp, dict): continue
                 ip, want = inp.get("path"), inp.get("digest")
                 if want is None: continue
                 ap = ip if pathlib.Path(ip).is_absolute() else str(root/ip)

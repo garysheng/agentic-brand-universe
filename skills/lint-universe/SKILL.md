@@ -30,6 +30,17 @@ different answer: on 2026-07-24 `SPEC.md` said v0.6, the engine constant said 0.
 universe pinned 0.5, and every one was internally consistent. Consistency is not truth; the pin is now
 verified against the engine rather than trusted.
 
+**Story types are data, not prose.** Every story declares a `spine` (arc invariant) and an optional
+`genre` (book type). The SPEC (§13) says these are craft-canon records (`canon/craft/*.json`, kinds
+`spine` | `genre`), so "where are this universe's story types?" is answerable by listing them. The linter
+ties each story back to that registry: a declared `spine`, or a non-null `genre`, that is not a
+registered craft record is a warning (`STORY-SPINE-UNREGISTERED`, `STORY-GENRE-UNREGISTERED`). This
+catches the drift that used to pass silently: a typo (`expectant-biograhpy`), a near-duplicate
+(`teaching-testimony` vs `testimony-teaching`), or free-text prose stuffed into the genre field
+(`testimony (Jerry-voiced ...)`). The fix a warning points at is one JSON file: register the value as a
+craft record (which makes the mode discoverable data) or correct the value. It is a WARNING, not an
+error, so a universe mid-normalization still validates and composes.
+
 **Style packs.** `pack.json` parses; the anchor and every ref resolve on disk; a `gate` exists, because
 a pack without one is a mood board; `styleLine` exists. Warns under three refs.
 

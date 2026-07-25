@@ -383,5 +383,77 @@ class TestSpecPin(unittest.TestCase):
         self.assertNotIn("SPEC-PIN-BEHIND", warns)
 
 
+class TestCraftMembership(unittest.TestCase):
+    """A story's declared spine/genre must be a registered craft-canon record, so 'where are
+    this universe's story types?' is answerable by data and a typo/prose value fails loudly.
+    The check is a WARNING (a universe mid-normalization still validates)."""
+
+    def _uni(self, tmp, *, craft, story):
+        root = build(tmp)  # a minimal valid universe
+        cdir = root / "canon" / "craft"; cdir.mkdir(parents=True, exist_ok=True)
+        for c in craft:
+            (cdir / f"{c['id']}.json").write_text(json.dumps({**c, "rules": "r"}))
+        sdir = root / "stories"; sdir.mkdir(exist_ok=True)
+        (sdir / f"{story['id']}.json").write_text(json.dumps(story))
+        return root
+
+    def test_registered_spine_and_genre_are_clean(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._uni(t,
+                craft=[{"id": "obedient-servant", "kind": "spine"},
+                       {"id": "expectant-biography", "kind": "genre"}],
+                story={"id": "s", "spine": "obedient-servant", "genre": "expectant-biography"})
+            _, warns = run(root)
+        self.assertNotIn("STORY-SPINE-UNREGISTERED", warns)
+        self.assertNotIn("STORY-GENRE-UNREGISTERED", warns)
+
+    def test_unregistered_spine_warns(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._uni(t,
+                craft=[{"id": "obedient-servant", "kind": "spine"}],
+                story={"id": "s", "spine": "thesis-testimony"})  # a typo/compound, unregistered
+            _, warns = run(root)
+        self.assertIn("STORY-SPINE-UNREGISTERED", warns)
+
+    def test_unregistered_genre_warns(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._uni(t,
+                craft=[{"id": "obedient-servant", "kind": "spine"},
+                       {"id": "expectant-biography", "kind": "genre"}],
+                story={"id": "s", "spine": "obedient-servant",
+                       "genre": "testimony (Jerry-voiced, prose not a key)"})
+            _, warns = run(root)
+        self.assertIn("STORY-GENRE-UNREGISTERED", warns)
+
+    def test_null_genre_is_exempt(self):
+        # genre is optional: a story may declare none. Only a NON-NULL unregistered value warns.
+        with tempfile.TemporaryDirectory() as t:
+            root = self._uni(t,
+                craft=[{"id": "obedient-servant", "kind": "spine"}],
+                story={"id": "s", "spine": "obedient-servant", "genre": None})
+            _, warns = run(root)
+        self.assertNotIn("STORY-GENRE-UNREGISTERED", warns)
+
+
+class TestGoldenRecipeInputs(unittest.TestCase):
+    """A golden recipe's `inputs` may be bare path strings (older lock-shot) or {path,digest}
+    dicts. A bare string once crashed the whole linter; it must be skipped, not fatal."""
+
+    def test_string_inputs_do_not_crash_the_linter(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = build(t)
+            ent = root / "canon" / "entities" / "c.json"
+            (root / "reference").mkdir(exist_ok=True)
+            (root / "reference" / "hero.png").write_bytes(b"\x89PNG")
+            (root / "reference" / "hero.png.recipe.json").write_text(
+                json.dumps({"inputs": ["reference/some-bare-string.png"]}))  # bare string, no digest
+            ent.write_text(json.dumps({
+                "id": "c", "kind": "character",
+                "structured": {"sheets": {"hero": "reference/hero.png"},
+                               "requiredForRender": ["hero"]}}))
+            errs, _ = run(root)  # must not raise
+        self.assertNotIn("PARSE", errs)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
