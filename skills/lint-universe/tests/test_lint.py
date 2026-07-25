@@ -455,5 +455,62 @@ class TestGoldenRecipeInputs(unittest.TestCase):
         self.assertNotIn("PARSE", errs)
 
 
+class TestSettingScale(unittest.TestCase):
+    """SPEC v0.9: a setting must be able to prove its own SIZE.
+
+    emptyPlates are people-free so a reference never bakes a face into a room. The
+    unpriced cost is that a figure-free interior has no unit of comparison, so the
+    model picks a size and every render inherits the guess. These checks make the
+    gap visible before it is expensive. WARNINGS, never errors: a setting with no
+    scale plate still locks and still renders.
+    """
+
+    def _setting(self, tmp, **contract):
+        con = {"map": "m", "blocking": "b", "dressing": "d"}
+        con.update(contract)
+        return build(tmp, entity={"id": "hall", "kind": "setting", "contract": con})
+
+    def test_warns_when_no_scale_plate(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(t))
+            self.assertIn("SETTING-NO-SCALE-PLATE", w)
+
+    def test_warns_when_no_scale_descriptor(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(t))
+            self.assertIn("SETTING-NO-SCALE-DESCRIPTOR", w)
+
+    def test_clean_when_both_present(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._setting(t, scalePlate="reference/hall/scale.png",
+                                 scale="a circular hall about 80 feet across")
+            (root / "reference" / "hall").mkdir(parents=True, exist_ok=True)
+            (root / "reference" / "hall" / "scale.png").write_bytes(b"\x89PNG")
+            _, w = run(root)
+            self.assertNotIn("SETTING-NO-SCALE-PLATE", w)
+            self.assertNotIn("SETTING-NO-SCALE-DESCRIPTOR", w)
+
+    def test_warns_when_scale_plate_declared_but_missing_on_disk(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._setting(t, scalePlate="reference/hall/nope.png", scale="big")
+            _, w = run(root)
+            self.assertIn("SETTING-NO-SCALE-PLATE", w)
+
+    def test_is_never_an_error(self):
+        """A universe mid-normalization must still compose."""
+        with tempfile.TemporaryDirectory() as t:
+            e, _ = run(self._setting(t))
+            self.assertNotIn("SETTING-NO-SCALE-PLATE", e)
+            self.assertNotIn("SETTING-NO-SCALE-DESCRIPTOR", e)
+
+    def test_only_applies_to_settings(self):
+        """A character has no contract; it must not be nagged about scale."""
+        with tempfile.TemporaryDirectory() as t:
+            root = build(t, entity={"id": "c", "kind": "character",
+                                    "structured": {"sheets": {}, "requiredForRender": []}})
+            _, w = run(root)
+            self.assertNotIn("SETTING-NO-SCALE-PLATE", w)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

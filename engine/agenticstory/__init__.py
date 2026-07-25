@@ -17,6 +17,6 @@ __version__ = "0.0.1"
 # universe the engine scaffolded claimed conformance to a spec two releases old.
 # `lint-universe` now checks a universe's pin against this value, so the two can no
 # longer disagree quietly.
-SPEC_VERSION = "0.8"
+SPEC_VERSION = "0.9"
 SPEC_WIKI = "https://agenticstory.wiki"
 SPEC_URL = "https://agenticstory.wiki/spec"

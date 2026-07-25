@@ -77,3 +77,37 @@ are rendering through it right now. It carries a DEPRECATED header naming the mi
 adapter from `preamble`/`characters[].pose`/`extras[]` to compose-spread's `cast[].look`/`plate`),
 which needs a quiet window with no sibling renders in flight. SPEC_VERSION 0.7 -> 0.8, plugin
 0.8.1 -> 0.9.0.
+
+## 2026-07-25: a setting must be able to prove its own size (SPEC v0.9, plugin 0.10.0)
+Gary, looking at a rendered spread: "that fireplace room is supposed to be much bigger than it is
+right now." The room was `christofuturist-home.hearthRotunda`, and it had rendered small and cramped
+through a whole 25-spread book. Root cause is a framework rule with an unpriced cost: SPEC §12 makes
+setting `emptyPlates` PEOPLE-FREE, for the good reason that a reference must never bake a character's
+face into a room. But a figure-free interior carries no unit of comparison, so the model picks a
+size, every render inherits that guess, and nobody can catch it because the plate does not depict the
+dimension being judged. The same blind spot hid a free-standing central firepit under a SUSPENDED
+CONICAL FLUE that nothing was holding up: no plate ever had to show how the thing stood.
+
+Worse, this was already half-diagnosed and then walked past. make-a-nof-book has carried the line "a
+visual-metaphor plate must carry its own scale cue, because a figure-free plate cannot prove scale by
+comparison" since the-greatest-storybook-writer. It was written as one book's gotcha instead of being
+promoted, so the next setting shipped with the same hole. Second occurrence is the trigger.
+
+Promoted: SPEC §12 setting matrix gains `scalePlate` (file) and `scale` (descriptor). A scalePlate is
+the SAME room with ANONYMOUS scale figures (small, distant, turned away, faces unreadable, never a
+canon character, never the subject), which satisfies the identity rule and makes size checkable. It
+is a SEPARATE file from emptyPlates, never a replacement: renders still cast an empty plate. The
+`scale` descriptor states the size in human measurements and is passed in every prompt like
+`dressing`, because prose survives a re-render and a plate does not. lint-universe warns
+SETTING-NO-SCALE-PLATE / SETTING-NO-SCALE-DESCRIPTOR, both advisory so a setting with no scale plate
+still locks and still renders. add-setting now ASKS how big the place is during the interview, and
+asks how each structural feature is actually held up or vented, which is the question that would have
+caught the floating cone. The scaffolder emits both fields. SPEC_VERSION 0.8 -> 0.9, plugin 0.9.0 ->
+0.10.0. 270 -> 276 tests green.
+
+Field note on the fix itself: the first instinct was to REPLACE the room (wall-set firebox, no
+hood). Gary redirected to rescuing it with scale plates instead, and he was right twice over. A
+suspended hood over a central hearth is genuinely buildable at great-hall scale and only read as
+unbuildable because the room read small. And `kingdom-property` had already SHIPPED against that
+geometry, so replacing it would have silently desynced a live book from every later one. Check who
+already depends on a setting before redesigning it.

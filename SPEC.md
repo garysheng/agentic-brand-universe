@@ -1,10 +1,24 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.8 — 2026-07-25.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.9 — 2026-07-25.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.9 changelog — a setting must be able to prove its own size.** §12 adds `scalePlate` (file)
+> and `scale` (descriptor) to the setting matrix. `emptyPlates` are people-free so a setting
+> reference never bakes a character's face into a room; that rule is correct and unchanged. Its
+> unpriced cost: a figure-free interior carries no unit of comparison, so the model picks a size,
+> every render inherits it, and nobody can catch it because the plate does not depict the dimension
+> being judged. A `scalePlate` is the same room with ANONYMOUS scale figures (small, distant, turned
+> away, faces unreadable, never a canon character), which satisfies the identity rule and makes size
+> checkable. The `scale` descriptor states the size in human terms and is passed in every prompt like
+> `dressing`, because prose survives a re-render and a plate does not. Advisory: `lint-universe`
+> warns `SETTING-NO-SCALE-PLATE`. Earned on `christofuturist-home`, whose hearth room rendered small
+> and cramped through an entire book because nothing in its contract said how big it was, and whose
+> free-standing central firepit under a suspended conical flue was quietly unbuildable for the same
+> reason: no plate ever had to show how the thing stood up.
 
 > **v0.8 changelog — the compiler guards come home, and a spread may carry its own register.**
 > §4.6 gains four NORMATIVE guards that had been living in one universe's private fork of the
@@ -915,7 +929,27 @@ under-referenced entities the way the gate reports missing files.
   consistency across renders. Real people are generated from a photo stack (never a
   painting-of-a-painting); fictional characters from a locked design.
 - **setting** — the existing `contract`: `turnaround`, `emptyPlates[]`, `blueprint` (files) plus
-  `map`, `blocking`, `dressing` (descriptors). Unchanged; named here as the setting matrix.
+  `map`, `blocking`, `dressing` (descriptors), **and `scalePlate` + the `scale` descriptor (v0.9)**.
+  - **`scalePlate` (file) and `scale` (descriptor) exist because AN EMPTY PLATE CANNOT PROVE SIZE.**
+    `emptyPlates` are people-free on purpose, so that a setting reference never bakes a character's
+    face into the room. That rule is right and it stays. But it has a cost nobody priced: a
+    figure-free interior has no unit of comparison, so a room reads as whatever size the model
+    guesses, every render inherits the guess, and the drift is invisible until somebody who knows
+    the place says "that room is supposed to be much bigger than that." A plate cannot be judged on
+    a dimension it does not depict.
+  - **A `scalePlate` is the same room with ANONYMOUS SCALE FIGURES**: a few people, small in frame,
+    at a distance, turned away or in profile, faces not readable, plain clothing, never a canon
+    character and never the subject. That satisfies the identity rule (no face is baked) while
+    making size checkable. It is a SEPARATE file from `emptyPlates`, never a replacement: renders
+    still cast an empty plate, and the scale plate is what a human and a linter read the room's size
+    from.
+  - **The `scale` descriptor states the size in HUMAN TERMS** ("a circular hall about 80 feet across,
+    dome 45 feet at the crown, the fire opening about 12 feet wide"), because prose survives a
+    re-render and a plate does not. It is passed in every prompt like `dressing`.
+  - Advisory in v0.9, like the rest of the matrix: a setting with no `scalePlate` still locks and
+    still renders. `lint-universe` warns (`SETTING-NO-SCALE-PLATE`) so the gap is visible before it
+    is expensive. Earned 2026-07-25 on `christofuturist-home`, whose hearth room rendered small and
+    cramped through a whole book because nothing in its contract said how big it was.
 - **visual-metaphor** — a locked master plus `state` plates (the object across its argued states).
 - **prop / motif** — `hero` plus `detail` crops.
 

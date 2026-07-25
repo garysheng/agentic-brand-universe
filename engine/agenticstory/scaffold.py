@@ -125,7 +125,12 @@ def _example_files() -> dict[str, object]:
         "status": "unlocked",
         "contract": {
             "turnaround": None, "emptyPlates": [], "blueprint": None,
-            "map": "", "blocking": "", "dressing": "",
+            # SPEC v0.9: emptyPlates are people-free so a reference never bakes a face into a
+            # room, which means nothing in them proves how BIG the room is. scalePlate is the
+            # same room with anonymous scale figures; `scale` states the size in human terms and
+            # is passed in every prompt, because prose survives a re-render and a plate does not.
+            "scalePlate": None,
+            "map": "", "blocking": "", "dressing": "", "scale": "",
         },
         "prose": {
             "rules": "EXAMPLE SETTING, deliberately UNLOCKED. A setting is refused until every "

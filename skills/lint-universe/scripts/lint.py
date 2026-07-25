@@ -74,6 +74,45 @@ def lint(root):
                      f"craft record. Register it (canon/craft/<id>.json kind 'genre') or fix the "
                      f"value; known: {sorted(x for x in reg_genre if x)}")
 
+    # ---- a setting must be able to prove its own SIZE (SPEC v0.9, §12)
+    #
+    # `emptyPlates` are people-free on purpose so a setting reference never bakes a character's
+    # face into a room. That rule is right and it stays. Its unpriced cost: a figure-free interior
+    # carries no unit of comparison, so the model picks a size, every render inherits that guess,
+    # and nobody can catch it because the plate does not depict the dimension being judged. A
+    # hearth room rendered small and cramped through an entire book before its owner said "that
+    # room is supposed to be much bigger than that." Same blind spot hid a free-standing firepit
+    # under a suspended conical flue that could not have stood up: no plate ever had to show how
+    # the thing was built.
+    #
+    # The fix is a SEPARATE `scalePlate` (same room, anonymous scale figures: small, distant,
+    # turned away, faces unreadable, never a canon character) plus a `scale` descriptor stating
+    # the size in human terms. Prose survives a re-render; a plate does not.
+    #
+    # WARNING, never an error: a setting with no scale plate still locks and still renders.
+    ents_dir = root/"canon"/"entities"
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("kind") != "setting":
+                continue
+            con = e.get("contract") or {}
+            eid = e.get("id", ef.stem)
+            sp = con.get("scalePlate")
+            if not sp:
+                warn("SETTING-NO-SCALE-PLATE",
+                     f"{eid}: no contract.scalePlate. Its emptyPlates are people-free, so nothing "
+                     f"in this setting proves how big it is and every render silently inherits the "
+                     f"model's guess. Add a scalePlate (same room, anonymous scale figures).")
+            elif not (root/sp).exists():
+                warn("SETTING-NO-SCALE-PLATE",
+                     f"{eid}: contract.scalePlate -> {sp} (NOT ON DISK)")
+            if not (con.get("scale") or "").strip():
+                warn("SETTING-NO-SCALE-DESCRIPTOR",
+                     f"{eid}: no contract.scale descriptor. State the size in human terms (\"a "
+                     f"circular hall about 80 feet across, dome 45 feet at the crown\"); it is "
+                     f"passed in every prompt like `dressing`, and prose survives a re-render.")
+
     # ---- the spec pin
     #
     # A universe declares the spec version it conforms to. Nothing checked that the
