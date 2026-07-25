@@ -273,6 +273,26 @@ class TestConform(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.size_of("o.png"), (1536, 1536))
 
+    def test_pad_2_3_to_3_4_self_bleed(self):
+        # the cover case: producible 2:3 -> reader 3:4, default self-bleed fill.
+        src = self.render("r.png", (1024, 1536))
+        r = self.conform(src, "o.webp", "--aspect", "3:4", "--mode", "pad")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.size_of("o.webp"), (1152, 1536))
+
+    def test_pad_keyline_draws_a_frame(self):
+        # a keyline (per-universe opt-in) frames the sharp art in gold.
+        src = self.render("r.png", (1024, 1536))  # png() fills (200,180,140)
+        r = self.conform(src, "o.png", "--aspect", "3:4", "--mode", "pad",
+                          "--keyline", "#BF9540", "--inset", "0.99")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.size_of("o.png"), (1152, 1536))
+        # the inset gold frame introduces a color absent from the flat source art.
+        with Image.open(self.dir / "o.png") as im:
+            colors = {im.getpixel((x, im.size[1] // 2)) for x in range(0, im.size[0], 4)}
+        self.assertTrue(any(abs(c[0] - 0xBF) < 40 and abs(c[1] - 0x95) < 40 and c[2] < 0x80
+                            for c in colors), "no gold keyline pixel found")
+
     def test_noop_when_already_conformed(self):
         src = self.render("r.png", (1024, 1365))
         r = self.conform(src, "o.png", "--aspect", "3:4")

@@ -24,7 +24,19 @@ Usage:
 import argparse
 import sys
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
+
+
+def _bleed(im, cw, ch, blur):
+    """A blurred SELF-BLEED backdrop at (cw, ch): scale the art to COVER the
+    canvas, center-crop, blur. Cover-crop (not a stretch) keeps the matte's
+    colors true and never distorts the art's own palette into the panels."""
+    w, h = im.size
+    scale = max(cw / w, ch / h)
+    bw, bh = round(w * scale), round(h * scale)
+    ox, oy = (bw - cw) // 2, (bh - ch) // 2
+    bg = im.resize((bw, bh)).crop((ox, oy, ox + cw, oy + ch))
+    return bg.filter(ImageFilter.GaussianBlur(blur))
 
 
 def main() -> int:
@@ -33,6 +45,15 @@ def main() -> int:
     ap.add_argument("out")
     ap.add_argument("--aspect", default="3:4")
     ap.add_argument("--mode", choices=["crop", "pad"], default="crop")
+    ap.add_argument("--keyline", default=None,
+                    help="hex color (e.g. '#BF9540') for a crisp line framing the "
+                         "sharp art in pad mode; DEFAULT none (self-bleed, no line, "
+                         "SPEC v0.7). A keyline is a per-universe stylistic opt-in.")
+    ap.add_argument("--inset", type=float, default=1.0,
+                    help="pad mode: inset the sharp art to this fraction of the canvas "
+                         "(1.0 = fill, art bleeds to the long edges; e.g. 0.99 leaves a "
+                         "hair of matte all around so a keyline never kisses the edge).")
+    ap.add_argument("--blur", type=int, default=40, help="self-bleed matte blur radius.")
     args = ap.parse_args()
 
     aw, ah = (int(x) for x in args.aspect.split(":"))
@@ -41,7 +62,7 @@ def main() -> int:
     w, h = im.size
     cur = w / h
 
-    if abs(cur - target) / target < 0.005:
+    if abs(cur - target) / target < 0.005 and args.inset >= 1.0 and not args.keyline:
         out = im
     elif args.mode == "crop":
         if cur < target:  # too tall: equal trim top+bottom
@@ -52,19 +73,23 @@ def main() -> int:
             tw = round(h * target)
             off = (w - tw) // 2
             out = im.crop((off, 0, off + tw, h))
-    else:  # pad with blurred self-bleed panels
-        if cur < target:  # widen with side panels
-            tw = round(h * target)
-            panel = (tw - w) // 2
-            canvas = im.resize((tw, h)).filter(ImageFilter.GaussianBlur(40))
-            canvas.paste(im, (panel, 0))
-            out = canvas
-        else:  # heighten with top/bottom panels
-            th = round(w / target)
-            panel = (th - h) // 2
-            canvas = im.resize((w, th)).filter(ImageFilter.GaussianBlur(40))
-            canvas.paste(im, (0, panel))
-            out = canvas
+    else:  # pad with blurred self-bleed panels (+ optional inset/keyline)
+        cw = round(h * target) if cur < target else w
+        ch = h if cur < target else round(w / target)
+        canvas = _bleed(im, cw, ch, args.blur)
+        # sharp art, inset, centered
+        fh = round(ch * args.inset)
+        fw = round(fh * w / h)
+        if fw > cw:  # inset limited by width for very small aspect gaps
+            fw = round(cw * args.inset)
+            fh = round(fw * h / w)
+        ox, oy = (cw - fw) // 2, (ch - fh) // 2
+        canvas.paste(im.resize((fw, fh)), (ox, oy))
+        if args.keyline:
+            stroke = max(3, round(cw * 0.004))
+            ImageDraw.Draw(canvas).rectangle(
+                [ox, oy, ox + fw - 1, oy + fh - 1], outline=args.keyline, width=stroke)
+        out = canvas
 
     out.save(args.out)
     ow, oh = out.size
