@@ -50,6 +50,10 @@ def main(argv: list[str] | None = None) -> int:
     ll = sub.add_parser("lock-level"); ll.add_argument("universe"); ll.add_argument("entity")
     ls2 = sub.add_parser("lock-shot", help="lock a generated reference shot into an entity")
     ls2.add_argument("universe"); ls2.add_argument("eid"); ls2.add_argument("shot"); ls2.add_argument("path")
+    ls2.add_argument("--look", default=None,
+                     help="lock this shot into structured.altLooks[LOOK].sheets instead of the "
+                          "default matrix, for an alt-look or declared-future era plate. Never "
+                          "touches requiredForRender, which is the DEFAULT look's gate")
     ls2.add_argument("--recipe", default=None,
                      help="path to the recipe JSON that produced this shot; freezes provenance "
                           "at approval as <path>.recipe.json so a divergence check can run later")
@@ -179,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
         recipe = None
         if args.recipe:
             recipe = json.loads(Path(args.recipe).read_text())
-        lock_shot(ent, args.shot, args.path, recipe=recipe, root=str(uni))
+        lock_shot(ent, args.shot, args.path, recipe=recipe, root=str(uni), look=args.look)
         entp.write_text(json.dumps(ent, indent=2) + "\n")
         prov = (f"  provenance -> {recipe_sidecar_path(uni / args.path).name}" if recipe is not None
                 else "  (no --recipe: un-auditable, no divergence check can run against it)")

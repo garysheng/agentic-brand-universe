@@ -184,3 +184,15 @@ existing alt look carries an anchorPhoto so none of them trip the new refusal.
 Engine SPEC_VERSION 0.9 -> 0.10; plugin 0.16.3 -> 0.17.0. 12 new tests (5 declared-future, 3 relative
 scale in compose-spread; 7 in lint-universe). Full suite 347 green. add-character gained steps 4a/4b;
 compose-spread SKILL.md points at both.
+
+2026-07-26 · engine · `lock-shot --look <key>` writes an alt-look's art into
+`structured.altLooks[key].sheets` instead of the default matrix. Caught the same day v0.10 shipped,
+while giving beef-jones' 2028/2030 eras their actual plates: the spec had gained the LOOK primitive
+and no verb to give it ART, so the only way to register an era plate was to hand-edit the entity
+JSON, which is the hand-rolling this engine exists to remove. It never touches `requiredForRender`
+(that is the DEFAULT look's gate; an era plate must not satisfy it, or a character with no
+present-day body sheet reads as gate-real off a future one), and it REFUSES an unknown look key
+rather than creating it, because a typo would otherwise mint a look nothing selects and no read-back
+ever checks. Provenance freezes exactly as on the default path. 4 tests; suite 351 green. Plugin
+0.17.0 -> 0.17.1. lock-references SKILL.md gains the era-lock section, including the rule that an
+era plate is generated from the FACE sheets and never from the superseded `forward-fullbody`.

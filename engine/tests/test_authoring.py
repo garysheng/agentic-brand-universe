@@ -133,5 +133,51 @@ class TestLockShotMatrixedKinds(unittest.TestCase):
                          ["face-neutral", "forward-fullbody"])
 
 
+class TestLockShotIntoAnAltLook(unittest.TestCase):
+    """SPEC v0.10 declared-future eras needed art, and there was no verb for it:
+    `altLooks` could declare a different body but only `structured.sheets` could be
+    locked, so registering an era plate meant hand-editing the entity JSON."""
+
+    def _char(self):
+        return {"id": "beef", "kind": "character",
+                "structured": {"sheets": {"face-neutral": "reference/beef/face.png"},
+                               "requiredForRender": ["face-neutral"],
+                               "altLooks": {"era-2030": {"keepSheets": ["face-neutral"]}}}}
+
+    def test_locks_into_the_look_not_the_default_matrix(self):
+        e = self._char()
+        lock_shot(e, "forward-fullbody", "reference/beef/era-2030/forward-fullbody.png",
+                  look="era-2030")
+        al = e["structured"]["altLooks"]["era-2030"]
+        self.assertEqual(al["sheets"]["forward-fullbody"],
+                         "reference/beef/era-2030/forward-fullbody.png")
+        self.assertNotIn("forward-fullbody", e["structured"]["sheets"])
+
+    def test_never_touches_required_for_render(self):
+        """requiredForRender is the DEFAULT look's gate. An era plate must not be
+        able to satisfy it, or a character with no present-day body sheet would
+        render as gate-real off a future one."""
+        e = self._char()
+        lock_shot(e, "forward-fullbody", "reference/beef/era-2030/forward-fullbody.png",
+                  look="era-2030")
+        self.assertEqual(e["structured"]["requiredForRender"], ["face-neutral"])
+
+    def test_unknown_look_is_refused(self):
+        """A typo would otherwise mint a look nothing selects and no read-back checks."""
+        e = self._char()
+        with self.assertRaises(ValueError) as cm:
+            lock_shot(e, "forward-fullbody", "reference/beef/x.png", look="era-2031")
+        self.assertIn("era-2031", str(cm.exception))
+        self.assertIn("era-2030", str(cm.exception))
+
+    def test_default_path_is_unchanged_when_no_look_is_passed(self):
+        e = self._char()
+        lock_shot(e, "forward-fullbody", "reference/beef/forward-fullbody.png")
+        self.assertEqual(e["structured"]["sheets"]["forward-fullbody"],
+                         "reference/beef/forward-fullbody.png")
+        self.assertEqual(sorted(e["structured"]["requiredForRender"]),
+                         ["face-neutral", "forward-fullbody"])
+
+
 if __name__ == "__main__":
     unittest.main()

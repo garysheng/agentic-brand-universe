@@ -142,7 +142,7 @@ def scaffold_entity(
 
 
 def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
-              root=None) -> dict:
+              root=None, look: str | None = None) -> dict:
     """Lock a generated reference shot into an entity (mutates + returns it).
 
     For sheet-matrixed kinds (character/prop/motif) this sets
@@ -171,6 +171,32 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         print(f"  WARNING: {entity.get('id')} is being locked with authority.lockedBy="
               f"{au.get('lockedBy')!r}. A golden with no recorded approver cannot be attributed. "
               f"Set it before this ships; `lint-universe` fails on it.")
+
+    # AN ALT-LOOK'S ART LOCKS INTO THE LOOK, NOT THE DEFAULT MATRIX (v0.10).
+    # Without this there was no verb at all for era/alt-look art: `altLooks` could
+    # declare a different body but only `structured.sheets` could be locked, so the
+    # only way to register an era plate was to hand-edit the entity JSON, which is
+    # the hand-rolling this engine exists to remove. It deliberately does NOT touch
+    # `requiredForRender`: that is the DEFAULT look's gate, and an era look must
+    # never be able to satisfy or break it.
+    if look is not None:
+        st = entity.setdefault("structured", {})
+        looks = st.setdefault("altLooks", {})
+        if look not in looks:
+            raise ValueError(
+                f"{entity.get('id')} has no altLook {look!r}. Author the look first "
+                f"(add-character step 4b); creating it here would let a typo mint a "
+                f"look that nothing selects and no read-back ever checks. "
+                f"Known looks: {sorted(looks) or 'none'}"
+            )
+        looks[look].setdefault("sheets", {})[shot] = path
+        if recipe is not None:
+            abspath = (str(pathlib.Path(root) / path)
+                       if root and not pathlib.Path(path).is_absolute() else path)
+            recipe_sidecar_path(abspath).write_text(
+                json.dumps(freeze_recipe(path, recipe, root=root), indent=2,
+                           sort_keys=True) + "\n")
+        return entity
 
     kind = entity.get("kind", "")
     if kind in ("setting", "visual-metaphor"):

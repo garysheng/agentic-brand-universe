@@ -981,6 +981,12 @@ under-referenced entities the way the gate reports missing files.
     one step earlier still. Each era gets its own key (`era-2028`, `era-2030`) and its own
     invariants, so a read-back checks the future body against what was declared rather than
     against today's.
+  - **Locking an alt-look's art:** `lock-shot <universe> <id> <shot> <path> --look <key>` writes
+    into `structured.altLooks[key].sheets` instead of the default matrix. It deliberately never
+    touches `requiredForRender`, which is the DEFAULT look's gate: an era plate must not be able
+    to satisfy it, or a character with no present-day body sheet would read as gate-real off a
+    future one. An unknown look key is REFUSED rather than created, because a typo would
+    otherwise mint a look nothing selects and no read-back ever checks.
 - **setting** — the existing `contract`: `turnaround`, `emptyPlates[]`, `blueprint` (files) plus
   `map`, `blocking`, `dressing` (descriptors), **and `scalePlate` + the `scale` descriptor (v0.9)**.
   - **`scalePlate` (file) and `scale` (descriptor) exist because AN EMPTY PLATE CANNOT PROVE SIZE.**
