@@ -512,5 +512,63 @@ class TestSettingScale(unittest.TestCase):
             self.assertNotIn("SETTING-NO-SCALE-PLATE", w)
 
 
+
+
+class TestCastability(unittest.TestCase):
+    """An entity can be locked, art-approved, pass validate AND pass assert-story and
+    still be impossible to put in a picture, because the render compiler reads
+    structured.render while every gate reads sheets and files. It surfaced as a hard
+    KeyError at cast time, after the story was written. Hit at least three times in
+    nation-of-fire; these tests make it static and free."""
+
+    def lint_with(self, **kw):
+        with tempfile.TemporaryDirectory() as t:
+            return run(build(t, **kw))
+
+    def test_catches_a_character_with_no_render_block(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/gabr.png"}}})
+        self.assertIn("CAST-UNRENDERABLE", e)
+
+    def test_catches_a_character_with_always_but_no_poses(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/gabr.png"},
+                           "render": {"always": "a description"}}})
+        self.assertIn("CAST-NO-POSES", e)
+
+    def test_catches_a_pose_written_as_a_bare_string(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/gabr.png"},
+                           "render": {"always": "a", "poses": {"p": "just prose"}}}})
+        self.assertIn("CAST-POSE-SHAPE", e)
+
+    def test_catches_a_pose_naming_a_sheet_key_that_does_not_exist(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/gabr.png"},
+                           "render": {"always": "a",
+                                      "poses": {"p": {"sheets": ["suitNoTie"], "bake": "b"}}}}})
+        self.assertIn("CAST-POSE-SHEET-MISSING", e)
+
+    def test_a_castable_character_passes(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/gabr.png"},
+                           "render": {"always": "a",
+                                      "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
+        for code in ("CAST-UNRENDERABLE", "CAST-NO-POSES", "CAST-POSE-SHAPE",
+                     "CAST-POSE-SHEET-MISSING"):
+            self.assertNotIn(code, e)
+
+    def test_an_unscaffolded_entity_is_not_flagged(self):
+        """Before the art step an entity has no sheets at all; flagging it would fire on
+        every freshly scaffolded character and train people to ignore the linter."""
+        e, _ = self.lint_with(entity={"id": "e", "kind": "character", "structured": {}})
+        self.assertNotIn("CAST-UNRENDERABLE", e)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
