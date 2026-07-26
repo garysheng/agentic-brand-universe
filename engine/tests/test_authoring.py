@@ -193,27 +193,76 @@ if __name__ == "__main__":
     unittest.main()
 
 
-def test_prompts_skeleton_has_a_section_per_matrix_slot():
-    from agenticstory.authoring import scaffold_entity, prompts_skeleton
-    ent = scaffold_entity("character", "jo-tester", "Jo Tester")
-    md = prompts_skeleton(ent, {"anchor": "reference/style/hero.png",
-                                "name": "soft painterly storybook realism",
-                                "rejectedPoles": ["photoreal", "anime"]})
-    for shot in ent["structured"]["sheets"]:
-        assert f"## {shot}  -> reference/jo-tester/{shot}.png" in md
-    assert "reference/style/hero.png" in md          # anchor is passed first
-    assert "photoreal, anime" in md                  # rejected poles are stated
-    assert "REQUIRED before any render" in md        # the gate is named up front
+class PromptsSkeletonTest(unittest.TestCase):
+    """add-entity must emit the prompts.md that shoot-references reads as input.
+
+    Nothing wrote it before, so the step between scaffolding an entity and shooting
+    it was hand-rolled in every universe (ten times in one sitting on 2026-07-26).
+    """
+
+    def test_has_a_section_per_matrix_slot(self):
+        from agenticstory.authoring import scaffold_entity, prompts_skeleton
+        ent = scaffold_entity("character", "jo-tester", "Jo Tester")
+        md = prompts_skeleton(ent, {"anchor": "reference/style/hero.png",
+                                    "name": "soft painterly storybook realism",
+                                    "rejectedPoles": ["photoreal", "anime"]})
+        for shot in ent["structured"]["sheets"]:
+            self.assertIn(f"## {shot}  -> reference/jo-tester/{shot}.png", md)
+        self.assertIn("reference/style/hero.png", md)
+        self.assertIn("photoreal, anime", md)
+        self.assertIn("REQUIRED before any render", md)
+
+    def test_refuses_when_the_register_is_unlocked(self):
+        from agenticstory.authoring import scaffold_entity, prompts_skeleton
+        md = prompts_skeleton(scaffold_entity("prop", "thing", "Thing"), {"anchor": None})
+        self.assertIn("STOP", md)
+
+    def test_uses_contract_slots_for_a_setting(self):
+        from agenticstory.authoring import scaffold_entity, prompts_skeleton
+        md = prompts_skeleton(scaffold_entity("setting", "room", "Room"), {"anchor": "a.png"})
+        for slot in ("turnaround", "blueprint", "empty-c1", "scale"):
+            self.assertIn(f"## {slot}  -> reference/room/{slot}.png", md)
 
 
-def test_prompts_skeleton_refuses_when_the_register_is_unlocked():
-    from agenticstory.authoring import scaffold_entity, prompts_skeleton
-    md = prompts_skeleton(scaffold_entity("prop", "thing", "Thing"), {"anchor": None})
-    assert "STOP" in md
+class RequiredSetOverrideTest(unittest.TestCase):
+    """SPEC v0.11: an entity may demand a STRICTER gate than its kind's minimum.
 
+    Four entities in nation-of-fire had independently invented
+    `requiredForRenderOnLock` before anything read it, so the stricter intent was
+    silently dropped and lock_shot clobbered it back to the kind default.
+    """
 
-def test_prompts_skeleton_uses_contract_slots_for_a_setting():
-    from agenticstory.authoring import scaffold_entity, prompts_skeleton
-    md = prompts_skeleton(scaffold_entity("setting", "room", "Room"), {"anchor": "a.png"})
-    for slot in ("turnaround", "blueprint", "empty-c1", "scale"):
-        assert f"## {slot}  -> reference/room/{slot}.png" in md
+    def _char(self, override=None):
+        from agenticstory.authoring import scaffold_entity
+        ent = scaffold_entity("character", "c", "C")
+        if override is not None:
+            ent["structured"]["requiredForRenderOnLock"] = override
+        return ent
+
+    def test_defaults_to_the_kind_minimum(self):
+        from agenticstory.authoring import required_set_for
+        self.assertEqual(set(required_set_for(self._char())),
+                         {"forward-fullbody", "face-neutral"})
+
+    def test_honours_a_stricter_override(self):
+        from agenticstory.authoring import required_set_for
+        ent = self._char(["face-neutral", "face-3q", "forward-fullbody"])
+        self.assertEqual(set(required_set_for(ent)),
+                         {"face-neutral", "face-3q", "forward-fullbody"})
+
+    def test_can_never_drop_below_the_kind_minimum(self):
+        from agenticstory.authoring import required_set_for
+        self.assertIn("forward-fullbody", required_set_for(self._char(["face-neutral"])))
+
+    def test_rejects_a_shot_outside_the_matrix(self):
+        from agenticstory.authoring import required_set_for
+        with self.assertRaises(ValueError):
+            required_set_for(self._char(["face-neutral", "not-a-real-shot"]))
+
+    def test_lock_shot_no_longer_clobbers_the_override(self):
+        from agenticstory.authoring import lock_shot, required_set_for
+        ent = self._char(["face-neutral", "face-3q", "forward-fullbody"])
+        for shot in ("face-neutral", "face-3q", "forward-fullbody"):
+            lock_shot(ent, shot, f"reference/c/{shot}.png")
+        self.assertEqual(set(ent["structured"]["requiredForRender"]),
+                         {"face-neutral", "face-3q", "forward-fullbody"})

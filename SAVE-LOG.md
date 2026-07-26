@@ -242,3 +242,38 @@ This is exactly the failure `run-tests.sh` was already shaped against, one level
 down: it discovers test FILES faithfully and could still not see inside them.
 
 Suite: 352 -> 373 tests, all green (7 new, 14 recovered). Plugin 0.17.1 -> 0.17.2.
+
+## 2026-07-26 — `lock-references` renamed to `shoot-references`; prompts.md scaffolding; per-entity render gate (spec v0.11, plugin 0.18.0)
+
+Three promotions out of one Nation of Fire session (the Sol Rhodes story build).
+
+1. **`lock-references` -> `shoot-references`.** The old name described the third of three
+   steps. The skill generates art, reads it back, then locks; locking is the bookkeeping, not
+   the work, and an agent reaching for "make the art for this character" did not find it. The
+   engine already calls the unit a shot (`lock-shot`), so the verb for making shots is shoot.
+   All 17 live cross-references, the steward agent, `on-brand-image/scripts/generate.py`,
+   `universe-doctor/scripts/grade.py` and `engine/authoring.py` were updated. Historical
+   mentions in shipped universe files and in `docs/superpowers/plans/` were left alone on
+   purpose: they are a record of what was done, not instructions.
+
+2. **`add-entity` now emits `reference/<id>/prompts.md`.** Every `add-*` skill promised
+   "ready-to-run generation prompts" and `shoot-references` reads that file as its input, but
+   nothing ever wrote it, so the step between scaffolding and shooting was hand-rolled in every
+   universe (ten times in one sitting). The engine emits the STRUCTURE (register-anchor
+   preamble, one section per matrix slot, the required set named up front, the output path) and
+   leaves the prose to the author, because the engine knows which shots exist and cannot know
+   what they depict. Never clobbers an existing prompts.md.
+
+3. **`structured.requiredForRenderOnLock` is first-class (SPEC v0.11).** A per-entity override
+   of the kind's matrix minimum, for a character whose `face-3q` carries a signature the front
+   view cannot show. Four entities in nation-of-fire had already invented this exact field
+   before anything read it, which is the tell: reinvented independently means it is a framework
+   gap, not a universe quirk. Worse, `lock_shot` recomputed the gate from the kind default and
+   clobbered the stricter set on the next lock. Now honoured in `lock_shot` and
+   `required_sheet_keys`; it may only ADD to the kind minimum, since a kind's minimum is what
+   makes "locked" mean something.
+
+Engine 61 -> 69 tests. Caught while doing this: eight tests written pytest-style in
+`engine/tests/` were never collected, because `run-tests.sh` drives the engine with
+`unittest discover`. The file's own docstring warns about that trap. Converted to TestCases,
+which is when they first actually ran.

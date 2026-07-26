@@ -35,6 +35,11 @@ class Entity:
 
     def required_sheet_keys(self) -> list[str]:
         s = self.structured
+        # SPEC v0.11: an entity may demand a stricter gate than its kind's minimum.
+        # Honour it here too, so lock-level and the render gate agree with lock-shot.
+        override = s.get("requiredForRenderOnLock")
+        if override:
+            return list(dict.fromkeys(list(override) + list(s.get("requiredForRender") or [])))
         return list(s.get("requiredForRender", list((s.get("sheets") or {}).keys())))
 
     def sheet_path(self, key: str) -> str | None:

@@ -239,7 +239,7 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         sheets[shot] = path
         m = matrix_for(kind)
         if m:
-            required = m.get("required", [])
+            required = required_set_for(entity, kind)
             st["requiredForRender"] = [k for k in required if sheets.get(k)]
     if recipe is not None:
         abspath = str(pathlib.Path(root) / path) if root and not pathlib.Path(path).is_absolute() else path
@@ -294,3 +294,30 @@ def prompts_skeleton(entity: dict, register: dict | None = None) -> str:
     for s in slots:
         out += [f"## {s}  -> reference/{eid}/{s}.png", "TODO(author): the prompt for this shot.", ""]
     return "\n".join(out)
+
+
+def required_set_for(entity: dict, kind: str | None = None) -> list[str]:
+    """The shots that must exist before this entity is renderable.
+
+    SPEC v0.11: `structured.requiredForRenderOnLock` overrides the kind's matrix
+    minimum for THIS entity. Authors in several universes independently invented
+    this field to demand a stricter gate (a character whose face-3q carries a
+    signature the front view cannot show); nothing read it, so the intent was
+    silently dropped, and `lock_shot` then recomputed the gate from the kind
+    default and clobbered the stricter set on the next lock. It may only ADD to
+    the kind minimum: dropping below it would make "locked" mean less for that
+    kind than for its peers.
+    """
+    kind = kind or entity.get("kind")
+    m = matrix_for(kind) or {}
+    base = list(m.get("required") or [])
+    override = (entity.get("structured") or {}).get("requiredForRenderOnLock")
+    if not override:
+        return base
+    shots = list(m.get("shots") or [])
+    unknown = [s for s in override if shots and s not in shots]
+    if unknown:
+        raise ValueError(
+            f"{entity.get('id')}: requiredForRenderOnLock names shot(s) not in the "
+            f"{kind} matrix: {unknown}")
+    return list(dict.fromkeys(list(override) + base))  # override first, kind minimum always kept

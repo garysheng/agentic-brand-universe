@@ -947,6 +947,15 @@ under-referenced entities the way the gate reports missing files.
   (`requiredForRender`) is `forward-fullbody` + `face-neutral`; the rest strengthen identity
   consistency across renders. Real people are generated from a photo stack (never a
   painting-of-a-painting); fictional characters from a locked design.
+  - **`structured.requiredForRenderOnLock` (v0.11) — a per-entity override of the kind's minimum.**
+    The matrix minimum above is a per-KIND default, and some entities need a STRICTER gate: a
+    character whose three-quarter face carries a signature the front view cannot show should not
+    become renderable without `face-3q`. Authors kept discovering this and independently inventing
+    this exact field in their universes, where nothing read it, so the stricter intent silently did
+    nothing. It is now first-class: when present it REPLACES the kind's required list everywhere the
+    engine computes the gate (`lock-shot` promotion and `lock-level`). It may only ADD to the kind
+    minimum, never drop below it, because a kind's minimum is what makes "locked" mean something.
+    Omit it to accept the kind default, which is the common case.
   - **`structured.scale` (v0.10) — relative height is canon, not a per-spread guess.** `{ "height":
     "5 ft 8 in", "relativeTo": { "<entity-id>": "several inches shorter than" }, "scalePlate":
     "reference/<id>/scale-two-up.png" }`. Every entity in the matrix is described ALONE, so two
