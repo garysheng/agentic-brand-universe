@@ -5,6 +5,8 @@ description: Create a picture-book cover for a story in an Agentic Story univers
 
 # Cover
 
+**EVERY book ships a cover, and a cover is not done until the TITLE and the universe MARK are baked into it.** This is the single most-forgotten step: a beautiful hero render with no title on it is NOT a cover, it is cover art. If you generated portrait hero art with a raw `generate.py`/`on-brand-image` call and moved on, you skipped the cover — come back here. **Never hand-roll a cover render**; a cover always goes through this skill, because the title-bake and the title-spelling read-back live here and nowhere else. A book must not be published until its cover carries its title.
+
 The cover is not a normal spread. Interior spreads render at the story's landscape spread size; a cover renders PORTRAIT, because the reader platform displays covers at a taller aspect and center-crops anything shipped landscape. Rendering the cover at spread size is the recurring failure this skill exists to prevent: it ships as a sliver, or the title clips.
 
 ## Inputs
