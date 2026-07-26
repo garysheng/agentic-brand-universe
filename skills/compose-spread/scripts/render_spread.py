@@ -87,7 +87,19 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--skip-existing", action="store_true")
     ap.add_argument("--quality", default="high")
-    ap.add_argument("--print-prompt", action="store_true")
+    ap.add_argument("--print-prompt", action="store_true",
+                    help="print the assembled prompt and refs, THEN STILL RENDER. "
+                         "Pair with --dry-run to inspect without spending.")
+    # WHY THIS EXISTS (earned 2026-07-26, nation-of-fire book 18). Validating a
+    # 32-spread render-spec before paying for it is the single most valuable thing
+    # you can do with this script, and there was no way to ask for it: --print-prompt
+    # reads like an inspection flag but prints and then generates anyway. A loop over
+    # 32 spreads with --print-prompt, believed to be a free pre-flight, started
+    # billing real renders. Refusals are pure text checks that cost nothing, so the
+    # dry run catches every uncast character, bad plate key and missing ref for free.
+    ap.add_argument("--dry-run", action="store_true",
+                    help="assemble and validate only: never calls the image model. "
+                         "Exits 0 if the spread would render, 2 on any refusal.")
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -107,6 +119,11 @@ def main() -> int:
         print("REFS (" + str(len(job["refs"])) + "):")
         for r in job["refs"]:
             print("  " + r)
+
+    if args.dry_run:
+        print(f"{args.spread}: DRY RUN ok ({len(job['refs'])} refs, "
+              f"{len(job['qa'])} qa invariants, size {job['size']}) — nothing generated")
+        return 0
 
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
