@@ -300,3 +300,31 @@ the ART is already doing its job, because a caption-only fix is common and far c
 than a re-render.
 
 Plugin 0.17.2 -> 0.17.3.
+
+## 2026-07-26 — sync-plugin.sh: scope the delivery gate, and guard the source branch
+
+Two failures of the same kind, both found by the gate crying wolf during a long
+multi-session day.
+
+**The delivery gate was scoped to the whole marketplace repo.** It ran
+`git status --porcelain` at the repo ROOT, which holds every plugin Gary owns, so any
+sibling plugin being scaffolded or any other chat's edit reported this plugin as STALE
+even when it was fully delivered. The honest answer became "STALE, but not mine", and a
+gate whose failure you routinely explain away has stopped being a gate. It now tests
+only `plugins/<this-plugin>` for dirt and for unpushed commits, and reports work
+elsewhere in the repo as a NOTE that never blocks and is explicitly not to be committed
+on another session's behalf.
+
+**sync copies the WORKING TREE, so it ships whatever branch happens to be checked out.**
+A sibling chat had a feature branch checked out in the source repo, and a routine sync
+dragged its unmerged `render_spread.py` into the marketplace, where it then held the
+delivery gate hostage. sync now warns loudly when the source is not on master or main,
+naming the branch and saying what is about to be published. The fix when it fires is to
+land the change on master through a worktree, which leaves the other session intact.
+
+Related version discipline, learned the same hour: READ THE MANIFEST IMMEDIATELY BEFORE
+BUMPING. A bump made from a version remembered earlier in the session set 0.17.3 while a
+sibling had already shipped 0.18.0, which is a downgrade the installed cache silently
+ignores. A long session is exactly when a sibling ships a release.
+
+Plugin 0.18.1 -> 0.18.2.

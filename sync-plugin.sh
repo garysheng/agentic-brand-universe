@@ -53,19 +53,54 @@ done
 
 echo "in sync: $(ls "$SRC" | wc -l | tr -d ' ') skills, scripts verified"
 
+# --- source branch guard --------------------------------------------------------
+# SYNC COPIES THE WORKING TREE, so it ships whatever branch this repo happens to have
+# checked out. That is a silent way to publish another session's unmerged work: on
+# 2026-07-26 a sibling chat had a feature branch checked out here, and a routine sync
+# dragged its in-flight `render_spread.py` into the marketplace, where it then held this
+# plugin's own delivery gate hostage. Warn loudly; the operator may still have a reason.
+SRC_BRANCH="$(git -C "$(dirname "$SRC")" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+if [ -n "$SRC_BRANCH" ] && [ "$SRC_BRANCH" != "master" ] && [ "$SRC_BRANCH" != "main" ]; then
+  echo
+  echo "WARNING: syncing from branch '$SRC_BRANCH', not master."
+  echo "  sync copies the WORKING TREE, so anything uncommitted or unmerged on this"
+  echo "  branch is about to become the published plugin. If this branch is not yours,"
+  echo "  stop: land your change on master (a worktree keeps the other session intact)."
+fi
+
 # --- delivery, not just copying -------------------------------------------------
-PLUGIN_REPO="$(dirname "$(dirname "$DST")")"          # .../plugins/agenticstory -> repo root
+# SCOPE THE GATE TO THIS PLUGIN'S OWN PATH. The first version of this check ran
+# `git status --porcelain` at the MARKETPLACE REPO ROOT, which holds every plugin Gary
+# owns. In a multi-session setup that repo almost always has somebody else's work in
+# flight (a sibling plugin being scaffolded, another chat's edit to a shared script), so
+# the check reported STALE on runs where this plugin was fully delivered. The honest
+# answer became "STALE, but not mine", and a gate whose failure you routinely explain
+# away has stopped being a gate. Earned 2026-07-26, when an unrelated `telontologist/`
+# plugin and another chat's edit held this one hostage.
+PLUGIN_DIR="$(dirname "$DST")"                        # .../plugins/agenticstory
+PLUGIN_REPO="$(dirname "$PLUGIN_DIR")"                # .../plugins
+PLUGIN_REPO="$(dirname "$PLUGIN_REPO")"               # repo root
 cd "$PLUGIN_REPO" || exit 1
-dirty=$(git status --porcelain | wc -l | tr -d ' ')
-ahead=$(git log --oneline @{u}..HEAD 2>/dev/null | wc -l | tr -d ' ')
+REL="${PLUGIN_DIR#"$PLUGIN_REPO"/}"                   # plugins/agenticstory
+
+# OURS decides delivered-vs-stale.
+dirty=$(git status --porcelain -- "$REL" | wc -l | tr -d ' ')
+ahead=$(git log --oneline @{u}..HEAD -- "$REL" 2>/dev/null | wc -l | tr -d ' ')
+# THEIRS is reported so it is never mistaken for ours, and never blocks.
+others=$(git status --porcelain | awk -v r="$REL" 'substr($0,4) !~ "^"r {print}' | wc -l | tr -d ' ')
 
 if [ "$dirty" != "0" ] || [ "$ahead" != "0" ]; then
   echo
   echo "STALE: the files match, but they have NOT been delivered."
-  [ "$dirty" != "0" ] && echo "  $dirty uncommitted file(s) in $PLUGIN_REPO"
-  [ "$ahead" != "0" ] && echo "  $ahead commit(s) not pushed to the remote"
+  [ "$dirty" != "0" ] && echo "  $dirty uncommitted file(s) under $REL"
+  [ "$ahead" != "0" ] && echo "  $ahead unpushed commit(s) touching $REL"
   echo "  Commit them, then bump the version in the plugin manifest and run /plugin update."
   exit 1
+fi
+
+if [ "$others" != "0" ]; then
+  echo "  note: $others uncommitted file(s) elsewhere in $PLUGIN_REPO (other plugins/sessions)."
+  echo "        Not yours, not blocking, and NOT to be committed on their behalf."
 fi
 
 # The installed cache is the thing users actually invoke. Compare it directly.
