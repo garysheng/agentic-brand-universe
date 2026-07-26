@@ -207,3 +207,38 @@ manifest and checks THAT directory, falling back to the most recently MODIFIED c
 saying so out loud when the declared version has no cache dir yet. Verified: reports "installed
 plugin matches source" against 0.17.1. A staleness check that cannot be trusted is worse than none,
 because it trains everyone to ignore it.
+
+## 2026-07-26 — chain_matrix per-shot sizes, a bounded conditioning window, and 14 tests that never ran
+
+Two gaps found live while locking `shelby-mullen` (a 9-shot character matrix) in
+the Nation of Fire universe, both promoted into the framework rather than worked
+around in the universe.
+
+**Per-shot sizes.** `chain_matrix.py` applied one `--size` to every shot, even
+though `prompts.md` headings already declare `(WxH)` per shot. A reference matrix
+legitimately mixes aspects: full-bodies and profiles want portrait, multi-panel
+sheets (expressions, era rows) want landscape. The mismatch letterboxed the
+expressions sheet into a portrait canvas with dead bands over most of the frame.
+The sizes were always written down; the chain simply was not reading them. It now
+parses them from the heading, and `--size` is the documented fallback for a shot
+that declares none.
+
+**A bounded conditioning window.** The chain passed every accepted golden forever,
+so each step uploaded a larger request than the last and the TAIL of a big matrix
+died on `openai.APITimeoutError`. That is the worst place to fail, because the last
+shots are the most expensive to redo. Identity is carried by the blessed seed plus
+the few most recent shots, not by the back view, so conditioning is now
+seed-plus-most-recent with `--max-conditioning` (default 4, `0` restores the old
+unbounded behaviour). `--print-plan` shows the real window rather than advertising
+conditioning the run will not perform.
+
+**14 tests that never ran.** Adding coverage surfaced a latent bug: three test
+files had their `if __name__ == "__main__"` block sitting MID-FILE, so
+`run-tests.sh`, which executes each file directly, only ever ran the classes above
+it. `test_chain_matrix.py` was reporting 9 of its 19 tests and `test_cover_scripts.py`
+28 of 32; `test_engine.py` was masked only because the engine runs via `discover`.
+Blocks moved to the end of all three, and the whole tree swept for the pattern.
+This is exactly the failure `run-tests.sh` was already shaped against, one level
+down: it discovers test FILES faithfully and could still not see inside them.
+
+Suite: 352 -> 373 tests, all green (7 new, 14 recovered). Plugin 0.17.1 -> 0.17.2.

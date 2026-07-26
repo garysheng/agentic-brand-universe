@@ -27,7 +27,7 @@ Usage:
   chain_matrix.py <universe> <entity-id> --print-plan
   chain_matrix.py <universe> <entity-id> --bless-seed <shot>
   chain_matrix.py <universe> <entity-id> [--seed <shot>] [--shots a,b,c]
-                  [--size WxH] [--skip-existing] [--dry-run]
+                  [--size WxH] [--max-conditioning N] [--skip-existing] [--dry-run]
 """
 import argparse
 import hashlib
@@ -126,7 +126,7 @@ def parse_prompts_full(md: Path) -> dict:
     if m:
         header_refs = _split_ids(m.group(1))
 
-    out, refs, cur, buf, cur_refs = {}, {}, None, [], []
+    out, refs, sizes, cur, buf, cur_refs = {}, {}, {}, None, [], []
     for line in text.splitlines():
         m = re.match(r"^##\s+(.*)$", line)
         if m:
@@ -136,6 +136,15 @@ def parse_prompts_full(md: Path) -> dict:
             head = m.group(1)
             path = re.search(r"reference/[^/]+/([A-Za-z0-9._-]+)\.png", head)
             cur = path.group(1) if path else head.split("—")[0].split("->")[0].strip()
+            # PER-SHOT SIZE, declared in the heading as "(WxH)". A reference matrix
+            # legitimately MIXES aspects: full-body and profiles want portrait, while
+            # multi-panel sheets (expressions, era/turnaround rows) want landscape.
+            # One --size for the whole matrix letterboxes the sheets into the wrong
+            # canvas with dead bands, wasting most of the frame. The sizes were
+            # already written here; the chain just was not reading them.
+            sz = re.search(r"\((\d{3,5})\s*[xX×]\s*(\d{3,5})\)", head)
+            if sz:
+                sizes[cur] = f"{sz.group(1)}x{sz.group(2)}"
             buf, cur_refs = [], []
         elif cur:
             r = re.match(r"^\s*REFS:\s*(.+)$", line, flags=re.I)
@@ -150,6 +159,7 @@ def parse_prompts_full(md: Path) -> dict:
     prompts = {k: v for k, v in out.items() if v}
     return {"prompts": prompts,
             "negatives": negatives,
+            "sizes": {k: sizes[k] for k in prompts if k in sizes},
             "refs": {k: refs.get(k, []) for k in prompts}}
 
 
@@ -265,6 +275,7 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None):
         "negatives": list(dict.fromkeys(
             list(reg.get("rejectedPoles", [])) + parsed["negatives"])),
         "refs": parsed["refs"],
+        "sizes": parsed.get("sizes", {}),
         "uroot": uroot,
     }
 
@@ -275,7 +286,16 @@ def main() -> int:
     ap.add_argument("entity")
     ap.add_argument("--seed")
     ap.add_argument("--shots")
-    ap.add_argument("--size", default="1536x1024")
+    ap.add_argument("--size", default="1536x1024",
+                    help="FALLBACK size only. A shot whose prompts.md heading declares "
+                         "'(WxH)' uses that instead, so one matrix can mix portrait "
+                         "full-bodies with landscape multi-panel sheets.")
+    ap.add_argument("--max-conditioning", type=int, default=4, metavar="N",
+                    help="Cap on accepted goldens passed as conditioning (default 4). "
+                         "The blessed SEED is always kept and the most recent N-1 "
+                         "accepted shots ride along. Unbounded accumulation makes every "
+                         "step a larger upload than the last until the final shots of a "
+                         "big matrix time out. 0 disables the cap.")
     ap.add_argument("--skip-existing", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--print-plan", action="store_true")
@@ -310,12 +330,18 @@ def main() -> int:
         print(f"entity={plan['entity']} kind={plan['kind']}")
         print(f"seed (hero) = {seed}")
         for i, s in enumerate(plan["order"]):
+            # Show the ACTUAL conditioning window, not every prior shot: a plan that
+            # advertises conditioning the run will not perform is worse than no plan.
+            prior = plan["order"][:i]
+            if args.max_conditioning and len(prior) > args.max_conditioning:
+                prior = [prior[0], "..."] + prior[-(args.max_conditioning - 1):]
             cond = "HUMAN-BLESSED SEED" if i == 0 else \
-                   "anchor + " + ", ".join(plan["order"][:i])
+                   "anchor + " + ", ".join(prior)
             xrefs = plan["refs"].get(s) or []
             if xrefs and i > 0:
                 cond += " + refs(" + ", ".join(xrefs) + ")"
-            print(f"  {i+1}. {s:<18} conditioned on: {cond}")
+            sz = plan["sizes"].get(s, args.size)
+            print(f"  {i+1}. {s:<18} [{sz}] conditioned on: {cond}")
         if plan["negatives"]:
             print("negatives: " + ", ".join(plan["negatives"]))
         blessed = marker(refdir, seed).exists()
@@ -345,14 +371,24 @@ def main() -> int:
             continue
         prompt = " ".join(x for x in [plan["prompts"][shot], SAME_SUBJECT,
                                       REAL_PERSON if plan["photos"] else "", neg] if x)
+        # Per-shot size when prompts.md declared one; --size is only the fallback.
+        shot_size = plan["sizes"].get(shot, args.size)
+        # CONDITIONING WINDOW. Identity is carried by the blessed seed plus the few
+        # most recent accepted shots, NOT by every golden ever made: the back view
+        # adds payload, not likeness. Passing all of them grows the request at every
+        # step until the tail of a big matrix dies on an API timeout, which is the
+        # worst place to fail because those shots are the most expensive to redo.
+        cond = goldens
+        if args.max_conditioning and len(goldens) > args.max_conditioning:
+            cond = [goldens[0]] + goldens[-(args.max_conditioning - 1):]
         cmd = ["uv", "run", GEN, "--prompt", prompt, "--filename", str(out),
-               "--size", args.size, "--quality", "high", "--no-open",
+               "--size", shot_size, "--quality", "high", "--no-open",
                "--input-image", anchor_abs]
         # photographs BEFORE the painted goldens: the likeness is the thing the
         # chain must not drift on, and later references carry more weight.
         for ph in plan["photos"]:
             cmd += ["--input-image", ph]
-        for g in goldens:
+        for g in cond:
             cmd += ["--input-image", g]
         # Cross-entity refs: another entity in frame is conditioned on ITS locked
         # art, never redrawn from prose.
@@ -366,13 +402,14 @@ def main() -> int:
         # provenance travels with the asset (nothing is a mystery)
         (refdir / f"{shot}.recipe.json").write_text(json.dumps({
             "shot": shot, "entity": plan["entity"], "kind": plan["kind"],
-            "model": "gpt-image-2", "size": args.size, "prompt": prompt,
+            "model": "gpt-image-2", "size": shot_size, "prompt": prompt,
             "anchor": {"path": plan["anchor"], "sha256_16": sha(Path(anchor_abs))},
             "photoStack": [{"path": p, "sha256_16": sha(Path(p))} for p in plan["photos"]],
-            "conditionedOn": [{"path": g, "sha256_16": sha(Path(g))} for g in goldens],
-            "method": "golden-chain (sequential; each shot conditions on the seed + every accepted shot)",
+            "conditionedOn": [{"path": g, "sha256_16": sha(Path(g))} for g in cond],
+            "method": ("golden-chain (sequential; each shot conditions on the blessed seed "
+                       f"plus the most recent accepted shots, window={args.max_conditioning or 'unbounded'})"),
         }, indent=1))
-        print(f"{shot}: OK (conditioned on {len(goldens)} golden(s))")
+        print(f"{shot}: OK (conditioned on {len(cond)} golden(s), size {shot_size})")
         goldens.append(str(out.resolve()))
 
     print(f"CHAIN COMPLETE: {len(goldens)} mutually-consistent shot(s). "

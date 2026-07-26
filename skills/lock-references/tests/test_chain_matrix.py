@@ -132,8 +132,6 @@ class TestChain(unittest.TestCase):
         self.assertIn("not one of", r.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class TestNegativesAndCrossRefs(unittest.TestCase):
@@ -281,3 +279,91 @@ class TestRealPersonPhotoStack(unittest.TestCase):
                      shots=("face-neutral", "face-3q"))
         r = run(root, "--print-plan")
         self.assertEqual(r.returncode, 0, r.stderr)
+
+
+class PerShotSize(unittest.TestCase):
+    """A reference matrix legitimately MIXES aspects: full-bodies and profiles want
+    portrait, multi-panel sheets (expressions, era rows) want landscape. The sizes
+    were always declared in the prompts.md headings; the chain used to ignore them
+    and apply one --size to everything, letterboxing every sheet into dead bands.
+    Earned live 2026-07-26 on shelby-mullen's expressions sheet."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def _mixed(self):
+        root = Path(self.tmp.name)
+        build(root, kind="character", shots=())
+        md = ("# room prompts\n\n"
+              "## face-neutral → `reference/room/face-neutral.png` (1024x1024)\nA face macro.\n\n"
+              "## forward-fullbody → `reference/room/forward-fullbody.png` (1024x1536)\nFull figure.\n\n"
+              "## expressions → `reference/room/expressions.png` (1536x1024)\nFour panels.\n\n"
+              "## back → `reference/room/back.png`\nNo size declared here.\n\n")
+        (root / "reference" / "room" / "prompts.md").write_text(md)
+        return root
+
+    def test_each_shot_reports_the_size_its_heading_declares(self):
+        r = run(self._mixed(), "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("[1024x1024]", r.stdout)   # face macro, square
+        self.assertIn("[1024x1536]", r.stdout)   # full figure, portrait
+        self.assertIn("[1536x1024]", r.stdout)   # multi-panel sheet, landscape
+
+    def test_a_shot_with_no_declared_size_falls_back_to_the_size_flag(self):
+        r = run(self._mixed(), "--print-plan", "--size", "777x333")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        back = [l for l in r.stdout.splitlines() if "back" in l][0]
+        self.assertIn("[777x333]", back)
+
+    def test_a_declared_size_beats_the_size_flag(self):
+        r = run(self._mixed(), "--print-plan", "--size", "777x333")
+        expressions = [l for l in r.stdout.splitlines() if "expressions" in l][0]
+        self.assertIn("[1536x1024]", expressions)
+        self.assertNotIn("777x333", expressions)
+
+
+class ConditioningWindow(unittest.TestCase):
+    """Identity is carried by the blessed seed plus the most recent accepted shots,
+    not by every golden ever made. Unbounded accumulation grew the request at every
+    step until the TAIL of a big matrix died on openai.APITimeoutError, which is the
+    worst place to fail because those shots are the most expensive to redo.
+    Earned live 2026-07-26 on shelby-mullen's 9-shot matrix (era-sheet, shot 9)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def _nine(self):
+        shots = ("forward-fullbody", "face-neutral", "face-3q", "expressions",
+                 "profile-left", "profile-right", "back", "signature-pose", "era-sheet")
+        return build(Path(self.tmp.name), kind="character", shots=shots)
+
+    def test_the_plan_shows_a_truncated_window_on_a_long_matrix(self):
+        r = run(self._nine(), "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        last = [l for l in r.stdout.splitlines() if "era-sheet" in l][0]
+        self.assertIn("...", last)
+
+    def test_the_window_always_keeps_the_blessed_seed(self):
+        r = run(self._nine(), "--print-plan")
+        last = [l for l in r.stdout.splitlines() if "era-sheet" in l][0]
+        self.assertIn("forward-fullbody", last)
+
+    def test_max_conditioning_zero_restores_the_unbounded_behaviour(self):
+        r = run(self._nine(), "--print-plan", "--max-conditioning", "0")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        last = [l for l in r.stdout.splitlines() if "era-sheet" in l][0]
+        self.assertNotIn("...", last)
+        for s in ("face-neutral", "profile-left", "back", "signature-pose"):
+            self.assertIn(s, last)
+
+    def test_a_short_matrix_is_never_truncated(self):
+        root = build(Path(self.tmp.name), kind="character",
+                     shots=("forward-fullbody", "face-neutral", "face-3q"))
+        r = run(root, "--print-plan")
+        self.assertNotIn("...", r.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

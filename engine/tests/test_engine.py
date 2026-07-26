@@ -458,8 +458,6 @@ class TestLockShot(unittest.TestCase):
         self.assertIsNone(frozen["inputs"][0]["digest"])
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
 
 
 class TestAssetExistence(unittest.TestCase):
@@ -535,3 +533,7 @@ class TestAssetExistence(unittest.TestCase):
                                      "blueprint": None, "map": "", "blocking": "", "dressing": ""}})
         problems = CanonStore(d).validate_canon()
         self.assertTrue(any("emptyPlates" in p and "NOT ON DISK" in p for p in problems), problems)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

@@ -305,8 +305,6 @@ class TestConform(unittest.TestCase):
         self.assertIn("OK conform", r.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class TestPlateSelection(unittest.TestCase):
@@ -347,3 +345,7 @@ class TestPlateSelection(unittest.TestCase):
         r = run_compile(self.root, "--with", "ghost")
         self.assertEqual(r.returncode, 2)
         self.assertIn("not a canon entity", r.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
