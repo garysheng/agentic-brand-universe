@@ -66,7 +66,74 @@ def lint(root):
             c = jload(cf) or {}
             if c.get("kind") == "spine": reg_spine.add(c.get("id"))
             elif c.get("kind") == "genre": reg_genre.add(c.get("id"))
+    # ---- manuscript / spec coherence -------------------------------------------
+    # A story's manuscript and its StorySpec must agree on how many units the book
+    # has. Nothing checked this, so a manuscript could drift from its spec silently
+    # and the drift only surfaced at render, when renumbering is expensive: every
+    # later beat shifts the render-spec, the platform manifest, the staged assets
+    # and the narration. Found live 2026-07-26 on two nation-of-fire books, one of
+    # them long-standing.
     stories_dir = root/"stories"
+    if stories_dir.exists():
+        for mf in sorted(stories_dir.glob("*.manuscript.md")):
+            spec_f = mf.with_name(mf.name.replace(".manuscript.md", ".json"))
+            if not spec_f.exists():
+                warn("MANUSCRIPT-ORPHAN", f"{mf.name}: no StorySpec beside it "
+                     f"({spec_f.name} missing). The prose has nothing to be checked against.")
+                continue
+            spec = jload(spec_f)
+            if not spec: continue
+            beats = spec.get("beats") or []
+            if not beats: continue                      # a stub story has no beats yet, by design
+            body = mf.read_text()
+            # FOUR conventions are in the wild and ALL are canonical. A naive detector
+            # that knows only one reports zero for the rest, which reads as "unchecked"
+            # and trains people to ignore the check. Try each, in order, and use the
+            # first that matches.
+            PATTERNS = (
+                r"^\*\*Spread (\d+)\*\*",     # **Spread 7**: *title*
+                r"^\*\*Spread (\d+)[:.]",       # **Spread 7: Title**
+                r"^\*\*(\d+)\.\*\*",          # **7.**
+                r"^#{1,4} (\d+)\s*$",           # ## 7
+            )
+            nums = []
+            for pat in PATTERNS:
+                nums = [int(m) for m in re.findall(pat, body, re.M)]
+                if nums: break
+            if not nums:
+                warn("MANUSCRIPT-UNPARSED", f"{mf.name}: no spread markers recognised. Known "
+                     f"conventions: '**Spread N**:', '**Spread N: Title**', '**N.**', '## N'. If "
+                     f"this manuscript uses a fifth, teach the linter rather than leaving it "
+                     f"unchecked.")
+                continue
+            sid = spec.get("id", spec_f.stem)
+            if len(nums) != len(beats):
+                err("MANUSCRIPT-BEAT-DRIFT",
+                    f"{sid}: manuscript has {len(nums)} spread(s) but the spec has {len(beats)} "
+                    f"beat(s). Decide which is the blessed artifact and reconcile the other; do "
+                    f"not render until they agree, because renumbering after art exists touches "
+                    f"the render-spec, the manifest, the staged assets and the narration.")
+            lo = min(nums)
+            if sorted(nums) != list(range(lo, lo + len(nums))):
+                err("MANUSCRIPT-NUMBERING",
+                    f"{sid}: manuscript spread numbers are not a contiguous run (got {nums}). "
+                    f"A gap or a duplicate silently drops or doubles a spread.")
+            elif lo != 1:
+                warn("MANUSCRIPT-OFFSET",
+                     f"{sid}: manuscript spreads start at {lo}, not 1. That is fine when spread 1 "
+                     f"is the cover, but confirm it is deliberate.")
+            bn = [b.get("n") for b in beats if isinstance(b.get("n"), int)]
+            if len(bn) == len(beats) and bn:
+                blo = min(bn)
+                if sorted(bn) != list(range(blo, blo + len(bn))):
+                    err("BEAT-NUMBERING",
+                        f"{sid}: spec beat numbers are not a contiguous run (got {bn}). A gap or "
+                        f"a duplicate silently drops or doubles a beat.")
+                elif blo != 1:
+                    warn("BEAT-OFFSET",
+                         f"{sid}: spec beats start at {blo}, not 1. Consistent with a cover-is-1 "
+                         f"convention; confirm it matches the manuscript's offset.")
+
     if stories_dir.exists() and (reg_spine or reg_genre):
         for sf in sorted(stories_dir.glob("*.json")):
             s = jload(sf)

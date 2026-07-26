@@ -349,3 +349,30 @@ nation-of-fire canon before touching anything found emptyPlate basenames includi
 reverse, side, the-floor, s0-prudent, w1 and w2: arbitrary plate names are canonical in this
 framework, so tightening the fallback to reject unknown names would have broken dozens of
 existing entities to fix four. Engine 69 -> 76 tests.
+
+## 2026-07-26 — lint-universe checks manuscript/spec coherence (plugin 0.18.4)
+
+Nothing verified that a story's manuscript and its StorySpec agree on how many units the
+book has. A manuscript could drift from its spec silently, and the drift surfaced only at
+render, where renumbering is expensive: one inserted beat shifts the render-spec, the
+platform manifest, every staged asset and the narration.
+
+Found while writing the Everything He Touched manuscript, which came out at 48 spreads
+against a 47-beat spec. Running the new check across nation-of-fire then found FIVE MORE
+pre-existing off-by-one drifts in already-shipped books (he-already-saw-it,
+it-was-not-broken, the-apostle-of-water-and-light,
+the-blessing-of-the-villavicencio-household, what-faith-actually-is). Each was verified by
+hand before being believed, because five books each exactly one short looks far more like a
+broken detector than five independent drifts.
+
+The detector knows FOUR marker conventions, all canonical in existing books: "**Spread N**:",
+"**Spread N: Title**", "**N.**" and "## N". The first draft knew one and reported zero
+spreads for thirteen perfectly good manuscripts. A check that cries wolf on valid files is
+worse than no check, because it teaches people to ignore it. A fifth convention raises
+MANUSCRIPT-UNPARSED rather than passing silently: teach the linter, do not leave the file
+unchecked. A run starting at 2 warns rather than errors, since the cover is legitimately
+spread 1 in some books.
+
+The check deliberately does NOT say which side is right. Whether the prose gained a beat the
+spec should adopt, or the spec has one the prose correctly dropped, is an authoring decision.
+9 new tests.

@@ -9,6 +9,35 @@ description: Lint a brand universe. Static checks over the universe and everythi
 
 Exit **0** clean, **1** warnings only, **2** errors.
 
+
+## Manuscript / spec coherence (added 2026-07-26)
+
+For every `stories/<id>.manuscript.md` beside a `stories/<id>.json`, the linter checks that the
+prose and the StorySpec agree on how many units the book has, and that both are numbered as a
+contiguous run.
+
+Why it is an ERROR and not a warning: renumbering after art exists is expensive. One inserted
+beat shifts the render-spec, the platform manifest, every staged asset and the narration. Drift
+found before the render costs a paragraph; found after, it costs the book.
+
+`MANUSCRIPT-BEAT-DRIFT` does NOT tell you which side is right. That is an authoring decision:
+sometimes the prose gained a beat that belongs in the spec, sometimes the spec gained one the
+prose correctly dropped. Reconcile deliberately, then re-run.
+
+FOUR marker conventions are recognised, all canonical in existing books:
+
+    **Spread 7**: *the title*
+    **Spread 7: The Title**
+    **7.**
+    ## 7
+
+A manuscript using a fifth convention raises `MANUSCRIPT-UNPARSED` rather than passing silently.
+Teach the linter the new pattern; do not leave the file unchecked. A detector that knows one
+convention and reports zero for the others reads as "unchecked" and trains people to ignore it.
+
+A run starting at 2 is a WARNING, not an error, because the cover is legitimately spread 1 in
+some books.
+
 ## Why this exists
 
 Every check here corresponds to a failure that actually shipped and was only caught by executing a
