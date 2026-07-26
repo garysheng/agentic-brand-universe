@@ -156,6 +156,42 @@ def lint(root):
         n = len(p.get("refs", []))
         if n < 3: warn("PACK-THIN", f"{pj}: {n} ref(s); the spec expects 3 to 8")
 
+    # ---- sheet hygiene: aliases, and workflow state stored as visual invariants
+    #
+    # Two duplicate keys pointing at ONE file is not free: `requiredForRender: [master, face]`
+    # then passes the SAME image twice, so a "face macro" contributes nothing and the entity
+    # looks better-referenced than it is. Found on 7+ nation-of-fire entities, 2026-07-25.
+    #
+    # And `invariants` is the array read-back checks are generated FROM, so a workflow flag
+    # parked there ("design-pending-tier1", "cast-approval-pending-gary") becomes a check
+    # nobody can run against an image. Status belongs in `status` or `authority`, not here.
+    STATUS_ISH = ("pending", "approval", "locked-20", "review", "tier1", "todo", "wip", "draft")
+    for ej in (root/"canon"/"entities").glob("*.json"):
+        e = jload(ej)
+        if not e: continue
+        st = e.get("structured") or {}
+        sheets = st.get("sheets") or {}
+        seen = {}
+        for k, v in sheets.items():
+            if not v: continue
+            seen.setdefault(v, []).append(k)
+        for path, keys in seen.items():
+            if len(keys) > 1:
+                req = [k for k in st.get("requiredForRender", []) if k in keys]
+                sev = err if len(req) > 1 else warn
+                sev("SHEET-DUPLICATE-ALIAS",
+                    f"{ej.name}: sheet keys {sorted(keys)} all point at '{path}'"
+                    + (f"; requiredForRender names {sorted(req)}, so the same image is passed "
+                       f"{len(req)} times and one of them carries no information."
+                       if len(req) > 1 else "; one is a dead alias."))
+        for inv in st.get("invariants", []) or []:
+            low = str(inv).lower()
+            if any(t in low for t in STATUS_ISH) and len(str(inv)) < 60:
+                warn("INVARIANT-IS-STATUS",
+                     f"{ej.name}: invariant '{inv}' reads as workflow state, not a checkable "
+                     f"fact about an image. Read-back checks are generated from invariants, so "
+                     f"this becomes an uncheckable check. Move it to `status` or `authority`.")
+
     # ---- castability: a character the renderer cannot cast
     #
     # An entity can be fully locked, fully art-approved, pass `validate` AND pass

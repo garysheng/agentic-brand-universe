@@ -514,6 +514,59 @@ class TestSettingScale(unittest.TestCase):
 
 
 
+class TestSheetHygiene(unittest.TestCase):
+    """Two keys on one file is not free: requiredForRender then passes the same image twice,
+    so a 'face macro' contributes nothing while the entity looks better-referenced than it is.
+    And invariants is what read-back checks are generated FROM, so workflow state parked there
+    becomes a check nobody can run. Both found across nation-of-fire, 2026-07-25."""
+
+    def lint_with(self, **kw):
+        with tempfile.TemporaryDirectory() as t:
+            return run(build(t, **kw))
+
+    def test_two_required_keys_on_one_file_is_an_error(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"master": "reference/e/m.png", "face": "reference/e/m.png"},
+                           "requiredForRender": ["master", "face"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["master"], "bake": "b"}}}}})
+        self.assertIn("SHEET-DUPLICATE-ALIAS", e)
+
+    def test_a_dead_alias_outside_required_is_only_a_warning(self):
+        e, w = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"master": "reference/e/m.png", "alias": "reference/e/m.png"},
+                           "requiredForRender": ["master"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["master"], "bake": "b"}}}}})
+        self.assertNotIn("SHEET-DUPLICATE-ALIAS", e)
+        self.assertIn("SHEET-DUPLICATE-ALIAS", w)
+
+    def test_distinct_files_are_not_flagged(self):
+        e, w = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"master": "reference/e/m.png", "face": "reference/e/f.png"},
+                           "requiredForRender": ["master", "face"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["master"], "bake": "b"}}}}})
+        self.assertNotIn("SHEET-DUPLICATE-ALIAS", e)
+        self.assertNotIn("SHEET-DUPLICATE-ALIAS", w)
+
+    def test_workflow_state_in_invariants_is_warned(self):
+        _, w = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/g.png"},
+                           "invariants": ["design-pending-tier1"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
+        self.assertIn("INVARIANT-IS-STATUS", w)
+
+    def test_a_real_visual_invariant_is_not_warned(self):
+        _, w = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/g.png"},
+                           "invariants": ["full-salt-and-pepper-beard"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
+        self.assertNotIn("INVARIANT-IS-STATUS", w)
+
+
 class TestCastability(unittest.TestCase):
     """An entity can be locked, art-approved, pass validate AND pass assert-story and
     still be impossible to put in a picture, because the render compiler reads
