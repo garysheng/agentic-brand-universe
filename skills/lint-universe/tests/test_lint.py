@@ -307,10 +307,13 @@ class TestGoldenProvenance(unittest.TestCase):
                 json.dumps(recipe))
         return root
 
-    def test_a_golden_with_no_sidecar_warns(self):
+    def test_a_golden_with_no_sidecar_is_an_error(self):
+        """Was a warning until 2026-07-25. Provenance is now enforced going forward: a golden
+        with no recipe and no grandfather entry was locked after the policy and skipped the
+        tool, which is an error, not advice."""
         with tempfile.TemporaryDirectory() as t:
-            _, warns = run(self.universe_with_golden(t, recipe=None))
-        self.assertIn("GOLDEN-NO-RECIPE", warns)
+            errs, _ = run(self.universe_with_golden(t, recipe=None))
+        self.assertIn("GOLDEN-NO-RECIPE", errs)
 
     def test_a_golden_whose_input_is_unchanged_is_clean(self):
         import hashlib
@@ -512,6 +515,45 @@ class TestSettingScale(unittest.TestCase):
             self.assertNotIn("SETTING-NO-SCALE-PLATE", w)
 
 
+
+
+class TestProvenancePolicy(unittest.TestCase):
+    """Provenance is enforced going forward; the pre-policy library is historical (Gary,
+    2026-07-25). The grandfather list is a FILE, not a date, so the debt is reviewable and
+    can only shrink: a recipe-less golden NOT on the list was locked after the policy and
+    skipped the tool, which is an error."""
+
+    def _uni(self, tmp, listed):
+        root = build(tmp, entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/g.png"},
+                           "requiredForRender": ["gabr"],
+                           "render": {"always": "a",
+                                      "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
+        (root/"reference"/"e").mkdir(parents=True)
+        (root/"reference"/"e"/"g.png").write_bytes(b"\x89PNG")   # golden exists, no .recipe.json
+        if listed is not None:
+            (root/"canon"/"provenance-grandfathered.json").write_text(
+                json.dumps({"goldens": listed}))
+        return root
+
+    def test_a_new_recipeless_golden_is_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            e, _ = run(self._uni(t, listed=[]))
+        self.assertIn("GOLDEN-NO-RECIPE", e)
+
+    def test_a_grandfathered_golden_is_not_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            e, w = run(self._uni(t, listed=["reference/e/g.png"]))
+        self.assertNotIn("GOLDEN-NO-RECIPE", e)
+        self.assertIn("PROVENANCE-DEBT", w)
+
+    def test_with_no_list_at_all_every_recipeless_golden_is_an_error(self):
+        """A universe that never adopted the policy gets the strict behaviour, not a free pass."""
+        with tempfile.TemporaryDirectory() as t:
+            e, w = run(self._uni(t, listed=None))
+        self.assertIn("GOLDEN-NO-RECIPE", e)
+        self.assertNotIn("PROVENANCE-DEBT", w)
 
 
 class TestSheetHygiene(unittest.TestCase):

@@ -32,6 +32,15 @@ def jload(p):
 
 def lint(root):
     root = pathlib.Path(root).resolve()
+
+    # Provenance policy: the pre-policy golden library is accepted as historical
+    # (Gary, 2026-07-25) via an explicit FILE rather than a date, so the debt is a
+    # reviewable artifact that can only shrink. See the goldens loop below.
+    gf_path = root/"canon"/"provenance-grandfathered.json"
+    gf = jload(gf_path) if gf_path.exists() else None
+    grandfathered = set((gf or {}).get("goldens") or [])
+    grandfathered_hit = set()
+
     SKILLS = pathlib.Path(__file__).resolve().parents[2]
     EMITTERS = {"brand-card": SKILLS/"brand-card/scripts/card.py",
                 "explanatory-plate": SKILLS/"explanatory-plate/scripts/plate.py"}
@@ -266,9 +275,23 @@ def lint(root):
             if not pth or not (root/pth).exists(): continue    # unlocked/missing: other checks own it
             sidecar = (root/pth).with_name((root/pth).name + ".recipe.json")
             if not sidecar.exists():
-                warn("GOLDEN-NO-RECIPE", f"{ej.name}: golden '{name}' ({pth}) has no provenance "
-                     f"sidecar; it is un-auditable and cannot be part of a divergence check. "
-                     f"Re-lock it with `lock-shot --recipe`.")
+                # POLICY: provenance is enforced GOING FORWARD, and the pre-policy library is
+                # accepted as historical (Gary, 2026-07-25). Freezing a recipe only became part
+                # of `lock-shot` recently, so every older golden is un-auditable and always will
+                # be; warning on each one buried real findings under hundreds of lines.
+                #
+                # The grandfather list is an explicit FILE, not a date, so the debt is a
+                # reviewable artifact that can only shrink: a golden not on the list and missing
+                # a recipe is an ERROR, because it was locked after the policy and skipped the
+                # tool. Re-locking a grandfathered golden with `--recipe` earns it a real one,
+                # and the entry should then be deleted from the list.
+                if pth in grandfathered:
+                    grandfathered_hit.add(pth)
+                else:
+                    err("GOLDEN-NO-RECIPE", f"{ej.name}: golden '{name}' ({pth}) has no provenance "
+                        f"sidecar and is NOT grandfathered, so it was locked without `--recipe`. "
+                        f"It is un-auditable and cannot enter a divergence check. Re-lock it with "
+                        f"`lock-shot --recipe`.")
                 continue
             rec = jload(sidecar)
             if not rec: continue
@@ -299,10 +322,24 @@ def lint(root):
     providers = jload(regf).get("providers", {}) if regf.exists() else {}
     if not providers: warn("NO-QUIRK-REGISTRY", "no provider registry; quirks cannot be inherited")
 
+    if grandfathered:
+        stale = grandfathered - grandfathered_hit
+        warn("PROVENANCE-DEBT",
+             f"{len(grandfathered_hit)} golden(s) are grandfathered as historical and carry no "
+             f"provenance, so they can never enter a divergence check. Re-lock any of them with "
+             f"`lock-shot --recipe` and delete the entry to shrink this list."
+             + (f" {len(stale)} entry(ies) no longer match a declared golden and can be deleted."
+                if stale else ""))
+
     # ---- projections
     pdir = root/"projections"
     if not pdir.exists():
         warn("NO-PROJECTIONS", "universe declares no projections; it can only make storybooks by hand")
+        # CAUTION: this RETURNS, so every check written below runs only for universes that
+        # declare projections. nation-of-fire declares none, so a new rule added past this
+        # point silently never runs for the universe doing the most rendering. A summary
+        # added here in 2026-07 was swallowed exactly this way. Put new entity/asset checks
+        # ABOVE this line; only projection-specific checks belong below it.
         return
     def resolve(pj, seen=()):
         """Merge the `extends` chain before checking anything, exactly as the composer
@@ -406,6 +443,8 @@ def lint(root):
                          f"{pid}: invariant '{i.get('id')}' overlaps a known quirk of its pinned "
                          f"provider {prov} ('{qid}'). Expect re-rolls; budget for them or relax "
                          f"the rule, but do not discover this after paying for generation.")
+
+
 
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "."
