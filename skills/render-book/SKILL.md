@@ -40,3 +40,7 @@ Turn a validated `StorySpec` into an illustrated, narrated picture book. This sk
 - Rendering the cover → `cover`.
 - Editing an already-built book → `update-book`.
 - Shipping the finished book to a shared platform → the platform-delivery skill (deferred).
+
+## Proportion is a render-time check too
+
+Before rendering, count the beats spent on the problem versus the beats spent on the answer, and in an expectant or prophetic story count how many beats live in the declared future. A story that spends thirty beats diagnosing and one declaring has hedged by proportion, whatever its wording says. Rendering is the LAST cheap moment to catch that: every beat added afterwards renumbers the render-spec, the manuscript, the platform manifest, the staged assets and the narration. Send it back to `add-story` rather than rendering an unbalanced book.

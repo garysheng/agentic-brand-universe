@@ -38,6 +38,34 @@ One story, into a universe's canon, as a typed `StorySpec` written directly to `
    ```
 5. **Validate + commit.** `agenticstory validate <universe>` stays green: a `stub` story is exempt from the features/beats/provenance requirements; a `full` story must have non-empty `features` + `beats`, every beat's `provenance` non-empty, and every featured id known to canon. Commit `stories/<id>.json` + any entities the casting sweep created. Report the story's `status` and that rendering still requires `assert-story` (the deeper, asset-on-disk gate) to pass separately.
 
+## Scale: how many beats is a story (READ THIS BEFORE WRITING BEATS)
+
+**There is no default length, and inventing a small one silently is the most common authoring failure.** A beat sheet written without a declared target lands around fifteen to twenty beats because that is where drafting fatigue sits, not because the argument ended. Shipped books in these universes range from about thirteen beats to well over thirty, and the long ones are long because the material earned it.
+
+**ASK THE AUTHOR FOR THE TARGET, or state the one you are assuming and why.** Never just start writing and stop when you feel done. Anchor the number to the work the story has to do:
+
+- **Count the movements first.** A thesis has to establish the sincere status quo, name the mechanism, prove it with a case, answer the obvious objection, and build the alternative. Five movements at four to six beats each is already twenty-five to thirty, before any scripture or inset.
+- **Weigh the halves.** Add up the beats spent diagnosing versus the beats spent on the answer. If diagnosis outweighs the answer by more than about two to one, the story is an indictment wearing a thesis costume. Rebalance before rendering, not after.
+- **A beat that only asserts needs a beat that shows.** Any claim about a character's gift, wound, or capacity that is stated and never depicted is a missing beat, not economical writing.
+- **Scripture that carries argument is its own beat.** A verse doing load-bearing work gets a spread, not a clause inside another beat.
+
+Cheap to add a beat now. Expensive after the art exists, because every later beat renumbers the whole render-spec, the manuscript, the platform manifest, the staged assets and the narration.
+
+## The declared future gets REAL WEIGHT, not a coda
+
+When a universe permits prophetic or expectant work (Nation of Fire's FAITHFUL PROPHETIC REALISTIC FICTION amendment is the reference case), **the future is the payload, not the epilogue.** The whole reason to declare a blessed future in faith is to let a reader stand inside it and look around.
+
+**One closing beat that gestures at the future is not showing the future. It is hedging by proportion.** You can obey every word of an anti-hedging rule and still gut it by spending thirty beats on the problem and one on the promise.
+
+So when a story declares a future:
+
+- **Budget it like an act, not a line.** A quarter to a third of the beats is a normal share for the declared future in an expectant story, and more is fine when the future IS the subject.
+- **Show it at several scales.** One life changed, one household, one town, then the multiplication across places and years. A single wide shot cannot do what a sequence does.
+- **Render it in present tense, resolved, and inhabited.** People in it, doing ordinary things, unhurried. Not a symbol of a future, the future.
+- **Do not caption it as hope.** If the universe abolished the hedge, the proportions have to obey the amendment too, not only the wording.
+
+When in doubt, ask the author how far forward the story goes and how much of the book lives there. That is a story-shaping decision and it is theirs, not yours.
+
 ## Gates honored
 - **Reuse-first casting sweep** (step 3): never invent an entity a story's beats could cast from existing canon.
 - **Provenance**: every beat in a `full` story cites a real source; unsourced vivid detail is flagged before it ships.
