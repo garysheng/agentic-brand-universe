@@ -196,3 +196,14 @@ rather than creating it, because a typo would otherwise mint a look nothing sele
 ever checks. Provenance freezes exactly as on the default path. 4 tests; suite 351 green. Plugin
 0.17.0 -> 0.17.1. lock-references SKILL.md gains the era-lock section, including the rule that an
 era plate is generated from the FACE sheets and never from the superseded `forward-fullbody`.
+
+2026-07-26 · tooling fix · sync-plugin.sh compared against the WRONG cache directory. The check did
+`ls -d ~/.claude/plugins/cache/garysheng/agenticstory/*/skills | head -1`, and those directories sort
+ALPHABETICALLY, so 0.11.0 beat 0.17.1. It compared source against a long-dead cache and reported
+INSTALLED PLUGIN IS STALE forever, no matter how many times the plugin was genuinely updated. That
+false negative sent a session telling the operator to run /plugin update three separate times when
+the plugin was already current, until he pushed back. Now it reads the version out of the plugin
+manifest and checks THAT directory, falling back to the most recently MODIFIED cache (ls -dt) and
+saying so out loud when the declared version has no cache dir yet. Verified: reports "installed
+plugin matches source" against 0.17.1. A staleness check that cannot be trusted is worse than none,
+because it trains everyone to ignore it.

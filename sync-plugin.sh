@@ -73,7 +73,23 @@ fi
 # The first version of this check hardcoded the wrong path, found nothing, and cheerfully
 # reported "nothing to compare" about a cache that was in fact stale. A check that cannot
 # find its target must say so loudly, never pass.
-CACHE=$(ls -d "$HOME"/.claude/plugins/cache/garysheng/agenticstory/*/skills 2>/dev/null | head -1)
+# PICK THE CACHE DIR FOR THE VERSION THE MANIFEST DECLARES, not whatever sorts first.
+# `ls | head -1` sorted these ALPHABETICALLY, so 0.11.0 beat 0.17.1 and the check
+# compared against a long-dead cache directory. It reported STALE forever, no matter
+# how many times the plugin was actually updated, and sent a session chasing a
+# non-existent update three times before the operator caught it (2026-07-26).
+MANIFEST_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+  "$(dirname "$DST")/.claude-plugin/plugin.json" 2>/dev/null | head -1)
+CACHE=""
+if [ -n "$MANIFEST_VERSION" ] && \
+   [ -d "$HOME/.claude/plugins/cache/garysheng/agenticstory/$MANIFEST_VERSION/skills" ]; then
+  CACHE="$HOME/.claude/plugins/cache/garysheng/agenticstory/$MANIFEST_VERSION/skills"
+else
+  # No dir for the declared version means it genuinely has not been installed yet.
+  # Fall back to the most RECENTLY MODIFIED cache so the message names something real.
+  CACHE=$(ls -dt "$HOME"/.claude/plugins/cache/garysheng/agenticstory/*/skills 2>/dev/null | head -1)
+  [ -n "$CACHE" ] && echo "note: no cache dir for manifest version ${MANIFEST_VERSION:-unknown}; comparing newest ($CACHE)"
+fi
 if [ -n "$CACHE" ] && [ -d "$CACHE" ]; then
   if diff -rq --exclude='__pycache__' --exclude='*.pyc' "$SRC" "$CACHE" >/dev/null 2>&1; then
     echo "installed plugin matches source"
