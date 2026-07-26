@@ -563,6 +563,13 @@ class TestCastability(unittest.TestCase):
                      "CAST-POSE-SHEET-MISSING"):
             self.assertNotIn(code, e)
 
+    def test_an_entity_with_an_empty_sheets_dict_is_not_flagged(self):
+        """`{}` means the same thing as no sheets key: no art yet, so no poses are owed.
+        Checking only for None flagged a doctrine-only group that has no art and wants none."""
+        e, _ = self.lint_with(entity={"id": "e", "kind": "group",
+                                      "structured": {"sheets": {}, "requiredForRender": []}})
+        self.assertNotIn("CAST-UNRENDERABLE", e)
+
     def test_an_unscaffolded_entity_is_not_flagged(self):
         """Before the art step an entity has no sheets at all; flagging it would fire on
         every freshly scaffolded character and train people to ignore the linter."""

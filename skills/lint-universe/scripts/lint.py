@@ -169,7 +169,10 @@ def lint(root):
     for ej in (root/"canon"/"entities").glob("*.json"):
         e = jload(ej)
         if not e or e.get("kind") not in ("character", "group"): continue
-        if (e.get("structured") or {}).get("sheets") is None: continue   # not yet scaffolded for art
+        # An entity with NO sheets has not been scaffolded for art yet, so demanding poses
+        # from it is noise. `{}` and a missing key both mean that; checking only for None
+        # flagged a doctrine-only group that has no art and wants none (found 2026-07-25).
+        if not ((e.get("structured") or {}).get("sheets") or {}): continue
         render = ((e.get("structured") or {}).get("render") or {})
         poses = render.get("poses") or {}
         if not render.get("always") and not poses:
