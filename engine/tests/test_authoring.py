@@ -91,6 +91,29 @@ class TestLockShotSettingContract(unittest.TestCase):
         self.assertEqual(e["contract"]["turnaround"], "reference/a-school/turnaround.png")
 
 
+class TestLockStampsApproval(unittest.TestCase):
+    """Locking is the approval act, so it is the only moment the approver is guaranteed
+    knowable. Caught twice in one session, the second time on a motif created that hour by
+    the person who had just fixed the first one."""
+
+    def test_locking_stamps_the_date(self):
+        e = {"id": "e", "kind": "motif", "structured": {"sheets": {}, "requiredForRender": []}}
+        lock_shot(e, "hero", "reference/e/hero.png")
+        self.assertTrue(e["authority"]["lockedOn"], "a lock with no date cannot be audited")
+
+    def test_locking_does_not_overwrite_an_existing_date(self):
+        e = {"id": "e", "kind": "motif", "authority": {"lockedOn": "2026-01-01"},
+             "structured": {"sheets": {}, "requiredForRender": []}}
+        lock_shot(e, "hero", "reference/e/hero.png")
+        self.assertEqual(e["authority"]["lockedOn"], "2026-01-01")
+
+    def test_a_real_approver_is_left_alone(self):
+        e = {"id": "e", "kind": "motif", "authority": {"lockedBy": "gary"},
+             "structured": {"sheets": {}, "requiredForRender": []}}
+        lock_shot(e, "hero", "reference/e/hero.png")
+        self.assertEqual(e["authority"]["lockedBy"], "gary")
+
+
 class TestLockShotMatrixedKinds(unittest.TestCase):
     def test_motif_still_uses_sheets_and_promotes_required(self):
         e = {"id": "a-motif", "kind": "motif",

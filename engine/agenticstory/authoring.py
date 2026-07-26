@@ -7,6 +7,7 @@ step (lock-references) fills paths and promotes the required set.
 """
 from __future__ import annotations
 
+import datetime as _dt
 import hashlib
 import json
 import pathlib
@@ -157,6 +158,20 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
     locked without a recipe is still a valid golden, but it is un-auditable: no
     divergence check can ever run against it, which `lint-universe` flags.
     """
+    # Locking IS the approval act, so this is the only moment the record of WHO approved
+    # it is guaranteed to be knowable. The scaffolder writes `lockedBy: "TODO-you"` and
+    # nothing used to force it to be filled, so entities accumulated locked art with a
+    # placeholder approver. Caught twice in one session (2026-07-25), the second time on a
+    # motif created that same hour by the person who had just fixed the first one. Stamp
+    # the date, which is always knowable, and say something loud about the name, which is not.
+    au = entity.setdefault("authority", {})
+    if not au.get("lockedOn"):
+        au["lockedOn"] = _dt.date.today().isoformat()
+    if not au.get("lockedBy") or str(au.get("lockedBy")).startswith("TODO"):
+        print(f"  WARNING: {entity.get('id')} is being locked with authority.lockedBy="
+              f"{au.get('lockedBy')!r}. A golden with no recorded approver cannot be attributed. "
+              f"Set it before this ships; `lint-universe` fails on it.")
+
     kind = entity.get("kind", "")
     if kind in ("setting", "visual-metaphor"):
         # Settings/visual-metaphors are matrixed via their `contract`, NOT sheet keys
