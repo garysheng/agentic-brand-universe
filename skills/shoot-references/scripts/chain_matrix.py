@@ -127,6 +127,16 @@ def parse_prompts_full(md: Path) -> dict:
         header_refs = _split_ids(m.group(1))
 
     out, refs, sizes, cur, buf, cur_refs = {}, {}, {}, None, [], []
+    # A shot's body is every line until the NEXT level-2 heading, so ANY trailing
+    # prose, sub-heading, or horizontal rule after the last shot is silently
+    # appended to that shot's prompt. That failure is invisible in the plan and
+    # only shows up in the art: on 2026-07-26 four era-shot sections parked at
+    # "###" after the last shot turned signature-pose into a 4397-char prompt
+    # describing nine different images, and the model returned a 3x3 contact
+    # sheet that leaked a child, a superseded era wardrobe, and a banned pendant
+    # shape into a base-matrix plate. Refuse loudly instead: non-matrix content
+    # belongs in its own file.
+    contaminated = {}
     for line in text.splitlines():
         m = re.match(r"^##\s+(.*)$", line)
         if m:
@@ -151,12 +161,23 @@ def parse_prompts_full(md: Path) -> dict:
             if r:
                 cur_refs += _split_ids(r.group(1))
             else:
-                buf.append(line.strip())
+                stripped = line.strip()
+                if re.match(r"^#{3,}\s+\S", stripped) or re.fullmatch(r"-{3,}|\*{3,}|_{3,}", stripped):
+                    contaminated.setdefault(cur, []).append(stripped[:60])
+                buf.append(stripped)
     if cur:
         out[cur] = " ".join(buf).strip()
         refs[cur] = list(dict.fromkeys(header_refs + cur_refs))
 
     prompts = {k: v for k, v in out.items() if v}
+    if contaminated:
+        detail = "; ".join(f"{k} swallowed {v!r}" for k, v in contaminated.items())
+        raise Refuse(
+            "prompts.md has non-shot content inside a shot body, which is silently appended to that "
+            f"shot's prompt and corrupts its art: {detail}. A shot body runs until the NEXT '## ' "
+            "heading, so sub-headings, appendices, and horizontal rules cannot live after the last "
+            "shot. Move that content to its own file (e.g. prompts-era.md for alt-look shots, which "
+            "lock with `lock-shot --look <key>` and are never base-matrix shots).")
     return {"prompts": prompts,
             "negatives": negatives,
             "sizes": {k: sizes[k] for k in prompts if k in sizes},
