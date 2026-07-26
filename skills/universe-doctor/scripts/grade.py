@@ -110,8 +110,16 @@ def grade_universe(udir):
         scores["setting_size"] = round(10 * ok / len(settings))
 
     # 5) PROVENANCE -----------------------------------------------------------
+    # A style-pack / lookbook ref is a COPY into a pack whose provenance lives in the
+    # pack manifest (pack.json / lookbook.json), not a per-image .recipe.json. Counting
+    # those as "un-provenanced" is a false positive, so they are excluded here (they are
+    # provenanced at the pack level). Every other reference image is a primary render and
+    # must carry its own recipe.
     ref = root / "reference"
-    pngs = [p for p in ref.rglob("*.png")] if ref.exists() else []
+    def _pack_managed(p):
+        parts = p.parts
+        return ("style" in parts or "lookbook" in parts) and "refs" in parts
+    pngs = [p for p in ref.rglob("*.png") if not _pack_managed(p)] if ref.exists() else []
     if not pngs:
         scores["provenance"] = 10
     else:

@@ -70,6 +70,19 @@ class TestGrader(unittest.TestCase):
         _, scores, _, _ = grade.grade_universe(d)
         self.assertEqual(scores["provenance"], 5)                 # 1 of 2 -> half of 10
 
+    def test_pack_and_lookbook_refs_are_excluded_from_provenance(self):
+        # a ref copied into a style pack / lookbook is provenanced at the manifest level,
+        # so it must NOT be counted as an un-provenanced primary render.
+        d = tempfile.mkdtemp()
+        self._bare_universe(d)
+        _write(d, "reference/style/mypack/refs/a.png", "x")          # pack ref, no recipe
+        _write(d, "reference/lookbook/mylook/refs/b.png", "x")       # lookbook ref, no recipe
+        _write(d, "reference/hero/shot.png", "x")                    # primary render, no recipe
+        _write(d, "reference/hero/shot.png.recipe.json", {"p": 1})   # ...but it HAS a recipe
+        _, scores, _, issues = grade.grade_universe(d)
+        self.assertEqual(scores["provenance"], 10)                   # the 2 pack refs don't count against it
+        self.assertFalse(any(d_ == "provenance" for _, d_, _, _ in issues))
+
     def test_letter_thresholds(self):
         self.assertEqual(grade.letter(90), "A")
         self.assertEqual(grade.letter(69), "D")
