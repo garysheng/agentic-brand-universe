@@ -592,6 +592,20 @@ class TestSheetHygiene(unittest.TestCase):
         self.assertNotIn("SHEET-DUPLICATE-ALIAS", e)
         self.assertNotIn("SHEET-DUPLICATE-ALIAS", w)
 
+    def test_placeholder_authorship_on_locked_art_is_an_error(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character", "authority": {"lockedBy": "TODO-you"},
+            "structured": {"sheets": {"gabr": "reference/e/g.png"},
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
+        self.assertIn("AUTHORITY-UNFILLED", e)
+
+    def test_filled_authorship_is_clean(self):
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character", "authority": {"lockedBy": "gary"},
+            "structured": {"sheets": {"gabr": "reference/e/g.png"},
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
+        self.assertNotIn("AUTHORITY-UNFILLED", e)
+
     def test_workflow_state_in_invariants_is_warned(self):
         _, w = self.lint_with(entity={
             "id": "e", "kind": "character",
@@ -599,6 +613,16 @@ class TestSheetHygiene(unittest.TestCase):
                            "invariants": ["design-pending-tier1"],
                            "render": {"always": "a", "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
         self.assertIn("INVARIANT-IS-STATUS", w)
+
+    def test_a_prohibition_containing_a_trigger_word_is_not_warned(self):
+        """A prohibition is a checkable fact about an image even when it contains a word like
+        'review'. Both false positives on the first real run were of this shape."""
+        _, w = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"gabr": "reference/e/g.png"},
+                           "invariants": ["no-barcode-no-publisher-mark-no-review-quote"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["gabr"], "bake": "b"}}}}})
+        self.assertNotIn("INVARIANT-IS-STATUS", w)
 
     def test_a_real_visual_invariant_is_not_warned(self):
         _, w = self.lint_with(entity={

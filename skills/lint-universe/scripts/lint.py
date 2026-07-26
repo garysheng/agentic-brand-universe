@@ -193,9 +193,26 @@ def lint(root):
                     + (f"; requiredForRender names {sorted(req)}, so the same image is passed "
                        f"{len(req)} times and one of them carries no information."
                        if len(req) > 1 else "; one is a dead alias."))
+        # The scaffolder writes `lockedBy: "TODO-you"` and nothing ever forces it to be filled,
+        # so an entity can carry locked art, frozen provenance and a full pose set while its
+        # record of WHO approved it is still a placeholder. Found on 5 nation-of-fire entities
+        # 2026-07-25, one of them created and locked that same session.
+        au = e.get("authority") or {}
+        if sheets and any(sheets.values()):
+            if not au.get("lockedBy") or str(au.get("lockedBy")).startswith("TODO"):
+                err("AUTHORITY-UNFILLED",
+                    f"{ej.name}: has locked art but `authority.lockedBy` is "
+                    f"{au.get('lockedBy')!r}. A golden with no recorded approver cannot be "
+                    f"attributed, and approval is the whole point of locking.")
+
         for inv in st.get("invariants", []) or []:
             low = str(inv).lower()
-            if any(t in low for t in STATUS_ISH) and len(str(inv)) < 60:
+            # A PROHIBITION is a real visual rule even when it contains a trigger word:
+            # "no-barcode-no-publisher-mark-no-subtitle-no-review-quote" is a checkable fact
+            # about an image and must not be flagged as workflow state (both false positives
+            # found on the first real run, 2026-07-25).
+            is_prohibition = low.startswith(("no-", "never-")) or "never" in low
+            if any(t in low for t in STATUS_ISH) and len(str(inv)) < 60 and not is_prohibition:
                 warn("INVARIANT-IS-STATUS",
                      f"{ej.name}: invariant '{inv}' reads as workflow state, not a checkable "
                      f"fact about an image. Read-back checks are generated from invariants, so "
