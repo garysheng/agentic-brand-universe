@@ -20,6 +20,13 @@ Why it is an ERROR and not a warning: renumbering after art exists is expensive.
 beat shifts the render-spec, the platform manifest, every staged asset and the narration. Drift
 found before the render costs a paragraph; found after, it costs the book.
 
+**The most common cause, by a wide margin: a missing closing plate.** All five drifts found in
+nation-of-fire on 2026-07-26 were the identical shape. The spec's final beat was a refrain plate
+or closing plate, meaning art plus one line and no prose, so whoever wrote the manuscript stopped
+at the last prose spread and never recorded it. Check the tail before assuming a beat went missing
+in the middle: if the spec's last beat begins "Refrain plate" or "Closing plate", the manuscript is
+what is incomplete, and the fix is to append it rather than to cut the spec.
+
 `MANUSCRIPT-BEAT-DRIFT` does NOT tell you which side is right. That is an authoring decision:
 sometimes the prose gained a beat that belongs in the spec, sometimes the spec gained one the
 prose correctly dropped. Reconcile deliberately, then re-run.
