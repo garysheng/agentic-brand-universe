@@ -27,10 +27,10 @@ Hand-rolling **once, consciously, to keep momentum** is fine — the framework i
 ## Repos and the delivery chain (know these cold)
 
 - **Framework source:** `~/Documents/github-repos/agenticstory` — `SPEC.md` (the contract, versioned vX.Y), `engine/` (Python + tests), `skills/` (every `agenticstory:*` skill), `registry/`, `SAVE-LOG.md` (changelog), `run-tests.sh`, `sync-plugin.sh`.
-- **Plugin / marketplace repo:** `~/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/` — `.claude-plugin/plugin.json` holds the **plugin `version`** (currently 0.6.3); `skills/` is a **copy** of the source skills (not a symlink).
+- **Plugin / marketplace repo:** `~/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/` — `.claude-plugin/plugin.json` holds the **plugin `version`**; `skills/` is a **copy** of the source skills (not a symlink), so EDITING THE MARKETPLACE COPY IS EDITING THE ARTIFACT: the next `sync-plugin.sh` overwrites it from source. Always patch `agenticstory/skills/...` and let sync push it down.
 - **Installed plugin cache:** what `agenticstory:*` invocations actually run — a separate clone of the marketplace remote, under a versioned hash dir.
 
-**COPYING IS NOT DELIVERING.** The chain is `agenticstory/skills → marketplace repo → git remote → installed cache`. A change is only live after: synced, committed AND pushed in BOTH repos, plugin `version` bumped, and `/plugin update` run. `sync-plugin.sh` enforces this and reports STALE for anything short of the remote — trust its exit code, do not eyeball it.
+**COPYING IS NOT DELIVERING.** The chain is `agenticstory/skills → marketplace repo → installed cache`. **The marketplace is a DIRECTORY source, not a git remote, so pushing is hygiene and NOT what delivers.** What actually refreshes the installed cache is a **VERSION CHANGE** in `.claude-plugin/plugin.json` followed by `/plugin update`; an unchanged version makes `/plugin update` a silent no-op. So a change is live only after: synced, `version` bumped, and Gary runs `/plugin update` (only he can). Commit and push both repos anyway so the work is durable and reviewable. `sync-plugin.sh` enforces all of this and reports STALE for anything short of delivered, INCLUDING when the installed cache is simply behind the manifest — trust its output, do not eyeball it. Check the cache version it names against the manifest: if several bumps have gone undelivered, say so explicitly rather than assuming the last one landed.
 
 ## The evolution loop
 
