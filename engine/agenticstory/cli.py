@@ -193,7 +193,16 @@ def main(argv: list[str] | None = None) -> int:
         ent = json.loads(entp.read_text())
         recipe = None
         if args.recipe:
-            recipe = json.loads(Path(args.recipe).read_text())
+            # `path` is universe-relative (line below, and in every doc example), so a
+            # universe-relative --recipe beside it has to work too. It used to resolve
+            # ONLY against the CWD, which made the invocation lock-references documents
+            # (run from the engine dir, both paths universe-relative) die on
+            # FileNotFoundError, pushing callers toward locking with no recipe at all.
+            # CWD first keeps every absolute and cwd-relative caller working.
+            rp = Path(args.recipe)
+            if not rp.is_absolute() and not rp.exists():
+                rp = uni / args.recipe
+            recipe = json.loads(rp.read_text())
         lock_shot(ent, args.shot, args.path, recipe=recipe, root=str(uni), look=args.look)
         entp.write_text(json.dumps(ent, indent=2) + "\n")
         prov = (f"  provenance -> {recipe_sidecar_path(uni / args.path).name}" if recipe is not None
