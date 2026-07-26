@@ -562,6 +562,142 @@ class TestPromotedGuards(unittest.TestCase):
         self.assertIn("photoreal", out["prompt"])
 
 
+class TestDeclaredFutureLook(unittest.TestCase):
+    """A DECLARED-FUTURE (prophetic) look keeps the face and changes the body.
+
+    Every other alt look changes the FACE (a beard, an age era) and supplies its
+    own anchorPhoto, so the compiler auto-drops the base face sheets to stop them
+    fighting it. A declared-future look inverts that: the face is CONTINUOUS and
+    the BODY changes, and the future has no photograph to anchor. Under the old
+    rule such a look reached the model with no identity reference at all and it
+    drew a stranger wearing the right build. Earned 2026-07-26 adding beef-jones'
+    2028/2030 prophetic eras to a Nation of Fire book whose final act is set there.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+        png(self.root / "reference" / "stache" / "photo-a.png")
+        self.ent = self.root / "canon" / "entities" / "stache.json"
+        d = json.loads(self.ent.read_text())
+        d["realPerson"] = {"photoStack": ["reference/stache/photo-a.png"]}
+        d["structured"]["altLooks"]["era-2030"] = {
+            "era": "2030",
+            "supersedes": ["short-neat-hair"],
+            "invariants": ["lean-and-powerfully-built"],
+        }
+        self.d = d
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def write(self):
+        self.ent.write_text(json.dumps(self.d))
+
+    def run_look(self):
+        spec = write_spec(self.root, [{"id": "stache", "look": "era-2030"}])
+        return run(self.root, spec)
+
+    def test_future_look_without_keep_is_refused_not_silently_faceless(self):
+        """The failure this exists to prevent: no anchorPhoto, face sheets
+        auto-dropped, so nothing anchors identity. Refuse loudly at compile time
+        (free) rather than pay for a render of a stranger."""
+        self.write()
+        r = self.run_look()
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("NO identity reference", r.stderr)
+
+    def test_keep_sheets_passes_the_base_face(self):
+        self.d["structured"]["altLooks"]["era-2030"]["keepSheets"] = ["face-neutral"]
+        self.write()
+        r = self.run_look()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        refs = json.loads(r.stdout)["refs"]
+        self.assertTrue(any(x.endswith("stache/face.png") for x in refs),
+                        "the continuous face must reach the model")
+
+    def test_keep_photos_passes_the_real_photo_stack(self):
+        """A real person's photos are default-look only, because an alt look
+        normally contradicts them. A declared future does not: the man's face is
+        the same face."""
+        self.d["structured"]["altLooks"]["era-2030"]["keepPhotos"] = True
+        self.write()
+        r = self.run_look()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        refs = json.loads(r.stdout)["refs"]
+        self.assertTrue(any(x.endswith("stache/photo-a.png") for x in refs))
+
+    def test_future_invariants_still_supersede_the_body(self):
+        self.d["structured"]["altLooks"]["era-2030"]["keepSheets"] = ["face-neutral"]
+        self.write()
+        r = self.run_look()
+        out = json.loads(r.stdout)
+        self.assertIn("stache: lean-and-powerfully-built", out["qa"])
+        self.assertNotIn("stache: short-neat-hair", out["qa"])
+
+    def test_keep_sheets_cannot_resurrect_a_dropped_sheet(self):
+        """dropSheets stays authoritative: an explicit contradiction outranks a
+        keep, so the two fields can never fight to a coin flip."""
+        self.d["structured"]["altLooks"]["era-2030"]["keepSheets"] = ["face-neutral"]
+        self.d["structured"]["altLooks"]["era-2030"]["dropSheets"] = ["face-neutral"]
+        self.d["structured"]["altLooks"]["era-2030"]["keepPhotos"] = True
+        self.write()
+        r = self.run_look()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        refs = json.loads(r.stdout)["refs"]
+        self.assertFalse(any(x.endswith("stache/face.png") for x in refs))
+
+
+class TestRelativeScale(unittest.TestCase):
+    """Two characters in one frame have a height relationship and nothing in the
+    matrix could state it, so the model made them the same height and the drift was
+    invisible until somebody who knows them said "he is much shorter than that."
+    Same reasoning as the v0.9 setting scalePlate: a dimension nothing depicts
+    cannot be judged."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+        for cid, scale in [
+            ("stache", {"height": "5 ft 8 in",
+                        "relativeTo": {"scout": "several inches shorter than"}}),
+            ("scout", {"height": "6 ft 1 in",
+                       "relativeTo": {"stache": "several inches taller than"}}),
+        ]:
+            p = self.root / "canon" / "entities" / f"{cid}.json"
+            d = json.loads(p.read_text())
+            d["structured"]["scale"] = scale
+            p.write_text(json.dumps(d))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def out(self, cast):
+        r = run(self.root, write_spec(self.root, cast))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_relation_is_emitted_when_both_are_in_frame(self):
+        p = self.out([{"id": "stache"}, {"id": "scout"}])["prompt"]
+        self.assertIn("RELATIVE SCALE", p)
+        self.assertIn("stache is several inches shorter than scout", p)
+        self.assertIn("5 ft 8 in", p)
+
+    def test_solo_spread_is_unchanged(self):
+        """A relation to an absent character says nothing about this frame."""
+        self.assertNotIn("RELATIVE SCALE", self.out([{"id": "stache"}])["prompt"])
+
+    def test_character_with_no_scale_block_is_fine(self):
+        p = self.root / "canon" / "entities" / "scout.json"
+        d = json.loads(p.read_text())
+        del d["structured"]["scale"]
+        p.write_text(json.dumps(d))
+        out = self.out([{"id": "stache"}, {"id": "scout"}])
+        self.assertIn("stache is several inches shorter than scout", out["prompt"])
+
+
 # MUST be the LAST statement in this file. Any test class defined AFTER it never
 # runs: unittest.main() executes and exits at import time. TestAltLookDropSheets and
 # TestAltLookRenderBlock sat below it and were dead for weeks while the suite still

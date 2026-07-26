@@ -147,3 +147,40 @@ already depends on a setting before redesigning it.
 - 2026-07-26 — new skill book-doctor: the Doctor Pattern applied to one RENDERED book, on local disk, before delivery. The gap it closes is a hole in the gate chain rather than a missing convenience. assert-story gates BEFORE a render, when there is no output to measure, and lint-universe is static; nothing graded the OUTPUT. So a book shipped with its closing plate rendered at landscape interior aspect, when the reader composes the closing plate as a single-page BACK COVER at 3:4 and therefore crops it. "The closing plate is the last numbered spread file" describes where it lives, not what shape it is, and every pre-render gate passed. Checks: every declared spread exists, endcaps portrait and interiors landscape, every asset carries its provenance recipe, no asset generated from another spread render, and optionally every cast entity registered and locked. DELIVERY-AGNOSTIC ON PURPOSE (no bucket, no CDN, no network, no SDK): a delivery platform's own doctor is coupled to its storage and its frozen-tested aspect helper, and forking that logic here would turn a tested check into an untested copy, which is a bug those platforms have already had once. The two do not overlap, and checks 4 and 5 are ones a delivery probe structurally CANNOT do, because recipes are build artifacts that never ship. Its own suite caught a bug in it during authoring: the self-reference scan keyed off a role name beginning "spread-", which skipped the closing plate, the likeliest offender of all since the legacy migration recipe says to copy the final spread as the plate. First run on a real book reproduced the shipped defect and found a second one nobody had: conform_cover.py writes no recipe, so the provenance chain breaks at the conform step. That is the next promotion candidate. Skill suite 321 to 332. Plugin 0.16.3.
 
 - 2026-07-26 — lint-universe: GOLDEN-INPUT-GONE now says that a rename is NOT a reason to rewrite provenance (0bda817, missed by the previous save). The message reported that an input "no longer resolves" and stopped there, which leaves the reader with one tempting fix: edit the recipe to match the new path. That falsifies the approval record, because the recipe is evidence of what was actually approved and not a pointer to be kept green. Nation of Fire's own canon already said historical recipes keep their pre-rename paths for exactly this reason, so the rule was quietly advising the operator to launder history the canon had already forbidden. A lint rule that recommends the wrong repair is worse than no rule, since it arrives with the authority of a gate.
+
+---
+
+2026-07-26 · SPEC v0.10 · a character must be able to prove its own scale, and its future.
+
+Trigger: authoring a Nation of Fire story centered on Beef Jones whose final act is set in a declared
+future (2028, 2030: lean, jacked, still bald), with two leads who differ in height by several inches.
+Neither fact had anywhere to live in canon, and the hand-rolled alternative was to retype both into
+every spread's scene text, where nothing checks them and every book restates them differently.
+
+Both gaps are the v0.9 setting lesson generalized: A DIMENSION NOTHING DEPICTS CANNOT BE JUDGED.
+
+Promoted (1): SPEC §12 character matrix gains `structured.scale` — `height` in human terms plus
+`relativeTo`, a map of entity ids to a phrase. Every entity in the matrix is described ALONE, so two
+characters in one frame come out the same height or reversed and it stays invisible until someone who
+knows them says so. compose-spread emits a RELATIVE SCALE line ONLY when two or more in-frame
+characters declare a relation to each other, so solo spreads are unchanged. lint-universe warns
+CHARACTER-SCALE-ONE-SIDED (a relation its counterpart does not mirror; two half-records drift apart
+and then contradict) and CHARACTER-SCALE-UNKNOWN-TARGET.
+
+Promoted (2): `structured.altLooks` is DOCUMENTED for the first time. It has been load-bearing in the
+compiler since the jerry-man age eras and absent from the spec the whole time, so anyone reading the
+spec to author a look would have hand-rolled one. Plus `keepSheets` / `keepPhotos` for declared-future
+looks, which is a real bug and not only a doc gap: an ordinary alt look changes the FACE and carries
+its own anchorPhoto, which is why base face sheets are auto-dropped. A prophetic look inverts every
+part of that — the face is CONTINUOUS, the BODY changes, and the future has no photograph — so it
+reached the model with body sheets only, which are the exact silhouette it supersedes, and the render
+came back a stranger with the right build. compose-spread now REFUSES a look with no face source at
+compile time (costs nothing) and lint-universe warns LOOK-NO-IDENTITY-ANCHOR a step earlier.
+dropSheets stays authoritative over keepSheets so the two fields can never fight to a coin flip.
+
+Advisory and back-compatible: a character with no `scale` still locks and still renders, and every
+existing alt look carries an anchorPhoto so none of them trip the new refusal.
+
+Engine SPEC_VERSION 0.9 -> 0.10; plugin 0.16.3 -> 0.17.0. 12 new tests (5 declared-future, 3 relative
+scale in compose-spread; 7 in lint-universe). Full suite 347 green. add-character gained steps 4a/4b;
+compose-spread SKILL.md points at both.

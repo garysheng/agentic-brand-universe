@@ -1,10 +1,29 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.9 — 2026-07-25.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.10 — 2026-07-26.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.10 changelog — a character must be able to prove its own scale, and its future.** The v0.9
+> lesson generalizes past settings: **a dimension nothing depicts cannot be judged.** §12 gives the
+> character matrix the same treatment in two places. **(1) `structured.scale`** — `height` in human
+> terms plus `relativeTo`, a map of other entity ids to a phrase ("several inches shorter than").
+> Every entity was described alone, so two people sharing a frame came out the same height, or
+> reversed, and nothing in canon could say otherwise. The compiler emits a RELATIVE SCALE line only
+> when two or more in-frame characters declare a relation to each other, so solo spreads are
+> unchanged. **(2) `altLooks` is documented for the first time**, having been load-bearing in the
+> compiler and absent from this spec, plus `keepSheets` / `keepPhotos` for **declared-future
+> (prophetic) looks**. An ordinary alt look changes the FACE (a beard, an age era) and supplies its
+> own `anchorPhoto`, which is why base face sheets are auto-dropped. A declared-future look inverts
+> that: the face is CONTINUOUS, the BODY changes, and the future has no photograph to anchor. Under
+> the old rule such a look reached the model with body sheets only, which are the exact silhouette
+> it supersedes, and the model drew a stranger. `compose-spread` now refuses that at compile time
+> (free) and `lint-universe` warns `LOOK-NO-IDENTITY-ANCHOR` one step earlier. Advisory and
+> back-compatible: a character with no `scale` still locks and still renders. Earned 2026-07-26
+> adding `beef-jones`' 2028 and 2030 eras for a book whose final act is set in a declared future,
+> and whose two leads differ in height by several inches.
 
 > **v0.9 changelog — a setting must be able to prove its own size.** §12 adds `scalePlate` (file)
 > and `scale` (descriptor) to the setting matrix. `emptyPlates` are people-free so a setting
@@ -928,6 +947,40 @@ under-referenced entities the way the gate reports missing files.
   (`requiredForRender`) is `forward-fullbody` + `face-neutral`; the rest strengthen identity
   consistency across renders. Real people are generated from a photo stack (never a
   painting-of-a-painting); fictional characters from a locked design.
+  - **`structured.scale` (v0.10) — relative height is canon, not a per-spread guess.** `{ "height":
+    "5 ft 8 in", "relativeTo": { "<entity-id>": "several inches shorter than" }, "scalePlate":
+    "reference/<id>/scale-two-up.png" }`. Every entity in the matrix is described ALONE, so two
+    characters sharing a frame have a dimension that no record states: the model makes them the
+    same height, or reverses them, and the drift is invisible until somebody who knows them says
+    "he is much shorter than that." This is the v0.9 setting lesson applied to people. The
+    compiler emits a `RELATIVE SCALE` line ONLY when two or more in-frame characters declare a
+    relation to each other, so a solo spread is byte-identical to before. An optional `scalePlate`
+    is a two-up plate of the pair at true relative height. Advisory: a character with no `scale`
+    still locks and still renders; `lint-universe` warns `CHARACTER-SCALE-ONE-SIDED` when one
+    character declares a relation its counterpart does not mirror, because two half-records drift
+    apart and then contradict each other.
+  - **`structured.altLooks` (documented in v0.10; load-bearing in the compiler well before it).**
+    A named look that REPLACES part of the entity's identity for the spreads that select it:
+    `{ "anchorPhoto", "sheets", "supersedes": [], "invariants": [], "dropSheets": [],
+    "keepSheets": [], "keepPhotos": false, "render": {} }`. `supersedes` removes base invariants
+    the look contradicts and `invariants` adds its own, so the QA checklist, the prompt block, and
+    the computed negatives all agree by construction. `dropSheets` removes base sheets the look
+    contradicts, because **a reference image outranks a word**: a look whose invariant said "neck
+    completely bare" still had the adult pendant sheet passed, and the necklace rendered. An alt
+    look **auto-drops the base FACE sheets**, since the look's own `anchorPhoto` is the face.
+  - **Declared-future (prophetic) looks (v0.10): `keepSheets`, `keepPhotos`.** A universe that
+    permits expectant work renders a person's declared future, and that look inverts every
+    assumption above: **the face is CONTINUOUS, the body changes, and the future has no
+    photograph.** With no `anchorPhoto` and the face sheets auto-dropped, only BODY sheets reach
+    the model, and those are the exact silhouette the look supersedes, so the output is a stranger
+    with the right build. `keepSheets` names base sheets to pass anyway (the continuous face);
+    `keepPhotos` passes the real person's photo stack, which is otherwise default-look only.
+    `dropSheets` stays authoritative where the two overlap, so an explicit contradiction always
+    outranks a keep. A look supplying no face source at all is REFUSED by `compose-spread` at
+    compile time (which costs nothing) and warned by `lint-universe` as `LOOK-NO-IDENTITY-ANCHOR`
+    one step earlier still. Each era gets its own key (`era-2028`, `era-2030`) and its own
+    invariants, so a read-back checks the future body against what was declared rather than
+    against today's.
 - **setting** — the existing `contract`: `turnaround`, `emptyPlates[]`, `blueprint` (files) plus
   `map`, `blocking`, `dressing` (descriptors), **and `scalePlate` + the `scale` descriptor (v0.9)**.
   - **`scalePlate` (file) and `scale` (descriptor) exist because AN EMPTY PLATE CANNOT PROVE SIZE.**

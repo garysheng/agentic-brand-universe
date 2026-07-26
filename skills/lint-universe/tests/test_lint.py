@@ -696,5 +696,76 @@ class TestCastability(unittest.TestCase):
         self.assertNotIn("CAST-UNRENDERABLE", e)
 
 
+class TestCharacterScaleAndFutureLooks(unittest.TestCase):
+    """SPEC v0.10. Two blind spots with one shape: a dimension nothing depicts
+    cannot be judged. Relative height between two characters was stated nowhere,
+    and a declared-future look reached the model with no face."""
+
+    def _chars(self, tmp, *entities):
+        root = build(tmp)
+        for e in entities:
+            (root / "canon" / "entities" / f"{e['id']}.json").write_text(json.dumps(e))
+        return root
+
+    @staticmethod
+    def _c(cid, **structured):
+        return {"id": cid, "kind": "character", "structured": structured}
+
+    def test_one_sided_relation_warns(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._chars(t,
+                               self._c("beef", scale={"relativeTo": {"russ": "shorter than"}}),
+                               self._c("russ"))
+            _, w = run(root)
+            self.assertIn("CHARACTER-SCALE-ONE-SIDED", w)
+
+    def test_symmetric_relation_is_clean(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._chars(t,
+                               self._c("beef", scale={"relativeTo": {"russ": "shorter than"}}),
+                               self._c("russ", scale={"relativeTo": {"beef": "taller than"}}))
+            _, w = run(root)
+            self.assertNotIn("CHARACTER-SCALE-ONE-SIDED", w)
+            self.assertNotIn("CHARACTER-SCALE-UNKNOWN-TARGET", w)
+
+    def test_relation_to_an_unknown_entity_warns(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._chars(t, self._c("beef", scale={"relativeTo": {"ghost": "shorter than"}}))
+            _, w = run(root)
+            self.assertIn("CHARACTER-SCALE-UNKNOWN-TARGET", w)
+
+    def test_character_without_a_scale_block_is_not_flagged(self):
+        """Advisory like the rest of the matrix: most characters never share a
+        frame with someone whose height matters, and flagging every one of them
+        would train people to ignore the linter."""
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._chars(t, self._c("beef")))
+            self.assertNotIn("CHARACTER-SCALE-ONE-SIDED", w)
+            self.assertNotIn("CHARACTER-SCALE-UNKNOWN-TARGET", w)
+
+    def test_future_look_with_no_face_source_warns(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._chars(t, self._c(
+                "beef", altLooks={"era-2030": {"era": "2030",
+                                               "invariants": ["lean-and-powerfully-built"]}}))
+            _, w = run(root)
+            self.assertIn("LOOK-NO-IDENTITY-ANCHOR", w)
+
+    def test_future_look_with_keep_sheets_is_clean(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._chars(t, self._c(
+                "beef", altLooks={"era-2030": {"era": "2030",
+                                               "keepSheets": ["face-neutral"]}}))
+            _, w = run(root)
+            self.assertNotIn("LOOK-NO-IDENTITY-ANCHOR", w)
+
+    def test_ordinary_alt_look_with_an_anchor_photo_is_clean(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._chars(t, self._c(
+                "beef", altLooks={"bearded": {"anchorPhoto": "reference/beef/alt.png"}}))
+            _, w = run(root)
+            self.assertNotIn("LOOK-NO-IDENTITY-ANCHOR", w)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

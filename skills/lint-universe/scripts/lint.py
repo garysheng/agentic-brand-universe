@@ -122,6 +122,62 @@ def lint(root):
                      f"circular hall about 80 feet across, dome 45 feet at the crown\"); it is "
                      f"passed in every prompt like `dressing`, and prose survives a re-render.")
 
+    # ---- a character must be able to prove its own SCALE and its FUTURE (SPEC v0.10, §12)
+    #
+    # Two blind spots with one shape: a dimension nothing depicts cannot be judged.
+    #
+    # 1. RELATIVE HEIGHT. Every entity is described alone, so two men in one frame come
+    #    out the same height (or reversed) and it stays invisible until someone who knows
+    #    them says "he is much shorter than that." `structured.scale.relativeTo` states it.
+    #    A ONE-SIDED relation is the failure mode worth flagging: the compiler emits a line
+    #    only when both parties are in frame, so a relation declared on one entity and not
+    #    its counterpart still works, but the two records can silently drift apart and then
+    #    contradict each other. Cheap to keep symmetric, expensive to discover later.
+    #
+    # 2. DECLARED-FUTURE LOOKS. An alt look normally changes the FACE and supplies its own
+    #    anchorPhoto, so base face sheets are auto-dropped. A prophetic era look inverts it:
+    #    the face is continuous, the body changes, and the future has no photograph. Such a
+    #    look reaches the model with body sheets only, which are the silhouette it supersedes.
+    #    compose-spread refuses this at compile time; lint catches it a step earlier, before
+    #    anyone schedules a render.
+    if ents_dir.exists():
+        chars = {}
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("kind") == "character":
+                chars[e.get("id", ef.stem)] = e
+        known = {p.stem for p in ents_dir.glob("*.json")}
+        FACE_KEYS = {"face-3q", "face-neutral", "face", "expressions"}
+        for eid, e in chars.items():
+            st = e.get("structured") or {}
+            rel = ((st.get("scale") or {}).get("relativeTo") or {})
+            for other in rel:
+                if other not in known:
+                    warn("CHARACTER-SCALE-UNKNOWN-TARGET",
+                         f"{eid}: structured.scale.relativeTo names '{other}', which is not an "
+                         f"entity in this canon.")
+                    continue
+                back = (((chars.get(other) or {}).get("structured") or {})
+                        .get("scale") or {}).get("relativeTo") or {}
+                if eid not in back:
+                    warn("CHARACTER-SCALE-ONE-SIDED",
+                         f"{eid}: declares a height relation to '{other}', but '{other}' declares "
+                         f"none back. Record the inverse on '{other}' so the two cannot drift "
+                         f"apart and contradict each other.")
+            for lid, al in (st.get("altLooks") or {}).items():
+                al = al or {}
+                kept = set(al.get("keepSheets") or [])
+                dropped = set(al.get("dropSheets") or [])
+                has_face = bool(al.get("anchorPhoto") or (al.get("sheets") or {})
+                                or al.get("keepPhotos") or (kept & FACE_KEYS) - dropped)
+                if not has_face:
+                    warn("LOOK-NO-IDENTITY-ANCHOR",
+                         f"{eid}: altLook '{lid}' supplies no anchorPhoto and no sheets of its "
+                         f"own, and an alt look auto-drops the base FACE sheets, so only body "
+                         f"sheets would reach the model. Set keepSheets (a base face sheet) "
+                         f"and/or keepPhotos if this is a declared-future or prophetic look "
+                         f"whose face is continuous; otherwise give it an anchorPhoto.")
+
     # ---- the spec pin
     #
     # A universe declares the spec version it conforms to. Nothing checked that the

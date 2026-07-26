@@ -266,18 +266,51 @@ def resolve_character(ent: dict, look: str | None):
                 refs.append(v)
         # keep the base BODY sheets (pose/proportion/wardrobe); drop the base FACE
         # sheets, which show the default look and would fight the alt anchor photo.
+        # EXCEPT what the look explicitly KEEPS. The auto-drop assumes the alt look
+        # supplies its own face (an anchorPhoto), which is true for a look that
+        # changes the FACE (a beard, an age era). It is exactly wrong for a
+        # DECLARED-FUTURE look, where the face is CONTINUOUS and the BODY changes:
+        # the future has no photograph to anchor, so dropping the face sheets left
+        # such a look with no identity reference at all and the model drew a
+        # stranger. `keepSheets` names base sheets to pass anyway; `keepPhotos`
+        # passes the real person's photo stack, which is otherwise default-look only.
+        # Earned 2026-07-26 adding beef-jones' 2028/2030 prophetic eras.
         # `dropSheets` additionally drops base sheets the alt look CONTRADICTS.
         # Guarded negatives already stop a blanket negative fighting a canon look;
         # nothing did the same for REFS, so a look whose invariant said "neck
         # completely bare" still had the adult PENDANT sheet passed to the model,
         # and a reference image outranks a word. Caught adding jerry-man's age eras.
         dropped = set(al.get("dropSheets") or [])
-        for key in st.get("requiredForRender", []):
-            if key in FACE_SHEET_KEYS or key in dropped:
+        kept = set(al.get("keepSheets") or [])
+        for key in st.get("requiredForRender", []) + list(kept):
+            if key in dropped:
+                continue
+            if key in FACE_SHEET_KEYS and key not in kept:
                 continue
             p = sheets.get(key)
             if p and p not in refs:
                 refs.append(p)
+        if al.get("keepPhotos"):
+            rp = ent.get("realPerson") or {}
+            for p in list(rp.get("photoStack") or [])[:2]:
+                if p not in refs:
+                    refs.append(p)
+        # A BODY sheet is not an identity anchor. The check is whether anything in
+        # this look shows the FACE: its own anchorPhoto or alt sheets, a kept base
+        # face sheet, or the kept photo stack. Body-only refs pass the silhouette
+        # being superseded and nothing that says who this is.
+        has_face = bool(al.get("anchorPhoto") or (al.get("sheets") or {})
+                        or al.get("keepPhotos")
+                        or (kept & FACE_SHEET_KEYS) - dropped)
+        if not has_face:
+            raise Refuse(
+                f"{ent['id']} look '{look}' has NO identity reference: it supplies no "
+                "anchorPhoto and no sheets of its own, and every base face sheet is "
+                "auto-dropped for an alt look. Only the body sheets would reach the model, "
+                "which is the silhouette this look supersedes. A declared-future or "
+                "prophetic look must set keepSheets (a base face sheet) and/or keepPhotos, "
+                "so the face stays continuous while the body changes."
+            )
         supers = set(al.get("supersedes", []))
         inv = [i for i in base_inv if i not in supers] + list(al.get("invariants", []))
     else:
@@ -348,6 +381,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     ent_blocks: list[str] = []
     qa: list[str] = []
     char_invsets: dict[str, list[str]] = {}
+    char_scales: dict[str, dict] = {}
 
     def add_refs(paths):
         for p in paths:
@@ -429,6 +463,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             ent_blocks.append(block)
         qa += [f"{c['id']}: {i}" for i in inv]
         char_invsets[c["id"]] = inv
+        char_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}
 
     # Auto-disambiguation: when two or more characters share the frame, name what
     # makes each one distinct (the invariants NOT common to all of them), so the
@@ -448,6 +483,30 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                 + "; ".join(parts)
                 + "."
             )
+
+    # RELATIVE SCALE. Two characters in one frame have a height relationship, and
+    # nothing in the matrix could state it: every entity was described alone, so the
+    # model made both men the same height (or reversed them) and the drift was
+    # invisible until somebody who knows them said "he is much shorter than that."
+    # Same reasoning as the v0.9 setting scalePlate: a dimension nothing depicts
+    # cannot be judged. Emitted only when two or more in-frame characters actually
+    # declare a relation to each other, so a solo spread is unchanged.
+    scale_lines = []
+    for cid in char_invsets:
+        rel = ((char_scales.get(cid) or {}).get("relativeTo") or {})
+        for other, phrase in rel.items():
+            if other in char_invsets:
+                scale_lines.append(f"{cid} is {phrase} {other}")
+    heights = [f"{cid} is {(char_scales[cid] or {}).get('height')}"
+               for cid in char_invsets
+               if (char_scales.get(cid) or {}).get("height")]
+    scale_block = None
+    if scale_lines:
+        scale_block = (
+            "RELATIVE SCALE, hold it exactly: "
+            + "; ".join(scale_lines)
+            + ((". " + "; ".join(heights) + ".") if len(heights) >= 2 else ".")
+        )
 
     # Negatives: universe rejectedPoles + book-wide unconditional negatives, then
     # GUARDED negatives — a blanket negative (e.g. "no facial hair") is emitted
@@ -494,6 +553,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             ("SCENE: " + scene) if scene else "",
             *ent_blocks,
             disambig or "",
+            scale_block or "",
             sp.get("extra", ""),  # authored per-spread instruction (e.g. bake a title glyph); DATA, not improvisation
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
