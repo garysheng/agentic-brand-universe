@@ -164,6 +164,14 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # silently produced a parallel structure the render gate never reads, so a
         # locked setting still failed assert_story with no error. Fixed 2026-07-25.
         c = entity.setdefault("contract", {})
+        # A setting needs BOTH: `contract` is the render GATE's checklist
+        # (refs.resolve_setting) and `structured.sheets` is the RENDERER's
+        # selector, which picks a plate by key per spread. Writing only one of
+        # them leaves the entity half-usable: contract-only passes assert-story
+        # and then crashes the compiler on KeyError 'structured' (hit live on
+        # encounter-school, 2026-07-25), and sheets-only was the original bug.
+        st = entity.setdefault("structured", {})
+        st.setdefault("sheets", {})[shot] = path
         slot = {"scale-plate": "scalePlate"}.get(shot, shot)
         if slot in ("turnaround", "blueprint", "scalePlate"):
             c[slot] = path

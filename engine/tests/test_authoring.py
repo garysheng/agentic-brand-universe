@@ -30,7 +30,9 @@ class TestLockShotSettingContract(unittest.TestCase):
         e = _setting()
         lock_shot(e, "turnaround", "reference/a-school/turnaround.png")
         self.assertEqual(e["contract"]["turnaround"], "reference/a-school/turnaround.png")
-        self.assertNotIn("sheets", e.get("structured", {}))
+        self.assertEqual(e["structured"]["sheets"]["turnaround"],
+                         "reference/a-school/turnaround.png",
+                         "the renderer selects plates by sheet key, so a setting needs both")
 
     def test_unnamed_shots_accumulate_as_empty_plates(self):
         e = _setting()
@@ -73,6 +75,14 @@ class TestLockShotSettingContract(unittest.TestCase):
             lock_shot(e, shot, p)
         self.assertEqual(e["status"], "unlocked",
                          "prose descriptors are part of the contract, not decoration")
+
+    def test_empty_plates_are_also_addressable_as_sheets(self):
+        """The compiler picks a plate by key; the gate counts them in emptyPlates."""
+        e = _setting()
+        lock_shot(e, "empty-a2-classroom", "reference/a-school/a2.png")
+        self.assertIn("reference/a-school/a2.png", e["contract"]["emptyPlates"])
+        self.assertEqual(e["structured"]["sheets"]["empty-a2-classroom"],
+                         "reference/a-school/a2.png")
 
     def test_visual_metaphor_uses_the_contract_too(self):
         e = _setting()
