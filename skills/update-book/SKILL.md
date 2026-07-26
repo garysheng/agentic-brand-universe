@@ -18,6 +18,12 @@ For changing a book that already exists: words blessed, art on disk, usually alr
 2. **Apply the structural edit.**
    - **Add/insert:** draft the new beat(s) in the book's own voice, at the strongest thematic insert point (an appended-at-the-end placement is rarely the right one; confirm with the author if it's an authorial call). Renumber beats at and after the insert point.
    - **Revise:** edit the beat's text and/or its cast/location in place. No renumber needed.
+     **A reader who does not understand a beat is a DEFECT IN THE BEAT, not in the reader**, and that is true even when the
+     reader is the author. When the confusion lands on a beat carrying the property's own thesis, fix it by giving the reader
+     the mechanism rather than by withholding it for a later payoff: state what the thing IS, then point at what it could
+     become. A spine-object introduced with no help and no payoff for fifteen spreads is asking the reader to hold an
+     unexplained image on trust. Check whether the ART is doing its job before touching it: a caption-only fix is common here
+     and is far cheaper than a re-render.
    - **Remove:** delete the beat and renumber everything after it down by one.
    In every case, verify the beat numbering stays contiguous `1..LAST` afterward, across the manuscript, the asset manifest, and any narration index.
 
@@ -31,12 +37,28 @@ For changing a book that already exists: words blessed, art on disk, usually alr
 
 5. **Leave untouched spreads alone.** A renumber may shift a file's name, but a spread whose text and art are unchanged does not get regenerated, re-read-back, or re-narrated: minimal-regeneration is the point of this skill over re-running `render-book` on the whole story.
 
-6. **Verify + deliver.** Confirm the beat/spread numbering is contiguous everywhere it's tracked, re-stamp `identity.mark`/`identity.closingOrnament` on the closing plate if the edit touched it, and hand off to whatever delivery step the target renderer/platform uses. If the book ships to a shared platform, verify sibling properties on that platform are unaffected by the edit before calling it done.
+6. **Redelivery of an ALREADY-PUBLISHED book: re-stage the art even when no art changed.**
+   This is the single most expensive trap in this skill and it costs real money every time. A publish step that uploads to
+   remote storage typically **PRUNES the local copies afterwards**, because the bucket is their home. So an already-shipped
+   book has NO local interiors and NO local audio. If you then regenerate one narration clip for a caption-only edit and run
+   publish, three things happen in order: the art check fails (there are no staged interiors), the run reports that it shipped
+   NOTHING, and **the prune runs anyway and deletes the clip you just paid to generate**. You are left worse off than before
+   you started, with a confusing success-shaped message.
+
+   The rule: **for ANY redelivery of a published book, re-stage the full art set FIRST, then regenerate the touched narration,
+   then publish.** Staging is free and deterministic; the clip is not. Keep the book's render output (or its staging input) on
+   disk permanently for exactly this reason, and never treat "the book is published" as "the local build is disposable".
+
+   If the platform's publish step prunes on a run that shipped nothing, that is a bug in the publish step worth fixing at the
+   source: a run that publishes nothing should prune nothing.
+
+7. **Verify + deliver.** Confirm the beat/spread numbering is contiguous everywhere it's tracked, re-stamp `identity.mark`/`identity.closingOrnament` on the closing plate if the edit touched it, and hand off to whatever delivery step the target renderer/platform uses. If the book ships to a shared platform, verify sibling properties on that platform are unaffected by the edit before calling it done.
 
 ## Gates honored
 - **Words-before-art + voice-gate:** any changed text is blessed and voice-clean before its art or narration regenerates.
 - **Canon-resolve before every regenerated prompt.**
 - **Read-back after every regenerated render:** any DEFECT regenerates from scratch.
+- **Re-stage before redelivery:** an already-published book has no local assets; stage the art before regenerating narration, or the publish prune eats the new clip.
 - **Minimal-regeneration:** only the touched spreads (and their downstream narration) regenerate; everything else stays as-is.
 - **Subject-approval:** a real person's confusion-flags and likeness approval on a revised beat count the same as the author's.
 

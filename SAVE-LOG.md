@@ -277,3 +277,26 @@ Engine 61 -> 69 tests. Caught while doing this: eight tests written pytest-style
 `engine/tests/` were never collected, because `run-tests.sh` drives the engine with
 `unittest discover`. The file's own docstring warns about that trap. Converted to TestCases,
 which is when they first actually ran.
+
+## 2026-07-26 — update-book learns the redelivery trap and the reader-confusion rule
+
+Both earned live, redelivering a caption-only fix to a published 36-spread book.
+
+**The redelivery trap, and it destroys paid work.** A publish step that uploads to
+remote storage prunes the local copies afterwards, so an already-shipped book has no
+local interiors and no local audio. Regenerating one narration clip and re-running
+publish therefore fails the art check, reports that it shipped NOTHING, and prunes
+anyway, deleting the clip that was just paid for. The rule is now in the skill: for
+ANY redelivery of a published book, re-stage the full art set FIRST, then regenerate
+the touched narration, then publish. Staging is free and deterministic; the clip is
+not. Noted there too that a publish run which ships nothing should prune nothing,
+which is a bug worth fixing at the publish source.
+
+**A reader who does not understand a beat is a defect in the beat**, including when
+the reader is the author. Recorded on the revise branch, with the fix pattern that
+worked: when the confusion lands on the beat carrying the property's thesis, give the
+reader the mechanism instead of withholding it for a later payoff, and check whether
+the ART is already doing its job, because a caption-only fix is common and far cheaper
+than a re-render.
+
+Plugin 0.17.2 -> 0.17.3.
