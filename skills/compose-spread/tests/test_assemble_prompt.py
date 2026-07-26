@@ -106,6 +106,17 @@ def build_universe(root: Path):
         "id": "home", "kind": "setting", "status": "locked",
         "contract": {"dressing": "warm test kitchen"},
     }))
+    # A PROP with more than one sheet: the case a motif/prop could not express before
+    # (it could only ever be passed its requiredForRender default).
+    for p in ["tome/shut", "tome/open"]:
+        png(root / "reference" / (p + ".png"))
+    (root / "canon" / "entities" / "tome.json").write_text(json.dumps({
+        "id": "tome", "kind": "prop", "status": "locked",
+        "structured": {"sheets": {"shut": "reference/tome/shut.png",
+                                  "open": "reference/tome/open.png"},
+                       "requiredForRender": ["shut"]},
+        "prose": {"rules": "a plain blue book, shut on the table"},
+    }))
 
 
 def write_spec(root: Path, cast, **extra):
@@ -463,6 +474,46 @@ class TestPromotedGuards(unittest.TestCase):
                             "scene": "a sign reads 'welcome' while stache waits by the door"}])
         self.assertIn("UNCAST CHARACTERS", err)
         self.assertIn("stache", err)
+
+    # --- promoted from the nation-of-fire fork 2026-07-25 (measured: 325 uses) ------
+
+    def test_prop_can_select_a_non_default_sheet(self):
+        """A prop that is sometimes open and sometimes shut needs to say which."""
+        out = self.out([{"id": "s1", "scene": "the book lies open",
+                         "cast": [{"id": "tome", "plate": "open"}]}])
+        joined = " ".join(out["refs"])
+        self.assertIn("reference/tome/open.png", joined)
+        self.assertNotIn("reference/tome/shut.png", joined)
+
+    def test_prop_without_a_plate_still_uses_its_locked_default(self):
+        out = self.out([{"id": "s1", "scene": "the book lies there",
+                         "cast": [{"id": "tome"}]}])
+        self.assertIn("reference/tome/shut.png", " ".join(out["refs"]))
+
+    def test_bake_replaces_a_cast_entrys_derived_block(self):
+        """Load-bearing for a multi-state metaphor: the derived block describes EVERY
+        state, so handing it over whole makes the model draw all of them at once."""
+        out = self.out([{"id": "s1", "scene": "the book lies open",
+                         "cast": [{"id": "tome", "plate": "open",
+                                   "bake": "ONLY the open state, nothing else"}]}])
+        self.assertIn("ONLY the open state, nothing else", out["prompt"])
+        self.assertNotIn("shut on the table", out["prompt"])
+
+    def test_setting_rule_appends_without_editing_canon(self):
+        """The same room reads colder in a cancellation beat than in a homecoming."""
+        out = self.out([{"id": "s1", "setting": "home", "plate": "kitchen",
+                         "scene": "a cold morning", "cast": []}],
+                       settingRule={"home": "TODAY IT IS COLD AND UNLIT."})
+        self.assertIn("warm test kitchen", out["prompt"])
+        self.assertIn("TODAY IT IS COLD AND UNLIT.", out["prompt"])
+
+    def test_setting_rule_is_overridable_per_spread(self):
+        out = self.out([{"id": "s1", "setting": "home", "plate": "kitchen",
+                         "scene": "a warm evening", "cast": [],
+                         "settingRule": {"home": "TONIGHT IT GLOWS."}}],
+                       settingRule={"home": "TODAY IT IS COLD."})
+        self.assertIn("TONIGHT IT GLOWS.", out["prompt"])
+        self.assertNotIn("TODAY IT IS COLD.", out["prompt"])
 
     def test_uncast_does_not_flag_a_setting(self):
         """`home` is a setting, not a character: naming it is never a missing person."""

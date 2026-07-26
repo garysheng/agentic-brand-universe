@@ -86,7 +86,7 @@ SINGLE_IMAGE_GUARD = (
 # of these compiles byte-identically to before.
 _SPREAD_OVERRIDES = (
     "style", "negatives", "guardedNegatives", "anchorRef",
-    "allowMultiPanel", "allowUncast", "size",
+    "allowMultiPanel", "allowUncast", "size", "settingRule",
 )
 
 
@@ -292,12 +292,29 @@ def resolve_character(ent: dict, look: str | None):
     return refs, inv
 
 
+def resolve_plate(ent: dict, plate: str | None) -> list[str]:
+    """Resolve ONE named plate/sheet for a non-character entity.
+
+    Prefer the entity's own `structured.sheets` map, which is where every locked
+    entity actually records its files, and fall back to the reference/<id>/<plate>.png
+    convention for entities that predate the map. Promoted 2026-07-25: a motif or prop
+    could previously only ever be passed its requiredForRender default, so a book with
+    a multi-sheet prop (a book that is sometimes open and sometimes closed, a lamp that
+    is lit and unlit) had no way to ask for the right one. 100 such selections were
+    already in use in nation-of-fire, expressed only in its local fork.
+    """
+    if not plate:
+        return []
+    sheets = (ent.get("structured") or {}).get("sheets") or {}
+    p = sheets.get(plate)
+    if p:
+        return [p]
+    return [f"reference/{ent['id']}/{plate}.png"]
+
+
 def resolve_setting(ent: dict, plate: str | None):
-    """Return (ref_paths, block). Plate files follow reference/<id>/<plate>.png;
-    the description comes from the setting's contract.dressing."""
-    refs: list[str] = []
-    if plate:
-        refs.append(f"reference/{ent['id']}/{plate}.png")
+    """Return (ref_paths, block). The description comes from contract.dressing."""
+    refs = resolve_plate(ent, plate)
     con = ent.get("contract", {})
     block = None
     if con.get("dressing"):
@@ -343,12 +360,45 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     if sp.get("setting"):
         entries.append({"id": sp["setting"], "plate": sp.get("plate")})
 
+    # A book may append EXTRA prose to one entity's block without editing canon: the
+    # same room legitimately reads colder in a cancellation beat than in a homecoming.
+    # Promoted 2026-07-25 (44 uses in nation-of-fire, fork-only until now). Per-spread
+    # override is allowed via _SPREAD_OVERRIDES.
+    setting_rule = eff.get("settingRule") or {}
+
+    def entity_block(cid: str, derived: str | None, bake: str | None) -> str | None:
+        """A cast entry's `bake` REPLACES the derived block; settingRule APPENDS to it.
+
+        Replacement is load-bearing for a multi-state visual-metaphor: the derived block
+        describes EVERY state the entity documents, so handing it to the model whole makes
+        it draw all of them at once (a chart of variations instead of one scene). 181 such
+        overrides were already in use in nation-of-fire, expressed only in its local fork.
+        """
+        out = bake if bake else derived
+        rule = setting_rule.get(cid)
+        if rule:
+            out = f"{out} {rule}" if out else rule
+        return out
+
     for c in entries:
         ent = load(uroot / "canon" / "entities" / f"{c['id']}.json")
         kind = ent.get("kind")
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"))
             add_refs(r)
+            block = entity_block(c["id"], block, c.get("bake"))
+            if block:
+                ent_blocks.append(block)
+            continue
+        if kind not in ("character",):
+            # motif / prop: honour an explicit plate, else its locked default refs.
+            r = resolve_plate(ent, c.get("plate"))
+            if not r:
+                r, _inv = resolve_character(ent, c.get("look"))
+            add_refs(r)
+            derived = ((ent.get("prose") or {}).get("rules")
+                       or ((ent.get("structured") or {}).get("render") or {}).get("bake"))
+            block = entity_block(c["id"], derived, c.get("bake"))
             if block:
                 ent_blocks.append(block)
             continue
@@ -368,12 +418,15 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         )
         add_refs([sheets_map[k] for k in pose_sheets
                   if sheets_map.get(k) and k not in look_dropped])
-        ent_blocks.append(
+        derived = (
             f"{c['id']} rendered exactly per the supplied reference images: "
             + "; ".join(deslug(i) for i in inv)
             + "."
             + (f" {render_prose}" if render_prose else "")
         )
+        block = entity_block(c["id"], derived, c.get("bake"))
+        if block:
+            ent_blocks.append(block)
         qa += [f"{c['id']}: {i}" for i in inv]
         char_invsets[c["id"]] = inv
 
