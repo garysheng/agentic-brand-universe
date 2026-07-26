@@ -99,6 +99,14 @@ class CanonStore:
                     problems.append(f"relation references unknown id '{side}' ({r.rel})")
         for s in self.stories.values():
             problems += s.validate()
+            # SPEC §"Story status": the features/beats/provenance requirements apply
+            # only to a `full` story. A `stub` is a registered placeholder, and the
+            # whole point of it is to let a story be authored (or its roster row
+            # reserved) BEFORE the entities its beats cast exist. StorySpec.validate
+            # already honors this; the features-vs-canon check lives out here because
+            # it needs the store, so it has to honor it too or the exemption is dead.
+            if s.status == "stub":
+                continue
             for fid in s.features:
                 if fid not in known:
                     problems.append(f"story '{s.id}' features unknown entity '{fid}'")
