@@ -328,3 +328,24 @@ sibling had already shipped 0.18.0, which is a downgrade the installed cache sil
 ignores. A long session is exactly when a sibling ships a release.
 
 Plugin 0.18.1 -> 0.18.2.
+
+## 2026-07-26 — lock-shot filed setting scale plates as EMPTY plates (plugin 0.18.1)
+
+Found live while shooting four settings for Everything He Touched. `lock_shot`'s
+setting branch aliased only `scale-plate` to `contract.scalePlate`, so a shot named
+`scale` fell through to the catch-all and was appended to `emptyPlates`.
+
+Two failures, and the quiet one is the serious one. Loudly: `contract.scalePlate` stayed
+null, so the contract could never be satisfied, the setting stayed `unlocked` forever, and
+`assert-story` refused every render with a message that listed the contract fields without
+naming which one was actually missing. Quietly: EMPTY PLATES EXIST SO A REFERENCE NEVER
+BAKES A PERSON INTO A ROOM, and a SCALE PLATE CONTAINS FIGURES BY DESIGN. The engine was
+filing person-bearing plates into the people-free slot, and nothing anywhere would have
+complained.
+
+Fix is deliberately narrow: the alias map now accepts `scale`, `scale-plate`, `scaleplate`
+and `scalePlate`. The catch-all fallback stays permissive ON PURPOSE. A survey of the
+nation-of-fire canon before touching anything found emptyPlate basenames including master,
+reverse, side, the-floor, s0-prudent, w1 and w2: arbitrary plate names are canonical in this
+framework, so tightening the fallback to reject unknown names would have broken dozens of
+existing entities to fix four. Engine 69 -> 76 tests.

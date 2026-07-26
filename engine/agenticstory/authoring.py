@@ -218,7 +218,19 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # encounter-school, 2026-07-25), and sheets-only was the original bug.
         st = entity.setdefault("structured", {})
         st.setdefault("sheets", {})[shot] = path
-        slot = {"scale-plate": "scalePlate"}.get(shot, shot)
+        # Route the scale plate to its own contract field. The alias map used to know
+        # only "scale-plate", so a shot named "scale" fell through to the emptyPlates
+        # branch: it left contract.scalePlate null (so the contract could NEVER be
+        # satisfied and the setting stayed `unlocked` forever, refusing every render
+        # with a message that did not name the real cause) AND it filed the scale plate
+        # among the empty plates. That second half is the dangerous one, because a
+        # scale plate CONTAINS FIGURES by design while empty plates exist precisely so
+        # a reference never bakes a person into a room. Found live on four settings,
+        # 2026-07-26. The fallback stays permissive on purpose: plate names across this
+        # framework are legitimately arbitrary (master, reverse, s0-prudent, w1,
+        # the-floor), so only the scale aliases are special-cased.
+        slot = {"scale-plate": "scalePlate", "scale": "scalePlate",
+                "scaleplate": "scalePlate", "scalePlate": "scalePlate"}.get(shot, shot)
         if slot in ("turnaround", "blueprint", "scalePlate"):
             c[slot] = path
         else:

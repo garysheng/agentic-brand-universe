@@ -266,3 +266,48 @@ class RequiredSetOverrideTest(unittest.TestCase):
             lock_shot(ent, shot, f"reference/c/{shot}.png")
         self.assertEqual(set(ent["structured"]["requiredForRender"]),
                          {"face-neutral", "face-3q", "forward-fullbody"})
+
+
+class ScalePlateRoutingTest(unittest.TestCase):
+    """A setting's scale plate must reach contract.scalePlate, never emptyPlates.
+
+    The alias map knew only "scale-plate", so a shot named "scale" fell through to
+    the emptyPlates branch. Two consequences, found live on four settings 2026-07-26:
+    contract.scalePlate stayed null so the contract could never be satisfied and the
+    setting stayed `unlocked`, refusing every render; and a plate that CONTAINS
+    FIGURES was filed among the people-free empty plates.
+    """
+
+    def _setting(self):
+        from agenticstory.authoring import scaffold_entity
+        e = scaffold_entity("setting", "room", "Room")
+        e["contract"].update({"map": "m", "blocking": "b", "dressing": "d", "scale": "s"})
+        return e
+
+    def test_scale_routes_to_scale_plate_not_empty_plates(self):
+        from agenticstory.authoring import lock_shot
+        e = lock_shot(self._setting(), "scale", "reference/room/scale.png")
+        self.assertEqual(e["contract"]["scalePlate"], "reference/room/scale.png")
+        self.assertNotIn("reference/room/scale.png", e["contract"]["emptyPlates"])
+
+    def test_scale_plate_alias_still_routes(self):
+        from agenticstory.authoring import lock_shot
+        e = lock_shot(self._setting(), "scale-plate", "reference/room/scale.png")
+        self.assertEqual(e["contract"]["scalePlate"], "reference/room/scale.png")
+
+    def test_arbitrary_plate_names_still_reach_empty_plates(self):
+        from agenticstory.authoring import lock_shot
+        e = self._setting()
+        for shot in ("master", "reverse", "s0-prudent", "w1", "the-floor"):
+            lock_shot(e, shot, f"reference/room/{shot}.png")
+        self.assertEqual(len(e["contract"]["emptyPlates"]), 5)
+
+    def test_a_setting_locks_once_every_contract_field_is_filled(self):
+        from agenticstory.authoring import lock_shot
+        e = self._setting()
+        lock_shot(e, "turnaround", "reference/room/turnaround.png")
+        lock_shot(e, "blueprint", "reference/room/blueprint.png")
+        lock_shot(e, "empty-c1", "reference/room/empty-c1.png")
+        self.assertEqual(e["status"], "unlocked")   # scalePlate still missing
+        lock_shot(e, "scale", "reference/room/scale.png")
+        self.assertEqual(e["status"], "locked")
