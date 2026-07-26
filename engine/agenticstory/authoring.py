@@ -164,6 +164,19 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
     # placeholder approver. Caught twice in one session (2026-07-25), the second time on a
     # motif created that same hour by the person who had just fixed the first one. Stamp
     # the date, which is always knowable, and say something loud about the name, which is not.
+    # VALIDATE BEFORE MUTATING ANYTHING. The authority stamp below is a mutation, so
+    # doing it first meant a REFUSED lock still moved `lockedOn` and printed an
+    # approver warning for an operation that never happened.
+    if look is not None:
+        _looks = (entity.get("structured") or {}).get("altLooks") or {}
+        if look not in _looks:
+            raise ValueError(
+                f"{entity.get('id')} has no altLook {look!r}. Author the look first "
+                f"(add-character step 4b); creating it here would let a typo mint a "
+                f"look that nothing selects and no read-back ever checks. "
+                f"Known looks: {sorted(_looks) or 'none'}"
+            )
+
     au = entity.setdefault("authority", {})
     if not au.get("lockedOn"):
         au["lockedOn"] = _dt.date.today().isoformat()
@@ -180,15 +193,7 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
     # `requiredForRender`: that is the DEFAULT look's gate, and an era look must
     # never be able to satisfy or break it.
     if look is not None:
-        st = entity.setdefault("structured", {})
-        looks = st.setdefault("altLooks", {})
-        if look not in looks:
-            raise ValueError(
-                f"{entity.get('id')} has no altLook {look!r}. Author the look first "
-                f"(add-character step 4b); creating it here would let a typo mint a "
-                f"look that nothing selects and no read-back ever checks. "
-                f"Known looks: {sorted(looks) or 'none'}"
-            )
+        looks = entity["structured"]["altLooks"]
         looks[look].setdefault("sheets", {})[shot] = path
         if recipe is not None:
             abspath = (str(pathlib.Path(root) / path)

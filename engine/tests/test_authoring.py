@@ -170,6 +170,16 @@ class TestLockShotIntoAnAltLook(unittest.TestCase):
         self.assertIn("era-2031", str(cm.exception))
         self.assertIn("era-2030", str(cm.exception))
 
+    def test_a_refused_lock_does_not_mutate_the_entity(self):
+        """Validation runs before the authority stamp, so a rejected lock leaves no
+        trace. Otherwise a typo'd look key still moved authority.lockedOn and warned
+        about an approver for an operation that never happened."""
+        e = self._char()
+        with self.assertRaises(ValueError):
+            lock_shot(e, "forward-fullbody", "reference/beef/x.png", look="era-2031")
+        self.assertNotIn("authority", e)
+        self.assertNotIn("sheets", e["structured"]["altLooks"]["era-2030"])
+
     def test_default_path_is_unchanged_when_no_look_is_passed(self):
         e = self._char()
         lock_shot(e, "forward-fullbody", "reference/beef/forward-fullbody.png")
