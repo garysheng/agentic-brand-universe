@@ -376,3 +376,16 @@ spread 1 in some books.
 The check deliberately does NOT say which side is right. Whether the prose gained a beat the
 spec should adopt, or the spec has one the prose correctly dropped, is an authoring decision.
 9 new tests.
+
+## 2026-07-26 — the five drifts reconciled; closing plates were the whole story
+
+All five manuscript/spec drifts the new check surfaced turned out to be one shape, not five
+independent authoring mistakes. Each spec's final beat was a refrain plate or a closing plate,
+which is art plus a single line and no prose, so whoever wrote the manuscript stopped at the
+last prose spread and never recorded it. The spec was right in every case and the manuscript
+was incomplete in every case, so the plates were appended using each manuscript's own marker
+convention and the spec's own text. Zero drift errors remain.
+
+Written into the lint-universe SKILL.md as the first thing to check, because a reader seeing
+"48 spreads vs 49 beats" will naturally hunt for a dropped beat in the middle and the answer
+is almost always at the end.
