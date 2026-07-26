@@ -106,22 +106,35 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
         rows.append({"role": role, "path": str(path) if path else None,
                      "ok": bool(ok), "note": note})
 
-    # 1. front cover: an endcap, so portrait
-    # NAMING DRIFT, found 2026-07-26. This looked ONLY for "spread-00-cover" and
-    # "spread-<N+1>", and no shipped Nation of Fire book uses either name: they ship
-    # `cover.png` and `plate-0.png`. So this tool reported two false "missing" rows on
-    # every real book, and far worse, it SILENTLY SKIPPED the aspect check on the very
-    # asset it was written to police. kingdom-property shipped its closing plate at
-    # 0.667 instead of 3:4 and graded clean, which is exactly the defect in this file's
-    # own docstring. Accept both conventions; prefer the canonical name when present.
-    cover = _find(book, "spread-00-cover") or _find(book, "cover")
+    # 1. front cover: an endcap, so portrait.
+    #
+    # TWO NAMING CONVENTIONS, and the difference decides which aspect rule applies
+    # (corrected 2026-07-26 after an earlier patch here got it wrong).
+    #
+    #   COMPOSER names  cover-0.png / plate-0.png      pre-conform, native portrait
+    #   STAGED names    spread-00-cover / spread-<N+1>  post-conform, exact 3:4
+    #
+    # A composer-emitted endcap is legitimately 1024x1536 (0.667): `stage-book-assets.py`
+    # owns the aspect contract and pads it to 3:4 by edge replication on the way to webp.
+    # So demanding exact 3:4 of a COMPOSER-named file is a FALSE POSITIVE, and an earlier
+    # version of this comment wrongly accused a shipped book of a defect it never had.
+    # What IS a real defect at composer stage is a LANDSCAPE endcap, because padding
+    # cannot rescue that: the reader would crop it. So enforce PORTRAIT there, and exact
+    # 3:4 only once the name says the conform has already happened.
+    cover, cover_staged = _find(book, "spread-00-cover"), True
     if cover is None:
-        row("front cover", None, False, "missing (looked for spread-00-cover and cover)")
+        cover, cover_staged = _find(book, "cover-0") or _find(book, "cover"), False
+    if cover is None:
+        row("front cover", None, False,
+            "missing (looked for spread-00-cover, cover-0, cover)")
     else:
         s = _size(cover)
-        row("front cover", cover, _aspect_ok(s, cover_aspect),
-            "" if _aspect_ok(s, cover_aspect)
-            else f"aspect {round(s[0]/s[1], 2) if s else '?'} (want {cover_aspect})")
+        if cover_staged:
+            ok, want = _aspect_ok(s, cover_aspect), f"want {cover_aspect}"
+        else:
+            ok, want = (bool(s) and s[0] < s[1]), "want PORTRAIT (staging pads it to 3:4)"
+        row("front cover", cover, ok,
+            "" if ok else f"aspect {round(s[0]/s[1], 2) if s else '?'} ({want})")
 
     # 2. every declared interior exists, at interior aspect
     for sid in declared:
@@ -141,14 +154,20 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
         except ValueError:
             last = len(declared)
         plate_id = f"spread-{last + 1:02d}"
-        plate = _find(book, plate_id) or _find(book, "plate-0")
+        plate, plate_staged = _find(book, plate_id), True
         if plate is None:
-            row("closing plate (back cover)", None, False, f"missing {plate_id} (or plate-0)")
+            plate, plate_staged = _find(book, "plate-0"), False
+        if plate is None:
+            row("closing plate (back cover)", None, False,
+                f"missing {plate_id} (or plate-0)")
         else:
             s = _size(plate)
-            ok = _aspect_ok(s, cover_aspect)
+            if plate_staged:
+                ok, want = _aspect_ok(s, cover_aspect), f"want {cover_aspect}"
+            else:
+                ok, want = (bool(s) and s[0] < s[1]), "want PORTRAIT (staging pads it to 3:4)"
             row("closing plate (back cover)", plate, ok, "" if ok
-                else f"aspect {round(s[0]/s[1], 2) if s else '?'} (want {cover_aspect}); "
+                else f"aspect {round(s[0]/s[1], 2) if s else '?'} ({want}); "
                      "the closing plate is an ENDCAP, not an interior")
 
     # 4. provenance: every rendered asset carries its recipe
