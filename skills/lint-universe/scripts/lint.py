@@ -327,8 +327,18 @@ def lint(root):
                 ap = ip if pathlib.Path(ip).is_absolute() else str(root/ip)
                 now = _sha16(ap)
                 if now is None:
+                    # An input that no longer RESOLVES is usually a rename or an archive move,
+                    # not drift, and the fix is NOT to rewrite the recipe: a provenance record
+                    # states what was actually passed at generation time, so editing it to match
+                    # a later move falsifies the approval. (Nation of Fire's own canon says
+                    # exactly this after the apostle-lee folder rename.) Say so, or this warning
+                    # quietly advises people to launder their own history.
                     warn("GOLDEN-INPUT-GONE", f"{ej.name}: golden '{name}' was approved against "
-                         f"input '{ip}', which no longer resolves.")
+                         f"input '{ip}', which no longer resolves, so no divergence check can run "
+                         f"for it. Usually a rename or an archive move. Do NOT edit the recipe to "
+                         f"match the new path: provenance records what was passed at approval "
+                         f"time, and rewriting it falsifies the approval. Either leave it as "
+                         f"history, or re-lock the golden with `--recipe` against today's inputs.")
                 elif now != want:
                     warn("GOLDEN-STALE", f"{ej.name}: golden '{name}' was approved when input '{ip}' "
                          f"had bytes {want}; it is now {now}. The approval was of a different input; "
