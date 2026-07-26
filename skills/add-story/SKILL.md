@@ -13,7 +13,26 @@ One story, into a universe's canon, as a typed `StorySpec` written directly to `
 
 ## Procedure
 
-1. **Interview (one question at a time).**
+1. **Interview with `AskUserQuestion`, never as a wall of prose.**
+
+   **Do the reading FIRST.** Read the source material, sweep canon, and count the movements before asking anything. The tool is for handing the author a small number of real decisions with the work already done, not for making them fill in a form.
+
+   **Batch the four recurring decisions into ONE call.** These come up on every story and each one changes the work materially:
+
+   | Question | Why it must be asked |
+   |---|---|
+   | **Spine object / title** | Usually latent in the source's own words. Offer 2-3 candidates. |
+   | **Beat-count target** | See the scale section below: a silently-invented number lands at drafting fatigue, not where the argument ends. |
+   | **How much lives in the declared future** | 30 beats of problem and 1 of promise has hedged by proportion. |
+   | **How far forward the future goes** | One life, one household, one town, or generations. |
+
+   **`preview` is not optional on these.** Every one is a concrete artifact: put a candidate title beside the source quote it came from, and draw the beat budget as a movement-by-movement breakdown. A label makes the author imagine the option; a preview lets them see it.
+
+   **Lead with a recommendation, first in the list, marked "(Recommended)".** You did the reading; give a real one, not a survey.
+
+   **Do NOT ask what you can decide.** Register defaults to the universe's `identity.register`: state the default and move on. Same for anything findable in canon.
+
+   What the answers must cover, however you get there:
    - **Logline.** One sentence: what this story is about.
    - **Spine.** The story's declared arc invariant, drawn from an open set (`obedient-servant`, `thesis`, `primer`, `testimony`, or a new value if none fits). Never assume hero-journey by default: an explainer is a `primer`, a property built around one object's argued states is a `thesis`. Ask which shape this actually is.
    - **Refrain.** The one line the whole property returns to or proves.
@@ -42,7 +61,7 @@ One story, into a universe's canon, as a typed `StorySpec` written directly to `
 
 **There is no default length, and inventing a small one silently is the most common authoring failure.** A beat sheet written without a declared target lands around fifteen to twenty beats because that is where drafting fatigue sits, not because the argument ended. Shipped books in these universes range from about thirteen beats to well over thirty, and the long ones are long because the material earned it.
 
-**ASK THE AUTHOR FOR THE TARGET, or state the one you are assuming and why.** Never just start writing and stop when you feel done. Anchor the number to the work the story has to do:
+**ASK THE AUTHOR FOR THE TARGET WITH `AskUserQuestion`, or state the one you are assuming and why.** Give each option a `preview` showing the movement-by-movement budget behind its number, so the author compares shapes rather than integers. Never just start writing and stop when you feel done. Anchor the number to the work the story has to do:
 
 - **Count the movements first.** A thesis has to establish the sincere status quo, name the mechanism, prove it with a case, answer the obvious objection, and build the alternative. Five movements at four to six beats each is already twenty-five to thirty, before any scripture or inset.
 - **Weigh the halves.** Add up the beats spent diagnosing versus the beats spent on the answer. If diagnosis outweighs the answer by more than about two to one, the story is an indictment wearing a thesis costume. Rebalance before rendering, not after.
@@ -64,7 +83,7 @@ So when a story declares a future:
 - **Render it in present tense, resolved, and inhabited.** People in it, doing ordinary things, unhurried. Not a symbol of a future, the future.
 - **Do not caption it as hope.** If the universe abolished the hedge, the proportions have to obey the amendment too, not only the wording.
 
-When in doubt, ask the author how far forward the story goes and how much of the book lives there. That is a story-shaping decision and it is theirs, not yours.
+When in doubt, ask the author (via `AskUserQuestion`, with a `preview` sketching each option's future act) how far forward the story goes and how much of the book lives there. That is a story-shaping decision and it is theirs, not yours.
 
 ## Gates honored
 - **Reuse-first casting sweep** (step 3): never invent an entity a story's beats could cast from existing canon.
