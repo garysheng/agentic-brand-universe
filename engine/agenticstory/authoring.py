@@ -3,7 +3,7 @@
 The `add-*` skills call this so authoring is tested machinery, not hand-written
 JSON. A scaffolded entity validates green immediately with lock_level == "stub":
 its reference-matrix slots are null and requiredForRender is empty until the art
-step (lock-references) fills paths and promotes the required set.
+step (shoot-references) fills paths and promotes the required set.
 """
 from __future__ import annotations
 
@@ -108,7 +108,7 @@ def scaffold_entity(
         m = matrix_for(kind)
         shots = m["shots"] if m else ["hero"]
         ent["structured"] = {
-            "sheets": {s: None for s in shots},   # null slots -> filled by lock-references
+            "sheets": {s: None for s in shots},   # null slots -> filled by shoot-references
             "requiredForRender": [],               # promoted to the matrix required set on lock
             "invariants": [],
         }
@@ -246,3 +246,51 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         recipe_sidecar_path(abspath).write_text(
             json.dumps(freeze_recipe(path, recipe, root=root), indent=2, sort_keys=True) + "\n")
     return entity
+
+
+def prompts_skeleton(entity: dict, register: dict | None = None) -> str:
+    """The `reference/<id>/prompts.md` skeleton for a freshly scaffolded entity.
+
+    Every `add-*` skill promises "ready-to-run generation prompts", and
+    `shoot-references` reads this file as its input, but nothing wrote it: the
+    step between scaffolding and shooting was hand-rolled in every universe.
+    This emits the STRUCTURE (one section per matrix slot, the register-anchor
+    preamble, the output path) and leaves the prose body to the author, because
+    the engine can know which shots exist and cannot know what they depict.
+    """
+    eid, kind = entity["id"], entity.get("kind")
+    register = register or {}
+    anchor = register.get("anchor")
+    poles = register.get("rejectedPoles") or []
+    name = register.get("name") or "the universe register"
+
+    out = [f"# {eid} — generation prompts", ""]
+    if anchor:
+        out.append(f"Register anchor (`{anchor}`) is passed FIRST as the style anchor on every "
+                   f"shot. {name}" + (f"; never {', '.join(poles)}." if poles else "."))
+    else:
+        out.append("STOP: this universe has no `identity.register.anchor`. Lock the register "
+                   "before shooting anything, or every shot will be off-style.")
+    out += ["", "TODO(author): replace each body below. A prompt must (a) lead with the register "
+            "anchor, (b) bake the rejected poles as negatives, (c) state the invariants that must "
+            "not drift, and (d) contain no legible text unless the design calls for it.", ""]
+
+    if kind in ("setting", "visual-metaphor"):
+        slots = ["turnaround", "blueprint", "empty-c1", "scale"]
+        out.append("Lock `turnaround` and `blueprint` FIRST, then chain each empty plate off them "
+                   "so the geometry cannot drift between cameras. Add one `empty-<c>` section per "
+                   "fixed camera. Empty plates carry NO people; `scale` is the same room with "
+                   "anonymous figures for size.")
+        out.append("")
+    else:
+        m = matrix_for(kind)
+        slots = list((m or {}).get("shots") or entity.get("structured", {}).get("sheets", {}).keys())
+        required = list((m or {}).get("required") or [])
+        if required:
+            out.append(f"REQUIRED before any render: {', '.join(f'`{s}`' for s in required)}. "
+                       f"Shoot those first, then chain the rest off them so identity holds.")
+            out.append("")
+
+    for s in slots:
+        out += [f"## {s}  -> reference/{eid}/{s}.png", "TODO(author): the prompt for this shot.", ""]
+    return "\n".join(out)

@@ -178,6 +178,38 @@ def lint(root):
                          f"and/or keepPhotos if this is a declared-future or prophetic look "
                          f"whose face is continuous; otherwise give it an anchorPhoto.")
 
+    # ---- an entity that is NOT the default avatar must not be cast casually
+    #
+    # A universe can hold two entities for the SAME person: an allegorical avatar used
+    # everywhere, and a literal one that exists for a single book where the real people
+    # appear as themselves. Nothing stopped a story casting the literal one because its
+    # beat text said the person's name, which is exactly when the avatar is wanted. Cost
+    # seven rendered spreads on He Was Always Speaking (2026-07-26) before the operator
+    # caught it by eye. An entity opts in by setting `renderDefault: false` and naming
+    # its `preferredAlias`.
+    if ents_dir.exists():
+        nondefault = {}
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("renderDefault") is False:
+                nondefault[e.get("id", ef.stem)] = e.get("preferredAlias")
+        stories_dir = root/"stories"
+        if nondefault and stories_dir.exists():
+            for sf in sorted(stories_dir.glob("*.json")):
+                st = jload(sf) or {}
+                cast = set(st.get("features") or [])
+                for b in st.get("beats") or []:
+                    # a beat's `characters` is a list of ids in most stories and a list of
+                    # {id: ...} objects in others; accept both rather than crash the linter.
+                    for c in b.get("characters") or []:
+                        cast.add(c.get("id") if isinstance(c, dict) else c)
+                for eid, alias in nondefault.items():
+                    if eid in cast and st.get("id") != (jload(ents_dir/f"{eid}.json") or {}).get("originStory"):
+                        warn("ENTITY-NOT-DEFAULT-AVATAR",
+                             f"{sf.stem}: casts '{eid}', which is marked renderDefault:false. "
+                             f"Use '{alias}' instead unless this story is the specific one that "
+                             f"entity exists for.")
+
     # ---- the spec pin
     #
     # A universe declares the spec version it conforms to. Nothing checked that the

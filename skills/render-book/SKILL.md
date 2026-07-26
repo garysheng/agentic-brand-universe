@@ -36,7 +36,7 @@ Turn a validated `StorySpec` into an illustrated, narrated picture book. This sk
 
 ## Not this skill
 - Authoring a new entity named in a beat → the matching `add-*` skill.
-- Locking an entity's reference matrix → `lock-references`.
+- Locking an entity's reference matrix → `shoot-references`.
 - Rendering the cover → `cover`.
 - Editing an already-built book → `update-book`.
 - Shipping the finished book to a shared platform → the platform-delivery skill (deferred).

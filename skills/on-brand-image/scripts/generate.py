@@ -9,10 +9,10 @@ the gap where candidate renders (everything before a lock) had no provenance.
 
 On success it writes, beside the output, `<output>.recipe.json`:
   { provider, model, prompt, specVersion, stylePack?, refs:[{path}], timestamp, sha256 }
-This is the SAME recipe shape `lock-references` freezes and `compose` emits, so a
+This is the SAME recipe shape `shoot-references` freezes and `compose` emits, so a
 generated candidate is already lock-ready and `lint-universe`-auditable.
 
-Skills (on-brand-image, lock-references, compose) call THIS, never the raw model
+Skills (on-brand-image, shoot-references, compose) call THIS, never the raw model
 script. Providers today: gpt-image-2 (chatgpt-images), nano-banana-pro.
 
 Usage:

@@ -20,7 +20,7 @@ Hand-rolling **once, consciously, to keep momentum** is fine — the framework i
 ## When to invoke
 
 - Gary is frustrated that a repeated manual action should be a tool ("why are we hand-rolling this", "update the templates/skills", "we know better", "fix the generator").
-- You just wrote a bespoke script that duplicates or should live in the framework (e.g. a universe-local `gen.py` that re-implements `on-brand-image` + `lock-references` provenance).
+- You just wrote a bespoke script that duplicates or should live in the framework (e.g. a universe-local `gen.py` that re-implements `on-brand-image` + `shoot-references` provenance).
 - A needed primitive does not exist yet (observed gaps: **no `create-style-pack` scaffolder** — `pack.json` + `refs/` is hand-made; a look with no Style Pack; provenance saved by memory rather than at lock).
 - The framework's own update process changed (then this skill updates itself — see step 8).
 
@@ -39,7 +39,7 @@ Hand-rolling **once, consciously, to keep momentum** is fine — the framework i
    - *A skill is missing or wrong* → add/edit `agenticstory/skills/<name>/SKILL.md` (+ `scripts/`). New skill: match the frontmatter shape (`name` + a dense `description` with trigger phrases), keep it universe-agnostic (takes a target universe/pack; hardcodes nothing).
    - *The engine is missing a capability* → `agenticstory/engine/agenticstory/` (+ a test in `engine/tests/`). Run `./run-tests.sh`; stay green.
    - *A contract/invariant changed* → `SPEC.md` (this is what forces a **spec** version bump and updates `conformsTo` strings).
-   - *A new scaffolder/template is missing* (e.g. `create-style-pack`) → it is a skill; author it so it emits the same shape the consumers expect (read `on-brand-image`'s `pack.json` fields; read `lock-references`'s `recipe.json`).
+   - *A new scaffolder/template is missing* (e.g. `create-style-pack`) → it is a skill; author it so it emits the same shape the consumers expect (read `on-brand-image`'s `pack.json` fields; read `shoot-references`'s `recipe.json`).
 3. **Register the skill** in the plugin manifest `description` catalog (`.claude-plugin/plugin.json`) if you added one, so it is discoverable.
 4. **Bump the version(s):**
    - Plugin: `.claude-plugin/plugin.json` `version` — patch for a fix/new-skill, minor for a spec/contract change.

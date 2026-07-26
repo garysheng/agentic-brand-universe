@@ -14,5 +14,5 @@ The quality gate that catches a defective render before it ships or locks. A ren
 4. **Act on the result.** All PASS: the render is accepted. Any DEFECT: regenerate the image FROM SCRATCH with the defect named as an explicit negative. Never stack an edit pass on a defective render (it compounds artifacts).
 
 ## Not this skill
-- Generating the image (that is the caller, e.g. `lock-references` or a renderer).
-- Locking the passed shot into canon (that is `lock-references` / the renderer).
+- Generating the image (that is the caller, e.g. `shoot-references` or a renderer).
+- Locking the passed shot into canon (that is `shoot-references` / the renderer).

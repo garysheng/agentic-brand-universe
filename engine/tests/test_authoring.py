@@ -191,3 +191,29 @@ class TestLockShotIntoAnAltLook(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_prompts_skeleton_has_a_section_per_matrix_slot():
+    from agenticstory.authoring import scaffold_entity, prompts_skeleton
+    ent = scaffold_entity("character", "jo-tester", "Jo Tester")
+    md = prompts_skeleton(ent, {"anchor": "reference/style/hero.png",
+                                "name": "soft painterly storybook realism",
+                                "rejectedPoles": ["photoreal", "anime"]})
+    for shot in ent["structured"]["sheets"]:
+        assert f"## {shot}  -> reference/jo-tester/{shot}.png" in md
+    assert "reference/style/hero.png" in md          # anchor is passed first
+    assert "photoreal, anime" in md                  # rejected poles are stated
+    assert "REQUIRED before any render" in md        # the gate is named up front
+
+
+def test_prompts_skeleton_refuses_when_the_register_is_unlocked():
+    from agenticstory.authoring import scaffold_entity, prompts_skeleton
+    md = prompts_skeleton(scaffold_entity("prop", "thing", "Thing"), {"anchor": None})
+    assert "STOP" in md
+
+
+def test_prompts_skeleton_uses_contract_slots_for_a_setting():
+    from agenticstory.authoring import scaffold_entity, prompts_skeleton
+    md = prompts_skeleton(scaffold_entity("setting", "room", "Room"), {"anchor": "a.png"})
+    for slot in ("turnaround", "blueprint", "empty-c1", "scale"):
+        assert f"## {slot}  -> reference/room/{slot}.png" in md

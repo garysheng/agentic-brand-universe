@@ -9,7 +9,7 @@ One image, in a known look, gated. This is the framework's **lightweight front d
 **Style Pack** (SPEC §4.7), not a universe, because "generate more images in this style" has no
 recurring-identity requirement and therefore needs no canon.
 
-Reach for the full canon flow (`add-*` + `lock-references`) only when a *specific thing must render
+Reach for the full canon flow (`add-*` + `shoot-references`) only when a *specific thing must render
 identically everywhere*. If the subject changes every time and only the *look* is shared, you are in
 the right skill.
 
@@ -42,7 +42,7 @@ the right skill.
    for this look (split it, or it belongs on a diagram instead).
 4. **Generate via the framework provider adapter** `scripts/generate.py` — NEVER the raw model script.
    It generates AND writes `<output>.recipe.json` (provider, prompt, specVersion, refs, sha256) in the
-   same shape `lock-references` freezes, so **every candidate is provenanced at birth**, not only at
+   same shape `shoot-references` freezes, so **every candidate is provenanced at birth**, not only at
    lock. Pass the selected references in order (anchor first) plus `--style-pack <pack-id>`. Provenance
    is a side effect of generating here; there is no un-provenanced image.
 5. **Read back against the gate (mandatory).** Open the output and check EACH `pack.gate` assertion
@@ -89,7 +89,7 @@ A universe binds a lookbook everywhere via a `craft-canon` register-rule that na
 ## Not this skill
 
 - A recurring element that must be identical across many images → `add-motif` / `add-prop` /
-  `add-character`, then `lock-references`. Pass the resulting locked master back into THIS skill as an
+  `add-character`, then `shoot-references`. Pass the resulting locked master back into THIS skill as an
   extra input.
 - A full book spread with characters, poses, and a setting → `compose-spread`.
 - Standing up a new look from scratch, or a universe → `start-new-story-universe`.

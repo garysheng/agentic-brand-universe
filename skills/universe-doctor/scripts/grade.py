@@ -84,10 +84,10 @@ def grade_universe(udir):
             if frac < 1.0:
                 skill = {"character": "add-character", "setting": "add-setting",
                          "visual-metaphor": "add-visual-metaphor", "motif": "add-motif",
-                         "prop": "add-prop"}.get(e["kind"], "lock-references")
+                         "prop": "add-prop"}.get(e["kind"], "shoot-references")
                 issues.append((round(25 / len(renderable) * (1 - frac)) + 1, "entities",
                                f"{e['id']} ({e['kind']}) matrix {int(frac*100)}% filled: {gaps}",
-                               "lock-references" if frac > 0 else skill))
+                               "shoot-references" if frac > 0 else skill))
         scores["entities"] = round(25 * sum(fracs) / len(fracs))
 
     # 4) SETTING SIZE (v0.9) --------------------------------------------------

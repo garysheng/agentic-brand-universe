@@ -35,5 +35,5 @@ One typed relation, into a universe's canon graph, as a record written directly 
 
 ## Not this skill
 - Creating either side of the relation: the matching `add-*` skill (`add-character`, `add-setting`, `add-visual-metaphor`, `add-motif`, `add-prop`, `add-story`).
-- Generating or locking reference art: `lock-references`.
+- Generating or locking reference art: `shoot-references`.
 - Rendering a story into a medium: the renderer.

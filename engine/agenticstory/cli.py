@@ -169,7 +169,18 @@ def main(argv: list[str] | None = None) -> int:
         dest = uni / "canon" / "entities" / f"{args.eid}.json"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(ent, indent=2) + "\n")
-        (uni / "reference" / args.eid).mkdir(parents=True, exist_ok=True)
+        refdir = uni / "reference" / args.eid
+        refdir.mkdir(parents=True, exist_ok=True)
+        # Emit the prompts.md skeleton shoot-references reads. Never clobber an
+        # existing one: re-scaffolding must not destroy authored prompts.
+        promptsp = refdir / "prompts.md"
+        if not promptsp.exists():
+            from .authoring import prompts_skeleton
+            try:
+                ident = json.loads((uni / "universe.json").read_text()).get("identity", {})
+            except Exception:
+                ident = {}
+            promptsp.write_text(prompts_skeleton(ent, ident.get("register")))
         if args.photo:
             (uni / "reference" / args.eid / "photos").mkdir(parents=True, exist_ok=True)
         store = CanonStore(uni)

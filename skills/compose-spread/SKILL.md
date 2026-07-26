@@ -132,7 +132,7 @@ bread, and it argued the wrong thing for that beat.
 ## Not this skill
 - Authoring/altering an entity or adding an alt-look → the `add-*` skills (an alt-look is `structured.altLooks.<key>` with `anchorPhoto`, `supersedes`, `invariants`, and the two suppression fields below). A **declared-future/prophetic** look additionally sets `keepSheets`/`keepPhotos` (SPEC v0.10): its face is continuous and the future has no photograph, so without a kept face source only the superseded body sheets reach the model. The assembler refuses that rather than render a stranger.
 - Stating how tall one character is beside another → `structured.scale` on each entity (SPEC v0.10). The assembler emits a `RELATIVE SCALE` line automatically when two in-frame characters declare a relation; never write heights into a spread's `scene`.
-- Locking a reference matrix → `lock-references`.
+- Locking a reference matrix → `shoot-references`.
 - The cover (portrait + baked title) → `cover` (may share the assembler).
 - Whole-book orchestration (worktrees, manuscript gate, delivery) → `render-book`; editing a shipped book → `update-book`. Both invoke THIS skill for the per-spread step.
 

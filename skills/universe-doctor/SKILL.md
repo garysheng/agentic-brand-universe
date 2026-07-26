@@ -42,13 +42,13 @@ Grade: A ≥90, B ≥80, C ≥70, D ≥60, F <60.
    generation, no cost). It prints the letter grade, the per-dimension bars, and the punch-list.
 
 2. **Read the punch-list top-down.** It is already sorted by impact (points recoverable). Each
-   line names the fix and the framework verb that delivers it (`add-story`, `lock-references`,
+   line names the fix and the framework verb that delivers it (`add-story`, `shoot-references`,
    `add-setting`, `create-lookbook`, `on-brand-image`, …).
 
 3. **Work the issues with the RIGHT verb — never hand-roll a fix.** For each item, invoke the
    named skill against this universe. Common closers:
-   - matrix `X% filled` on a scaffolded entity → **`lock-references`** (generate + read-back + lock its remaining slots).
-   - a renderable entity that doesn't exist yet → **`add-character` / `add-setting` / `add-visual-metaphor` / `add-motif` / `add-prop`**, then `lock-references`.
+   - matrix `X% filled` on a scaffolded entity → **`shoot-references`** (generate + read-back + lock its remaining slots).
+   - a renderable entity that doesn't exist yet → **`add-character` / `add-setting` / `add-visual-metaphor` / `add-motif` / `add-prop`**, then `shoot-references`.
    - a setting that "cannot prove its size" → **`add-setting`** (fill `scalePlate` + `scale`).
    - "no stories" → **`add-story`**.
    - "no craft-canon" → **`create-lookbook`** (+ a register-rule) or author a spine/genre record.

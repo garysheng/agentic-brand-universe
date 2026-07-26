@@ -5,7 +5,7 @@ description: Add ONE story to an Agentic Story universe as a typed StorySpec (a 
 
 # Add Story
 
-One story, into a universe's canon, as a typed `StorySpec` written directly to `stories/<id>.json`. This is authoring, not art and not `add-entity` (a story is a composition over canon, not a canon entity itself). It ends with a validated record; the picture-book renderer projects it into a medium later, and `lock-references` still owns any new entity's art.
+One story, into a universe's canon, as a typed `StorySpec` written directly to `stories/<id>.json`. This is authoring, not art and not `add-entity` (a story is a composition over canon, not a canon entity itself). It ends with a validated record; the picture-book renderer projects it into a medium later, and `shoot-references` still owns any new entity's art.
 
 ## Inputs
 - The target universe (a path containing `universe.json`). Read its `identity` (mark, register, voice) and existing `canon/entities/` + `stories/`.
@@ -70,10 +70,10 @@ When in doubt, ask the author how far forward the story goes and how much of the
 - **Reuse-first casting sweep** (step 3): never invent an entity a story's beats could cast from existing canon.
 - **Provenance**: every beat in a `full` story cites a real source; unsourced vivid detail is flagged before it ships.
 - **Spine not assumed**: every story declares its own arc invariant instead of inheriting a single hero-journey default.
-- **No art here**: art generation is `lock-references`; medium projection is the renderer. This skill only writes the composition.
+- **No art here**: art generation is `shoot-references`; medium projection is the renderer. This skill only writes the composition.
 
 ## Not this skill
 - Creating a canon entity named in a beat → the matching sibling `add-*` skill.
-- Generating or locking any entity's reference art → `lock-references`.
+- Generating or locking any entity's reference art → `shoot-references`.
 - Rendering the story into a medium (a picture book, etc.) → the renderer.
 - Recording a typed relationship between two ids (e.g. `appears-in` this story) → `add-relation`.

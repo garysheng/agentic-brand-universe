@@ -8,7 +8,7 @@ The load-bearing behaviours, in order of how badly each one bit us for real:
   3. the seed is chosen KIND-AWARELY (most-geometry-first), one meta-process
      for characters, settings, props, motifs and visual-metaphors alike
 
-Run:  python3 -m unittest discover -s tests -v   (from the lock-references skill dir)
+Run:  python3 -m unittest discover -s tests -v   (from the shoot-references skill dir)
 """
 import json
 import subprocess

@@ -30,7 +30,7 @@ Framework-shaped work is anything about **how** universes are built, not **what*
 | a look reused across images | `create-style-pack` | a loose `refs/` with no manifest or gate |
 | a family that must vary (wardrobe, faces, homes) | `create-lookbook` + a `craft-canon` register-rule | hand-listing clothing refs per render |
 | one image in a known look | `on-brand-image` (via the provider adapter) | a bespoke `gen.py` / raw model call |
-| locking an entity's reference matrix | `lock-references` | copying files and "remembering" provenance |
+| locking an entity's reference matrix | `shoot-references` | copying files and "remembering" provenance |
 | a setting that must prove its size | `add-setting` with a `scalePlate` + `scale` descriptor (SPEC §12, v0.9) | an empty plate the model silently mis-sizes |
 | a book / spread | `render-book` / `compose-spread` | assembling prompts by hand |
 | anti-drift checks | `canon-resolve`, `render-readback`, `casting-sweep`, `voice-gate` | eyeballing it |

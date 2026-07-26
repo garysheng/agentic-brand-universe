@@ -1,11 +1,13 @@
 ---
-name: lock-references
-description: Generate and lock an entity's reference matrix in an Agentic Story universe. For each unlocked or DEFECT matrix slot, generate the shot from the entity's `reference/<id>/prompts.md` (passing `identity.register.anchor` first, plus the photo stack for a real person and any already-locked shots for identity consistency), read it back against the entity's invariants, and lock passers via `agenticstory lock-shot`. Idempotent. Real-person entities stay subject-approval gated after art. Use after `add-*` has scaffolded an entity, to give it its art.
+name: shoot-references
+description: SHOOT an entity's reference matrix in an Agentic Story universe: make the art that gives a scaffolded entity a body. For each empty or DEFECT matrix slot it GENERATES the shot from the entity's `reference/<id>/prompts.md` (passing `identity.register.anchor` first, plus the photo stack for a real person and any already-shot slots for identity consistency), reads it back against the entity's invariants, and locks the passers with provenance via `agenticstory lock-shot`. Locking is the last of the three steps, not the point of them. Idempotent, so re-runs only shoot what is still missing. Use after `add-character`/`add-setting`/`add-prop`/`add-motif`/`add-visual-metaphor` has scaffolded an entity and you want to SEE it: "shoot the references", "make the art for X", "generate X's sheets", "give X its body", "lock X's matrix", "X is still unlocked". Renamed from `lock-references` on 2026-07-26 because that named the bookkeeping instead of the work.
 ---
 
-# Lock References
+# Shoot References
 
-Turn a scaffolded entity's null matrix slots into locked reference shots. This is the art step: `add-character` (and siblings) leave an entity at `lock_level: stub` with a `prompts.md`; this skill generates, reads back, and locks until the entity is `locked` (or at least `partial`, once its required shots pass).
+Turn a scaffolded entity's empty matrix slots into locked reference shots. This is the ART step, and it does three things in order: **shoot, read back, lock.** `add-character` (and siblings) leave an entity at `lock_level: stub` with a `prompts.md` and no pictures; this skill gives it a body, then locks what passes, until the entity is `locked` (or at least `partial`, once its required shots pass).
+
+> **Why the name changed (2026-07-26).** This was `lock-references`, which named only the third step. Agents reaching for "make the art for this character" did not find it, because locking sounds like a metadata operation on art that already exists. The unit the engine works in is already a **shot** (`agenticstory lock-shot`), and the production verb for making shots is **shoot**. Old references to `lock-references` in shipped universe files are historical and were deliberately left alone.
 
 ## Inputs
 - The target universe (a path with `universe.json`) and the entity id.
