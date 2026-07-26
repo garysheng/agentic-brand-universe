@@ -1,0 +1,104 @@
+"""lock_shot must write a shot into the schema its KIND actually uses.
+
+Regression, found live on encounter-school in nation-of-fire 2026-07-25: lock_shot
+wrote every kind into `structured.sheets`, but settings and visual-metaphors are
+matrixed via their `contract` (see matrix.py and refs.resolve_setting). So a setting
+could be "locked" shot by shot, print success each time, and still be refused by
+assert_story because contract.turnaround stayed null. A silent wrong-schema write is
+worse than a crash: nothing in the pipeline reports it.
+
+NOTE: these are unittest TestCases on purpose. run-tests.sh drives the engine with
+`unittest discover`, which does not collect bare pytest-style functions, so a
+pytest-shaped test here would "pass" by never running at all.
+"""
+import unittest
+
+from agenticstory.authoring import lock_shot
+
+
+def _setting():
+    return {
+        "id": "a-school", "kind": "setting", "status": "unlocked",
+        "contract": {"turnaround": None, "emptyPlates": [], "blueprint": None,
+                     "scalePlate": None, "map": "m", "blocking": "b",
+                     "dressing": "d", "scale": "s"},
+    }
+
+
+class TestLockShotSettingContract(unittest.TestCase):
+    def test_named_slots_land_in_the_contract(self):
+        e = _setting()
+        lock_shot(e, "turnaround", "reference/a-school/turnaround.png")
+        self.assertEqual(e["contract"]["turnaround"], "reference/a-school/turnaround.png")
+        self.assertNotIn("sheets", e.get("structured", {}))
+
+    def test_unnamed_shots_accumulate_as_empty_plates(self):
+        e = _setting()
+        lock_shot(e, "empty-a1-yard", "reference/a-school/a1.png")
+        lock_shot(e, "empty-a2-room", "reference/a-school/a2.png")
+        self.assertEqual(e["contract"]["emptyPlates"],
+                         ["reference/a-school/a1.png", "reference/a-school/a2.png"])
+
+    def test_relocking_a_plate_does_not_duplicate_it(self):
+        e = _setting()
+        lock_shot(e, "empty-a1-yard", "reference/a-school/a1.png")
+        lock_shot(e, "empty-a1-yard", "reference/a-school/a1.png")
+        self.assertEqual(len(e["contract"]["emptyPlates"]), 1)
+
+    def test_scale_plate_alias_maps_to_scalePlate(self):
+        e = _setting()
+        lock_shot(e, "scale-plate", "reference/a-school/scale.png")
+        self.assertEqual(e["contract"]["scalePlate"], "reference/a-school/scale.png")
+
+    def test_partial_art_never_opens_the_gate(self):
+        e = _setting()
+        lock_shot(e, "turnaround", "reference/a-school/turnaround.png")
+        lock_shot(e, "empty-a1-yard", "reference/a-school/a1.png")
+        self.assertEqual(e["status"], "unlocked")
+
+    def test_a_complete_contract_promotes_the_setting(self):
+        e = _setting()
+        lock_shot(e, "turnaround", "reference/a-school/turnaround.png")
+        lock_shot(e, "empty-a1-yard", "reference/a-school/a1.png")
+        lock_shot(e, "blueprint", "reference/a-school/blueprint.png")
+        self.assertEqual(e["status"], "unlocked", "scalePlate still missing")
+        lock_shot(e, "scale-plate", "reference/a-school/scale.png")
+        self.assertEqual(e["status"], "locked")
+
+    def test_a_missing_descriptor_still_blocks_promotion(self):
+        e = _setting()
+        e["contract"]["dressing"] = ""
+        for shot, p in (("turnaround", "t.png"), ("empty-a1", "a1.png"),
+                        ("blueprint", "b.png"), ("scale-plate", "s.png")):
+            lock_shot(e, shot, p)
+        self.assertEqual(e["status"], "unlocked",
+                         "prose descriptors are part of the contract, not decoration")
+
+    def test_visual_metaphor_uses_the_contract_too(self):
+        e = _setting()
+        e["kind"] = "visual-metaphor"
+        lock_shot(e, "turnaround", "reference/a-school/turnaround.png")
+        self.assertEqual(e["contract"]["turnaround"], "reference/a-school/turnaround.png")
+
+
+class TestLockShotMatrixedKinds(unittest.TestCase):
+    def test_motif_still_uses_sheets_and_promotes_required(self):
+        e = {"id": "a-motif", "kind": "motif",
+             "structured": {"sheets": {}, "requiredForRender": []}}
+        lock_shot(e, "hero", "reference/a-motif/hero.png")
+        self.assertEqual(e["structured"]["sheets"]["hero"], "reference/a-motif/hero.png")
+        self.assertEqual(e["structured"]["requiredForRender"], ["hero"])
+        self.assertNotIn("contract", e)
+
+    def test_character_required_set_waits_for_both_shots(self):
+        e = {"id": "a-person", "kind": "character",
+             "structured": {"sheets": {}, "requiredForRender": []}}
+        lock_shot(e, "face-neutral", "reference/a-person/face-neutral.png")
+        self.assertEqual(e["structured"]["requiredForRender"], ["face-neutral"])
+        lock_shot(e, "forward-fullbody", "reference/a-person/forward-fullbody.png")
+        self.assertEqual(sorted(e["structured"]["requiredForRender"]),
+                         ["face-neutral", "forward-fullbody"])
+
+
+if __name__ == "__main__":
+    unittest.main()

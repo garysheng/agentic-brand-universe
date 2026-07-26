@@ -12,6 +12,7 @@ import json
 import pathlib
 
 from .matrix import matrix_for
+from .model import SETTING_CONTRACT_FIELDS
 
 
 def _digest(path) -> str | None:
@@ -143,7 +144,8 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
               root=None) -> dict:
     """Lock a generated reference shot into an entity (mutates + returns it).
 
-    Sets `structured.sheets[shot] = path` and recomputes `requiredForRender` to the
+    For sheet-matrixed kinds (character/prop/motif) this sets
+    `structured.sheets[shot] = path` and recomputes `requiredForRender` to the
     kind's matrix-required shots that now have a path. This keeps `validate` green at
     every step (a required key always resolves) and promotes the entity to gate-real
     only once its required shots are locked. Non-matrixed kinds keep any existing
@@ -155,13 +157,36 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
     locked without a recipe is still a valid golden, but it is un-auditable: no
     divergence check can ever run against it, which `lint-universe` flags.
     """
-    st = entity.setdefault("structured", {})
-    sheets = st.setdefault("sheets", {})
-    sheets[shot] = path
-    m = matrix_for(entity.get("kind", ""))
-    if m:
-        required = m.get("required", [])
-        st["requiredForRender"] = [k for k in required if sheets.get(k)]
+    kind = entity.get("kind", "")
+    if kind in ("setting", "visual-metaphor"):
+        # Settings/visual-metaphors are matrixed via their `contract`, NOT sheet keys
+        # (see matrix.py and refs.resolve_setting). Writing them into structured.sheets
+        # silently produced a parallel structure the render gate never reads, so a
+        # locked setting still failed assert_story with no error. Fixed 2026-07-25.
+        c = entity.setdefault("contract", {})
+        slot = {"scale-plate": "scalePlate"}.get(shot, shot)
+        if slot in ("turnaround", "blueprint", "scalePlate"):
+            c[slot] = path
+        else:
+            plates = c.setdefault("emptyPlates", [])
+            if path not in plates:
+                plates.append(path)
+        # Promote to locked only when the WHOLE contract is satisfied, mirroring how
+        # requiredForRender is recomputed for sheet-matrixed kinds. Partial art must
+        # never open the gate.
+        if all(
+            (c.get(f) not in (None, "")) and not (f == "emptyPlates" and not c.get(f))
+            for f in SETTING_CONTRACT_FIELDS
+        ):
+            entity["status"] = "locked"
+    else:
+        st = entity.setdefault("structured", {})
+        sheets = st.setdefault("sheets", {})
+        sheets[shot] = path
+        m = matrix_for(kind)
+        if m:
+            required = m.get("required", [])
+            st["requiredForRender"] = [k for k in required if sheets.get(k)]
     if recipe is not None:
         abspath = str(pathlib.Path(root) / path) if root and not pathlib.Path(path).is_absolute() else path
         recipe_sidecar_path(abspath).write_text(
