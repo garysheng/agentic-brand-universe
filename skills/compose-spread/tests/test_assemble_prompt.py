@@ -445,6 +445,25 @@ class TestPromotedGuards(unittest.TestCase):
                          "cast": [{"id": "clean"}], "allowUncast": True}])
         self.assertIn("SCENE:", out["prompt"])
 
+    def test_uncast_does_not_flag_a_name_that_is_designed_text(self):
+        """A name in QUOTED lettering is a thing to render, not a body to draw.
+
+        Earned on nation-of-fire/the-higher-law: a book cover reading
+        'APOSTLE DELMAR COWARD JR.' AND 'GARY SHENG' tripped the guard and demanded
+        two characters be cast who are not in the scene at all, and the tempting
+        move was the allowUncast escape hatch.
+        """
+        out = self.out([{"id": "s1", "cast": [{"id": "clean"}],
+                         "scene": "clean holds a book whose cover reads 'stache' in gold capitals"}])
+        self.assertIn("SCENE:", out["prompt"])
+
+    def test_uncast_still_flags_an_unquoted_mention_next_to_designed_text(self):
+        """The quote-stripping must not blind the guard to a real body in frame."""
+        err = self.refuse([{"id": "s1", "cast": [{"id": "clean"}],
+                            "scene": "a sign reads 'welcome' while stache waits by the door"}])
+        self.assertIn("UNCAST CHARACTERS", err)
+        self.assertIn("stache", err)
+
     def test_uncast_does_not_flag_a_setting(self):
         """`home` is a setting, not a character: naming it is never a missing person."""
         out = self.out([{"id": "s1", "setting": "home", "plate": "kitchen",

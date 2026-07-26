@@ -119,6 +119,14 @@ def uncast_characters(uroot: Path, scene: str, cast_ids: set[str]) -> list[tuple
     if not ents.is_dir():
         return []
     low = (scene or "").lower()
+    # DESIGNED TEXT IS NOT A PERSON IN FRAME (earned on nation-of-fire/the-higher-law, 2026-07-25).
+    # In-art text is first-class (a cover title, signage, a plaque) and the spec convention is that
+    # the exact string is QUOTED in the scene. A book cover reading 'APOSTLE DELMAR COWARD JR.' AND
+    # 'GARY SHENG' therefore tripped this guard and demanded two characters be cast who are not in
+    # the scene at all, and the tempting move was the --allow-uncast escape hatch. Inside quotes is
+    # lettering to render, never a body to draw.
+    low = re.sub(r"'[^']*'", " ", low)
+    low = re.sub(r'"[^"]*"', " ", low)
 
     # A name token already ACCOUNTED FOR by something cast is not a missing character.
     # Ids of the form `<role>-of-<x>` all share one head token, so a scene that casts
