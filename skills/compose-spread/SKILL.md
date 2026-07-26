@@ -134,3 +134,11 @@ bread, and it argued the wrong thing for that beat.
 - Locking a reference matrix → `lock-references`.
 - The cover (portrait + baked title) → `cover` (may share the assembler).
 - Whole-book orchestration (worktrees, manuscript gate, delivery) → `render-book`; editing a shipped book → `update-book`. Both invoke THIS skill for the per-spread step.
+
+## Reading material faces the reader, never the camera
+
+A book, notebook, page, ledger, letter or document that a character is reading or writing belongs to THEM, so it is oriented for them: top edge away from them, text running the direction they read, and therefore foreshortened, tilted or partly upside down from the camera. Image models default to squaring the page up to the lens so the viewer can read it, because that is what stock illustration does, and the result reads as staged the instant you notice it. If the camera cannot see the page clearly, that is correct.
+
+Bake this as a book-level negative rather than hoping per spread. It recurs on every spread with a desk, a Bible, a report card or a ledger, and it is invisible in a thumbnail and obvious at full size (caught by Gary on `it-was-not-broken` spread 36, 2026-07-25: "you continuously flip the book").
+
+The one exception is a page the scene explicitly presents TO the viewer as a designed element under CANON rule 6, which is a deliberate composition and not a character reading.

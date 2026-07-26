@@ -156,6 +156,50 @@ def lint(root):
         n = len(p.get("refs", []))
         if n < 3: warn("PACK-THIN", f"{pj}: {n} ref(s); the spec expects 3 to 8")
 
+    # ---- castability: a character the renderer cannot cast
+    #
+    # An entity can be fully locked, fully art-approved, pass `validate` AND pass
+    # `assert-story`, and still be impossible to put in a picture, because the render
+    # compiler reads `structured.render.always` and `structured.render.poses[<pose>]`
+    # while every gate above reads sheets and files. Nothing reported the gap: it
+    # surfaced as a hard KeyError at cast time, after the story was written and the
+    # spec was built. Hit at least three times in nation-of-fire (the-arena, then
+    # russ-vibes-apostle and nas, then the-chairman + chief-of-toil + the-battle-axe-girls
+    # on It Was Not Broken, 2026-07-25). Static, free, and catches the whole class.
+    for ej in (root/"canon"/"entities").glob("*.json"):
+        e = jload(ej)
+        if not e or e.get("kind") not in ("character", "group"): continue
+        if (e.get("structured") or {}).get("sheets") is None: continue   # not yet scaffolded for art
+        render = ((e.get("structured") or {}).get("render") or {})
+        poses = render.get("poses") or {}
+        if not render.get("always") and not poses:
+            err("CAST-UNRENDERABLE",
+                f"{ej.name}: kind '{e.get('kind')}' has no structured.render block, so the render "
+                f"compiler cannot cast it at all. Add render.always plus at least one pose, "
+                f"restating rules the entity already carries; invent no new design.")
+            continue
+        if not poses:
+            err("CAST-NO-POSES",
+                f"{ej.name}: has structured.render.always but no poses, so no spread can select "
+                f"a look for it. Add at least one pose.")
+        # A pose names sheet KEYS; a key with no path is a hard exit at render time.
+        sheets = (e.get("structured") or {}).get("sheets") or {}
+        for pname, pose in poses.items():
+            if not isinstance(pose, dict):
+                err("CAST-POSE-SHAPE",
+                    f"{ej.name}: pose '{pname}' is a {type(pose).__name__}, not an object. A pose is "
+                    f"{{'sheets': [...], 'bake': '...'}}; a bare string is silently unusable.")
+                continue
+            for key in pose.get("sheets", []):
+                if key not in sheets:
+                    err("CAST-POSE-SHEET-MISSING",
+                        f"{ej.name}: pose '{pname}' names sheet key '{key}' which is not in "
+                        f"structured.sheets. The compiler hard-exits on this.")
+                elif not sheets.get(key):
+                    warn("CAST-POSE-SHEET-NULL",
+                         f"{ej.name}: pose '{pname}' names sheet key '{key}' whose path is null; "
+                         f"the pose is unusable until that shot locks.")
+
     # ---- goldens declared by entities
     #
     # A golden is Gary's approved answer of record: the human-blessed output the whole
