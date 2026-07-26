@@ -107,9 +107,16 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
                      "ok": bool(ok), "note": note})
 
     # 1. front cover: an endcap, so portrait
-    cover = _find(book, "spread-00-cover")
+    # NAMING DRIFT, found 2026-07-26. This looked ONLY for "spread-00-cover" and
+    # "spread-<N+1>", and no shipped Nation of Fire book uses either name: they ship
+    # `cover.png` and `plate-0.png`. So this tool reported two false "missing" rows on
+    # every real book, and far worse, it SILENTLY SKIPPED the aspect check on the very
+    # asset it was written to police. kingdom-property shipped its closing plate at
+    # 0.667 instead of 3:4 and graded clean, which is exactly the defect in this file's
+    # own docstring. Accept both conventions; prefer the canonical name when present.
+    cover = _find(book, "spread-00-cover") or _find(book, "cover")
     if cover is None:
-        row("front cover", None, False, "missing")
+        row("front cover", None, False, "missing (looked for spread-00-cover and cover)")
     else:
         s = _size(cover)
         row("front cover", cover, _aspect_ok(s, cover_aspect),
@@ -134,9 +141,9 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
         except ValueError:
             last = len(declared)
         plate_id = f"spread-{last + 1:02d}"
-        plate = _find(book, plate_id)
+        plate = _find(book, plate_id) or _find(book, "plate-0")
         if plate is None:
-            row("closing plate (back cover)", None, False, f"missing {plate_id}")
+            row("closing plate (back cover)", None, False, f"missing {plate_id} (or plate-0)")
         else:
             s = _size(plate)
             ok = _aspect_ok(s, cover_aspect)
