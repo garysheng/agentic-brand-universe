@@ -87,9 +87,10 @@ def main():
     ap.add_argument("--timeout", type=float, default=0.0)
     # Longest edge a reference is uploaded at. A reference carries a LOOK, not detail:
     # nothing about a style anchor survives past ~1024px that changes the render. Uploading
-    # masters instead is pure cost, and it is not a small one. A 6-reference call against
-    # full-size 1536x1024 PNG spreads ships ~14MB per request; three of those in flight
-    # wedged an 18-plate batch for 25 minutes with zero completions.
+    # masters instead is pure cost, and not a small one: a 6-reference call against full-size
+    # 1536x1024 PNG spreads ships ~14MB per request, versus 1.2MB downscaled.
+    # This is a throughput/cost knob. It is NOT the fix for renders that hang with no error;
+    # that is a stale openai SDK in the uv cache, and generate_image.py pins a floor for it.
     # Set 0 to disable and upload references untouched.
     ap.add_argument("--ref-max-edge", type=int, default=1024)
     a = ap.parse_args()

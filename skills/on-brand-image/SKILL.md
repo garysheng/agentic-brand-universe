@@ -84,17 +84,26 @@ A universe binds a lookbook everywhere via a `craft-canon` register-rule that na
 
 - **A render is NOT reproducible.** gpt-image-2 has no seed parameter; nano's `seed` is not pixel-deterministic. So **never delete an un-locked candidate** — once a good roll is gone it cannot be regenerated. Stage candidates, prune only AFTER the winner is locked. (A blessed yoke roll was lost exactly this way.)
 - **Batch renders in the background.** gpt-image-2 at `--quality high` is ~2 minutes per image; a foreground call under a 2-minute cap, or several in parallel, gets killed mid-generation with nothing saved. Run multi-image batches detached and collect them when they finish.
-- **References are style carriers, not masters — `generate.py` now downscales them for upload
-  (`--ref-max-edge`, default 1024) and this matters far more than it sounds.** A pack whose refs are
-  full-size 1536x1024 PNG spreads ships ~14MB *per request*; at three concurrent renders that is 42MB
-  in flight, and the batch does not fail loudly, it **hangs**. Symptom to recognize: renders sit for
-  20+ minutes with no completions and no errors, and raising `--timeout` makes it worse rather than
-  better, because each stuck attempt now waits longer before retrying. Downscaling to 1024px and
-  encoding non-alpha refs as JPEG cut the same payload from 15.6MB to 1.2MB (13x). Alpha is preserved
-  as PNG, because a cut-out mark flattened onto white teaches the model a box. The recipe still records
-  the ORIGINAL ref paths, so provenance is unaffected.
-- **Concurrency of 6 is too many; 3 is the working number.** Parallel high-quality requests queue
-  server-side and then time out together, and a timeout means no image AND no recipe.
+- **Renders that HANG with no error are a stale SDK, not a slow API. Check the resolved client
+  version FIRST.** `generate_image.py` pins `openai>=2.48` for exactly this reason. When its
+  PEP-723 header said only `openai`, uv happily reused a months-old cached environment on openai
+  2.32.0, and that version hangs on a multi-image `images.edit`: the request goes out, `lsof` shows
+  an ESTABLISHED socket, and the process sits at 0% CPU until the timeout fires, burns a retry, and
+  does it again. Same script, same refs, same prompt: stale env hung 14 minutes, `uv run --refresh`
+  finished in 58s.
+  The trap is that it presents as a slow or throttled API, so the instinct is to raise `--timeout`,
+  which makes it strictly worse. Diagnose by elimination instead, cheapest first: `curl /v1/models`
+  (auth + network), `curl /v1/images/edits` with the same refs (the endpoint itself), then `lsof -p`
+  on the hung PID (an ESTABLISHED socket at 0% CPU means the client is wedged, not the server). If
+  `--refresh` fixes it, raise the floor in the script rather than living on `--refresh`.
+- **References are style carriers, not masters — `generate.py` downscales them for upload
+  (`--ref-max-edge`, default 1024).** A pack whose refs are full-size 1536x1024 PNG spreads ships
+  ~14MB *per request*; downscaling to 1024px and encoding non-alpha refs as JPEG cuts that to 1.2MB
+  (13x). This is a throughput and cost fix, **not** a fix for hangs (see the SDK note above). Alpha is
+  preserved as PNG, because a cut-out mark flattened onto white teaches the model a box. The recipe
+  still records the ORIGINAL ref paths, so provenance is unaffected.
+- **Concurrency of 6 is too many; 3 is the working number.** Parallel requests queue server-side and
+  can time out together, and a timeout means no image AND no recipe.
 - **A logo/mark destined for a transparent cutout must be rendered on a GREEN SCREEN, not a "nice" ground.** Prompt it FLOATING on a flat chroma-key green (`#00B140`) with NO shadow, NO reflection, NO surface — then key it (`greenness = G - max(R,B) > threshold`, border-connected flood so interior highlights survive, + green despill). A warm/bone background bakes a floor reflection or contact-shadow that reads as high-chroma gold and defeats every heuristic cutout (a whole cutout was lost fighting one). Green makes the key trivial and artifact-free.
 - **Verify a rendered mark's geometry against its spec; the model exaggerates.** An image model reliably over-stretches a deliberate proportion (a North Star Cross with a 1.48x-longer bottom rendered at ~1.7x). Measure the actual arm ratios in the output (isolate the shape by chroma, find the tip extents) and, since a render is not reproducible, DETERMINISTICALLY correct it (e.g. scale only the region past the crossing to hit the exact ratio) rather than re-rolling and hoping.
 
