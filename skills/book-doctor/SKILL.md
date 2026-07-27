@@ -35,7 +35,16 @@ Per-book overrides live in the spec under `"doctor": {"coverAspect": 0.75, "inte
 
 **This tool is local and delivery-agnostic on purpose.** A delivery platform that stores assets in a bucket has its own health check, coupled to that bucket's SDK, its registry, and its reader URLs, and sharing that platform's frozen-tested aspect helper is what makes it correct. Pulling that logic in here would fork a tested check into an untested copy, which is the exact bug those platforms tend to have already had once.
 
-So the split is: **book-doctor answers "is this book finished and internally consistent," the platform's doctor answers "did it arrive."** Run both. Neither replaces the other, and checks 4 and 5 here are structurally impossible for a delivery probe because the evidence never leaves the machine.
+So the split is:
+
+| Tool | Question | Reads |
+| --- | --- | --- |
+| `agenticstory:book-doctor` (this skill) | **IS IT FINISHED?** | local disk vs the render-spec. No network, ever. |
+| `npm run book:probe` (garysheng-books) | **DID IT ARRIVE?** | Firebase Storage + Firestore, from the consumer's side. |
+
+**Run both. Neither replaces the other.** Checks 4 and 5 here are structurally impossible for a delivery probe, because recipe.json files never ship; equally, this skill has no idea whether an upload succeeded.
+
+The platform command was called `npm run book:doctor` until 2026-07-26. Two tools with the same name, run twenty minutes apart in the same build, cost real confusion in reading back what had actually been verified, so the delivery one was renamed to `book:probe` after what its own header already called it: a probe from the consumer's side. If you find `book:doctor` in an older log or SAVE-LOG entry, it means today's `book:probe`.
 
 ## Gates honored
 

@@ -389,3 +389,25 @@ convention and the spec's own text. Zero drift errors remain.
 Written into the lint-universe SKILL.md as the first thing to check, because a reader seeing
 "48 spreads vs 49 beats" will naturally hunt for a dropped beat in the middle and the answer
 is almost always at the end.
+
+## 2026-07-26 — the two book doctors are no longer both called book-doctor (plugin 0.18.6)
+
+Two different tools were both named book-doctor and both ran in the same build twenty minutes
+apart. Reading back afterwards, it was genuinely unclear which had verified what, and Gary
+asked the reasonable question of whether one had been skipped. Neither had; the names were the
+problem.
+
+They answer different questions and always did:
+
+  agenticstory:book-doctor   IS IT FINISHED?   local disk vs the render-spec, no network
+  npm run book:probe         DID IT ARRIVE?    Firebase Storage + Firestore, consumer's side
+
+The delivery one was renamed after what its own file header already called it, "probe from the
+consumer's side". The framework one keeps its name: book-doctor sits in a coherent family with
+universe-doctor, both rubric-graders over local truth, and that family was not the ambiguous half.
+
+Renaming alone would have been the cheap fix, so each tool now NAMES THE OTHER at the point of
+confusion: book-doctor's boundary section carries a two-row table and the note that a book:doctor
+reference in an older log means today's book:probe, and the nation-of-fire-book-platform DOD says
+outright that the probe does not replace the doctor. A future reader hitting either one is a
+single line from knowing the other exists and why.
