@@ -6,6 +6,14 @@ composable, and evolvable, rendered into any deliverable. Home: `agenticbranduni
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.12 changelog — text is gated, not banned.** §4.7 adds `textPolicy` to the Style Pack
+> (`none` | `diegetic` | `furniture`). A blanket "no text" rule conflated three different things and
+> silently degraded artifacts whose job is to explain: a book cover in frame could not say what it
+> says, and a wiki hero could not carry the title bar and captions that make it readable. The rule
+> that survives is narrower and truer: never render text the surrounding layout already supplies.
+> Any permitted text is declared by the caller and verified character-exact in read-back, the same
+> posture already used on a cover title. Packs with no `textPolicy` read as `diegetic`.
+
 > **v0.10 changelog — a character must be able to prove its own scale, and its future.** The v0.9
 > lesson generalizes past settings: **a dimension nothing depicts cannot be judged.** §12 gives the
 > character matrix the same treatment in two places. **(1) `structured.scale`** — `height` in human
@@ -440,10 +448,11 @@ them" — which has no recurring-identity requirement and therefore no need for 
     "flat cream fills; no shading, gradients, or painterly texture",
     "ground is one flat pack-palette colour",
     "<= 4 elements, generous negative space",
-    "NO text, letters, or numbers anywhere",
+    "NO text, letters, or numbers anywhere",   // because textPolicy is "none"
     "any hands are loopy and non-anatomical (this look has no realistic finger-count to get wrong)"
   ],
-  "maxElements": 4
+  "maxElements": 4,
+  "textPolicy": "none"                         // none | diegetic | furniture (v0.12)
 }
 ```
 
@@ -460,6 +469,28 @@ them" — which has no recurring-identity requirement and therefore no need for 
   against the pixels, re-roll the specific failure. The finger-count defect is a gate concern, not a
   prompt concern — and an ink-line look whose hands are deliberately non-anatomical sidesteps it by
   construction.
+- **`textPolicy` (v0.12, REQUIRED on new packs).** One of three values. A blanket text ban was the
+  wrong shape: it conflated three different things, and it silently degraded artifacts whose whole
+  job is to explain something.
+
+  | value | means | example |
+  |---|---|---|
+  | `none` | no glyphs at all | a mark or icon destined for a cutout |
+  | `diegetic` | text that exists IN the depicted world is allowed and must be spelled correctly | a book cover in frame, a sign, a jar label, a spine |
+  | `furniture` | `diegetic`, PLUS explanatory chrome the image itself carries | a hero strip's title bar, per-panel captions, footer bar |
+
+  The prohibition that survives all three: **never render text the surrounding
+  layout already supplies.** A spread must not burn in the caption the page lays
+  out beside it, and a wiki page's H1 does not belong inside its own hero. That
+  duplication was the real defect the old ban was reaching for. It is about
+  duplication, not about glyphs.
+
+  **Any text a pack permits is gated, never trusted.** The caller declares the exact
+  strings; the read-back (§3.5) verifies each one character-exact against the pixels;
+  a misspelling or a dropped glyph is a DEFECT and forces a re-roll from scratch. This
+  is the same posture the framework already takes on a cover's title. Packs written
+  before v0.12 with no `textPolicy` are read as `diegetic`, which matches what most of
+  them meant.
 
 ### 4.7.1 Lookbook (the portable VARIED vocabulary)
 

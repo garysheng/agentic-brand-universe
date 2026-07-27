@@ -36,10 +36,24 @@ the right skill.
    STRICT STYLE: <pack.styleLine>. <ground/fill/line rules from pack.palette>.
    Subject: <the scene>.
    <negatives: "no " + each of pack.rejectedPoles>.
-   ABSOLUTELY NO text, no letters, no numbers.
+   <the text clause for pack.textPolicy, from the table below>.
    ```
    Keep the element count at or under `pack.maxElements`; if the scene needs more, the scene is wrong
    for this look (split it, or it belongs on a diagram instead).
+
+   **The text clause is chosen by `pack.textPolicy` (SPEC §4.7), never assumed:**
+
+   | textPolicy | clause to emit |
+   |---|---|
+   | `none` | `ABSOLUTELY NO text, no letters, no numbers.` |
+   | `diegetic` | `The only text is text that exists in the scene itself; render each of these EXACTLY: <declared strings>. No captions, no titles, no labels layered over the art.` |
+   | `furniture` | `Render each of these strings EXACTLY, in this placement: <declared strings with placements>. No other text anywhere.` |
+
+   A pack with no `textPolicy` reads as `diegetic`. Whatever the policy, **the caller
+   declares the exact strings** and they enter the prompt verbatim, in caps if the look
+   wants caps. Never invent a string the caller did not give you, and never render text
+   the surrounding layout already supplies: a spread must not burn in the caption the
+   page lays out beside it, and a page's H1 does not belong inside its own hero.
 4. **Generate via the framework provider adapter** `scripts/generate.py` — NEVER the raw model script.
    It generates AND writes `<output>.recipe.json` (provider, prompt, specVersion, refs, sha256) in the
    same shape `shoot-references` freezes, so **every candidate is provenanced at birth**, not only at
@@ -48,6 +62,10 @@ the right skill.
 5. **Read back against the gate (mandatory).** Open the output and check EACH `pack.gate` assertion
    against the actual pixels, returning PASS or DEFECT per item. This is the load-bearing half; a pack
    without a gate is a mood board.
+   **If the pack permits text, spelling is part of the read-back, not an afterthought.** Read every
+   glyph in the image and compare it character by character to the declared strings. A near-miss
+   ("PROVENENCE") is a DEFECT, not a pass. Text the caller did not declare is also a DEFECT, because
+   the model invented it.
 6. **Re-roll defects from scratch.** On any DEFECT, regenerate the whole image with a clause added to
    counter that specific defect. Never stack an edit pass on a defective render. Cap at 3 rolls, then
    stop and report the surviving defects rather than shipping a silent failure.
@@ -74,8 +92,15 @@ A universe binds a lookbook everywhere via a `craft-canon` register-rule that na
 - **References-first** — the look is carried by the reference images, never by wording it harder. A
   prompt-only attempt at a locked style reliably produces generic AI illustration.
 - **Read-back (SPEC §3.5)** — every render is verified against the pack's gate before it is accepted.
-- **No text, ever** — image models misspell and silently drop glyphs, and a wordless image stays
-  reusable across surfaces and languages. Words belong in the page around the image.
+- **Text is GATED, not banned (v0.12)** — the old rule here was a blanket prohibition, and it was the
+  wrong shape. It conflated three things and quietly degraded artifacts whose whole job is to explain:
+  a book cover in frame could not say what it says, and a wiki hero could not carry the title bar and
+  captions that make it readable. `pack.textPolicy` decides what is allowed; the read-back decides
+  whether it is correct. **Every declared string is verified character-exact against the pixels, and a
+  misspelling or a dropped glyph is a DEFECT that re-rolls the whole image.** Models do still misspell,
+  which is an argument for checking rather than for forbidding. This is the same posture the framework
+  already takes on a cover title. The one prohibition that survives every policy: never render text the
+  surrounding layout already supplies.
 - **Anatomy is a gate concern, not a prompt concern.** You cannot reliably prompt away a bad hand.
   Either the look is deliberately non-anatomical (loopy ink hands have no finger-count to get wrong,
   which is why this style sidesteps the defect by construction), or the gate catches it and re-rolls.

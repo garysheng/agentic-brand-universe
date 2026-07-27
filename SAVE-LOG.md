@@ -328,3 +328,29 @@ sibling had already shipped 0.18.0, which is a downgrade the installed cache sil
 ignores. A long session is exactly when a sibling ships a release.
 
 Plugin 0.18.1 -> 0.18.2.
+
+## 2026-07-26 · spec v0.12 · text is gated, not banned
+
+`on-brand-image` carried a blanket "ABSOLUTELY NO text, no letters, no numbers" and every
+hyperagentic-age pack gated "no text or lettering". Gary caught the consequence: wiki hero strips
+stopped carrying the title bars, panel captions, and footer bars that the older heroes had, and books
+could not show a book cover that says what it says.
+
+The ban was the wrong shape. It conflated three different things:
+
+- **Duplicated** text (a spread burning in the caption the page already lays out) is the real defect,
+  and it is about duplication rather than about glyphs.
+- **Diegetic** text (a cover in frame, a sign, a jar label) belongs in the world and improves the image.
+- **Furniture** (title bar, captions, footer bar) is what makes an explanatory hero readable.
+
+SPEC §4.7 gains `textPolicy` (`none` | `diegetic` | `furniture`). Permitted text is declared by the
+caller and verified character-exact in read-back; a misspelling or an invented string is a DEFECT that
+re-rolls the whole image. Packs written before v0.12 read as `diegetic`. This is the posture the
+framework already used on a cover title, applied where it was missing.
+
+Cartridge: `anthropic-plate` is `none`, `warm-editorial` and `warm-editorial-neutral` are `diegetic`
+(so book interiors gain natural text and keep no caption chrome), and a new self-contained
+`warm-editorial-titled` is `furniture` for wiki heroes. `supersuit-org-comic` now routes heroes to the
+titled pack and specifies the three furniture slots.
+
+Models do still misspell. That is an argument for checking, not for forbidding.
