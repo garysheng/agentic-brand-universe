@@ -98,6 +98,62 @@ def main():
     prompt = open(a.prompt_file).read() if a.prompt_file else a.prompt
     if not prompt:
         sys.exit("generate.py: need --prompt or --prompt-file")
+
+    # ------------------------------------------------------------------
+    # APPLY the style pack, do not merely record it.
+    #
+    # --style-pack used to write a label into the recipe and nothing else:
+    # the style line was never prepended, the rejected poles were never added
+    # as negatives, and the anchor was never uploaded. So a caller passing a
+    # pack got a bare-prompt render that silently ignored the look, while the
+    # recipe claimed the pack was used. That is worse than no support, because
+    # the provenance asserts something untrue.
+    #
+    # The pack is the definition of the look, so the caller passes a SUBJECT
+    # and this compiles the rest. Anchor goes FIRST (a reference outranks
+    # words, and the anchor is the content-neutral one).
+    # Earned 2026-07-27, first render in gary-sheng-art: an impressionist
+    # landscape came back from a neo-expressionist pack, failing its own gate
+    # on two assertions.
+    # ------------------------------------------------------------------
+    if a.style_pack:
+        pack_dir = os.path.expanduser(a.style_pack)
+        pack_file = (pack_dir if pack_dir.endswith(".json")
+                     else os.path.join(pack_dir, "pack.json"))
+        if not os.path.exists(pack_file):
+            sys.exit(f"generate.py: --style-pack has no pack.json: {pack_file}")
+        pack_dir = os.path.dirname(pack_file)
+        with open(pack_file) as fh:
+            pack = json.load(fh)
+
+        style_line = (pack.get("styleLine") or "").strip()
+        rejected = [str(r) for r in pack.get("rejectedPoles", []) if r]
+        parts = [prompt.strip()]
+        if style_line:
+            parts.append(style_line)
+        if rejected:
+            parts.append("Do NOT render it in any of these styles: "
+                         + ", ".join(rejected) + ".")
+        prompt = "\n\n".join(parts)
+
+        # Anchor first, then the rest of the pack's refs, then anything the
+        # caller passed explicitly. Never duplicate a ref already given.
+        pack_refs, seen = [], set()
+        ordered = ([pack["anchor"]] if pack.get("anchor") else []) + list(pack.get("refs", []))
+        for rel in ordered:
+            p = rel if os.path.isabs(rel) else os.path.join(pack_dir, rel)
+            p = os.path.normpath(p)
+            if p in seen or not os.path.exists(p):
+                continue
+            seen.add(p)
+            pack_refs.append(p)
+        a.ref = pack_refs + [r for r in a.ref
+                             if os.path.normpath(os.path.expanduser(r)) not in seen]
+        if not pack_refs:
+            sys.exit(f"generate.py: style pack {pack_file} resolved zero references. "
+                     "The look IS the references; refusing to render a pack-less render "
+                     "that would claim the pack in its recipe.")
+
     for r in a.ref:
         if not os.path.exists(os.path.expanduser(r)):
             sys.exit(f"generate.py: ref not found: {r}  (the look IS the references; a missing one silently degrades the render)")
