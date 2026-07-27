@@ -192,3 +192,62 @@ class StorySpec:
             if not b.get("provenance"):
                 p.append(f"{self.id}: beat {b.get('n', i)} has no provenance (every beat traces to a source)")
         return p
+
+
+@dataclass
+class Generator:
+    """SPEC v0.13 §4.11 — a deterministic generator: code that DRAWS an asset.
+
+    Structural validation only, filesystem-free, matching every other model here.
+    Disk checks (entrypoint exists, declared outputs were actually written) live in
+    the store, which has a root to resolve against.
+    """
+    id: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    DETERMINISM = ("pure", "seeded")
+
+    @staticmethod
+    def from_dict(d: dict[str, Any]) -> "Generator":
+        return Generator(id=d.get("id", ""), raw=d)
+
+    @property
+    def determinism(self) -> str:
+        return self.raw.get("determinism", "")
+
+    @property
+    def outputs(self) -> list[dict[str, Any]]:
+        return list(self.raw.get("outputs", []))
+
+    @property
+    def install(self) -> dict[str, Any]:
+        return dict(self.raw.get("install", {}) or {})
+
+    def validate(self) -> list[str]:
+        p: list[str] = []
+        if not self.id:
+            p.append("generator missing 'id'")
+        if self.raw.get("kind") != "generator":
+            p.append(f"{self.id}: kind must be 'generator'")
+        if not self.raw.get("entrypoint"):
+            p.append(f"{self.id}: no 'entrypoint' (the program that draws the asset)")
+        det = self.determinism
+        if det not in self.DETERMINISM:
+            p.append(f"{self.id}: determinism must be one of {self.DETERMINISM}, got '{det}'")
+        # A seeded generator whose seed lives in the code is not reproducible by anyone
+        # reading the manifest, which is the whole point of declaring determinism.
+        if det == "seeded" and self.raw.get("seed") is None:
+            p.append(f"{self.id}: determinism 'seeded' requires a 'seed' in the manifest, not in the code")
+        if not self.outputs:
+            p.append(f"{self.id}: declares no outputs (a generator that writes nothing is not one)")
+        for i, o in enumerate(self.outputs, 1):
+            if not isinstance(o, dict) or not o.get("path"):
+                p.append(f"{self.id}: output {i} has no 'path'")
+        # params are the contract with the artifact; a generator with none is hiding its knobs
+        if not isinstance(self.raw.get("params", {}), dict):
+            p.append(f"{self.id}: 'params' must be an object")
+        declared = {o.get("path") for o in self.outputs if isinstance(o, dict)}
+        for src in self.install:
+            if src not in declared:
+                p.append(f"{self.id}: install maps '{src}', which is not a declared output")
+        return p

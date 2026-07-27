@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .model import CraftCanon, Entity, Relation, StorySpec
+from .model import CraftCanon, Entity, Generator, Relation, StorySpec
 
 
 class CanonStore:
@@ -29,6 +29,7 @@ class CanonStore:
         self.relations: list[Relation] = []
         self.stories: dict[str, StorySpec] = {}
         self.craft: dict[str, CraftCanon] = {}
+        self.generators: dict[str, Generator] = {}
         self._load()
 
     def _load(self) -> None:
@@ -44,6 +45,12 @@ class CanonStore:
             for f in sorted(craft_dir.glob("*.json")):
                 c = CraftCanon.from_dict(json.loads(f.read_text()))
                 self.craft[c.id] = c
+        gen_dir = self.dir / "generators"
+        if gen_dir.is_dir():
+            for f in sorted(gen_dir.glob("*/generator.json")):
+                g = Generator.from_dict(json.loads(f.read_text()))
+                self.generators[g.id] = g
+
         rel_dir = self.dir / "canon" / "relations"
         if rel_dir.exists():
             for f in sorted(rel_dir.glob("*.json")):
@@ -102,6 +109,9 @@ class CanonStore:
             for fid in s.features:
                 if fid not in known:
                     problems.append(f"story '{s.id}' features unknown entity '{fid}'")
+        for g in self.generators.values():
+            problems += g.validate()
+        problems += self._validate_generators()
         problems += self._validate_canon_records()
         problems += self._validate_assets()
         return problems
@@ -199,3 +209,21 @@ class CanonStore:
             ids = ", ".join(r["id"] for r in recs if r.get("n") == n)
             out.append(f"duplicate crossover number {n}: {ids}")
         return out
+
+
+    def _validate_generators(self) -> list[str]:
+        """SPEC v0.13 §4.11 disk checks: the entrypoint exists, and a declared output
+        that was never written is a lie the manifest tells about itself."""
+        problems: list[str] = []
+        for g in self.generators.values():
+            gdir = self.dir / "generators" / g.id
+            entry = g.raw.get("entrypoint")
+            if entry and not (gdir / entry).exists():
+                problems.append(f"generator '{g.id}': entrypoint '{entry}' does not exist")
+            for o in g.outputs:
+                path = o.get("path") if isinstance(o, dict) else None
+                if path and not (gdir / path).exists():
+                    problems.append(
+                        f"generator '{g.id}': declared output '{path}' has never been written "
+                        f"(run the generator, or stop declaring it)")
+        return problems

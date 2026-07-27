@@ -537,3 +537,41 @@ class TestAssetExistence(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+# --- SPEC v0.13 §4.11: deterministic generators -----------------------------
+
+class GeneratorTests(unittest.TestCase):
+    """A generator's manifest is its contract; these are the ways it can lie."""
+
+    def _g(self, **over):
+        base = {"id": "grid", "kind": "generator", "entrypoint": "generate.py",
+                "determinism": "pure", "outputs": [{"path": "out/grid.png"}]}
+        base.update(over)
+        from agenticstory.model import Generator
+        return Generator.from_dict(base)
+
+    def test_pure_generator_is_valid(self):
+        self.assertEqual(self._g().validate(), [])
+
+    def test_seeded_requires_a_seed_in_the_manifest(self):
+        # a seed buried in the code is not reproducible by anyone reading the manifest
+        problems = self._g(determinism="seeded").validate()
+        self.assertTrue(any("requires a 'seed'" in p for p in problems), problems)
+        self.assertEqual(self._g(determinism="seeded", seed=7).validate(), [])
+
+    def test_determinism_must_be_declared_and_known(self):
+        problems = self._g(determinism="whenever").validate()
+        self.assertTrue(any("determinism must be one of" in p for p in problems), problems)
+
+    def test_generator_must_declare_outputs(self):
+        problems = self._g(outputs=[]).validate()
+        self.assertTrue(any("declares no outputs" in p for p in problems), problems)
+
+    def test_install_source_must_be_a_declared_output(self):
+        problems = self._g(install={"out/nope.png": ["public/nope.png"]}).validate()
+        self.assertTrue(any("not a declared output" in p for p in problems), problems)
+
+    def test_kind_must_be_generator(self):
+        problems = self._g(kind="entity").validate()
+        self.assertTrue(any("kind must be 'generator'" in p for p in problems), problems)
