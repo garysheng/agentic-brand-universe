@@ -1742,6 +1742,76 @@ def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
     return refs, f"{ent['id']} exactly as its reference plate: " + " ".join(parts)
 
 
+def _assert_canon_delivered(prompt: str, resolved: list) -> None:
+    """Assert that canon the assembler was TOLD to include actually reached the prompt.
+
+    Derived from CANON, deliberately not from the block-building code path, because the
+    failure this guards against is the block-builder not running at all. A registration-
+    style check (each builder reports what it contributed) cannot catch an assembler that
+    silently lacks the feature, which is exactly what happened.
+
+    THE INCIDENT, 2026-07-26. `render_spread.py` imports this module from beside itself.
+    Gary's plugin mirror is an rsync target, and a concurrent session's sync twice reverted
+    the mirror's copy of this file to a version with no camera and no blocking support. Every
+    render kept exiting 0. Fourteen spreads of `given-over` were produced with their setting's
+    seat ownership and fixed camera missing from the prompt, and NOTHING failed: no refusal,
+    no error, only wrong provenance frozen into each recipe. The damage was found afterwards
+    by grepping the recipes for canon that should have been there, which is this check run
+    too late to help.
+
+    A `bake` on a cast entry legitimately REPLACES an entity's derived block, so an entity
+    carrying one is exempt: the author chose different wording on purpose.
+    """
+    missing: list[str] = []
+    for ent, camera, bake, look, plate in resolved:
+        if bake:
+            continue
+        eid = ent.get("id", "?")
+        con = ent.get("contract") or {}
+        st = ent.get("structured") or {}
+        # PROBE THE TEXT, NOT A LABEL. This check was written 2026-07-26 against a prompt
+        # format that tagged each field ("BLOCKING for <id>"). The assembler no longer emits
+        # that tag: a setting's map/blocking/dressing/scale are joined into one sentence
+        # ("<id> exactly as its reference plate: ..."), so a label probe reports every
+        # correct render as undelivered. Probing a prefix of the canon's own text is both
+        # correct under the current format and independent of the next one, which is the
+        # same reason the `render.always` probe below was written that way.
+        #
+        # AND THE PER-PLATE OPT-OUT IS A LEGITIMATE ABSENCE. `contract.plates.<plate>
+        # .includeBlocking: false` drops the room-wide blocking law on purpose, because a
+        # close-up cannot contain a crowd. A human decided that per plate. Asserting it
+        # anyway turns a deliberate scoping decision into a refusal.
+        _pcfg = ((con.get("plates") or {}).get(plate) or {}) if plate else {}
+        _blocking_scoped_out = _pcfg.get("includeBlocking") is False
+        blocking = (con.get("blocking") or "").strip()
+        if blocking and not _blocking_scoped_out:
+            probe = " ".join(strip_authoring_notes(blocking).split())[:40]
+            if probe and probe not in " ".join(prompt.split()):
+                missing.append(f"{eid}: contract.blocking")
+        if camera and f"CAMERA {camera}" not in prompt:
+            missing.append(f"{eid}: contract.cameras['{camera}']")
+        # An alt look with its own `render` block REPLACES the base one entirely, by
+        # design, so the base render.always is legitimately absent then. The test suite
+        # caught this as a false positive before it shipped, which is the whole reason a
+        # new check gets run against the existing tests rather than only against the bug
+        # it was written for.
+        look_replaces = bool(look) and "render" in (((st.get("altLooks") or {}).get(look) or {}))
+        always = "" if look_replaces else ((st.get("render") or {}).get("always") or "").strip()
+        if always:
+            probe = " ".join(always.split())[:40]
+            if probe and probe not in " ".join(prompt.split()):
+                missing.append(f"{eid}: structured.render.always")
+    if missing:
+        raise Refuse(
+            "CANON DECLARED BUT NOT DELIVERED. The following canon exists on these entities "
+            "and did NOT reach the assembled prompt: " + "; ".join(missing) + ". This almost "
+            "always means the assembler running is an OLDER COPY than the canon it is reading "
+            "(a stale plugin mirror, an un-synced install, a partial edit). Do NOT render: the "
+            "output would look plausible and carry wrong provenance. Re-run from "
+            "agenticstory/skills/compose-spread/scripts/, and check that copy has the features "
+            "the canon uses.")
+
+
 def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     uni = load(uroot / "universe.json")
     ident = uni.get("identity", {})
@@ -1866,6 +1936,8 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         raise Refuse(f"{spread_id}: `when` must be a number (a year or a beat "
                      f"index), got {when!r}")
 
+    resolved_canon: list[tuple[dict, str | None, str | None, str | None, str | None]] = []
+
     for c in entries:
         ent = load_entity(uroot, c["id"])
         kind = ent.get("kind")
@@ -1946,6 +2018,14 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                 f"Available plates: {_avail or 'none'}.")
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"), c)
+            # Record what canon SAID should reach the prompt, for the delivery assertion at
+            # the end. The camera is recorded only when the setting actually declares
+            # `contract.cameras`, because asserting a camera reached a prompt that never had
+            # one to deliver would refuse every legitimate render.
+            cams_declared = (ent.get("contract") or {}).get("cameras") or {}
+            resolved_canon.append(
+                (ent, (c.get("camera") or sp.get("camera")) if cams_declared else None,
+                 c.get("bake"), c.get("look"), c.get("plate")))
             add_refs(r)
             block = entity_block(c["id"], block, c.get("bake"), kind, c.get("bakeMode"), setting_rule, warnings)
             if block:
@@ -1991,6 +2071,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         # block, the QA checklist and the computed negatives below all read the SAME
         # resolved list, exactly as `supersedes` already works for an alt look.
         inv = pose_invariants(inv, ent, c.get("pose"), c.get("look"))
+        resolved_canon.append((ent, None, c.get("bake"), c.get("look"), None))
         add_refs(r)
         # Canon's prescribed prompt-craft (structured.render) is emitted ALONGSIDE
         # the invariant list: the invariants remain the QA keys, the render block
@@ -2248,6 +2329,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # entity that stated the same rule in both, and a checklist that asks twice teaches
     # its reader to skim.
     qa = list(dict.fromkeys(qa))
+    _assert_canon_delivered(prompt, resolved_canon)
     return {"prompt": prompt, "refs": resolved, "size": eff.get("size", "1536x1024"),
             "qa": qa, "warnings": warnings}
 
