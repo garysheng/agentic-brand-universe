@@ -65,6 +65,17 @@ def main(argv: list[str] | None = None) -> int:
     bc.add_argument("universe")
     bc.add_argument("--check", action="store_true", help="fail if stale or if any crossover number is duplicated")
     bc.add_argument("--adopt", action="store_true", help="create records for hand-appended rows with no backing record")
+    ld = sub.add_parser("land", help="merge a finished work branch home, or queue it if that is not safe yet")
+    ld.add_argument("repo", help="any git repo (a universe, a platform repo, anything)")
+    ld.add_argument("--branch", default=None, help="the work branch (default: the current branch of --repo)")
+    ld.add_argument("--onto", default=None, help="target branch (default: main, else master)")
+    ld.add_argument("--keep-branch", action="store_true", help="do not delete the work branch after landing")
+    ld.add_argument("--keep-worktree", action="store_true", help="do not remove the work branch's worktree after landing")
+    ld.add_argument("--drain-only", action="store_true", help="only retry previously queued merges, land nothing new")
+    ld.add_argument("--no-drain", action="store_true", help="skip draining the queue first")
+    ld.add_argument("--dry-run", action="store_true", help="report what would happen and change nothing")
+    ld.add_argument("--prune-stale", action="store_true",
+                    help="also remove worktrees whose branch is already fully merged into the target")
     ini = sub.add_parser("init", help="scaffold a new universe (conforms to spec v" + SPEC_VERSION + ")")
     ini.add_argument("universe", help="target directory for the new universe")
     ini.add_argument("--name", required=True, help="universe name (slug)")
@@ -110,6 +121,50 @@ def main(argv: list[str] | None = None) -> int:
         xs = len(canonfile.load_crossovers(uroot))
         print(f"build-canon: CANON.md regenerated from {props} property + {xs} crossover record(s)")
         return 0
+
+    if args.cmd == "land":
+        from . import land as landing
+        repo = Path(args.repo)
+        results: list[landing.Result] = []
+        if not args.no_drain:
+            results += landing.drain(repo, dry_run=args.dry_run)
+        if not args.drain_only:
+            branch = args.branch or landing.current_branch(repo)
+            if not branch:
+                print("land: --repo is on a detached HEAD and no --branch was given")
+                return 2
+            onto = args.onto or landing.default_target(repo)
+            already = any(r.branch == branch and r.onto == onto for r in results)
+            if not already:
+                results.append(landing.land(
+                    repo, branch, args.onto,
+                    delete_branch=not args.keep_branch,
+                    remove_worktree=not args.keep_worktree,
+                    dry_run=args.dry_run,
+                ))
+        if not results:
+            print("land: nothing to do (queue empty)")
+        for r in results:
+            print(f"[{r.outcome}] {r.branch} -> {r.onto}: {r.detail}")
+            for c in r.cleaned:
+                print(f"         {c}")
+        if args.prune_stale:
+            pruned = landing.prune_stale(repo, dry_run=args.dry_run)
+            if pruned:
+                print(f"\npruned {len(pruned)} finished worktree(s):")
+                for line in pruned:
+                    print(f"  {line}")
+        else:
+            stale = landing.stale_worktrees(repo)
+            if stale:
+                print(f"\n{len(stale)} worktree(s) hold branches already merged into the target "
+                      f"and can be removed (--prune-stale):")
+                for w in stale:
+                    print(f"  - {w.path}  [{w.branch}]")
+        # Only a conflict or a hard error is a failure. A QUEUED merge is a
+        # success: the work is safe and a later run finishes it, which is the
+        # entire point of the queue.
+        return 1 if any(r.outcome in ("conflict", "error") for r in results) else 0
 
     store = CanonStore(args.universe)
 
