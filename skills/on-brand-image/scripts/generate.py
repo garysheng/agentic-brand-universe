@@ -18,9 +18,45 @@ script. Providers today: gpt-image-2 (chatgpt-images), nano-banana-pro.
 Usage:
   python3 generate.py --out <path.png> --prompt "..." [--prompt-file f] \\
     --ref <a.png> [--ref ...] [--model gpt-image-2|nano-banana-pro] \\
-    [--size 1536x1024] [--quality high] [--spec-version 0.6] [--style-pack <id-or-path>]
+    [--size 1536x1024] [--quality high] [--spec-version 0.6] [--style-pack <id-or-path>] \\
+    [--timeout 900]   # raise when fanning out; parallel renders queue and time out at the default
 """
-import argparse, json, os, subprocess, sys, hashlib, datetime
+import argparse, json, os, subprocess, sys, hashlib, datetime, tempfile, shutil
+
+
+def shrink_ref(path, max_edge, tmpdir):
+    """A reference downscaled for upload. Returns `path` unchanged if it is already small
+    enough, if shrinking is disabled, or if Pillow is unavailable (never fail a render over
+    an optimization). Alpha is preserved, because a cut-out mark passed as a reference has
+    a transparent background and flattening it onto white would teach the model a box."""
+    if not max_edge or not tmpdir:
+        return path
+    try:
+        from PIL import Image
+    except ImportError:
+        return path
+    try:
+        with Image.open(path) as im:
+            if max(im.size) <= max_edge:
+                return path
+            im = im.copy()
+            im.thumbnail((max_edge, max_edge), Image.LANCZOS)
+            # Keep alpha lossless; send everything else as JPEG. Re-encoding a downscaled
+            # illustration as PNG barely helps (PNG is built for flat color, not painted
+            # gradients) and leaves the payload an order of magnitude bigger than it needs
+            # to be. Quality 90 is indistinguishable at reference duty.
+            has_alpha = im.mode in ("RGBA", "LA") or "transparency" in im.info
+            stem = os.path.splitext(os.path.basename(path))[0]
+            n = len(os.listdir(tmpdir))
+            if has_alpha:
+                dst = os.path.join(tmpdir, f"{n}-{stem}.png")
+                im.save(dst)
+            else:
+                dst = os.path.join(tmpdir, f"{n}-{stem}.jpg")
+                im.convert("RGB").save(dst, quality=90, optimize=True)
+            return dst
+    except Exception:
+        return path
 
 GPT  = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")
 NANO = os.path.expanduser("~/.claude/skills/nano-banana-pro/scripts/generate_image.py")
@@ -43,6 +79,19 @@ def main():
     ap.add_argument("--spec-version", default="0.6")
     ap.add_argument("--style-pack", default="")
     ap.add_argument("--lookbook", default="")
+    # Per-attempt HTTP timeout, passed through to the gpt-image-2 script. Without this
+    # a batch caller is stuck with that script's 300s default, which is fine for one
+    # render and NOT fine under concurrency: parallel high-quality 1536x1024 requests
+    # queue server-side and every one of them times out at once. Raise it when
+    # fanning out. (Earned 2026-07-27: 16 of 18 Society plates died this way.)
+    ap.add_argument("--timeout", type=float, default=0.0)
+    # Longest edge a reference is uploaded at. A reference carries a LOOK, not detail:
+    # nothing about a style anchor survives past ~1024px that changes the render. Uploading
+    # masters instead is pure cost, and it is not a small one. A 6-reference call against
+    # full-size 1536x1024 PNG spreads ships ~14MB per request; three of those in flight
+    # wedged an 18-plate batch for 25 minutes with zero completions.
+    # Set 0 to disable and upload references untouched.
+    ap.add_argument("--ref-max-edge", type=int, default=1024)
     a = ap.parse_args()
 
     prompt = open(a.prompt_file).read() if a.prompt_file else a.prompt
@@ -59,10 +108,21 @@ def main():
     else:
         cmd = ["uv", "run", GPT, "--prompt", prompt, "--filename", out,
                "--size", a.size, "--quality", a.quality, "--no-open"]
-    for r in a.ref:
-        cmd += ["--input-image", os.path.expanduser(r)]
+        if a.timeout:
+            cmd += ["--timeout", str(a.timeout)]
+    # Shrink references for UPLOAD ONLY. The recipe below still records every original
+    # path, so provenance points at the real reference and never at a temp file.
+    tmpdir = tempfile.mkdtemp(prefix="agenticstory-refs-") if a.ref_max_edge else None
+    upload = [shrink_ref(os.path.expanduser(r), a.ref_max_edge, tmpdir) for r in a.ref]
+    for u in upload:
+        cmd += ["--input-image", u]
 
-    if subprocess.run(cmd).returncode != 0 or not os.path.exists(out):
+    try:
+        failed = subprocess.run(cmd).returncode != 0 or not os.path.exists(out)
+    finally:
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    if failed:
         sys.exit("generate.py: generation FAILED — no image, no recipe")
 
     recipe = {
