@@ -12,7 +12,21 @@ Turn a blessed set of images into a **Style Pack** (SPEC §4.7): `pack.json` + `
 - **3-8 blessed reference images** that share the look. Fewer than 3 and the model has too little to lock onto; more than 8 and you are curating, not defining. Prefer at least one **content-neutral** image as the `anchor` (a swatch of palette + light + finish with no subject), because a reference outranks negative words and a busy anchor leaks its content into every render (the Nation of Fire lesson: a style anchor must never depict a canon character).
 - **The style line** — one sentence naming the look (medium, line, fills, light, finish).
 - **Palette** — ground / fill / line colors (hex).
-- **Rejected poles** — the looks to bake as negatives (what this is NOT).
+- **The pack's ID names the MEDIUM, never the subject.** `-painterly`, `-hyperrealistic`,
+  `-illuminated`, `-inkline` all survive the subject changing; `-community`, `-fellowship`,
+  `-hero` do not, because the moment you render something else with them the name lies. A pack
+  selects HOW a thing is made, so name it that way, and keep the whole shelf in one grammar so a
+  reader can tell at a glance that these are alternative mediums rather than a mix of medium and
+  topic. (Earned renaming three Christofuturism packs at once; all three had drifted to subject
+  names and none described what the pack actually was.)
+- **Rejected poles** — the looks to bake as negatives (what this is NOT). **Reject a specific
+  FAILURE, never a whole visual mode.** A pole broad enough to name a capability deletes that
+  capability from the register, and the model cannot tell you it did: a Christofuturist pack
+  rejected "glowing blue holograms", which removed augmented reality from a brand whose entire
+  thesis is a Christian FUTURE, and every render came back as brass lamps and Victorian
+  workbenches. Nobody could fix it by prompting harder, because the gate forbade the alternative.
+  The rule that survived was narrower and truer: reject COLD BLUE sci-fi light, not AR itself.
+  Before writing a pole, ask what it forbids besides the thing you dislike.
 - **Gate assertions** — the read-back checklist `on-brand-image` verifies against the pixels. This is the load-bearing half; a pack without a gate is a mood board, and the scaffolder refuses to write one.
 
 ## Procedure
