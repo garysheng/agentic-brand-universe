@@ -354,3 +354,46 @@ Cartridge: `anthropic-plate` is `none`, `warm-editorial` and `warm-editorial-neu
 titled pack and specifies the three furniture slots.
 
 Models do still misspell. That is an argument for checking, not for forbidding.
+
+## 2026-07-27 — `land-work` + `agenticstory land`: branches go home by themselves (plugin v0.20.0)
+
+Promoted the one manual step that survived every single pipeline run. A book run ends in its own
+branch and worktree, because a repo with several concurrent agent sessions cannot be shared any
+other way, and then the run reported "the canon branch is committed but PARKED, master is checked
+out in another worktree". Gary's answer was identical every time: "follow your judgment, I don't
+have an opinion about the merging, you know how to do it well." That is not a decision worth a
+round trip, it is an unfinished job handed back, and it compounded: nation-of-fire had ELEVEN
+worktrees and a stack of unmerged branches, which is the same defect eleven times.
+
+Parking felt safe because the hazard underneath it is real. The target branch is usually checked
+out in a SIBLING worktree owned by a live session, and moving a branch under a live worktree
+corrupts that session (their files stay on disk, HEAD now lists yours, their index reports YOUR
+files as deletions, and their next bare commit reverts your work). So the new engine module
+classifies the target instead of guessing: FREE (checked out nowhere) merges inside a throwaway
+worktree; IDLE (held by a clean worktree) merges in that worktree so ref and files move together;
+BUSY (dirty, or mid merge/rebase/cherry-pick) is never touched; CONFLICT aborts and changes
+nothing. It never uses `git update-ref` or `git branch -f`, the two classic ways to do the damage.
+
+The part that makes it self-healing is the QUEUE. A blocked merge records its intent under
+`.git/`, and every later `land` drains the queue first, so the next run finishes what this one
+could not. No daemon, no cron, no human. A queued merge is reported as a success, not a decision.
+
+It is repo-generic on purpose: `agenticstory land <repo>` knows nothing about universes, so it
+works on a canon repo, a platform repo or any other git repo. `--prune-stale` also removes
+worktrees whose branch is already fully merged, which is the other half of the mess.
+
+Two bugs the real run surfaced and both are fixed and tested. `git branch -d` measures "fully
+merged" against HEAD rather than against the branch just merged into, so it refused to delete
+branches that were provably safe whenever the main checkout sat on an unrelated third branch;
+containment is now verified against the real target. And `stale_worktrees` used the merge-shaped
+cleanliness check (which ignores untracked files) while `git worktree remove` refuses on them, so
+it advertised 5 removable worktrees when the true answer was 3; pruning now asks the stricter
+question, because pruning deletes a directory and an untracked file there is unrecoverable work.
+
+19 tests, built against REAL temp git repos rather than mocks, since every hazard here is a real
+git behaviour a mock would happily assert wrongly. The load-bearing one proves a dirty sibling
+worktree is left byte-for-byte alone. Suite: 416 green.
+
+Wired at the two ends of a run (drain at the start, land at the end, once per repo touched) into
+make-a-nof-book and make-a-hyperagent-book, and stated as a general rule in the global AGENTS.md
+so it applies to any repo, not just a universe.
