@@ -151,6 +151,21 @@ def grade_universe(udir):
         if not full:
             issues.append((4, "stories", f"{len(stories)} story stub(s), none promoted to full", "add-story"))
 
+        # A FULL story with no canon/properties record is INVISIBLE to every future
+        # casting sweep, because the property registry is what a sweep reads to learn
+        # what already exists. Found on a universe whose own reference book, the one
+        # every later book was built from, had no record and therefore no CANON.md row.
+        pdir = root / "canon" / "properties"
+        have = {p.stem for p in pdir.glob("*.json")} if pdir.exists() else set()
+        unregistered = sorted(s["id"] for s in stories
+                              if s.get("status") == "full" and s.get("id") and s["id"] not in have)
+        if unregistered:
+            scores["stories"] = max(0, scores["stories"] - min(4, len(unregistered)))
+            issues.append((min(8, 2 * len(unregistered)), "stories",
+                           f"{len(unregistered)} full story/stories with NO canon/properties record, so they are "
+                           f"invisible to casting sweeps: {', '.join(unregistered[:5])}",
+                           "write canon/properties/<id>.json, then `agenticstory build-canon`"))
+
     # 8) SELF-CONTAINED -------------------------------------------------------
     asset_root = uni.get("assetRoot", ".")
     scores["self_contained"] = 5 if asset_root == "." else 0

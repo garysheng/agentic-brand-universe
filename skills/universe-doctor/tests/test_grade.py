@@ -83,6 +83,36 @@ class TestGrader(unittest.TestCase):
         self.assertEqual(scores["provenance"], 10)                   # the 2 pack refs don't count against it
         self.assertFalse(any(d_ == "provenance" for _, d_, _, _ in issues))
 
+    def test_full_story_without_property_record_is_flagged(self):
+        # A shipped book with no canon/properties record is invisible to every future
+        # casting sweep. Real case: a universe's own reference book had no record.
+        d = tempfile.mkdtemp()
+        self._bare_universe(d)
+        _write(d, "stories/registered.json", {"id": "registered", "status": "full"})
+        _write(d, "stories/orphan.json", {"id": "orphan", "status": "full"})
+        _write(d, "canon/properties/registered.json", {"id": "registered"})
+        _, scores, _, issues = grade.grade_universe(d)
+        hits = [w for _, dim, w, _ in issues if dim == "stories" and "properties" in w]
+        self.assertEqual(len(hits), 1)
+        self.assertIn("orphan", hits[0])
+        self.assertNotIn("registered", hits[0])
+
+    def test_full_stories_all_registered_is_clean(self):
+        d = tempfile.mkdtemp()
+        self._bare_universe(d)
+        _write(d, "stories/a.json", {"id": "a", "status": "full"})
+        _write(d, "canon/properties/a.json", {"id": "a"})
+        _, scores, _, issues = grade.grade_universe(d)
+        self.assertEqual(scores["stories"], 10)
+        self.assertFalse(any("properties" in w for _, dim, w, _ in issues if dim == "stories"))
+
+    def test_stub_story_needs_no_property_record(self):
+        d = tempfile.mkdtemp()
+        self._bare_universe(d)
+        _write(d, "stories/s.json", {"id": "s", "status": "stub"})
+        _, _, _, issues = grade.grade_universe(d)
+        self.assertFalse(any("properties" in w for _, dim, w, _ in issues if dim == "stories"))
+
     def test_letter_thresholds(self):
         self.assertEqual(grade.letter(90), "A")
         self.assertEqual(grade.letter(69), "D")
