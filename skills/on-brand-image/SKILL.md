@@ -5,6 +5,34 @@ description: Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a po
 
 # On-Brand Image
 
+## When a render looks subtly wrong, suspect UNSTATED PHYSICS first
+
+The commonest defect in a finished-looking image is not style, anatomy or
+composition. It is a physical relationship the prompt never named, which the model
+therefore resolved at random. Five in one session, every one invisible until a
+human pointed at it:
+
+- a phone filmed a selfie while its rear camera faced the subject
+- a lifted floor hatch could not fit the hole it came out of
+- burning letters reflected in still water the same way up as the originals
+- a man stood *inside* the well he was standing beside
+- a beam of light passed through a crowd and struck none of them
+
+Each was fixed the same way: **state the relationship explicitly, say which way it
+must read, and say what the wrong version looks like.** "The screen faces him, so
+when we see his face we see the phone's BACK." "The panel and the opening are the
+same rectangle, hinged on one long edge, so it would drop back in flush."
+
+Two rules that follow:
+
+1. **Before generating, list the physical relationships in the scene** — what faces
+   what, what supports what, what reflects what, what the light passes through. Any
+   you cannot state in one sentence is one the model is about to invent.
+2. **A geometry rule belongs in canon, not in the prompt.** A constraint that lives
+   only in prompt text is lost the moment the scene is re-shot for any other reason.
+   The hatch rule was fixed once, then silently regressed when the same piece was
+   re-shot with a character added, because nothing durable held it.
+
 ## Canon entities: pass `--entity`, never hand-picked `--ref`
 
 If a subject is a canon entity, name it and let the generator resolve it:
