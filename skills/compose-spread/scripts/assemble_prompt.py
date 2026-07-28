@@ -64,6 +64,50 @@ ANCHOR_STYLE_GUARD = (
 # visual-metaphor's states sheet. The model copies their panelled LAYOUT, and two spreads
 # came back as contact-sheet grids of six framed views instead of one scene. Opt out with
 # `allowMultiPanel` on the book or on one spread.
+MOTION_VERBS = (
+    "walk", "walking", "walks", "step", "stepping", "steps", "run", "running", "runs",
+    "climb", "climbing", "enter", "entering", "leave", "leaving", "approach", "approaching",
+    "head toward", "heading", "going toward", "moves toward", "coming out", "carries", "carrying",
+    "flee", "fleeing", "crossing", "toward the", "out of the", "into the",
+)
+
+# A viewer-relative facing token. Without one of these, a scene that says a person
+# is moving "toward the door" has told the model nothing it can act on, because the
+# model does not know where the door will end up in frame.
+FACING_TOKENS = (
+    "from behind", "behind and", "back to camera", "back to the camera", "over his shoulder",
+    "over her shoulder", "over their shoulder", "facing camera", "facing the camera",
+    "toward the viewer", "away from the viewer", "faces away", "seen from the side",
+    "side on", "in profile", "three-quarter", "three quarters", "profile",
+    "away from camera", "toward camera", "his back", "her back", "their back",
+)
+
+MOTION_GUARD = (
+    "DIRECTION OF TRAVEL. If a person in this scene is moving toward something, that "
+    "destination MUST BE AHEAD OF THEM IN THE FRAME and they must be seen FROM BEHIND or "
+    "from three-quarters behind, so the viewer is following them into it. A figure whose "
+    "face is toward the camera is walking AWAY from everything behind them: if the thing "
+    "they are moving toward is drawn behind them, the picture says the opposite of the "
+    "scene. Their feet, hips, shoulders and gaze all point the same way, along the "
+    "direction of travel."
+)
+
+def _has_motion(scene: str) -> bool:
+    """True when the scene describes someone moving somewhere.
+
+    Earned 2026-07-28 on Our God of Miracles Lives spread 96: the scene said a man
+    was "stepping over them toward the door", and the render put him walking toward
+    the CAMERA with the lit doorway behind him, so the picture said the opposite of
+    the beat. Image models strongly prefer a subject's face to the lens, and a WORLD-relative
+    direction ("toward the door") cannot beat that prior because the model has not
+    placed the door yet when it decides which way the body points.
+    """
+    low = (scene or "").lower()
+    if not any(v in low for v in MOTION_VERBS):
+        return False
+    return not any(t in low for t in FACING_TOKENS)
+
+
 SINGLE_IMAGE_GUARD = (
     "ONE SINGLE CONTINUOUS FULL-BLEED PAINTING that fills the entire canvas edge to edge. This is "
     "NEVER a grid, NEVER a multi-panel layout, NEVER a comic page, NEVER a contact sheet, NEVER a "
@@ -557,6 +601,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             sp.get("extra", ""),  # authored per-spread instruction (e.g. bake a title glyph); DATA, not improvisation
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
+            MOTION_GUARD if _has_motion(scene) else "",
         ]
         if x
     )
