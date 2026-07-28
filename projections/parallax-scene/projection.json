@@ -36,7 +36,8 @@
         "offsetVh": "float",
         "depthFade": "float",
         "minHeightVh": "float",
-        "mobileHidden": "bool"
+        "mobileHidden": "bool",
+        "mobile": "object"
       },
       "schemaNotes": {
         "z": "Depth index. 0 is furthest from the viewer.",
@@ -49,7 +50,8 @@
         "offsetVh": "Lift a bottom-anchored plane off the frame floor, in vh. Depth alone does not place a plane: without this every bottom plane shares one baseline, so the nearest one simply buries the rest and the middle planes have nothing to do. Lifting a far plane is what puts it somewhere it can be seen first and occluded second, which is the gesture the whole scene exists for.",
         "depthFade": "Aerial perspective, 0..1, where 1 is untouched. Distance drains contrast and light, so a far plane rendered at full strength does two bad things at once: it stops reading as far, and it competes with everything in front of it \u2014 including the copy. Snow-lit peaks were the BRIGHTEST thing on the page while being the furthest, which is backwards, and no amount of text-shadow fixes a background that is brighter than the text.",
         "minHeightVh": "Floor on the plane's height, in vh. A width-fitted band is sized by the frame's WIDTH while every offset here is in vh, so rotating to portrait shrinks the band roughly fourfold while its offset does not move. Past this floor the plane covers by HEIGHT and overflows sideways, which is free because the frame already clips that axis. One value, no breakpoint: on a wide frame the width fit already exceeds the floor and it does nothing.",
-        "mobileHidden": "Drop the plane on narrow frames. BANDS survive portrait once they have a minHeightVh; small centred OBJECTS do not, because a narrow frame has no clear air to hang them in and they land on the copy. Cut objects, keep bands \u2014 cutting bands too drops the plane count far enough that the scene stops reading as layered at all."
+        "mobileHidden": "Drop the plane below 1024px. LAST RESORT, after `mobile` placement has been tried: an object that cannot be placed anywhere on a narrow frame. Bands should never need it \u2014 they span the frame at any width once they have a minHeightVh, and cutting them drops the plane count far enough that the scene stops reading as layered at all.",
+        "mobile": "Narrow-frame overrides for a centred object: {offsetVh, xFrac, heightFrac}. MOVE an object before you hide it. A wide frame has clear air beside the copy that a portrait one does not, so an object left at its desktop coordinates lands on the CTA \u2014 and the reflex fix, dropping it, deletes the thing someone asked for. On a narrow frame the clear air is a THIN band: below the sticky header and above the mark. Both edges are real; the first attempt cleared the copy and slid under the header instead."
       },
       "trim": "Every alpha plane is trimmed to its own alpha bounding box before it is sized. An untrimmed cutout is mostly empty pixels, so 'height' means the height of the EMPTY RECTANGLE rather than of the thing, and every size is a lie."
     }
