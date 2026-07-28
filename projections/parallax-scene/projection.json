@@ -1,0 +1,162 @@
+{
+  "id": "parallax-scene",
+  "version": "1.0.0",
+  "extends": null,
+  "author": "agenticbranduniverse.com/registry",
+  "description": "A scene separated into depth planes that move at different rates as the page scrolls. The content is not any one plane; it is the ORDER. One flat plate drifting is a texture. Three planes moving at different rates is depth.",
+  "surface": {
+    "medium": "parallax-scene",
+    "geometry": {
+      "planes": {
+        "min": 3,
+        "max": 8
+      },
+      "aspect": "3:2"
+    }
+  },
+  "requires": [
+    {
+      "kind": "style-pack",
+      "min": 1
+    }
+  ],
+  "slots": [
+    {
+      "id": "plane",
+      "repeat": "$.planes.min..$.planes.max",
+      "type": "generated",
+      "schema": {
+        "z": "int",
+        "speed": "float",
+        "alpha": "bool",
+        "anchor": "string",
+        "fit": "string",
+        "heightFrac": "float",
+        "subject": "string",
+        "offsetVh": "float"
+      },
+      "schemaNotes": {
+        "z": "Depth index. 0 is furthest from the viewer.",
+        "speed": "Fraction of page scroll this plane keeps up with. Lower is further away. It LAGS by (1 - speed).",
+        "alpha": "true if the plane is a cutout. Exactly one plane may be false, and it must be the backmost.",
+        "anchor": "top | bottom. Which edge of the frame the plane is pinned to.",
+        "fit": "width | height. 'width' spans the frame (a skyline band, a sky). 'height' is sized by heightFrac and centred (a group of figures).",
+        "heightFrac": "For fit: height \u2014 the plane's height as a fraction of the frame. Depth alone does not say how BIG a thing is, and a plane sized only by its render's aspect will happily swallow every plane behind it.",
+        "subject": "What is in the plane. This is the prompt's subject line, kept so the plane can be re-rendered.",
+        "offsetVh": "Lift a bottom-anchored plane off the frame floor, in vh. Depth alone does not place a plane: without this every bottom plane shares one baseline, so the nearest one simply buries the rest and the middle planes have nothing to do. Lifting a far plane is what puts it somewhere it can be seen first and occluded second, which is the gesture the whole scene exists for."
+      },
+      "trim": "Every alpha plane is trimmed to its own alpha bounding box before it is sized. An untrimmed cutout is mostly empty pixels, so 'height' means the height of the EMPTY RECTANGLE rather than of the thing, and every size is a lie."
+    }
+  ],
+  "generators": [
+    {
+      "for": "plane",
+      "capability": "image",
+      "accepts": "reference-images",
+      "pin": null
+    },
+    {
+      "for": "plane",
+      "capability": "deterministic",
+      "optional": true,
+      "note": "A plane whose content is procedural (a starfield, a grid, a horizon) should be DRAWN by a \u00a74.11 generator rather than rendered. Its keep-out regions stay numbers instead of hopes."
+    }
+  ],
+  "invariants": {
+    "perSlot": [
+      {
+        "id": "clean-alpha-both-grounds",
+        "check": "judged",
+        "scope": "every plane with alpha: true",
+        "assert": "no green rim and no glowing veil, proofed on BOTH a light and a dark ground. Checking one ground is how a halo ships: a light ground hides excess coverage, a dark ground hides dark contamination."
+      },
+      {
+        "id": "no-baked-ground",
+        "check": "judged",
+        "scope": "every plane with alpha: true",
+        "assert": "no floor, contact shadow, reflection or horizon inside the cutout. A plane that carries its own ground cannot sit in front of another plane."
+      },
+      {
+        "id": "edge-broken-by-content",
+        "check": "judged",
+        "scope": "every plane with alpha: true, on the edge that faces the viewer's side of the frame",
+        "assert": "the plane's own rectangle must be undetectable, and on a trimmed cutout the trim itself is the danger: trimming to the alpha box leaves whatever the render cut off sitting on a dead straight line. Break it with CONTENT \u2014 a ragged treeline, a crowd of varied heights, a broken parapet \u2014 so there is no straight edge to find. Reach for a mask only when content cannot do it, because a mask that hides an edge also thins the thing it is hiding, and a far plane made ghostly stops reading as far and starts reading as faded."
+      }
+    ],
+    "crossSlot": [
+      {
+        "id": "depth-order",
+        "check": "computed",
+        "scope": "all planes",
+        "assert": "speed increases strictly with z. If it does not, the illusion inverts and the scene reads as broken rather than as flat.",
+        "rule": {
+          "op": "monotonic",
+          "over": "plane",
+          "by": "z",
+          "field": "speed",
+          "direction": "increasing",
+          "strict": true
+        }
+      },
+      {
+        "id": "single-opaque",
+        "check": "computed",
+        "scope": "all planes",
+        "assert": "at most one plane is opaque. Two opaque planes means the front one hides everything behind it.",
+        "rule": {
+          "op": "count",
+          "over": "plane",
+          "where": {
+            "alpha": false
+          },
+          "max": 1
+        }
+      },
+      {
+        "id": "opaque-is-backmost",
+        "check": "computed",
+        "scope": "all planes",
+        "assert": "the opaque plane, if any, is the one with the lowest z. An opaque plane anywhere but the back is a wall.",
+        "rule": {
+          "op": "extreme",
+          "over": "plane",
+          "where": {
+            "alpha": false
+          },
+          "by": "z",
+          "at": "min"
+        }
+      },
+      {
+        "id": "composes-as-one-place",
+        "check": "judged",
+        "scope": "all planes composited in z order",
+        "assert": "the planes read as one coherent scene, in one light, at one time of day \u2014 not as separate images stacked."
+      },
+      {
+        "id": "static-is-correct",
+        "check": "judged",
+        "scope": "all planes with motion disabled",
+        "assert": "under prefers-reduced-motion every plane freezes, and the still composition must look deliberate rather than merely acceptable."
+      }
+    ]
+  },
+  "emits": [
+    "scene.json",
+    "layers/*.webp",
+    "proof/contact-sheet.png"
+  ],
+  "placement": {
+    "note": "A projection normally stops at the artifact. This one carries a placement contract because its emitted planes are only correct IN a scrolling page, and every failure below was shipped at least once before it was written down.",
+    "rules": [
+      "The scene lives in ONE frame that starts above the section by the overhang, so every plane's headroom is already inside it. That frame IS clipped, and must be. A positioned section paints above the non-positioned sections that follow it, so a plane allowed to overflow downward lands on top of the next section's copy.",
+      "The frame's bottom edge is dissolved ONCE, on the frame. Per-plane fades are wrong here: a plane that sinks carries its own fade down with it, so the clip ends up cutting the opaque part and the hard edge returns.",
+      "It resolves to TRANSPARENT, never to a colour. Fading to the page background is correct on exactly one background and a visible plate on every other. See userexperience.wiki/concepts/the-vanishing-edge.",
+      "Bottom planes move RELATIVE TO THE NEAREST of them, which therefore never moves. Parallax is relative motion, so this costs nothing visually and guarantees the plane pinned to the floor stays pinned.",
+      "Bottom planes need `offsetVh`. Sharing one baseline means the nearest plane simply buries the rest, and the middle planes have nothing to do.",
+      "Cap the SCROLL the planes read, not each plane's own shift. Capping shifts freezes the fast-falling planes first, so the planes stop moving relative to each other and the occlusion never happens \u2014 the scene goes dead after a fifth of a screen.",
+      "Nothing painted over the scene (a bloom, a gradient, a scrim) may have a hard edge of its own. A seam in the composite is usually the overlay, not the planes.",
+      "Alpha planes are rendered on FLAT CHROMA GREEN with no shadow, floor or reflection, then keyed with skills/on-brand-image/scripts/chroma_key.py. A warm ground bakes a contact shadow that reads as gold on a gold subject, and no heuristic separates it."
+    ]
+  }
+}

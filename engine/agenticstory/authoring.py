@@ -12,7 +12,7 @@ import hashlib
 import json
 import pathlib
 
-from .matrix import matrix_for
+from .matrix import matrix_for, known_shots_for
 from .model import SETTING_CONTRACT_FIELDS
 
 
@@ -177,6 +177,24 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
                 f"Known looks: {sorted(_looks) or 'none'}"
             )
 
+    # STORE THE PATH RELATIVE TO assetRoot, ALWAYS.
+    # Every sheet in a canon record is assetRoot-relative, and self-containment
+    # (SPEC §3a) depends on it: an absolute path pins the record to one machine's
+    # home directory, so the repo stops resolving the moment anyone else clones it.
+    # This took whatever the caller typed, and a CLI invocation naturally supplies
+    # an absolute path, which then sat in `structured.sheets` beside eight relative
+    # siblings (caught on gary-sheng-art `jesus`, 2026-07-27). Normalise here rather
+    # than in the CLI, so every caller of lock_shot gets it.
+    if root and pathlib.Path(path).is_absolute():
+        try:
+            path = str(pathlib.Path(path).resolve().relative_to(pathlib.Path(root).resolve()))
+        except ValueError:
+            raise ValueError(
+                f"{path!r} is outside the universe root {root!r}. A locked golden must "
+                f"live inside the repo, or the universe is not self-contained (SPEC 3a). "
+                f"Copy the file in first, then lock it."
+            )
+
     au = entity.setdefault("authority", {})
     if not au.get("lockedOn"):
         au["lockedOn"] = _dt.date.today().isoformat()
@@ -314,10 +332,14 @@ def required_set_for(entity: dict, kind: str | None = None) -> list[str]:
     override = (entity.get("structured") or {}).get("requiredForRenderOnLock")
     if not override:
         return base
-    shots = list(m.get("shots") or [])
-    unknown = [s for s in override if shots and s not in shots]
+    # Validate names against matrix + OPTIONAL shots, not `shots` alone. `shots` is
+    # the completeness list; a legitimate extra plate (character `face-neutral-color`)
+    # must be nameable here without being forced into completeness, or the framework
+    # has no way to express "this entity needs one more plate than its peers".
+    known = known_shots_for(kind)
+    unknown = [s for s in override if known and s not in known]
     if unknown:
         raise ValueError(
-            f"{entity.get('id')}: requiredForRenderOnLock names shot(s) not in the "
-            f"{kind} matrix: {unknown}")
+            f"{entity.get('id')}: requiredForRenderOnLock names shot(s) not known for "
+            f"kind {kind}: {unknown}. Known: {known}")
     return list(dict.fromkeys(list(override) + base))  # override first, kind minimum always kept

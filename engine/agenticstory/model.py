@@ -195,6 +195,112 @@ class StorySpec:
 
 
 @dataclass
+class ProjectionType:
+    """SPEC §4.8 — a typed contract for a KIND of deliverable.
+
+    Specified since v0.11 and never implemented, which is why a layered parallax scene
+    got hand-rolled as a bespoke primitive instead of being expressed as what it is.
+    `requires` names KINDS, never ids: that is the whole mechanism that lets a projection
+    ship to a brand it has never seen.
+    """
+    id: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @staticmethod
+    def from_dict(d: dict[str, Any]) -> "ProjectionType":
+        return ProjectionType(id=d.get("id", ""), raw=d)
+
+    @property
+    def version(self) -> str:
+        return self.raw.get("version", "")
+
+    @property
+    def ref(self) -> str:
+        return f"{self.id}@{self.version}"
+
+    @property
+    def slots(self) -> list[dict[str, Any]]:
+        return list(self.raw.get("slots", []))
+
+    @property
+    def requires(self) -> list[dict[str, Any]]:
+        return list(self.raw.get("requires", []))
+
+    def validate(self) -> list[str]:
+        p: list[str] = []
+        if not self.id:
+            p.append("projection missing 'id'")
+        if not self.version:
+            p.append(f"{self.id}: no 'version' (a projection is a distributable artifact, so it is versioned)")
+        if not self.raw.get("surface"):
+            p.append(f"{self.id}: no 'surface' (a projection declares the medium it targets)")
+        if not self.slots:
+            p.append(f"{self.id}: no 'slots' (a projection with nothing to fill emits nothing)")
+        for i, s in enumerate(self.slots, 1):
+            if not isinstance(s, dict) or not s.get("id"):
+                p.append(f"{self.id}: slot {i} has no 'id'")
+        # `requires` is what makes it portable. Naming an id here silently welds the
+        # projection to one universe and it stops being distributable at all.
+        for r in self.requires:
+            if not isinstance(r, dict) or not r.get("kind"):
+                p.append(f"{self.id}: a 'requires' entry names no kind")
+            elif r.get("id"):
+                p.append(
+                    f"{self.id}: requires names id '{r['id']}'. A projection requires KINDS; "
+                    "the instance binds ids (§4.8)."
+                )
+        if not self.raw.get("emits"):
+            p.append(f"{self.id}: no 'emits' (nothing declares what this produces)")
+        inv = self.raw.get("invariants") or {}
+        for scope in ("perSlot", "crossSlot"):
+            for j, c in enumerate(inv.get(scope, []) or [], 1):
+                if not isinstance(c, dict) or not c.get("id"):
+                    p.append(f"{self.id}: {scope} invariant {j} has no 'id'")
+                elif c.get("check") not in ("judged", "computed"):
+                    p.append(f"{self.id}: invariant '{c['id']}' check must be 'judged' or 'computed'")
+        return p
+
+
+@dataclass
+class ProjectionInstance:
+    """SPEC §4.9 — ONE instance of a projection.
+
+    Validation that needs the projection in hand (do the bound kinds satisfy `requires`,
+    does every filled slot exist) lives in the store, which can resolve the reference.
+    """
+    id: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @staticmethod
+    def from_dict(d: dict[str, Any]) -> "ProjectionInstance":
+        return ProjectionInstance(id=d.get("id", ""), raw=d)
+
+    @property
+    def projection(self) -> str:
+        return self.raw.get("projection", "")
+
+    @property
+    def slots(self) -> dict[str, Any]:
+        return dict(self.raw.get("slots", {}) or {})
+
+    @property
+    def bind(self) -> dict[str, Any]:
+        return dict(self.raw.get("bind", {}) or {})
+
+    def validate(self) -> list[str]:
+        p: list[str] = []
+        if not self.id:
+            p.append("instance missing 'id'")
+        if not self.projection:
+            p.append(f"{self.id}: no 'projection' (a instance is an instance OF something)")
+        elif "@" not in self.projection:
+            p.append(f"{self.id}: projection '{self.projection}' is unpinned; use 'id@version'")
+        if not self.slots:
+            p.append(f"{self.id}: fills no slots")
+        return p
+
+
+@dataclass
 class Generator:
     """SPEC v0.13 §4.11 — a deterministic generator: code that DRAWS an asset.
 

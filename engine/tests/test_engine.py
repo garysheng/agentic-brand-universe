@@ -575,3 +575,144 @@ class GeneratorTests(unittest.TestCase):
     def test_kind_must_be_generator(self):
         problems = self._g(kind="entity").validate()
         self.assertTrue(any("kind must be 'generator'" in p for p in problems), problems)
+
+
+class ProjectionTests(unittest.TestCase):
+    """SPEC §4.8 — a projection is a portable contract for a KIND of deliverable."""
+
+    def _p(self, **over):
+        base = {"id": "parallax-scene", "version": "1.0.0",
+                "surface": {"medium": "parallax-scene"},
+                "requires": [{"kind": "style-pack", "min": 1}],
+                "slots": [{"id": "plane", "repeat": "$.planes", "type": "generated"}],
+                "emits": ["layers/*.webp"]}
+        base.update(over)
+        from agenticstory.model import ProjectionType
+        return ProjectionType.from_dict(base)
+
+    def test_a_well_formed_projection_is_valid(self):
+        self.assertEqual(self._p().validate(), [])
+
+    def test_requires_may_not_name_an_id(self):
+        # the kind->id indirection is the ONLY reason a projection can ship to a
+        # brand it has never seen; naming an id welds it to one universe
+        problems = self._p(requires=[{"kind": "style-pack", "id": "warm-oil", "min": 1}]).validate()
+        self.assertTrue(any("requires KINDS" in p for p in problems), problems)
+
+    def test_projection_is_versioned(self):
+        problems = self._p(version="").validate()
+        self.assertTrue(any("no 'version'" in p for p in problems), problems)
+
+    def test_invariant_check_must_be_judged_or_computed(self):
+        problems = self._p(invariants={"perSlot": [{"id": "x", "check": "vibes"}]}).validate()
+        self.assertTrue(any("judged' or 'computed" in p for p in problems), problems)
+
+
+class ComputedInvariantTests(unittest.TestCase):
+    """The rule evaluator. A generic engine cannot run a check it knows only by name,
+    so a computed invariant carries a `rule` evaluated as data."""
+
+    def _eval(self, rule, rows):
+        return CanonStore._eval_rule(rule, rows)
+
+    PLANES = [{"z": 0, "speed": 0.28, "alpha": False},
+              {"z": 1, "speed": 0.52, "alpha": True},
+              {"z": 2, "speed": 0.82, "alpha": True}]
+
+    MONOTONIC = {"op": "monotonic", "over": "plane", "by": "z", "field": "speed",
+                 "direction": "increasing", "strict": True}
+
+    def test_depth_order_holds_on_a_correct_scene(self):
+        self.assertEqual(self._eval(self.MONOTONIC, self.PLANES), "")
+
+    def test_depth_order_catches_an_inverted_scene(self):
+        bad = copy.deepcopy(self.PLANES)
+        bad[2]["speed"] = 0.10          # nearest plane now the slowest: depth inverts
+        self.assertIn("must rise with z", self._eval(self.MONOTONIC, bad))
+
+    def test_depth_order_rejects_a_tie_when_strict(self):
+        tied = copy.deepcopy(self.PLANES)
+        tied[1]["speed"] = 0.28         # two planes at one depth is not depth
+        self.assertNotEqual(self._eval(self.MONOTONIC, tied), "")
+
+    def test_rows_are_ordered_by_z_not_by_declaration_order(self):
+        # a correct scene declared back-to-front must still pass
+        self.assertEqual(self._eval(self.MONOTONIC, list(reversed(self.PLANES))), "")
+
+    def test_count_catches_a_second_opaque_plane(self):
+        rule = {"op": "count", "over": "plane", "where": {"alpha": False}, "max": 1}
+        self.assertEqual(self._eval(rule, self.PLANES), "")
+        two = copy.deepcopy(self.PLANES)
+        two[1]["alpha"] = False
+        self.assertIn("max is 1", self._eval(rule, two))
+
+    def test_extreme_catches_an_opaque_plane_that_is_not_backmost(self):
+        rule = {"op": "extreme", "over": "plane", "where": {"alpha": False}, "by": "z", "at": "min"}
+        self.assertEqual(self._eval(rule, self.PLANES), "")
+        wall = copy.deepcopy(self.PLANES)
+        wall[0]["alpha"], wall[2]["alpha"] = True, False   # opaque plane in FRONT
+        self.assertIn("must sit at min", self._eval(rule, wall))
+
+    def test_an_unknown_op_is_reported_rather_than_passing_silently(self):
+        self.assertIn("unknown rule op", self._eval({"op": "wat", "over": "plane"}, self.PLANES))
+
+
+class ProjectionInstanceTests(unittest.TestCase):
+    """SPEC §4.9 — ONE instance, checked against the contract it claims."""
+
+    PROJ = {"id": "parallax-scene", "version": "1.0.0",
+            "surface": {"medium": "parallax-scene"},
+            "requires": [{"kind": "style-pack", "min": 1}],
+            "slots": [{"id": "plane", "type": "generated"}],
+            "emits": ["layers/*.webp"],
+            "invariants": {"crossSlot": [
+                {"id": "depth-order", "check": "computed",
+                 "rule": {"op": "monotonic", "over": "plane", "by": "z",
+                          "field": "speed", "direction": "increasing", "strict": True}}]}}
+
+    COMP = {"id": "terrace", "projection": "parallax-scene@1.0.0",
+            "bind": {"style-pack": "warm-gold"},
+            "slots": {"plane": [{"z": 0, "speed": 0.3}, {"z": 1, "speed": 0.8}]}}
+
+    def _store(self, proj=None, comp=None):
+        d = Path(tempfile.mkdtemp())
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        (d / "canon" / "entities").mkdir(parents=True)
+        p = d / "projections" / "parallax-scene"
+        p.mkdir(parents=True)
+        (p / "projection.json").write_text(json.dumps(proj or self.PROJ))
+        c = d / "instances" / "terrace"
+        c.mkdir(parents=True)
+        (c / "instance.json").write_text(json.dumps(comp or self.COMP))
+        return CanonStore(d)
+
+    def test_a_valid_composition_produces_no_problems(self):
+        self.assertEqual(self._store().validate_canon(), [])
+
+    def test_unresolvable_projection_is_a_problem(self):
+        c = dict(self.COMP, projection="storybook@9.9.9")
+        self.assertTrue(any("not found" in p for p in self._store(comp=c).validate_canon()))
+
+    def test_unpinned_projection_reference_is_a_problem(self):
+        c = dict(self.COMP, projection="parallax-scene")
+        self.assertTrue(any("unpinned" in p for p in self._store(comp=c).validate_canon()))
+
+    def test_filling_a_slot_the_projection_does_not_declare(self):
+        c = dict(self.COMP, slots={"spread": [{"z": 0, "speed": 0.3}]})
+        self.assertTrue(any("does not declare" in p for p in self._store(comp=c).validate_canon()))
+
+    def test_an_unbound_required_kind_is_caught(self):
+        c = dict(self.COMP, bind={})
+        problems = self._store(comp=c).validate_canon()
+        self.assertTrue(any("requires >=1 of kind 'style-pack'" in p for p in problems), problems)
+
+    def test_a_composition_that_violates_a_computed_invariant_is_caught(self):
+        c = dict(self.COMP, slots={"plane": [{"z": 0, "speed": 0.9}, {"z": 1, "speed": 0.2}]})
+        problems = self._store(comp=c).validate_canon()
+        self.assertTrue(any("invariant 'depth-order' fails" in p for p in problems), problems)
+
+    def test_a_computed_invariant_with_no_rule_is_reported_not_silently_passed(self):
+        proj = copy.deepcopy(self.PROJ)
+        proj["invariants"]["crossSlot"][0].pop("rule")
+        problems = self._store(proj=proj).validate_canon()
+        self.assertTrue(any("carries no 'rule'" in p for p in problems), problems)

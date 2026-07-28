@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .model import CraftCanon, Entity, Generator, Relation, StorySpec
+from .model import CraftCanon, Entity, Generator, ProjectionInstance, ProjectionType, Relation, StorySpec
 
 
 class CanonStore:
@@ -30,6 +30,8 @@ class CanonStore:
         self.stories: dict[str, StorySpec] = {}
         self.craft: dict[str, CraftCanon] = {}
         self.generators: dict[str, Generator] = {}
+        self.projections: dict[str, ProjectionType] = {}
+        self.instances: dict[str, ProjectionInstance] = {}
         self._load()
 
     def _load(self) -> None:
@@ -50,6 +52,20 @@ class CanonStore:
             for f in sorted(gen_dir.glob("*/generator.json")):
                 g = Generator.from_dict(json.loads(f.read_text()))
                 self.generators[g.id] = g
+
+        # Projections may be local to the universe OR vendored from a registry; both are
+        # keyed by `id@version`, because a universe may legitimately hold two versions
+        # of one projection while an instance is mid-migration between them.
+        proj_dir = self.dir / "projections"
+        if proj_dir.is_dir():
+            for f in sorted(proj_dir.glob("*/projection.json")):
+                pr = ProjectionType.from_dict(json.loads(f.read_text()))
+                self.projections[pr.ref] = pr
+        inst_dir = self.dir / "instances"
+        if inst_dir.is_dir():
+            for f in sorted(inst_dir.glob("*/instance.json")):
+                c = ProjectionInstance.from_dict(json.loads(f.read_text()))
+                self.instances[c.id] = c
 
         rel_dir = self.dir / "canon" / "relations"
         if rel_dir.exists():
@@ -111,10 +127,138 @@ class CanonStore:
                     problems.append(f"story '{s.id}' features unknown entity '{fid}'")
         for g in self.generators.values():
             problems += g.validate()
+        for pr in self.projections.values():
+            problems += pr.validate()
+        for c in self.instances.values():
+            problems += c.validate()
+        problems += self._validate_instances()
         problems += self._validate_generators()
         problems += self._validate_canon_records()
         problems += self._validate_assets()
         return problems
+
+    def _validate_instances(self) -> list[str]:
+        """SPEC §4.8/§4.9 — does this instance actually satisfy the contract it claims?
+
+        Three checks the instance cannot make about itself, because they need the
+        projection resolved: the projection exists at the pinned version, every filled
+        slot is a declared slot, and the COMPUTED cross-slot invariants hold.
+
+        Judged invariants are not run here. Judgement is the Gate's job (§4.10), and
+        the whole point of splitting Composer / Compiler / Gate is that the store does
+        not quietly become a renderer.
+        """
+        problems: list[str] = []
+        for c in self.instances.values():
+            pr = self.projections.get(c.projection)
+            if pr is None:
+                if c.projection:
+                    have = ", ".join(sorted(self.projections)) or "none"
+                    problems.append(
+                        f"instance '{c.id}': projection '{c.projection}' not found (have: {have})"
+                    )
+                continue
+            declared = {s.get("id") for s in pr.slots}
+            for name in c.slots:
+                if name not in declared:
+                    problems.append(
+                        f"instance '{c.id}': fills slot '{name}', which {pr.ref} does not declare"
+                    )
+            # `requires` names kinds; the instance binds ids. An unbound requirement is
+            # the failure this whole split exists to catch.
+            for r in pr.requires:
+                kind = r.get("kind")
+                bound = c.bind.get(kind)
+                n = len(bound) if isinstance(bound, list) else (1 if bound else 0)
+                if n < int(r.get("min", 0)):
+                    problems.append(
+                        f"instance '{c.id}': {pr.ref} requires >={r.get('min')} of kind "
+                        f"'{kind}', bound {n}"
+                    )
+            problems += self._computed_invariants(c, pr)
+        return problems
+
+    def _computed_invariants(self, c: ProjectionInstance, pr: ProjectionType) -> list[str]:
+        """Evaluate the projection's computed invariants against the instance's slots.
+
+        A generic engine cannot run a check it knows only by NAME, so a computed invariant
+        carries a `rule` the engine evaluates as data. Three ops turn out to cover the
+        cases so far, and each one is about a RELATIONSHIP between slot entries, which is
+        exactly what a cross-slot invariant is for:
+
+          monotonic  a field is ordered by another field   (depth: speed rises with z)
+          count      how many entries match a predicate    (at most one opaque plane)
+          extreme    a matching entry sits at an end       (the opaque one is backmost)
+
+        An invariant with no `rule` is documentation, not enforcement, and is reported as
+        such rather than silently passing.
+        """
+        out: list[str] = []
+        inv = (pr.raw.get("invariants") or {}).get("crossSlot", []) or []
+        for spec in inv:
+            if not isinstance(spec, dict) or spec.get("check") != "computed":
+                continue
+            rule, iid = spec.get("rule"), spec.get("id", "?")
+            if not isinstance(rule, dict):
+                out.append(
+                    f"{pr.ref}: invariant '{iid}' is marked computed but carries no 'rule', "
+                    "so nothing checks it"
+                )
+                continue
+            rows = c.slots.get(rule.get("over", ""), [])
+            if not isinstance(rows, list):
+                continue
+            fail = self._eval_rule(rule, rows)
+            if fail:
+                out.append(f"instance '{c.id}': invariant '{iid}' fails — {fail}")
+        return out
+
+    @staticmethod
+    def _eval_rule(rule: dict[str, Any], rows: list[Any]) -> str:
+        """Return a failure description, or '' if the rule holds."""
+        rows = [r for r in rows if isinstance(r, dict)]
+        op = rule.get("op")
+
+        def matching() -> list[dict[str, Any]]:
+            where = rule.get("where") or {}
+            return [r for r in rows if all(r.get(k) == v for k, v in where.items())]
+
+        if op == "monotonic":
+            by, field = rule.get("by"), rule.get("field")
+            strict = bool(rule.get("strict", True))
+            up = rule.get("direction", "increasing") == "increasing"
+            seq = sorted(rows, key=lambda r: r.get(by, 0))
+            for a, b in zip(seq, seq[1:]):
+                x, y = a.get(field), b.get(field)
+                if x is None or y is None:
+                    return f"'{field}' missing on an entry"
+                ok = (y > x if strict else y >= x) if up else (y < x if strict else y <= x)
+                if not ok:
+                    return (f"{field} must {'rise' if up else 'fall'} with {by}, but "
+                            f"{by}={a.get(by)} has {field}={x} and {by}={b.get(by)} has {field}={y}")
+            return ""
+
+        if op == "count":
+            n = len(matching())
+            if "max" in rule and n > rule["max"]:
+                return f"{n} entries match {rule.get('where')}, max is {rule['max']}"
+            if "min" in rule and n < rule["min"]:
+                return f"{n} entries match {rule.get('where')}, min is {rule['min']}"
+            return ""
+
+        if op == "extreme":
+            hits, by = matching(), rule.get("by")
+            if not hits or not rows:
+                return ""
+            want = min if rule.get("at", "min") == "min" else max
+            edge = want(rows, key=lambda r: r.get(by, 0)).get(by)
+            off = [h for h in hits if h.get(by) != edge]
+            if off:
+                return (f"entry matching {rule.get('where')} must sit at {rule.get('at')} "
+                        f"{by}={edge}, found at {by}={off[0].get(by)}")
+            return ""
+
+        return f"unknown rule op '{op}'"
 
     ASSET_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp3", ".wav", ".m4a")
 
