@@ -19,6 +19,14 @@ ENTITY_KINDS = {
 SETTING_CONTRACT_FIELDS = ("turnaround", "emptyPlates", "blueprint", "scalePlate", "map", "blocking", "dressing", "scale")
 
 
+# Sheets that assert WHO the entity is rather than what it is made of. An alt look
+# changes substance or era, so these are dropped by default and re-added only when the
+# look explicitly names them in `keepSheets`. Without the default drop, a look inherits
+# a base plate that contradicts it; without `keepSheets`, a look that changes only
+# substance loses the face and the renderer invents a new person.
+_IDENTITY_SHEETS = {"face-neutral", "face-neutral-color", "face-3q", "expressions"}
+
+
 @dataclass
 class Entity:
     id: str
@@ -44,6 +52,68 @@ class Entity:
 
     def sheet_path(self, key: str) -> str | None:
         return (self.structured.get("sheets") or {}).get(key)
+
+    def alt_look(self, look: str) -> dict[str, Any] | None:
+        return ((self.structured.get("altLooks") or {}) or {}).get(look)
+
+    def look_sheets(self, look: str | None) -> dict[str, str]:
+        """The sheets a render should actually pass for this entity in this look.
+
+        SPEC v0.10 declared `altLooks` and nothing in the engine ever read it, so
+        selecting a look meant a human typing the right filename into `--ref` by
+        hand. That is not a gate, it is a memory test, and it was failed live: a
+        `spirit` look was rendered with only its own full-body plate and none of the
+        kept face sheets, and the face drifted every time (gary-sheng-art `jesus`,
+        2026-07-27). Resolution belongs here, where it cannot be forgotten.
+
+        Composition, in order:
+          1. Start from the DEFAULT look's required sheets.
+          2. Drop the base face/identity sheets, because an alt look that changes
+             the body should not also drag in a contradicting base plate.
+          3. Add back anything named in `keepSheets` — the look declaring "this
+             part of me is still the base", which is how a look that changes
+             SUBSTANCE keeps the same face.
+          4. Remove anything in `dropSheets`.
+          5. Overlay the look's own `sheets`, which win.
+        """
+        s = self.structured
+        base = {k: v for k in self.required_sheet_keys() if (v := self.sheet_path(k))}
+        if not look:
+            return base
+        al = self.alt_look(look)
+        if al is None:
+            known = sorted((s.get("altLooks") or {}).keys())
+            raise ValueError(
+                f"{self.id} has no altLook {look!r}. Known looks: {known or 'none'}")
+
+        keep = set(al.get("keepSheets") or [])
+        out = {k: v for k, v in base.items()
+               if k in keep or not _IDENTITY_SHEETS.intersection({k})}
+        for k in keep:
+            p = self.sheet_path(k)
+            if p:
+                out[k] = p
+        for k in (al.get("dropSheets") or []):
+            out.pop(k, None)
+        for k, v in (al.get("sheets") or {}).items():
+            if v:
+                out[k] = v
+        return out
+
+    def look_invariants(self, look: str | None) -> list[str]:
+        """Base invariants minus anything the look `supersedes`, plus the look's own.
+
+        `supersedes` exists so a look can retire a base rule it contradicts (a
+        being of light supersedes a skin-tone invariant) WITHOUT deleting the rule
+        for every other render of the entity.
+        """
+        s = self.structured
+        base = list(s.get("invariants") or [])
+        if not look:
+            return base
+        al = self.alt_look(look) or {}
+        dead = set(al.get("supersedes") or [])
+        return [i for i in base if i not in dead] + list(al.get("invariants") or [])
 
     def is_locked_setting(self) -> bool:
         """A setting/visual-metaphor is locked only when every contract field is present."""

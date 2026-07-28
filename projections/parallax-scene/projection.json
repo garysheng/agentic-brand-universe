@@ -33,7 +33,10 @@
         "fit": "string",
         "heightFrac": "float",
         "subject": "string",
-        "offsetVh": "float"
+        "offsetVh": "float",
+        "depthFade": "float",
+        "minHeightVh": "float",
+        "mobileHidden": "bool"
       },
       "schemaNotes": {
         "z": "Depth index. 0 is furthest from the viewer.",
@@ -43,7 +46,10 @@
         "fit": "width | height. 'width' spans the frame (a skyline band, a sky). 'height' is sized by heightFrac and centred (a group of figures).",
         "heightFrac": "For fit: height \u2014 the plane's height as a fraction of the frame. Depth alone does not say how BIG a thing is, and a plane sized only by its render's aspect will happily swallow every plane behind it.",
         "subject": "What is in the plane. This is the prompt's subject line, kept so the plane can be re-rendered.",
-        "offsetVh": "Lift a bottom-anchored plane off the frame floor, in vh. Depth alone does not place a plane: without this every bottom plane shares one baseline, so the nearest one simply buries the rest and the middle planes have nothing to do. Lifting a far plane is what puts it somewhere it can be seen first and occluded second, which is the gesture the whole scene exists for."
+        "offsetVh": "Lift a bottom-anchored plane off the frame floor, in vh. Depth alone does not place a plane: without this every bottom plane shares one baseline, so the nearest one simply buries the rest and the middle planes have nothing to do. Lifting a far plane is what puts it somewhere it can be seen first and occluded second, which is the gesture the whole scene exists for.",
+        "depthFade": "Aerial perspective, 0..1, where 1 is untouched. Distance drains contrast and light, so a far plane rendered at full strength does two bad things at once: it stops reading as far, and it competes with everything in front of it \u2014 including the copy. Snow-lit peaks were the BRIGHTEST thing on the page while being the furthest, which is backwards, and no amount of text-shadow fixes a background that is brighter than the text.",
+        "minHeightVh": "Floor on the plane's height, in vh. A width-fitted band is sized by the frame's WIDTH while every offset here is in vh, so rotating to portrait shrinks the band roughly fourfold while its offset does not move. Past this floor the plane covers by HEIGHT and overflows sideways, which is free because the frame already clips that axis. One value, no breakpoint: on a wide frame the width fit already exceeds the floor and it does nothing.",
+        "mobileHidden": "Drop the plane on narrow frames. BANDS survive portrait once they have a minHeightVh; small centred OBJECTS do not, because a narrow frame has no clear air to hang them in and they land on the copy. Cut objects, keep bands \u2014 cutting bands too drops the plane count far enough that the scene stops reading as layered at all."
       },
       "trim": "Every alpha plane is trimmed to its own alpha bounding box before it is sized. An untrimmed cutout is mostly empty pixels, so 'height' means the height of the EMPTY RECTANGLE rather than of the thing, and every size is a lie."
     }
@@ -138,6 +144,24 @@
         "check": "judged",
         "scope": "all planes with motion disabled",
         "assert": "under prefers-reduced-motion every plane freezes, and the still composition must look deliberate rather than merely acceptable."
+      },
+      {
+        "id": "aerial-perspective",
+        "check": "judged",
+        "scope": "all alpha planes, compared to each other",
+        "assert": "contrast and brightness fall off with distance: no alpha plane may be more contrasty than a plane in front of it. Judged rather than computed because the backmost plane is legitimately exempt \u2014 a starfield DRAWN by a generator is already authored at its final contrast and is not 'faded', it is dark."
+      },
+      {
+        "id": "copy-survives-every-plane",
+        "check": "judged",
+        "scope": "any copy laid over the scene, at every scroll position",
+        "assert": "In a static hero you can place text over a dark patch and be done. Here the art MOVES, so every line passes over every plane eventually \u2014 text placed against one plane WILL end up on another. Copy must carry its own legibility (its own halo, and a colour that is not near any plane's), and it must never be rescued with a scrim over the art, which puts a rectangle back on the scene."
+      },
+      {
+        "id": "subject-above-the-fold",
+        "check": "judged",
+        "scope": "the whole scene at portrait aspect",
+        "assert": "the plane carrying the SUBJECT is visible without scrolling. Geometry tuned at one aspect ratio does not survive the other: the first portrait build pushed the rooftop \u2014 the entire point of the scene \u2014 below the fold and left only atmosphere on screen, which is a scene about nothing. Check portrait before shipping, and check it by asking what the visitor SEES, not whether every plane loaded."
       }
     ]
   },

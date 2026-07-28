@@ -11,6 +11,30 @@ The pre-render gate that turns "I remember this character" into "here are the ex
 - The target universe (a path with `universe.json`). Read its `identity` (for `register.anchor`) and `assetRoot`.
 - The entities in frame: a spread's cast + optional location, or a whole story id.
 
+## Do it with the flag, not by hand
+
+**`on-brand-image/scripts/generate.py --entity <universe>:<id>[@look]` performs this
+entire resolve.** It reads the entity, composes the look (`altLooks` + `keepSheets` +
+`dropSheets`, with `supersedes` applied to the invariants), prepends every resolved
+sheet as a reference AHEAD of the style pack anchor, bakes the live invariants and
+`prose.rules` into the prompt, records what it resolved in the recipe, and REFUSES the
+render if a required sheet is missing or the look does not exist. Repeat the flag per
+entity in frame.
+
+```bash
+python3 generate.py --out piece.png --prompt "<subject>" \
+  --style-pack <pack> --entity ~/universes/mine:jesus@spirit
+```
+
+Do NOT hand-pick `--ref` paths for a canon entity. That is what this skill used to ask
+for, and it is a memory test rather than a gate: on 2026-07-27 seven consecutive batches
+were rendered with a hand-picked subset of an entity's plates, the canonical face never
+reached the model, and every batch drifted to the base model's bias. Nothing objected,
+because nothing was checking. Use `--ref` only for things that are not canon entities.
+
+The steps below are what the flag does, and what to do when you are resolving by hand
+for a reason (a dry run, a gate audit, a renderer that is not this one).
+
 ## Procedure
 1. **Resolve each entity.** For every named character/setting/motif, read `canon/entities/<id>.json`: resolve `structured.requiredForRender` to real files under `assetRoot`, collect `structured.invariants`, and read `prose.rules`. Never guess a path by filename and never describe an entity from memory: read the locked record.
 2. **Assemble the prompt scaffolding.** Output, per entity: the exact reference files to pass (the resolved required sheets, plus the entity's key optional shots when relevant), the invariants to bake as positives, and the failure modes to bake as negatives. Lead every prompt with `identity.register.anchor` (the universe style anchor).

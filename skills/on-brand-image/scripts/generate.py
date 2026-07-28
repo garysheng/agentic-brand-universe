@@ -68,6 +68,74 @@ def sha256(p):
             h.update(b)
     return h.hexdigest()
 
+ENGINE = os.path.expanduser("~/Documents/github-repos/agenticstory/engine")
+
+
+def resolve_entities(specs):
+    """Resolve `UNIVERSE:ID[@LOOK]` specs to (refs, invariants, rules, meta).
+
+    REFUSES the render on anything unresolvable. That refusal is the whole point:
+    a render that silently proceeds without the subject's locked plates produces a
+    plausible picture of the wrong person, which is far more expensive than a hard
+    stop, because it passes review.
+    """
+    if ENGINE not in sys.path:
+        sys.path.insert(0, ENGINE)
+    try:
+        from agenticstory.store import CanonStore
+    except ImportError:
+        sys.exit(f"generate.py: --entity needs the agenticstory engine on disk at {ENGINE}")
+
+    refs, invariants, rules, meta = [], [], [], []
+    for spec in specs:
+        if ":" not in spec:
+            sys.exit(f"generate.py: --entity wants UNIVERSE:ID[@LOOK], got {spec!r}")
+        upath, _, rest = spec.rpartition(":")
+        eid, _, look = rest.partition("@")
+        look = look or None
+        upath = os.path.expanduser(upath)
+
+        store = CanonStore(upath)
+        ent = store.entity(eid)
+        if ent is None:
+            sys.exit(f"generate.py: no entity {eid!r} in {upath}")
+        try:
+            sheets = ent.look_sheets(look)
+        except ValueError as e:
+            sys.exit(f"generate.py: {e}")
+        if not sheets:
+            sys.exit(f"generate.py: {eid}"
+                     f"{'@' + look if look else ''} resolved ZERO reference sheets. "
+                     f"Lock its art first; rendering a canon entity with no plates is "
+                     f"exactly the drift this flag exists to prevent.")
+
+        missing = []
+        for key, rel in sorted(sheets.items()):
+            p = os.path.normpath(os.path.join(str(store.asset_root), rel))
+            if not os.path.exists(p):
+                missing.append(f"{eid}.{key} -> {rel}")
+            else:
+                refs.append(p)
+        if missing:
+            sys.exit("generate.py: locked canon references are MISSING on disk:\n  "
+                     + "\n  ".join(missing)
+                     + "\nRefusing to render: the result would look fine and be off-canon.")
+
+        invariants.extend(ent.look_invariants(look))
+        r = ((ent.raw.get("prose") or {}).get("rules") or "").strip()
+        if r:
+            rules.append(r)
+        meta.append({"universe": upath, "id": eid, "look": look,
+                     "sheets": {k: v for k, v in sorted(sheets.items())}})
+    # De-dupe, preserving order: two entities may legitimately share a plate.
+    seen, uniq = set(), []
+    for p in refs:
+        if p not in seen:
+            seen.add(p)
+            uniq.append(p)
+    return uniq, list(dict.fromkeys(invariants)), rules, meta
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
@@ -79,6 +147,22 @@ def main():
     ap.add_argument("--spec-version", default="0.6")
     ap.add_argument("--style-pack", default="")
     ap.add_argument("--lookbook", default="")
+    # RESOLVE CANON HERE, NOT IN THE CALLER'S HEAD.
+    #
+    # `canon-resolve` has always been a SKILL: a document instructing whoever is
+    # rendering to look up an entity's locked sheets and pass them as --ref. A
+    # document is a memory test, not a gate, and it was failed live and repeatedly
+    # (gary-sheng-art `jesus`, 2026-07-27): seven batches were rendered passing a
+    # hand-picked subset of the entity's plates, the canonical face never reached
+    # the model, and the face drifted to the base model's bias every single time.
+    # Nothing refused those renders, because nothing was checking.
+    #
+    # Format: --entity /path/to/universe:entity-id[@look]  (repeatable)
+    # It resolves the entity's required sheets through the engine (honouring
+    # altLooks, keepSheets, dropSheets and supersedes), prepends them as
+    # references, bakes the entity's live invariants into the prompt as positives,
+    # and REFUSES the render if a required sheet is missing from disk.
+    ap.add_argument("--entity", action="append", default=[], metavar="UNIVERSE:ID[@LOOK]")
     # Per-attempt HTTP timeout, passed through to the gpt-image-2 script. Without this
     # a batch caller is stuck with that script's 300s default, which is fine for one
     # render and NOT fine under concurrency: parallel high-quality 1536x1024 requests
@@ -95,6 +179,7 @@ def main():
     ap.add_argument("--ref-max-edge", type=int, default=1024)
     a = ap.parse_args()
 
+    recipe_entities = []
     prompt = open(a.prompt_file).read() if a.prompt_file else a.prompt
     if not prompt:
         sys.exit("generate.py: need --prompt or --prompt-file")
@@ -154,6 +239,26 @@ def main():
                      "The look IS the references; refusing to render a pack-less render "
                      "that would claim the pack in its recipe.")
 
+    # ------------------------------------------------------------------
+    # CANON RESOLUTION. Entity refs go in FRONT of everything, including the
+    # style pack anchor: a style pack pulls hard toward its own faces, so the
+    # subject's own plates must outrank it. Ordering the other way is how a pack
+    # wins an argument it should never have been in.
+    if a.entity:
+        canon_refs, invariants, rules, resolved_meta = resolve_entities(a.entity)
+        seen_now = {os.path.normpath(os.path.expanduser(r)) for r in a.ref}
+        a.ref = [p for p in canon_refs
+                 if os.path.normpath(p) not in seen_now] + a.ref
+        blocks = []
+        if invariants:
+            blocks.append("These are LOCKED canonical traits of the subject(s). "
+                          "They are not stylistic suggestions and must survive the "
+                          "render exactly: " + "; ".join(invariants) + ".")
+        blocks.extend(rules)
+        if blocks:
+            prompt = prompt.strip() + "\n\n" + "\n\n".join(blocks)
+        recipe_entities = resolved_meta
+
     for r in a.ref:
         if not os.path.exists(os.path.expanduser(r)):
             sys.exit(f"generate.py: ref not found: {r}  (the look IS the references; a missing one silently degrades the render)")
@@ -191,6 +296,8 @@ def main():
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "sha256": sha256(out),
     }
+    if recipe_entities:
+        recipe["entities"] = recipe_entities
     if a.style_pack:
         recipe["stylePack"] = a.style_pack
     if a.lookbook:

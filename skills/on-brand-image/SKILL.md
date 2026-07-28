@@ -1,9 +1,26 @@
 ---
 name: on-brand-image
-description: Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a portable folder of style references plus a read-back gate — with NO universe required. Compiles the prompt from the pack (style line + subject + the pack's rejected poles as negatives), generates with the pack's anchor reference passed FIRST, then reads the output back against the pack's gate assertions and re-rolls any defect from scratch. Use for the common case "here is a folder of images, make more that look like them": deck plates, page heroes, section art, icons, one-off brand illustration. Optionally accepts a locked canon master (a character/motif/prop reference) as an extra input so a recurring element stays identical. Generic and pack-parameterized: pass the target style pack.
+description: Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a portable folder of style references plus a read-back gate — with NO universe required. Compiles the prompt from the pack (style line + subject + the pack's rejected poles as negatives), generates with the pack's anchor reference passed FIRST, then reads the output back against the pack's gate assertions and re-rolls any defect from scratch. Use for the common case "here is a folder of images, make more that look like them": deck plates, page heroes, section art, icons, one-off brand illustration. Accepts locked canon entities via `--entity <universe>:<id>[@look]`, which resolves their sheets, alt-looks and invariants from canon automatically, passes them ahead of the pack anchor, and refuses the render if any required plate is missing, so a recurring element cannot silently drift. Generic and pack-parameterized: pass the target style pack.
 ---
 
 # On-Brand Image
+
+## Canon entities: pass `--entity`, never hand-picked `--ref`
+
+If a subject is a canon entity, name it and let the generator resolve it:
+
+```bash
+python3 scripts/generate.py --out piece.png --prompt "<subject>" \
+  --style-pack <pack> --entity ~/universes/mine:jesus@spirit
+```
+
+That resolves the entity's required sheets (applying `altLooks`/`keepSheets`/`dropSheets`
+and `supersedes`), puts them AHEAD of the pack anchor because a pack pulls hard toward its
+own faces, bakes the live invariants and `prose.rules` into the prompt, records what it
+resolved in the recipe, and hard-fails on a missing plate or an unknown look.
+
+Hand-picking `--ref` for a canon entity is how you get a plausible picture of the wrong
+person. Reserve `--ref` for inputs that are not canon entities.
 
 One image, in a known look, gated. This is the framework's **lightweight front door**: it consumes a
 **Style Pack** (SPEC §4.7), not a universe, because "generate more images in this style" has no

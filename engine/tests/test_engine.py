@@ -716,3 +716,77 @@ class ProjectionInstanceTests(unittest.TestCase):
         proj["invariants"]["crossSlot"][0].pop("rule")
         problems = self._store(proj=proj).validate_canon()
         self.assertTrue(any("carries no 'rule'" in p for p in problems), problems)
+
+
+class TestAltLookResolution(unittest.TestCase):
+    """SPEC v0.10 declared altLooks; nothing read them until 2026-07-28.
+
+    Selecting a look used to mean a human typing the right filename into --ref.
+    That is a memory test, not a gate, and it was failed live: a `spirit` look was
+    rendered with only its own body plate and none of its kept face sheets, and the
+    face drifted toward the base model's bias on every batch.
+    """
+
+    def _ent(self):
+        return Entity(id="jesus", kind="character", raw={
+            "id": "jesus", "kind": "character",
+            "structured": {
+                "sheets": {
+                    "face-neutral": "ref/mono-face.webp",
+                    "face-neutral-color": "ref/color-face.png",
+                    "face-3q": "ref/mono-3q.webp",
+                    "forward-fullbody": "ref/body.webp",
+                    "back": "ref/back.webp",
+                },
+                "requiredForRenderOnLock": ["face-neutral-color", "forward-fullbody", "face-neutral"],
+                "requiredForRender": ["face-neutral-color", "forward-fullbody", "face-neutral"],
+                "invariants": ["brown-skin", "curly-hair"],
+                "altLooks": {
+                    "spirit": {
+                        "sheets": {"forward-fullbody": "ref/spirit-body.png"},
+                        "supersedes": ["brown-skin"],
+                        "invariants": ["made-of-light"],
+                        "keepSheets": ["face-neutral-color", "face-neutral"],
+                    },
+                    "bare": {"sheets": {"forward-fullbody": "ref/bare.png"}},
+                },
+            },
+        })
+
+    def test_default_look_is_the_required_set(self):
+        got = self._ent().look_sheets(None)
+        self.assertEqual(set(got), {"face-neutral-color", "forward-fullbody", "face-neutral"})
+
+    def test_alt_look_overlays_its_own_sheet(self):
+        got = self._ent().look_sheets("spirit")
+        self.assertEqual(got["forward-fullbody"], "ref/spirit-body.png")
+
+    def test_alt_look_keeps_the_face_sheets_it_names(self):
+        # The regression that cost seven batches: without keepSheets honoured, the
+        # renderer gets a body made of light and no face, and invents a new person.
+        got = self._ent().look_sheets("spirit")
+        self.assertEqual(got["face-neutral-color"], "ref/color-face.png")
+        self.assertEqual(got["face-neutral"], "ref/mono-face.webp")
+
+    def test_alt_look_drops_identity_sheets_it_does_not_keep(self):
+        ent = self._ent()
+        ent.raw["structured"]["requiredForRender"].append("face-3q")
+        ent.raw["structured"]["requiredForRenderOnLock"].append("face-3q")
+        self.assertNotIn("face-3q", ent.look_sheets("spirit"))
+
+    def test_look_with_no_keepsheets_loses_every_identity_sheet(self):
+        self.assertEqual(set(self._ent().look_sheets("bare")), {"forward-fullbody"})
+
+    def test_supersedes_retires_only_the_named_base_invariant(self):
+        got = self._ent().look_invariants("spirit")
+        self.assertNotIn("brown-skin", got)
+        self.assertIn("curly-hair", got)
+        self.assertIn("made-of-light", got)
+
+    def test_base_invariants_survive_for_the_default_look(self):
+        self.assertIn("brown-skin", self._ent().look_invariants(None))
+
+    def test_unknown_look_raises_and_names_the_known_ones(self):
+        with self.assertRaises(ValueError) as cm:
+            self._ent().look_sheets("ghost")
+        self.assertIn("spirit", str(cm.exception))
