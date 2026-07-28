@@ -577,20 +577,20 @@ class GeneratorTests(unittest.TestCase):
         self.assertTrue(any("kind must be 'generator'" in p for p in problems), problems)
 
 
-class ProjectionTests(unittest.TestCase):
-    """SPEC §4.8 — a projection is a portable contract for a KIND of deliverable."""
+class FormTests(unittest.TestCase):
+    """SPEC §4.8 — a form is a portable contract for a KIND of work."""
 
     def _p(self, **over):
-        base = {"id": "parallax-scene", "version": "1.0.0",
+        base = {"id": "scrolling-diorama", "version": "1.0.0",
                 "surface": {"medium": "parallax-scene"},
                 "requires": [{"kind": "style-pack", "min": 1}],
                 "slots": [{"id": "plane", "repeat": "$.planes", "type": "generated"}],
                 "emits": ["layers/*.webp"]}
         base.update(over)
-        from agenticstory.model import ProjectionType
-        return ProjectionType.from_dict(base)
+        from agenticstory.model import Form
+        return Form.from_dict(base)
 
-    def test_a_well_formed_projection_is_valid(self):
+    def test_a_well_formed_form_is_valid(self):
         self.assertEqual(self._p().validate(), [])
 
     def test_requires_may_not_name_an_id(self):
@@ -599,7 +599,7 @@ class ProjectionTests(unittest.TestCase):
         problems = self._p(requires=[{"kind": "style-pack", "id": "warm-oil", "min": 1}]).validate()
         self.assertTrue(any("requires KINDS" in p for p in problems), problems)
 
-    def test_projection_is_versioned(self):
+    def test_form_is_versioned(self):
         problems = self._p(version="").validate()
         self.assertTrue(any("no 'version'" in p for p in problems), problems)
 
@@ -657,10 +657,10 @@ class ComputedInvariantTests(unittest.TestCase):
         self.assertIn("unknown rule op", self._eval({"op": "wat", "over": "plane"}, self.PLANES))
 
 
-class ProjectionInstanceTests(unittest.TestCase):
-    """SPEC §4.9 — ONE instance, checked against the contract it claims."""
+class WorkTests(unittest.TestCase):
+    """SPEC §4.9 — canon given form, checked against the form it claims."""
 
-    PROJ = {"id": "parallax-scene", "version": "1.0.0",
+    PROJ = {"id": "scrolling-diorama", "version": "1.0.0",
             "surface": {"medium": "parallax-scene"},
             "requires": [{"kind": "style-pack", "min": 1}],
             "slots": [{"id": "plane", "type": "generated"}],
@@ -670,7 +670,7 @@ class ProjectionInstanceTests(unittest.TestCase):
                  "rule": {"op": "monotonic", "over": "plane", "by": "z",
                           "field": "speed", "direction": "increasing", "strict": True}}]}}
 
-    COMP = {"id": "terrace", "projection": "parallax-scene@1.0.0",
+    COMP = {"id": "terrace", "form": "scrolling-diorama@1.0.0",
             "bind": {"style-pack": "warm-gold"},
             "slots": {"plane": [{"z": 0, "speed": 0.3}, {"z": 1, "speed": 0.8}]}}
 
@@ -678,26 +678,26 @@ class ProjectionInstanceTests(unittest.TestCase):
         d = Path(tempfile.mkdtemp())
         (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
         (d / "canon" / "entities").mkdir(parents=True)
-        p = d / "projections" / "parallax-scene"
+        p = d / "forms" / "scrolling-diorama"
         p.mkdir(parents=True)
-        (p / "projection.json").write_text(json.dumps(proj or self.PROJ))
-        c = d / "instances" / "terrace"
+        (p / "form.json").write_text(json.dumps(proj or self.PROJ))
+        c = d / "works" / "terrace"
         c.mkdir(parents=True)
-        (c / "instance.json").write_text(json.dumps(comp or self.COMP))
+        (c / "work.json").write_text(json.dumps(comp or self.COMP))
         return CanonStore(d)
 
-    def test_a_valid_composition_produces_no_problems(self):
+    def test_a_valid_work_produces_no_problems(self):
         self.assertEqual(self._store().validate_canon(), [])
 
-    def test_unresolvable_projection_is_a_problem(self):
-        c = dict(self.COMP, projection="storybook@9.9.9")
+    def test_unresolvable_form_is_a_problem(self):
+        c = dict(self.COMP, form="storybook@9.9.9")
         self.assertTrue(any("not found" in p for p in self._store(comp=c).validate_canon()))
 
-    def test_unpinned_projection_reference_is_a_problem(self):
-        c = dict(self.COMP, projection="parallax-scene")
+    def test_unpinned_form_reference_is_a_problem(self):
+        c = dict(self.COMP, form="scrolling-diorama")
         self.assertTrue(any("unpinned" in p for p in self._store(comp=c).validate_canon()))
 
-    def test_filling_a_slot_the_projection_does_not_declare(self):
+    def test_filling_a_slot_the_form_does_not_declare(self):
         c = dict(self.COMP, slots={"spread": [{"z": 0, "speed": 0.3}]})
         self.assertTrue(any("does not declare" in p for p in self._store(comp=c).validate_canon()))
 
@@ -706,10 +706,18 @@ class ProjectionInstanceTests(unittest.TestCase):
         problems = self._store(comp=c).validate_canon()
         self.assertTrue(any("requires >=1 of kind 'style-pack'" in p for p in problems), problems)
 
-    def test_a_composition_that_violates_a_computed_invariant_is_caught(self):
+    def test_a_work_that_violates_a_computed_invariant_is_caught(self):
         c = dict(self.COMP, slots={"plane": [{"z": 0, "speed": 0.9}, {"z": 1, "speed": 0.2}]})
         problems = self._store(comp=c).validate_canon()
         self.assertTrue(any("invariant 'depth-order' fails" in p for p in problems), problems)
+
+    def test_a_pre_0_14_work_using_the_old_projection_key_still_loads(self):
+        """A universe written before the Form/Work rename keyed this `projection`. Reading
+        only `form` would present those works as formless — a rename silently breaking the
+        thing it renamed, which is the failure mode renames are famous for."""
+        old = {k: v for k, v in self.COMP.items() if k != "form"}
+        old["projection"] = "scrolling-diorama@1.0.0"
+        self.assertEqual(self._store(comp=old).validate_canon(), [])
 
     def test_a_computed_invariant_with_no_rule_is_reported_not_silently_passed(self):
         proj = copy.deepcopy(self.PROJ)
@@ -790,3 +798,4 @@ class TestAltLookResolution(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             self._ent().look_sheets("ghost")
         self.assertIn("spirit", str(cm.exception))
+

@@ -265,20 +265,26 @@ class StorySpec:
 
 
 @dataclass
-class ProjectionType:
-    """SPEC §4.8 — a typed contract for a KIND of deliverable.
+class Form:
+    """SPEC §4.8 — a form: what makes a work the KIND of thing it is.
 
-    Specified since v0.11 and never implemented, which is why a layered parallax scene
-    got hand-rolled as a bespoke primitive instead of being expressed as what it is.
-    `requires` names KINDS, never ids: that is the whole mechanism that lets a projection
-    ship to a brand it has never seen.
+    Canon is the matter; a form is what shapes it; a Work (§4.9) is canon given form. The
+    form names a surface, requires kinds, declares the slots to be filled and the
+    invariants that must hold, and emits files.
+
+    `requires` names KINDS, never ids. That is the whole mechanism that lets a form ship
+    to a brand it has never seen, and it is enforced below rather than documented.
+
+    Formerly `Projection`, then `ProjectionType`. A form is not a projection: it is what a
+    projection happens THROUGH. Projection survives as the relationship canon bears to a
+    work, which is the one job that word does correctly.
     """
     id: str
     raw: dict[str, Any] = field(default_factory=dict)
 
     @staticmethod
-    def from_dict(d: dict[str, Any]) -> "ProjectionType":
-        return ProjectionType(id=d.get("id", ""), raw=d)
+    def from_dict(d: dict[str, Any]) -> "Form":
+        return Form(id=d.get("id", ""), raw=d)
 
     @property
     def version(self) -> str:
@@ -299,13 +305,13 @@ class ProjectionType:
     def validate(self) -> list[str]:
         p: list[str] = []
         if not self.id:
-            p.append("projection missing 'id'")
+            p.append("form missing 'id'")
         if not self.version:
-            p.append(f"{self.id}: no 'version' (a projection is a distributable artifact, so it is versioned)")
+            p.append(f"{self.id}: no 'version' (a form is a distributable artifact, so it is versioned)")
         if not self.raw.get("surface"):
-            p.append(f"{self.id}: no 'surface' (a projection declares the medium it targets)")
+            p.append(f"{self.id}: no 'surface' (a form declares the medium it targets)")
         if not self.slots:
-            p.append(f"{self.id}: no 'slots' (a projection with nothing to fill emits nothing)")
+            p.append(f"{self.id}: no 'slots' (a form with nothing to fill emits nothing)")
         for i, s in enumerate(self.slots, 1):
             if not isinstance(s, dict) or not s.get("id"):
                 p.append(f"{self.id}: slot {i} has no 'id'")
@@ -332,22 +338,32 @@ class ProjectionType:
 
 
 @dataclass
-class ProjectionInstance:
-    """SPEC §4.9 — ONE instance of a projection.
+class Work:
+    """SPEC §4.9 — a work: canon given form.
 
-    Validation that needs the projection in hand (do the bound kinds satisfy `requires`,
-    does every filled slot exist) lives in the store, which can resolve the reference.
+    Not an "instance", which is why it stopped being called one. A book's identity is not
+    derived from being an instance of a book-shaped thing: a work carries AUTHORSHIP that
+    exists in neither the canon nor the form. `beats` and `spine` are new facts about the
+    world, and §4.9's `writesBack` lets a work add to canon outright — which is also the
+    proof that a work is not literally a projection of the universe, since a shadow does
+    not change the object.
+
+    Validation that needs the form in hand (do the bound kinds satisfy `requires`, does
+    every filled slot exist) lives in the store, which can resolve the reference.
     """
     id: str
     raw: dict[str, Any] = field(default_factory=dict)
 
     @staticmethod
-    def from_dict(d: dict[str, Any]) -> "ProjectionInstance":
-        return ProjectionInstance(id=d.get("id", ""), raw=d)
+    def from_dict(d: dict[str, Any]) -> "Work":
+        return Work(id=d.get("id", ""), raw=d)
 
     @property
-    def projection(self) -> str:
-        return self.raw.get("projection", "")
+    def form(self) -> str:
+        """The form this work is made in, as `id@version`. Reads `form`, falling back to
+        the pre-0.14 `projection` key so a universe written against the old name still
+        loads rather than silently presenting as formless."""
+        return self.raw.get("form", self.raw.get("projection", ""))
 
     @property
     def slots(self) -> dict[str, Any]:
@@ -360,11 +376,11 @@ class ProjectionInstance:
     def validate(self) -> list[str]:
         p: list[str] = []
         if not self.id:
-            p.append("instance missing 'id'")
-        if not self.projection:
-            p.append(f"{self.id}: no 'projection' (a instance is an instance OF something)")
-        elif "@" not in self.projection:
-            p.append(f"{self.id}: projection '{self.projection}' is unpinned; use 'id@version'")
+            p.append("work missing 'id'")
+        if not self.form:
+            p.append(f"{self.id}: no 'form' (a work is canon given SOME form)")
+        elif "@" not in self.form:
+            p.append(f"{self.id}: form '{self.form}' is unpinned; use 'id@version'")
         if not self.slots:
             p.append(f"{self.id}: fills no slots")
         return p

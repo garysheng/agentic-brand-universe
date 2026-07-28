@@ -1,11 +1,24 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.13 — 2026-07-27.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.14 — 2026-07-28.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.14 changelog — Projection/Composition become Form/Work.** §4.8 and §4.9 are renamed, and the
+> rename is the point rather than cosmetics. A *projection* is determined by (object, map); a work is
+> not determined by (canon, form) — `beats` and `spine` are authored facts present in neither, and
+> §4.9's `writesBack` lets a work change the canon it supposedly views, which no shadow does to its
+> object. **Projection** therefore survives as the name of the RELATIONSHIP canon bears to a work,
+> which is the one job that word does correctly, and stops naming either primitive. The pair that
+> does fit is hylomorphic: canon is the matter, a form is what shapes it, a work is canon given form.
+> "Instance" is dropped because it actively denies the authorship a work carries. §4.8 also gains the
+> naming rule (name the TREATMENT, not the medium — if `id` equals `surface.medium`, every sibling
+> treatment has nowhere to live) and the requirement that a computed invariant carry an evaluable
+> `rule` rather than only an id. Directories move to `forms/*/form.json` and `works/*/work.json`; the
+> pre-0.14 `projection` key on a work still loads.
+>
 > **v0.13 changelog — deterministic graphics get a typed home.** §4.11 adds the **Deterministic
 > Generator**: code in the universe that DRAWS an asset rather than prompting for one, with a
 > manifest declaring its params, seed, inputs, outputs, install map, and proof. The framework already
@@ -94,7 +107,7 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 >   `invariants` / `emits`. Adding a new kind of deliverable is now filling in a contract, not
 >   inventing a renderer.
 > - **§4.9 Composition** — one INSTANCE of a projection. Narrative fields move out of the generic
->   primitive into the storybook projection's slot schema, where they always belonged. `Story Spec`
+>   primitive into the storybook form's slot schema, where they always belonged. `Story Spec`
 >   is retained as an alias so existing universes validate unchanged.
 > - **§4.10 The Composer** — the render step splits into three parts with genuinely different
 >   natures: an *agentic* composer that PLANS, a *deterministic* compiler (§4.6) that turns one
@@ -545,15 +558,24 @@ not subject content. Improvising a bare folder of "clothing refs" is the drift i
 - **The gate is load-bearing, and it checks VARIETY.** A lookbook without a variety gate is a mood board
   that drifts back to a uniform on the first render.
 
-### 4.8 Projection (a KIND of deliverable)
+### 4.8 Form (what makes a work the KIND of thing it is)
 
-A **Projection** is a typed contract for a kind of artifact. It is the layer the standard was missing:
+**Canon is the matter. A form is what shapes it. A work (§4.9) is canon given form.**
+
+A **Form** is a typed contract for a kind of work. It is the layer the standard was missing:
 `Story Spec` (§4.3) conflated *what kind of thing this is* with *this particular one*, and baked a
 story's required fields into the generic primitive, so only stories were expressible.
 
-A projection is a **distributable artifact**, not a config block: it carries an id, a semantic version,
-an author, and may `extend` another projection rather than copying it. The framework ships a starter
-set; it is explicitly **not a closed set**. The intended shape is a registry others publish into.
+A form is a **distributable artifact**, not a config block: it carries an id, a semantic version, an
+author, and may `extend` another form rather than copying it. The framework ships a starter set; it
+is explicitly **not a closed set**. The intended shape is a registry others publish into.
+
+**Name the treatment, not the medium.** If a form's `id` equals its `surface.medium`, it has taken
+the name of a whole category for one specific way of working in it, and every sibling treatment is
+left with nowhere to live. `scrolling-diorama`, not `parallax-scene` — mouse-driven, horizontal and
+dolly scenes are all parallax scenes, and none of them fit a contract that hardcodes vertical scroll,
+edge-pinned bands and sink-behind occlusion. The MEDIUM stays a string in `surface`; it earns being
+a primitive when a SECOND form targets it and the two must agree on something, not before.
 
 ```jsonc
 {
@@ -563,7 +585,7 @@ set; it is explicitly **not a closed set**. The intended shape is a registry oth
 
   "surface": { "medium": "picture-book", "geometry": { "spreads": 24, "aspect": "2:3" } },
 
-  // BY KIND, never by id. A marketplace projection cannot know your canon.
+  // BY KIND, never by id. A marketplace form cannot know your canon.
   "requires": [ { "kind": "character", "min": 1 }, { "kind": "setting", "min": 1 },
                 { "kind": "style-pack", "min": 1 } ],
 
@@ -588,9 +610,18 @@ set; it is explicitly **not a closed set**. The intended shape is a registry oth
 }
 ```
 
-**`requires` names kinds; the composition binds ids.** This is the whole mechanism that lets a
-projection ship to a brand it has never seen. The projection says "I need at least one character";
-the composition says "the character is `jerry-man`".
+**`requires` names kinds; the work binds ids.** This is the whole mechanism that lets a form ship to
+a brand it has never seen. The form says "I need at least one character"; the work says "the
+character is `jerry-man`".
+
+**A computed invariant carries an evaluable `rule`, not just an id.** A generic engine cannot run a
+check it knows only by NAME. Three ops cover the cases so far, and each is about a RELATIONSHIP
+between slot entries, which is what a crossSlot invariant IS: `monotonic` (a field ordered by
+another field), `count` (how many entries match a predicate), `extreme` (a matching entry sits at an
+end). An invariant marked `computed` with no `rule` is reported as a problem rather than silently
+passing. Be honest in the other direction too: if a form's own flagship work legitimately violates a
+rule, that rule is `judged` with a stated exemption. A computed rule your own work fails is a lie
+with a green checkmark.
 
 **Per-slot vs cross-slot invariants, and why it matters.** A per-slot invariant is checkable against
 one output in isolation ("this image contains no text"). A **cross-slot** invariant is only checkable
@@ -723,12 +754,12 @@ competent provider works. Where there is no golden and the model's own hand is t
 ink-line illustration), the provider is part of the brand and must be pinned. Every render records
 provider, model version, params, and the exact refs passed, so drift is always diagnosable.
 
-### 4.9 Composition (ONE instance)
+### 4.9 Work (canon given form)
 
 ```jsonc
 {
   "id": "not-every-fire-is-holy",
-  "projection": "storybook@2.1.0",
+  "form": "storybook@2.1.0",
   "bind": { "character": ["jerry-man", "brenda-gentry"], "setting": ["the-yard"],
             "style-pack": "warm-oil-curdles-cold" },
   "slots": { "spread": [ { "beat": "…", "characters": ["jerry-man"], "location": "the-yard" } ] },
@@ -737,13 +768,25 @@ provider, model version, params, and the exact refs passed, so drift is always d
 }
 ```
 
-`logline`, `spine`, `refrain`, and `beats` are **not** universal fields. They belong to the storybook
-projection's slot schema and craft-canon (§13), which is where they were always story-specific. A
-flyer composition has none of them and is now expressible.
+A work is **not** an "instance". A book's identity is not derived from being an instance of a
+book-shaped thing. A work carries AUTHORSHIP that exists in neither the canon nor the form: `beats`
+and `spine` are new facts about the world, and `writesBack` lets a work add to canon outright.
 
-**Back-compatible:** `StorySpec` is retained as an alias for a composition whose projection resolves
-to `storybook`. A universe with existing `stories/*.json` and no `projection` field validates
-unchanged, and is treated as `storybook@1`.
+That is also why **projection** names the *relationship* here and never a primitive. A projection is
+determined by (object, map); a work is not determined by (canon, form), and a shadow does not change
+the object it falls from. The fit varies by form, and the slot schema is the measure of it: a form
+whose slots are derivable is near a true projection, and one with a rich authored schema is far from
+it.
+
+`logline`, `spine`, `refrain`, and `beats` are **not** universal fields. They belong to the storybook
+form's slot schema and craft-canon (§13), which is where they were always story-specific. A flyer
+work has none of them and is now expressible.
+
+**Back-compatible, twice over:** `StorySpec` is retained as an alias for a work whose form resolves
+to `storybook`; a universe with existing `stories/*.json` and no form declared validates unchanged
+and is treated as `storybook@1`. And a work keyed with the pre-0.14 `projection` field still loads,
+because a rename that silently orphans the things it renamed is the failure mode renames are famous
+for.
 
 ### 4.10 The Composer, the Compiler, and the Gate
 

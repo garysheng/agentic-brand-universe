@@ -168,7 +168,7 @@
     ]
   },
   "emits": [
-    "scene.json",
+    "work.json",
     "layers/*.webp",
     "proof/contact-sheet.png"
   ],

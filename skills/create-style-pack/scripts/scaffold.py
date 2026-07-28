@@ -50,6 +50,7 @@ def main():
 
     ref_rel = []
     anchor_rel = None
+    unprovenanced = []
     for i, src in enumerate(src_list):
         base = os.path.basename(src)
         # keep basenames unique inside the pack
@@ -59,6 +60,20 @@ def main():
             stem, ext = os.path.splitext(base); dest = os.path.join(refs_dir, f"{stem}-{n}{ext}"); n += 1
         if os.path.abspath(dest) != src:
             shutil.copy2(src, dest)
+            # CARRY THE PROVENANCE WITH THE REF.
+            # generate.py writes `<image>.recipe.json` beside every render, and copying
+            # the image alone strands it: the pack ends up holding art that nothing can
+            # account for. That is worse than an obviously-missing recipe, because
+            # `universe-doctor` EXCLUDES style-pack refs from its provenance sweep on the
+            # assumption the manifest covers them, so an unprovenanced pack scored a clean
+            # 10/10 (gary-sheng-art, 2026-07-27) and the gap was only found by a human
+            # asking "where's the style provenance?". Both packs were then fixed by hand
+            # and the scaffolder was left to do it again, which it did.
+            sidecar = src + ".recipe.json"
+            if os.path.exists(sidecar):
+                shutil.copy2(sidecar, dest + ".recipe.json")
+            else:
+                unprovenanced.append(base)
         rel = os.path.relpath(dest, pack)
         ref_rel.append(rel)
         if i == 0: anchor_rel = rel
@@ -85,6 +100,12 @@ def main():
     for r in ref_rel:
         if not os.path.exists(os.path.join(pack, r)): sys.exit(f"scaffold: ref did not land: {r}")
     if anchor_rel not in ref_rel: sys.exit("scaffold: anchor must be one of refs")
+    if unprovenanced:
+        print(f"  WARNING: {len(unprovenanced)} ref(s) copied with NO recipe sidecar: "
+              f"{', '.join(unprovenanced)}. These are un-auditable: no divergence check can\n"
+              f"  ever run against them, and universe-doctor skips pack refs when scoring\n"
+              f"  provenance, so nothing downstream will flag this for you. Prefer refs made\n"
+              f"  by generate.py, which writes <image>.recipe.json beside every render.")
     print(f"[style-pack] OK  {a.id}  ({len(ref_rel)} refs, {len(a.gate)} gate assertions)  -> {pack}/pack.json")
 
 if __name__ == "__main__":

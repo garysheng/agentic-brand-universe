@@ -8,7 +8,9 @@ relations. A universe is:
       universe.json                 # { "name", "assetRoot" }  assetRoot is where entity asset paths resolve
       canon/entities/*.json         # one Entity per file
       canon/relations/*.json        # one Relation per file (or a list)
-      stories/*.json                # StorySpec per file
+      forms/*/form.json             # Form per directory  (SPEC §4.8)
+      works/*/work.json             # Work per directory  (SPEC §4.9)
+      stories/*.json                # StorySpec per file  (a Work whose form is storybook)
 
 Stdlib only.
 """
@@ -18,7 +20,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .model import CraftCanon, Entity, Generator, ProjectionInstance, ProjectionType, Relation, StorySpec
+from .model import CraftCanon, Entity, Form, Generator, Relation, StorySpec, Work
 
 
 class CanonStore:
@@ -30,8 +32,8 @@ class CanonStore:
         self.stories: dict[str, StorySpec] = {}
         self.craft: dict[str, CraftCanon] = {}
         self.generators: dict[str, Generator] = {}
-        self.projections: dict[str, ProjectionType] = {}
-        self.instances: dict[str, ProjectionInstance] = {}
+        self.forms: dict[str, Form] = {}
+        self.works: dict[str, Work] = {}
         self._load()
 
     def _load(self) -> None:
@@ -53,19 +55,19 @@ class CanonStore:
                 g = Generator.from_dict(json.loads(f.read_text()))
                 self.generators[g.id] = g
 
-        # Projections may be local to the universe OR vendored from a registry; both are
-        # keyed by `id@version`, because a universe may legitimately hold two versions
-        # of one projection while an instance is mid-migration between them.
-        proj_dir = self.dir / "projections"
-        if proj_dir.is_dir():
-            for f in sorted(proj_dir.glob("*/projection.json")):
-                pr = ProjectionType.from_dict(json.loads(f.read_text()))
-                self.projections[pr.ref] = pr
-        inst_dir = self.dir / "instances"
-        if inst_dir.is_dir():
-            for f in sorted(inst_dir.glob("*/instance.json")):
-                c = ProjectionInstance.from_dict(json.loads(f.read_text()))
-                self.instances[c.id] = c
+        # Forms may be local to the universe OR vendored from a registry; both are keyed
+        # by `id@version`, because a universe may legitimately hold two versions of one
+        # form while a work is mid-migration between them.
+        form_dir = self.dir / "forms"
+        if form_dir.is_dir():
+            for f in sorted(form_dir.glob("*/form.json")):
+                fm = Form.from_dict(json.loads(f.read_text()))
+                self.forms[fm.ref] = fm
+        work_dir = self.dir / "works"
+        if work_dir.is_dir():
+            for f in sorted(work_dir.glob("*/work.json")):
+                w = Work.from_dict(json.loads(f.read_text()))
+                self.works[w.id] = w
 
         rel_dir = self.dir / "canon" / "relations"
         if rel_dir.exists():
@@ -127,59 +129,59 @@ class CanonStore:
                     problems.append(f"story '{s.id}' features unknown entity '{fid}'")
         for g in self.generators.values():
             problems += g.validate()
-        for pr in self.projections.values():
-            problems += pr.validate()
-        for c in self.instances.values():
-            problems += c.validate()
-        problems += self._validate_instances()
+        for fm in self.forms.values():
+            problems += fm.validate()
+        for w in self.works.values():
+            problems += w.validate()
+        problems += self._validate_works()
         problems += self._validate_generators()
         problems += self._validate_canon_records()
         problems += self._validate_assets()
         return problems
 
-    def _validate_instances(self) -> list[str]:
-        """SPEC §4.8/§4.9 — does this instance actually satisfy the contract it claims?
+    def _validate_works(self) -> list[str]:
+        """SPEC §4.8/§4.9 — does this work actually satisfy the form it claims?
 
-        Three checks the instance cannot make about itself, because they need the
-        projection resolved: the projection exists at the pinned version, every filled
-        slot is a declared slot, and the COMPUTED cross-slot invariants hold.
+        Three checks a work cannot make about itself, because they need the form
+        resolved: the form exists at the pinned version, every filled slot is a declared
+        slot, and the COMPUTED cross-slot invariants hold.
 
         Judged invariants are not run here. Judgement is the Gate's job (§4.10), and
         the whole point of splitting Composer / Compiler / Gate is that the store does
         not quietly become a renderer.
         """
         problems: list[str] = []
-        for c in self.instances.values():
-            pr = self.projections.get(c.projection)
+        for c in self.works.values():
+            pr = self.forms.get(c.form)
             if pr is None:
-                if c.projection:
-                    have = ", ".join(sorted(self.projections)) or "none"
+                if c.form:
+                    have = ", ".join(sorted(self.forms)) or "none"
                     problems.append(
-                        f"instance '{c.id}': projection '{c.projection}' not found (have: {have})"
+                        f"work '{c.id}': form '{c.form}' not found (have: {have})"
                     )
                 continue
             declared = {s.get("id") for s in pr.slots}
             for name in c.slots:
                 if name not in declared:
                     problems.append(
-                        f"instance '{c.id}': fills slot '{name}', which {pr.ref} does not declare"
+                        f"work '{c.id}': fills slot '{name}', which {pr.ref} does not declare"
                     )
-            # `requires` names kinds; the instance binds ids. An unbound requirement is
-            # the failure this whole split exists to catch.
+            # `requires` names kinds; the work binds ids. An unbound requirement is the
+            # failure this whole split exists to catch.
             for r in pr.requires:
                 kind = r.get("kind")
                 bound = c.bind.get(kind)
                 n = len(bound) if isinstance(bound, list) else (1 if bound else 0)
                 if n < int(r.get("min", 0)):
                     problems.append(
-                        f"instance '{c.id}': {pr.ref} requires >={r.get('min')} of kind "
+                        f"work '{c.id}': {pr.ref} requires >={r.get('min')} of kind "
                         f"'{kind}', bound {n}"
                     )
             problems += self._computed_invariants(c, pr)
         return problems
 
-    def _computed_invariants(self, c: ProjectionInstance, pr: ProjectionType) -> list[str]:
-        """Evaluate the projection's computed invariants against the instance's slots.
+    def _computed_invariants(self, c: Work, pr: Form) -> list[str]:
+        """Evaluate the form's computed invariants against the work's slots.
 
         A generic engine cannot run a check it knows only by NAME, so a computed invariant
         carries a `rule` the engine evaluates as data. Three ops turn out to cover the
@@ -210,7 +212,7 @@ class CanonStore:
                 continue
             fail = self._eval_rule(rule, rows)
             if fail:
-                out.append(f"instance '{c.id}': invariant '{iid}' fails — {fail}")
+                out.append(f"work '{c.id}': invariant '{iid}' fails — {fail}")
         return out
 
     @staticmethod
