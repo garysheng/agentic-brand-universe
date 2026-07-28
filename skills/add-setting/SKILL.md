@@ -27,8 +27,41 @@ One location, into a universe's canon, as a typed record with its contract scaff
    ```
    This writes `canon/entities/<id>.json` with `status: "unlocked"` and a `contract` whose fields (`turnaround`, `emptyPlates`, `blueprint`, `scalePlate`, `map`, `blocking`, `dressing`, `scale`) are all null/empty. It prints `lock_level: stub`.
 4. **Fill the descriptor prose.** Edit `contract.map` (the spatial layout in words), `contract.blocking` (where characters can stand/move without breaking geometry), `contract.dressing` (the recognizable materials/props/palette), and `contract.scale` (the size in human measurements, from the interview). These three are load-bearing text, not flavor: the resolver requires them non-empty, and every render of this setting passes them in the prompt. Also fill `prose.rules` for any never-render constraint.
-5. **Write the generation prompts.** Create `reference/<id>/prompts.md`: one block per contract file slot, a `turnaround`, one `emptyPlate` per fixed camera (C1, C2, ...), a `blueprint` (top-down/schematic), and a **`scalePlate`** (see below). Each prompt: (a) passes `identity.register.anchor` FIRST and bakes `register.rejectedPoles` as negatives; (b) restates the FIXED geometry from step 2 so every plate agrees with every other; (c) names the target output path `reference/<id>/<shot>.png`. These are what `shoot-references` will run.
-6. **Validate + commit.** `agenticstory validate <universe>` stays green (an `unlocked` setting still validates: that is a correct, expected state, not an error). Commit the entity + reference dir + prompts.md. Report `lock_level: stub` and that the setting stays refused by `assert-story`/`assert-spread` until `shoot-references` fills every plate and flips `status` to `"locked"`.
+5. **BUILD THE BLUEPRINT IN CODE, not with the image model** (see below). It is the seed the rest of the matrix inherits, and it is free.
+6. **Write the generation prompts.** Create `reference/<id>/prompts.md`: one block per contract file slot, a `turnaround`, one `emptyPlate` per fixed camera (C1, C2, ...), and a **`scalePlate`** (see below). The `blueprint` is NOT prompted; step 5 already drew it. Each prompt: (a) passes `identity.register.anchor` FIRST and bakes `register.rejectedPoles` as negatives; (b) **passes the blueprint from step 5 as a layout reference**; (c) restates the FIXED geometry from step 2 so every plate agrees with every other; (d) names the target output path `reference/<id>/<shot>.png`. These are what `shoot-references` will run.
+7. **Validate + commit.** `agenticstory validate <universe>` stays green (an `unlocked` setting still validates: that is a correct, expected state, not an error). Commit the entity + reference dir + prompts.md. Report `lock_level: stub` and that the setting stays refused by `assert-story`/`assert-spread` until `shoot-references` fills every plate and flips `status` to `"locked"`.
+
+### The blueprint is a 3D MASSING RENDER, drawn in code (SPEC v0.15)
+
+**Do not prompt an image model for the blueprint, and do not settle for a top-down plan.** Run:
+
+```bash
+python3 -m agenticstory.cli massing <spec.json> --out <universe>/reference/<id>/blueprint.png \
+    --universe <universe> --entity <id>
+```
+
+You declare the room once as boxes and quads with the cameras named, and the engine renders **the actual perspective each locked camera will see**. It is deterministic, costs nothing, needs no key, and writes its own `.recipe.json`.
+
+**Why a plan was not good enough.** The blueprint seeds every empty plate, every spread and every re-render. A plan view makes the image model *infer* the perspective, and inference is exactly where geometry drifts: rooms change proportion between angles, furniture migrates, and **handedness silently flips**, so "the bookshelf wall is C1-LEFT" stops being true in half the book. A massing render hands the model a picture to match against a picture. It also forces you to commit to real numbers at authoring time, which is when a wrong room is still cheap.
+
+Keep it **crude on purpose**: flat blocks, ink edges, no textures, no materials. A blueprint that looks like finished art invites the model to copy its surface; one that obviously reads as scaffolding gets used as scaffolding. The sheet self-stamps `LAYOUT REFERENCE ONLY, NEVER PAINTED`, and every consumer still passes the standard blueprint guard.
+
+Spec shape (full reference in `engine/agenticstory/massing.py`):
+
+```jsonc
+{ "title": "THE LONG ROOM",
+  "subtitle": "3D MASSING SEED / CAMERAS C1 + C2 LOCKED",
+  "solids": [ {"type":"box","min":[0,0,0],"max":[9,4,3.1],"color":[214,206,192],
+               "faces":["bottom","front","back"]} ],
+  "cameras": [ {"id":"c1","caption":"C1 MASTER - from the door","eye":[0.5,2,1.65],
+                "target":[9,2,1.3],"fov":62,
+                "labels":[{"at":[1.4,3.9,2.3],"text":"BOOKSHELF WALL = C1-LEFT","screen":[28,40]}]} ],
+  "notes": [ {"text":"THE ONE CHAIR FACES THE WINDOW. Never reversed.","tone":"rule"} ] }
+```
+
+Commit the spec JSON beside the entity. It is the editable source; the PNG is the artifact. Changing a room later is a re-run, not a re-draw.
+
+**Applies to `visual-metaphor` too** whenever the object has fixed geometry across states: seed the state chain on the code-drawn blueprint, never on a sibling state plate, or parallel state renders come back as different objects.
 
 ### An empty plate cannot prove its own size (SPEC v0.9)
 

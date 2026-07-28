@@ -57,6 +57,14 @@ def main(argv: list[str] | None = None) -> int:
     ls2.add_argument("--recipe", default=None,
                      help="path to the recipe JSON that produced this shot; freezes provenance "
                           "at approval as <path>.recipe.json so a divergence check can run later")
+    ms = sub.add_parser("massing", help="render a setting's blueprint as a code-built 3D massing sheet "
+                                        "from a declarative spec (deterministic, no model, no cost)")
+    ms.add_argument("spec", help="path to the massing spec JSON (solids + cameras + notes)")
+    ms.add_argument("--out", required=True, help="output PNG path (the entity's contract.blueprint)")
+    ms.add_argument("--universe", default=None, help="universe path, recorded in the provenance recipe")
+    ms.add_argument("--entity", default=None, help="entity id, recorded in the provenance recipe")
+    ms.add_argument("--no-recipe", action="store_true", help="skip writing <out>.recipe.json")
+
     ae = sub.add_parser("add-entity", help="scaffold a schema-valid entity stub with reference-matrix slots")
     ae.add_argument("universe"); ae.add_argument("kind"); ae.add_argument("eid")
     ae.add_argument("--name", default=""); ae.add_argument("--origin", default=None)
@@ -84,6 +92,20 @@ def main(argv: list[str] | None = None) -> int:
     ini.add_argument("--force", action="store_true", help="overwrite an existing universe.json")
 
     args = ap.parse_args(argv)
+
+    # massing does not load a store: it draws a blueprint from a standalone spec file
+    # and never reads canon, so it stays usable before a universe exists.
+    if args.cmd == "massing":
+        from . import massing as _massing
+        from . import SPEC_VERSION as _SV
+        spec = json.load(open(args.spec))
+        out = _massing.render_sheet(spec, args.out)
+        print(f"wrote {out}")
+        if not args.no_recipe:
+            rec = _massing.write_recipe(out, args.spec, universe=args.universe,
+                                        spec_version=_SV, entity=args.entity)
+            print(f"wrote {rec}")
+        return 0
 
     # init does not load a store (the universe does not exist yet)
     if args.cmd == "init":

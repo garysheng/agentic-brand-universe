@@ -1,12 +1,25 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.14 — 2026-07-28.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.15 — 2026-07-28.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
-> **v0.14 changelog — Projection/Composition become Form/Work.** §4.8 and §4.9 are renamed, and the
+> **v0.15 changelog — a setting's blueprint is a CODE-BUILT 3D MASSING RENDER.** Additive and
+> advisory: no existing universe has to migrate, and a hand-drawn or prompted blueprint still
+> validates. `blueprint` was under-specified as "top-down/schematic", and a plan view makes the image
+> model INFER the perspective it has to paint. Inference is where geometry drifts: proportions change
+> between angles, furniture migrates, and handedness silently flips, so a contract claim like "the
+> bookshelf wall is C1-LEFT" quietly stops holding halfway through a book. The engine now ships
+> `agenticstory.massing` and a `massing` CLI verb: declare the room once as boxes and quads with its
+> cameras named, and it renders the ACTUAL perspective each locked camera will see, deterministically,
+> with no model and no cost. The recommended blueprint is therefore a massing render from the entity's
+> own locked cameras, kept deliberately crude (flat blocks, ink edges, no textures) so it reads as
+> scaffolding rather than as art to copy. Same rule extends to a `visual-metaphor` with fixed geometry:
+> seed the state chain on the blueprint, never on a sibling state plate.
+>
+> > **v0.14 changelog — Projection/Composition become Form/Work.** §4.8 and §4.9 are renamed, and the
 > rename is the point rather than cosmetics. A *projection* is determined by (object, map); a work is
 > not determined by (canon, form) — `beats` and `spine` are authored facts present in neither, and
 > §4.9's `writesBack` lets a work change the canon it supposedly views, which no shadow does to its
@@ -318,6 +331,11 @@ Three wired mechanisms, applied at defined points:
 - For a **setting**, `structured` carries the *contract*: `{ turnaround, emptyPlates[], blueprint, map,
   blocking, dressing }` — all required before any spread in that location renders. A null contract
   field means **unlocked** and the resolver refuses to render it. (Environment load-bearing fix; §6.)
+  **`blueprint` SHOULD be a code-built 3D MASSING RENDER shot from the setting's own locked cameras**
+  (v0.15, advisory): `agenticstory massing <spec.json> --out .../blueprint.png`. A top-down plan still
+  validates, but it forces the image model to infer the perspective, which is where room proportion
+  and handedness drift. Keep the massing sheet crude on purpose so it reads as scaffolding, and pass
+  it with the standard blueprint guard: layout reference only, never painted.
 - **`visual-metaphor`** (backtest finding 2) is a first-class kind: the central object a whole book
   zooms into and argues through — *Hold It Up to Forever*'s locked scale, *Maximize*'s bazaar of
   cages. It carries a setting-style contract (a locked master + derived element crops) because, like a
