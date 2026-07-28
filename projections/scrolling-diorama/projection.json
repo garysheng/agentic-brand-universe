@@ -1,9 +1,9 @@
 {
-  "id": "parallax-scene",
+  "id": "scrolling-diorama",
   "version": "1.0.0",
   "extends": null,
   "author": "agenticbranduniverse.com/registry",
-  "description": "A scene separated into depth planes that move at different rates as the page scrolls. The content is not any one plane; it is the ORDER. One flat plate drifting is a texture. Three planes moving at different rates is depth.",
+  "description": "A scene built as layered flats at fixed depths, driven by vertical page scroll. The content is not any one plane; it is the ORDER. One flat plate drifting is a texture; planes moving at different rates is depth. Siblings on this medium (mouse-driven, horizontal, dolly) should `extends` this or a base extracted from it once a second treatment exists \u2014 not before, because a base extracted from one example is a guess.",
   "surface": {
     "medium": "parallax-scene",
     "geometry": {
@@ -184,5 +184,7 @@
       "Nothing painted over the scene (a bloom, a gradient, a scrim) may have a hard edge of its own. A seam in the composite is usually the overlay, not the planes.",
       "Alpha planes are rendered on FLAT CHROMA GREEN with no shadow, floor or reflection, then keyed with skills/on-brand-image/scripts/chroma_key.py. A warm ground bakes a contact shadow that reads as gold on a gold subject, and no heuristic separates it."
     ]
-  }
+  },
+  "formerId": "parallax-scene",
+  "renameNote": "Renamed 2026-07-28. The old id was the MEDIUM's name, not this contract's: `id` and `surface.medium` were the same string, which is the tell. There are many kinds of parallax scene \u2014 mouse-driven, horizontal, dolly/zoom, fixed-camera \u2014 and none of them are expressible here, because this one hardcodes vertical SCROLL as the driver, planes as bands pinned to the top or bottom edge, and sinking-behind as the occlusion. Taking the category's name for one treatment left its siblings with nowhere to live. A diorama is layered flats at fixed depths, which is exactly what this is; `scrolling` names the driver, leaving room for the others."
 }

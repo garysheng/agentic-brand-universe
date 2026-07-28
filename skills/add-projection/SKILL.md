@@ -33,6 +33,34 @@ primitive, check whether what you think is novel is actually one of these:
 A new primitive is warranted only when the thing cannot be expressed as *a contract with slots that
 emits files*. That is a much higher bar than it feels like at 2am.
 
+## Name the TREATMENT, not the medium
+
+The most likely naming error, and it hides for a long time. If your projection's `id` equals its
+`surface.medium`, you have taken the name of a whole category for one specific way of working in it:
+
+```jsonc
+"id": "parallax-scene",
+"surface": { "medium": "parallax-scene", ... }   // <- the tell
+```
+
+There are many kinds of parallax scene — mouse-driven, horizontal, dolly, fixed-camera — and a
+contract that hardcodes vertical scroll, edge-pinned bands and sink-behind occlusion is ONE of them.
+Owning the category's name leaves every sibling with nowhere to live, and the error is invisible
+until someone asks "what about the other kind?"
+
+Name what the contract actually commits to: `scrolling-diorama`, not `parallax-scene`;
+`read-aloud-storybook`, not `picture-book`. Then check the id against `surface.medium` before you
+ship. They should never match.
+
+**Three levels, and only two are primitives.** The MEDIUM (the surface projected onto) is a string
+in `surface`, not a first-class thing. Leave it that way until a SECOND contract targets the same
+medium and the two need to agree on something — that is when a level earns its existence. Promoting
+it earlier is the same mistake as adding a primitive: inventing a layer for imagined siblings.
+
+**Subtypes are `extends`, not a new level.** A sibling treatment forks with
+`"extends": "<id>@<version>"`. If a shared base belongs underneath several of them, EXTRACT it once
+two exist. A base extracted from one example is a guess about what the second one will need.
+
 ## Inputs
 
 - **The kind of deliverable**, in a sentence. "A scene separated into depth planes that move as the
