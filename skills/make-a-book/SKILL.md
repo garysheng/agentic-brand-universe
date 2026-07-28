@@ -106,11 +106,20 @@ receipt; only genuinely new names become new entities.
 Scaffold via `add-entity <universe> <kind> <id> --name --origin`, then fill invariants + prose.
 Leave `requiredForRender: []` until `shoot-references` locks the sheets.
 
-- **A `kind: character` entity with no `structured.render` block is UN-RENDERABLE**, and you find
-  out at cast time. Before writing the render-spec, dry-run the cast: for every character, confirm
-  `structured.render.poses` exists. If it does not, REPAIR the entity (additive only: restate its
-  locked rules as `always` + poses, invent no design). Do not demote it to an extra to dodge the
-  problem; an extra drops the entity's QA invariants, which is how identity drift ships.
+- **A `kind: character` entity with no `structured.render` block does not crash the framework
+  compiler. It silently loses its prompt-craft, which is worse.** `compose-spread` falls back to
+  the entity's `requiredForRender` sheets plus its deslugged invariants and renders happily. What
+  goes missing is the `always` prose: the sentence that actually steers the model, as opposed to
+  the kebab QA key that only checks it afterwards. An invariant reading
+  `north-star-pendant-front` does not tell the model "a faceted four-point STAR, NOT a Latin
+  cross"; the render block does. This is the documented cause of signature wardrobe and a
+  star-versus-crucifix pendant regressing across whole batches.
+  **So dry-run the cast before writing the render-spec and check `structured.render.poses` on
+  every character.** Where it is missing, REPAIR the entity (additive only: restate its locked
+  invariants and prose as `always` + poses, invent no design). Do not demote it to an extra, which
+  drops the QA invariants too. (A universe-local fork of the compiler may HARD-CRASH on the same
+  entity instead of degrading. That is a difference between implementations, not a reason to keep
+  a fork.)
 - **A reusable environment is a SETTING, built once.** A recurring place is a locked `setting`
   with fixed geometry and multiple camera-angle sheets, not re-described per spread (that drifts
   geometry and flips seating). Cast the right angle per beat.
