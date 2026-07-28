@@ -104,8 +104,8 @@ check needs an op that does not exist, add the op to the evaluator — do not do
 
 **Judged vs computed is about the CHECK, not about difficulty.** Mark it `judged` when a human or a
 model has to look. Mark it `computed` when arithmetic settles it. Be honest in the other direction
-too: if your own instance legitimately violates a rule you were about to compute, that rule is
-judged with a stated exemption. A computed rule your flagship instance fails is a lie with a green
+too: if a form's own flagship work legitimately violates a rule you were about to compute, that rule is
+judged with a stated exemption. A computed rule your flagship work fails is a lie with a green
 checkmark.
 
 **Write the invariants from failures you have actually shipped, not from principles.** A form
@@ -113,12 +113,12 @@ whose rules were written before anything was built is a wish list. Every rule wo
 a screenshot. When one turns out to be wrong, DELETE it — a stale rule is worse than no rule,
 because the next brand follows it and re-ships the bug it warns about.
 
-**Surface geometry is a range, not the count your first instance happened to use.** `"planes": 3`
+**Surface geometry is a range, not the count your first work happened to use.** `"planes": 3`
 because today's scene has three is a number that will be wrong next week.
 
 ## Steps
 
-1. **Check the table above.** If it is already a projection, stop and write the instance only.
+1. **Check the table above.** If a form already fits, stop — you want `add-work`, not this.
 2. **Write `forms/<id>/form.json`** — `id`, semantic `version`, `author`, `surface`,
    `requires` (by kind), `slots`, `generators` (capability, not provider), `invariants`, `emits`.
 3. **Write `works/<id>/work.json`** in the universe — `form: "<id>@<version>"` pinned,
@@ -146,5 +146,5 @@ because placement rules read like principles and get copied without testing.
 - **A computed invariant with no rule.** Documentation cosplaying as enforcement.
 - **Duplicating the work's values into the consumer** (a component, a template). They disagree
   within one round of edits, and the moment they do, the validated invariant is validating a copy
-  nobody renders. Read the instance.
+  nobody renders. Read the work.
 - **Adding a SPEC primitive.** Nearly always the wrong layer. See the table.
