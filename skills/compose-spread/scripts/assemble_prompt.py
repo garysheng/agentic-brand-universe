@@ -267,11 +267,44 @@ CAST_CLOSURE_NONE = (
 )
 
 
-def _cast_closure(names: list[str]) -> str:
+# ANONYMOUS FIGURES. The closure above is fail-closed, which is right, but it had no
+# way to say "there ARE people here and none of them is a canon character". A crowd, a
+# stranger, a class of children seen from behind, a widow at her own kitchen table: all
+# are deliberately not entities, because promoting every passer-by to canon is the bug
+# rule 7 exists to prevent in the other direction.
+#
+# Without an escape hatch the failure is silent and expensive: the scene text describes
+# a person, CAST_CLOSURE_NONE says there is nobody, the model obeys the closure, and the
+# render comes back as a tasteful still life of the room they were supposed to be in.
+# Nothing refuses, nothing warns, and it only shows up at read-back. Earned 2026-07-29
+# on Atlas Surrendered: three spreads (a widow giving, two grown children serving, a
+# young woman on a church step) each rendered as an empty room.
+#
+# So a spread may declare `anonymous`: a short phrase naming who the unnamed figures
+# are. It never grants canon identity and never relaxes the uncast-NAME refusal, so a
+# real entity mentioned by name is still refused before spend. It only widens the
+# closure from "nobody" to "these, and nobody else".
+def _cast_closure(names: list[str], anonymous: str = "") -> str:
+    anon = (anonymous or "").strip()
     if not names:
-        return CAST_CLOSURE_NONE
-    return (
+        if not anon:
+            return CAST_CLOSURE_NONE
+        return (
+            "THE ONLY PEOPLE IN THIS IMAGE ARE ANONYMOUS FIGURES THIS SCENE DESCRIBES: " + anon + ". "
+            "They are ordinary unnamed people with no identity beyond what the scene says, and they "
+            "are not any named character. NOBODY ELSE APPEARS."
+        )
+    base = (
+        "THE ONLY NAMED CHARACTERS IN THIS IMAGE ARE: " + ", ".join(names) + ". "
+        if anon else
         "THE ONLY CHARACTERS IN THIS IMAGE ARE: " + ", ".join(names) + ". "
+    )
+    if anon:
+        base += (
+            "In addition this scene contains ANONYMOUS FIGURES exactly as it describes: " + anon + ". "
+            "They are ordinary unnamed people and they are not any named character. "
+        )
+    return base + (
         "NOBODY ELSE APPEARS. Do not add any other person, figure, creature, robot, animal or "
         "bystander, whatever the style description above may suggest."
     )
@@ -739,7 +772,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             disambig or "",
             scale_block or "",
             abs_block or "",
-            _cast_closure(sorted(char_invsets)),
+            _cast_closure(sorted(char_invsets), sp.get("anonymous", "")),
             sp.get("extra", ""),  # authored per-spread instruction (e.g. bake a title glyph); DATA, not improvisation
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,

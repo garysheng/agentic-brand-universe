@@ -884,8 +884,13 @@ class TestCastClosure(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def out(self, cast, **extra):
-        r = run(self.root, write_spec(self.root, cast, **extra))
+    def out(self, cast, anonymous=None, **extra):
+        spec = write_spec(self.root, cast, **extra)
+        if anonymous is not None:
+            d = json.loads(spec.read_text())
+            d["spreads"][0]["anonymous"] = anonymous
+            spec.write_text(json.dumps(d))
+        r = run(self.root, spec)
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)["prompt"]
 
@@ -913,6 +918,30 @@ class TestCastClosure(unittest.TestCase):
         p = self.out([{"id": "tome"}],
                      style="a quiet account of a man at a desk with a small helper.")
         self.assertIn("THERE ARE NO PEOPLE AND NO CHARACTERS OF ANY KIND", p)
+
+    def test_anonymous_figures_widen_an_empty_closure(self):
+        """A scene whose people are deliberately not canon must not empty out.
+
+        Earned 2026-07-29 (Atlas Surrendered): three spreads whose subject was an
+        unnamed stranger rendered as still lifes of the room, because the closure
+        said nobody was there and the model obeyed it.
+        """
+        p = self.out([{"id": "tome"}], anonymous="one widow in her eighties at her table")
+        self.assertIn("ANONYMOUS FIGURES", p)
+        self.assertIn("one widow in her eighties at her table", p)
+        self.assertNotIn("THERE ARE NO PEOPLE AND NO CHARACTERS OF ANY KIND", p)
+        self.assertIn("NOBODY ELSE APPEARS", p)
+
+    def test_anonymous_figures_coexist_with_a_named_cast(self):
+        p = self.out([{"id": "clean"}], anonymous="a few visitors seen from behind")
+        self.assertIn("THE ONLY NAMED CHARACTERS IN THIS IMAGE ARE: clean.", p)
+        self.assertIn("a few visitors seen from behind", p)
+        self.assertIn("NOBODY ELSE APPEARS", p)
+
+    def test_no_anonymous_field_leaves_the_closure_exactly_as_before(self):
+        p = self.out([{"id": "clean"}])
+        self.assertIn("THE ONLY CHARACTERS IN THIS IMAGE ARE: clean.", p)
+        self.assertNotIn("ANONYMOUS FIGURES", p)
 
 
 # MUST be the LAST statement in this file. Any test class defined AFTER it never

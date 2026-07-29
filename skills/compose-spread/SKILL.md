@@ -39,7 +39,24 @@ Each was paid for with defective renders. You do not write any of them into a bo
    provenance stays honest. Re-rendering a pre-archive book is legitimate and opts out per spread
    with `allowArchived`, which leaves an auditable trace of that choice.
 
-5. **Per-spread preamble override.** A book may carry MORE THAN ONE visual register when the change is **diegetic**: a game world on a screen, a vision blooming out of a canon device, a memory, a dream. A spread may override `style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`, `allowMultiPanel`, `allowUncast`. Anything it does not name falls back to the book preamble. Do NOT reach for a second render-spec to get a second register: that duplicates the whole preamble and drifts the moment one copy is edited. The universe's own `rejectedPoles` are identity and are never shed by a spread.
+5. **Anonymous figures (`anonymous`).** The cast closure is fail-closed, which is right, but
+   it had no way to say *there ARE people here and none of them is canon*. A crowd, a stranger,
+   a class of children seen from behind, a widow at her own kitchen table: all are deliberately
+   NOT entities, because promoting every passer-by to canon is the bug rule 7 prevents in the
+   other direction. Without an escape hatch the failure is **silent and expensive**: the scene
+   describes a person, the closure says there is nobody, the model obeys the closure, and the
+   render comes back as a tasteful still life of the room they were supposed to be in. Nothing
+   refuses and nothing warns; it surfaces only at read-back.
+
+   So a spread may set `"anonymous": "one widow in her eighties at her table"` — a short phrase
+   naming who the unnamed figures are. It widens the closure from *nobody* to *these, and nobody
+   else*. It never grants canon identity and it never relaxes the uncast-NAME refusal, so a real
+   entity mentioned by name is still refused before spend. **Reach for it whenever a scene's
+   subject is a person the story deliberately leaves unnamed**, and reach for `add-character`
+   instead the moment that person recurs. (Earned 2026-07-29 on *Atlas Surrendered*: three
+   spreads whose subject was an unnamed stranger each rendered as an empty room.)
+
+6. **Per-spread preamble override.** A book may carry MORE THAN ONE visual register when the change is **diegetic**: a game world on a screen, a vision blooming out of a canon device, a memory, a dream. A spread may override `style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`, `allowMultiPanel`, `allowUncast`. Anything it does not name falls back to the book preamble. Do NOT reach for a second render-spec to get a second register: that duplicates the whole preamble and drifts the moment one copy is edited. The universe's own `rejectedPoles` are identity and are never shed by a spread.
 
 ### Declare the SIZE of anything that recurs, not just its look
 
