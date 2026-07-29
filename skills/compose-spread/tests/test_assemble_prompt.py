@@ -866,6 +866,55 @@ class TestAbsoluteScale(unittest.TestCase):
         self.assertNotIn("a paperback", self.out([{"id": "clean"}]))
 
 
+class TestCastClosure(unittest.TestCase):
+    """The prompt must state that the cast is CLOSED, on every render.
+
+    A book-wide `style` string is prepended to every spread, so a figure it
+    mentions is present on every spread whether or not that spread cast them, and
+    the uncast-character refusal cannot see it because that guard reads the SCENE.
+    Nor is it catchable by name: the styles that caused this described the cast
+    generically ("a small hand-made helper"), so no entity name appears to match on.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def out(self, cast, **extra):
+        r = run(self.root, write_spec(self.root, cast, **extra))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)["prompt"]
+
+    def test_named_cast_is_closed(self):
+        p = self.out([{"id": "clean"}])
+        self.assertIn("THE ONLY CHARACTERS IN THIS IMAGE ARE: clean.", p)
+        self.assertIn("NOBODY ELSE APPEARS", p)
+
+    def test_every_cast_member_is_listed(self):
+        p = self.out([{"id": "clean"}, {"id": "stache"}])
+        self.assertIn("clean, stache", p)
+
+    def test_a_spread_with_no_characters_says_so(self):
+        """The empty-room case, which is where invented people actually appear."""
+        p = self.out([{"id": "tome"}])
+        self.assertIn("THERE ARE NO PEOPLE AND NO CHARACTERS OF ANY KIND", p)
+        self.assertNotIn("THE ONLY CHARACTERS IN THIS IMAGE ARE", p)
+
+    def test_props_do_not_count_as_characters(self):
+        p = self.out([{"id": "clean"}, {"id": "tome"}])
+        self.assertIn("THE ONLY CHARACTERS IN THIS IMAGE ARE: clean.", p)
+
+    def test_closure_survives_a_style_that_describes_the_cast(self):
+        """The actual regression: a preamble implying a figure nobody cast."""
+        p = self.out([{"id": "tome"}],
+                     style="a quiet account of a man at a desk with a small helper.")
+        self.assertIn("THERE ARE NO PEOPLE AND NO CHARACTERS OF ANY KIND", p)
+
+
 # MUST be the LAST statement in this file. Any test class defined AFTER it never
 # runs: unittest.main() executes and exits at import time. TestAltLookDropSheets and
 # TestAltLookRenderBlock sat below it and were dead for weeks while the suite still

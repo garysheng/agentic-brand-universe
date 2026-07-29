@@ -239,6 +239,44 @@ def resolve_ref(uroot: Path, p: str) -> list[str]:
     raise Refuse(f"ref does not resolve on disk: {p}")
 
 
+# CAST CLOSURE. The prompt says who IS in frame and never said that is ALL who is.
+# Every other guard here is about the SCENE text; this one exists because the defect
+# comes from the PREAMBLE. A book-wide `style` string is prepended to every spread,
+# so any figure it mentions is present on every spread whether or not that spread
+# cast them, and the uncast-character refusal cannot see it: that guard reads the
+# scene, and the invention is coming from the style.
+#
+# It is not catchable by name either. The styles that caused this described the cast
+# GENERICALLY ("a small hand-made helper", "a man at a desk"), so no entity name
+# appears anywhere to match on.
+#
+# Cost, in one session, on two different books: eleven re-renders. A different
+# invented robot in five spreads of one book, one of them three spreads before that
+# character is introduced and one rendered twice in the same frame at two sizes;
+# then a man appearing in two spreads of another book whose scenes said the room was
+# empty. The lesson was written into this skill after the first occurrence and the
+# same sentence was written again twice more, which is what a documentation-only fix
+# is worth.
+#
+# So the assembler now states the closure itself, derived from the cast, on every
+# render. An author cannot forget it and a preamble cannot contradict it.
+CAST_CLOSURE_NONE = (
+    "THERE ARE NO PEOPLE AND NO CHARACTERS OF ANY KIND IN THIS IMAGE. No person, no figure, no head, "
+    "no shoulder, no arm, no hand, no silhouette, no reflection of a person, and nobody seated in any "
+    "chair. Any place a figure might be expected is empty."
+)
+
+
+def _cast_closure(names: list[str]) -> str:
+    if not names:
+        return CAST_CLOSURE_NONE
+    return (
+        "THE ONLY CHARACTERS IN THIS IMAGE ARE: " + ", ".join(names) + ". "
+        "NOBODY ELSE APPEARS. Do not add any other person, figure, creature, robot, animal or "
+        "bystander, whatever the style description above may suggest."
+    )
+
+
 def _as_neg_list(v) -> list:
     """Coerce a negatives field to a list, tolerating a bare string.
 
@@ -701,6 +739,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             disambig or "",
             scale_block or "",
             abs_block or "",
+            _cast_closure(sorted(char_invsets)),
             sp.get("extra", ""),  # authored per-spread instruction (e.g. bake a title glyph); DATA, not improvisation
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,

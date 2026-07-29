@@ -78,6 +78,15 @@ numbers to write down. See `reference/supercharged-laptop/scale.png`.
 
 ### The book `style` must describe the BOOK, never the CAST
 
+**The assembler now enforces this**, because documenting it did not work: the same
+mistake was made three times in one session by the same author who had just written
+the warning below. Every render now carries a CAST CLOSURE line derived from the
+cast (`THE ONLY CHARACTERS IN THIS IMAGE ARE: ...`, or a flat statement that there
+are none), so a preamble can no longer smuggle a figure into a spread that did not
+cast one. The guidance below still matters for prompt hygiene; it is no longer the
+only thing standing between you and an invented stranger.
+
+
 A book-wide `style` string is prepended to EVERY spread, so anything it names is
 present on every spread whether or not that spread cast it. Naming the cast there
 manufactures the exact defect the uncast-character guard exists to prevent, and it
@@ -101,6 +110,28 @@ say what the book is about, say it without an inventory of who appears:
 and it is worth appending, once, at book level:
 
     "Each spread contains ONLY the figures its own scene description names."
+
+### Put a load-bearing exclusion FIRST, not last
+
+A rule at the end of a long scene is a rule the model has stopped reading. Two
+spreads kept rendering a seated figure through two rolls with an explicit
+"ABSOLUTELY NOBODY IS IN THE ROOM" appended at the end of a two-hundred-word scene.
+Moving that same sentence to the FRONT and tightening the camera so there was no
+room in frame for a figure fixed it on the next roll, with no new words added.
+
+Order the scene: hard exclusions, then camera, then subject, then dressing.
+
+### Do not compose for the read-back
+
+Side-on three-quarter shots show a face, and a face is easy to verify against
+invariants, so they quietly become the default. On what-a-book-is-made-of every
+interior spread came out side-on and the blueprint's own over-the-shoulder camera
+was never referenced once, in a book whose entire thesis is that the man is OUTSIDE
+the machine looking in. Gary caught it: side-on turns that into a man chatting with
+a gadget, and over-the-shoulder puts the reader where he stands.
+
+Choose the camera the argument needs, then work out how to check it. If a setting
+declares a camera you have not used, ask why not before you finish.
 
 ### Never fork this into a universe-local compiler
 
