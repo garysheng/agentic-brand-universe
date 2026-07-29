@@ -239,6 +239,33 @@ def resolve_ref(uroot: Path, p: str) -> list[str]:
     raise Refuse(f"ref does not resolve on disk: {p}")
 
 
+def _as_neg_list(v) -> list:
+    """Coerce a negatives field to a list, tolerating a bare string.
+
+    `negatives` is DOCUMENTED as a list, and the code simply did `list(v)`. That
+    is silently catastrophic when a book hands over a string: `list("NO STRAY
+    TEXT")` is `['N','O',' ','S',...]`, so every negative reaches the model as a
+    comma-separated spray of single characters and the whole paragraph stops
+    functioning as a negative. Nothing raises, nothing warns, and the render
+    looks merely mediocre rather than broken.
+
+    This is the same shape confusion the SPEC already records for
+    `realPerson.photoStack` ("a string photoStack gets iterated character by
+    character"), which makes it a recurring authoring mistake rather than a
+    one-off, and the argument for fixing it at the chokepoint. It had already
+    shipped: `the-best-news-ever` and `the-room-it-was-made-in` both carry a
+    string here, so every spread either of them rendered went out with its
+    book-wide negatives destroyed.
+
+    A string is treated as ONE negative, which is what the author meant.
+    """
+    if v is None:
+        return []
+    if isinstance(v, str):
+        return [v] if v.strip() else []
+    return list(v)
+
+
 def resolve_render_block(ent: dict, pose: str | None, look: str | None = None):
     """Return (extra_sheet_keys, prose) from an entity's `structured.render`.
 
@@ -390,13 +417,36 @@ def resolve_plate(ent: dict, plate: str | None) -> list[str]:
 
 
 def resolve_setting(ent: dict, plate: str | None):
-    """Return (ref_paths, block). The description comes from contract.dressing."""
+    """Return (ref_paths, block) for a setting, from its WHOLE contract.
+
+    THE GEOMETRY FIELDS USED TO BE DROPPED. This built the block from
+    `contract.dressing` alone, so `map`, `blocking` and `scale` never reached the
+    model in any universe. Those are exactly the three fields that exist to fix
+    what the place IS, which way round it is, and how big it is, and they were
+    dead weight in every entity file that carried them.
+
+    That left a setting's consistency resting entirely on the plate image, which
+    is not enough and fails systematically rather than occasionally. The plate is
+    one reference among many; on a spread that also passes two character masters
+    and a motif sheet its geometry is diluted, and the model keeps the vibe while
+    re-inventing the layout. On it-only-has-to-fly the same shed had its doorway
+    camera-left on most spreads and camera-right on another, its window and
+    shelves migrated between walls, and the room changed proportion, across a
+    picture book whose premise is that this is one small shed the reader comes to
+    know.
+
+    Order is deliberate: map (what the place is), then blocking (the law
+    governing every camera on it), then dressing (what is lying around), then
+    scale. Handedness comes before dressing because handedness is what a reader
+    actually notices.
+    """
     refs = resolve_plate(ent, plate)
     con = ent.get("contract", {})
-    block = None
-    if con.get("dressing"):
-        block = f"{ent['id']} exactly as its reference plate: {con['dressing']}"
-    return refs, block
+    parts = [con.get(k) for k in ("map", "blocking", "dressing", "scale")]
+    parts = [p.strip() for p in parts if isinstance(p, str) and p.strip()]
+    if not parts:
+        return refs, None
+    return refs, f"{ent['id']} exactly as its reference plate: " + " ".join(parts)
 
 
 def build(uroot: Path, spec: dict, spread_id: str) -> dict:
@@ -555,8 +605,8 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # Negatives: universe rejectedPoles + book-wide unconditional negatives, then
     # GUARDED negatives — a blanket negative (e.g. "no facial hair") is emitted
     # ONLY when no in-frame character's selected look positively satisfies it.
-    negs = list(reg.get("rejectedPoles", []))
-    negs += list(eff.get("negatives", []))
+    negs = _as_neg_list(reg.get("rejectedPoles"))
+    negs += _as_neg_list(eff.get("negatives"))
     all_inv = set().union(*[set(v) for v in char_invsets.values()]) if char_invsets else set()
     for g in eff.get("guardedNegatives", []):
         pat = g.get("satisfiedByInvariantMatching")

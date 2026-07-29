@@ -34,6 +34,32 @@ Each was paid for with defective renders. You do not write any of them into a bo
    - **Order the batch so a refusal is cheap.** The refusal aborts the entire invocation before any spend (right), which means one false positive blocks every other spread in that call. Cost is zero dollars and one round trip, but on a long batch it is wasted wall-clock. Run a `--dry` pass first on a new book, or expect to re-fire.
 4. **Per-spread preamble override.** A book may carry MORE THAN ONE visual register when the change is **diegetic**: a game world on a screen, a vision blooming out of a canon device, a memory, a dream. A spread may override `style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`, `allowMultiPanel`, `allowUncast`. Anything it does not name falls back to the book preamble. Do NOT reach for a second render-spec to get a second register: that duplicates the whole preamble and drifts the moment one copy is edited. The universe's own `rejectedPoles` are identity and are never shed by a spread.
 
+### The book `style` must describe the BOOK, never the CAST
+
+A book-wide `style` string is prepended to EVERY spread, so anything it names is
+present on every spread whether or not that spread cast it. Naming the cast there
+manufactures the exact defect the uncast-character guard exists to prevent, and it
+sails straight past that guard, because the guard reads the SCENE text and the
+invention is coming from the preamble.
+
+Earned on it-only-has-to-fly, 2026-07-29. Its style read "a children's picture
+book about two children and a small hand-made helper who build a little factory in
+a garden shed". Five of the seventeen spreads did not cast the helper, and the
+model dutifully invented one on each: a different robot every time, none of them
+matching the canon entity, one of them three spreads before the character is
+introduced in the story, and one of them rendered twice in the same frame at two
+different sizes. All five had to be re-rendered.
+
+Write the style as MEDIUM, PALETTE, REGISTER and SUBJECT MATTER. If it helps to
+say what the book is about, say it without an inventory of who appears:
+
+    BAD:  "...about two children and a small hand-made helper who build a factory"
+    GOOD: "...about building a factory in a garden shed"
+
+and it is worth appending, once, at book level:
+
+    "Each spread contains ONLY the figures its own scene description names."
+
 ### Never fork this into a universe-local compiler
 
 A per-universe `compile_render.py` / `gen-spread.py` is the failure this skill exists to prevent, and it is not hypothetical: Nation of Fire ran one for months (SPEC v0.5 even named it the reference impl). The two implementations drifted into **disjoint** feature sets. The fork held all four guards above; the framework held alt-looks, auto-disambiguation, guarded negatives and `anchorRef`. Neither could see the other's, so every guard earned in one universe was invisible to every other, and every framework capability was invisible to the universe doing the most rendering. If the assembler is missing something you need, add it HERE with a test (`evolve-agentic-story`), never in a universe.

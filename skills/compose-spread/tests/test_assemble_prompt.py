@@ -698,6 +698,116 @@ class TestRelativeScale(unittest.TestCase):
         self.assertIn("stache is several inches shorter than scout", out["prompt"])
 
 
+class TestNegativesAcceptsAString(unittest.TestCase):
+    """A string `negatives` must be ONE negative, never a list of characters.
+
+    `list("NO TEXT")` is `['N','O',' ','T',...]`, so a book that wrote its
+    negatives as a string had every one of them delivered to the model as a
+    comma-separated spray of single letters. Silent: nothing raised, the render
+    just came back without its negatives applied. Two shipped books carried a
+    string.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def out(self, **extra):
+        spec = write_spec(self.root, [{"id": "clean"}], **extra)
+        r = run(self.root, spec)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)["prompt"]
+
+    def test_string_survives_intact(self):
+        p = self.out(negatives="NO STRAY TEXT ANYWHERE")
+        self.assertIn("NO STRAY TEXT ANYWHERE", p)
+
+    def test_string_is_not_shredded_into_characters(self):
+        """The actual regression: single letters comma-joined."""
+        p = self.out(negatives="NO STRAY TEXT")
+        self.assertNotIn("N, O,", p)
+        self.assertNotIn("S, T, R, A, Y", p)
+
+    def test_list_is_unchanged(self):
+        p = self.out(negatives=["no text anywhere", "no logos"])
+        self.assertIn("no text anywhere", p)
+        self.assertIn("no logos", p)
+
+    def test_empty_string_contributes_nothing(self):
+        p = self.out(negatives="   ")
+        self.assertIn("NEGATIVES:", p)
+        self.assertNotIn(" ,  ,", p)
+
+    def test_rejected_poles_still_emitted(self):
+        p = self.out(negatives="NO STRAY TEXT")
+        self.assertIn("photoreal", p)
+        self.assertIn("anime", p)
+
+
+class TestSettingContractGeometry(unittest.TestCase):
+    """A setting's map/blocking/scale must reach the prompt, not just dressing.
+
+    These three fields exist to fix what the place is, which way round it is, and
+    how big it is. They were dropped, so a setting's consistency rested entirely
+    on its plate image, which gets diluted by character refs: the same shed drifted
+    handedness across a picture book.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _setting(self, contract):
+        p = self.root / "canon" / "entities" / "home.json"
+        d = json.loads(p.read_text())
+        d["contract"] = contract
+        p.write_text(json.dumps(d))
+
+    def out(self):
+        spec = write_spec(self.root, [{"id": "clean"}])
+        r = run(self.root, spec)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)["prompt"]
+
+    def test_all_four_fields_are_emitted(self):
+        self._setting({"map": "A LONG KITCHEN.", "blocking": "DOORWAY IS ALWAYS CAMERA-LEFT.",
+                       "dressing": "warm test kitchen", "scale": "small enough for two."})
+        p = self.out()
+        for frag in ("A LONG KITCHEN.", "DOORWAY IS ALWAYS CAMERA-LEFT.",
+                     "warm test kitchen", "small enough for two."):
+            self.assertIn(frag, p)
+
+    def test_handedness_precedes_dressing(self):
+        """Blocking is the load-bearing field, so it is read before the clutter."""
+        self._setting({"map": "A LONG KITCHEN.", "blocking": "DOORWAY IS ALWAYS CAMERA-LEFT.",
+                       "dressing": "warm test kitchen"})
+        p = self.out()
+        self.assertLess(p.index("DOORWAY IS ALWAYS CAMERA-LEFT."), p.index("warm test kitchen"))
+
+    def test_dressing_only_setting_is_unchanged(self):
+        """Back-compat: every existing universe compiles as it did before."""
+        self._setting({"dressing": "warm test kitchen"})
+        p = self.out()
+        self.assertIn("home exactly as its reference plate: warm test kitchen", p)
+
+    def test_empty_contract_emits_no_block(self):
+        self._setting({})
+        self.assertNotIn("home exactly as its reference plate", self.out())
+
+    def test_blank_fields_are_skipped(self):
+        self._setting({"map": "   ", "blocking": None, "dressing": "warm test kitchen"})
+        p = self.out()
+        self.assertIn("home exactly as its reference plate: warm test kitchen", p)
+
+
 # MUST be the LAST statement in this file. Any test class defined AFTER it never
 # runs: unittest.main() executes and exits at import time. TestAltLookDropSheets and
 # TestAltLookRenderBlock sat below it and were dead for weeks while the suite still

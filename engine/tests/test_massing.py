@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -138,6 +139,58 @@ class TestCLI(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertTrue(os.path.exists(out))
             self.assertTrue(os.path.exists(out + ".recipe.json"))
+
+
+@unittest.skipUnless(HAVE_PIL, "Pillow not installed")
+class TestNearPlaneClipping(unittest.TestCase):
+    """A ground plane extending behind the eye must still render.
+
+    The renderer used to DROP any face with a vertex at or behind the near plane.
+    A floor, lawn or tabletop is normally one big quad that extends under and
+    behind the camera, so it vanished entirely and the sheet came back as empty
+    background. Silent, and it pushes authors into chopping the ground into
+    strips that all sit in front of the eye.
+    """
+
+    def _spec(self, pts):
+        return {
+            "title": "CLIP TEST",
+            "sheet": {"width": 320, "height": 240},
+            "solids": [{"type": "quad", "pts": pts, "color": [40, 200, 40]}],
+            "cameras": [{"id": "c1", "caption": "c1", "eye": [0, 0, 2],
+                         "target": [0, -10, 0], "fov": 60}],
+        }
+
+    def _render(self, spec):
+        import PIL.Image
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "s.png"
+            massing.render_sheet(spec, str(out))
+            return PIL.Image.open(out).convert("RGB").copy()
+
+    def _has_green(self, im):
+        return any(g > r + 30 and g > b + 30 for r, g, b in im.getdata())
+
+    def test_ground_spanning_the_eye_is_not_dropped(self):
+        """The regression: near corners BEHIND the camera at y=0."""
+        im = self._render(self._spec([[-8, -20, 0], [8, -20, 0], [8, 4, 0], [-8, 4, 0]]))
+        self.assertTrue(self._has_green(im), "ground plane vanished entirely")
+
+    def test_fully_forward_polygon_still_renders(self):
+        im = self._render(self._spec([[-8, -20, 0], [8, -20, 0], [8, -2, 0], [-8, -2, 0]]))
+        self.assertTrue(self._has_green(im))
+
+    def test_fully_behind_polygon_is_dropped(self):
+        im = self._render(self._spec([[-8, 6, 0], [8, 6, 0], [8, 20, 0], [-8, 20, 0]]))
+        self.assertFalse(self._has_green(im), "geometry behind the eye must not draw")
+
+    def test_clip_returns_forward_polygon_unchanged(self):
+        cam = [(0, 0, -5), (1, 0, -5), (1, 1, -5)]
+        self.assertEqual(massing._clip_near(cam), cam)
+
+    def test_clip_drops_fully_behind_polygon(self):
+        cam = [(0, 0, 1), (1, 0, 2), (1, 1, 3)]
+        self.assertLess(len(massing._clip_near(cam)), 3)
 
 
 if __name__ == "__main__":

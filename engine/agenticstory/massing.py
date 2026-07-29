@@ -159,17 +159,21 @@ def render_view(solids: Sequence[Dict[str, Any]], camera: Dict[str, Any],
     im = Image.new("RGB", (width, height), BG)
     d = ImageDraw.Draw(im)
 
+    def project_cam(c: Sequence[float]):
+        z = -c[2]
+        return (((c[0] * f / asp) / z * 0.5 + 0.5) * width,
+                (0.5 - (c[1] * f) / z * 0.5) * height)
+
     prepared = []
     for quad, colour, edges in _solids_to_quads(solids):
-        cam = [to_cam(p) for p in quad]
-        # Crude near-plane handling: drop any face with a vertex at/behind the eye.
-        # A clipper would be more correct; dropping is predictable and never produces
-        # the smeared inside-out polygons a naive projection gives.
-        if any(c[2] > -0.05 for c in cam):
+        # Clip against the near plane rather than dropping the whole face, so a
+        # ground plane extending behind the eye keeps the part you can see.
+        cam = _clip_near([to_cam(p) for p in quad])
+        if len(cam) < 3:
             continue
-        pts = [project(p) for p in quad]
-        if any(p is None for p in pts):
-            continue
+        pts = [project_cam(c) for c in cam]
+        # The normal comes from the ORIGINAL world quad: clipping trims the
+        # polygon but never changes the plane it lies in, so shading is unaffected.
         n = _norm(_cross(_sub(quad[1], quad[0]), _sub(quad[2], quad[0])))
         lam = ambient + (1.0 - ambient) * abs(_dot(n, L))
         col = tuple(min(255, int(c * lam)) for c in colour)
@@ -201,6 +205,45 @@ def _font(size: int):
             except Exception:
                 pass
     return ImageFont.load_default()
+
+
+NEAR = 0.05
+
+
+def _clip_near(cam: List[Vec]) -> List[Vec]:
+    """Sutherland-Hodgman clip a camera-space polygon against the near plane.
+
+    REPLACES "drop any face with a vertex behind the eye". That was documented as
+    a deliberate crude tradeoff, and it is wrong in the one case authors hit
+    constantly: a GROUND PLANE. A floor, a lawn, a road or a tabletop is normally
+    modelled as one big quad that extends UNDER and BEHIND the camera, so one or
+    two of its corners sit behind the eye and the whole polygon vanished. The
+    sheet then rendered as empty background with only the distant props floating
+    in it, and nothing said why.
+
+    That cost two silent iterations on it-only-has-to-fly's yard camera before the
+    cause was found, and the workaround authors are pushed toward (chopping the
+    ground into strips that all sit in front of the eye) is busywork the renderer
+    should be doing itself.
+
+    Clipping keeps the VISIBLE PART instead of discarding the face, which is both
+    more correct and still free of the smeared inside-out polygons a naive
+    projection produces. A polygon entirely in front of the near plane is returned
+    unchanged, so every existing spec renders identically.
+    """
+    out: List[Vec] = []
+    n = len(cam)
+    for i in range(n):
+        a = cam[i]
+        b = cam[(i + 1) % n]
+        da = -a[2] - NEAR          # > 0 when the vertex is in front of the near plane
+        db = -b[2] - NEAR
+        if da >= 0:
+            out.append(a)
+        if (da >= 0) != (db >= 0):
+            t = da / (da - db)
+            out.append(tuple(a[k] + (b[k] - a[k]) * t for k in range(3)))
+    return out
 
 
 def render_sheet(spec: Dict[str, Any], out_path: str) -> str:
