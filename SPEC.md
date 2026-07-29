@@ -1,10 +1,28 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.15 — 2026-07-28.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.16 — 2026-07-29.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.16 changelog — an entity has a LIFECYCLE, so canon can be RETIRED without rewriting history.**
+> Additive and backward-compatible: an entity with no `lifecycle` is `active`, so no universe has to
+> migrate. A universe accumulates canon faster than it retires it, and until now the only ways to stop
+> casting something were deletion (which breaks every book that already shipped and falsifies its
+> provenance) or a note in prose (which no tool reads). Neither is an archive.
+>
+> An entity may now declare `"lifecycle": "active" | "archived"` plus an `archived` block
+> (`on`, `reason`, optional `supersededBy`). **`lifecycle` is EDITORIAL STANDING and is deliberately
+> ORTHOGONAL to `status`**, which is reference-completeness: an archived entity is normally still fully
+> locked, and its art stays valid forever.
+>
+> The load-bearing rule is WHERE the gate sits. **`assert-story` knows nothing about lifecycle**, so
+> archiving can never retroactively break a book that already shipped. The refusal lives at the point
+> of NEW casting: the spread compiler refuses before spending and names the replacement, and a
+> deliberate re-render of a pre-archive book opts out per spread with `allowArchived`, which leaves an
+> auditable trace of that decision. An archive with no recorded `reason` fails validation, because an
+> archive nobody can audit is worse than none. CLI: `archive`, `unarchive`, `archived`.
 
 > **v0.15 changelog — a setting's blueprint is a CODE-BUILT 3D MASSING RENDER.** Additive and
 > advisory: no existing universe has to migrate, and a hand-drawn or prompted blueprint still

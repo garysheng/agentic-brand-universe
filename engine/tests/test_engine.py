@@ -799,3 +799,57 @@ class TestAltLookResolution(unittest.TestCase):
             self._ent().look_sheets("ghost")
         self.assertIn("spirit", str(cm.exception))
 
+
+
+# ---------------------------------------------------------------- lifecycle / archive
+class TestLifecycle(unittest.TestCase):
+    """Archiving is EDITORIAL STANDING, orthogonal to reference-completeness."""
+
+    def _e(self, **kw):
+        from agenticstory.model import Entity
+        d = {"id": "x", "kind": "motif"}
+        d.update(kw)
+        return Entity.from_dict(d)
+
+    def test_defaults_to_active(self):
+        e = self._e()
+        self.assertEqual(e.lifecycle, "active")
+        self.assertFalse(e.is_archived)
+
+    def test_archived_reports_itself_with_a_replacement(self):
+        e = self._e(
+            id="jerrys-porch", kind="setting", lifecycle="archived",
+            archived={"on": "2026-07-29", "reason": "overused",
+                      "supersededBy": "the-creek-path"},
+        )
+        self.assertTrue(e.is_archived)
+        self.assertEqual(e.superseded_by, "the-creek-path")
+        n = e.archive_note()
+        for frag in ("ARCHIVED", "2026-07-29", "the-creek-path"):
+            self.assertIn(frag, n)
+
+    def test_archive_without_a_reason_is_a_validation_problem(self):
+        """An archive nobody can audit is worse than no archive."""
+        e = self._e(lifecycle="archived", archived={"on": "2026-07-29"})
+        self.assertTrue(any("archived" in p and "reason" in p for p in e.validate()))
+
+    def test_unknown_lifecycle_is_rejected(self):
+        e = self._e(lifecycle="retired")
+        self.assertTrue(any("lifecycle" in p for p in e.validate()))
+
+    def test_active_entity_needs_no_archived_block(self):
+        self.assertEqual([p for p in self._e().validate() if "archived" in p], [])
+
+    def test_archiving_never_breaks_an_already_shipped_story(self):
+        """THE load-bearing property.
+
+        assert_story must stay ignorant of lifecycle. A book that already shipped keeps
+        rendering and its provenance stays honest; the refusal lives at the point of NEW
+        casting instead. If someone ever teaches the pre-render gate about archiving,
+        this test fails and tells them why.
+        """
+        import inspect
+        from agenticstory import refs
+        src = inspect.getsource(refs.assert_story)
+        self.assertNotIn("lifecycle", src)
+        self.assertNotIn("archived", src)

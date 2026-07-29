@@ -813,5 +813,54 @@ class TestSettingContractGeometry(unittest.TestCase):
 # TestAltLookRenderBlock sat below it and were dead for weeks while the suite still
 # reported ALL GREEN, which is the same silent-omission failure run-tests.sh was
 # hardened against one level up. Append new classes ABOVE this block, never below.
+class TestArchivedRefusal(unittest.TestCase):
+    """An ARCHIVED entity is refused at the point of NEW casting, before any spend.
+
+    Archiving is editorial standing, not reference-completeness: the art stays valid and
+    every book that already shipped keeps rendering. So the refusal lives HERE, where a
+    new spread picks the retired thing up, and never in the pre-render gate.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _archive(self, eid, **extra):
+        p = self.root / "canon" / "entities" / f"{eid}.json"
+        d = json.loads(p.read_text())
+        d["lifecycle"] = "archived"
+        d["archived"] = {"on": "2026-07-29", "reason": "overused"}
+        d["archived"].update(extra)
+        p.write_text(json.dumps(d))
+
+    def test_archived_setting_refuses_and_names_the_replacement(self):
+        self._archive("home", supersededBy="the-creek-path")
+        spec = write_spec(self.root, [])
+        r = run(self.root, spec)
+        self.assertNotEqual(r.returncode, 0)
+        msg = r.stdout + r.stderr
+        self.assertIn("ARCHIVED", msg)
+        self.assertIn("the-creek-path", msg)
+
+    def test_allow_archived_waives_it_for_a_deliberate_re_render(self):
+        self._archive("home")
+        spec = write_spec(self.root, [])
+        s = json.loads(spec.read_text())
+        s["spreads"][0]["allowArchived"] = True
+        spec.write_text(json.dumps(s))
+        r = run(self.root, spec)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_an_active_universe_is_unaffected(self):
+        spec = write_spec(self.root, [])
+        r = run(self.root, spec)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("ARCHIVED", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

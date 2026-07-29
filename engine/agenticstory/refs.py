@@ -96,6 +96,40 @@ def assert_story(store: CanonStore, story_id: str) -> list[str]:
     return problems
 
 
+def archived_casts(store: CanonStore, story_id: str) -> list[str]:
+    """Every ARCHIVED entity this story still casts, as actionable one-liners.
+
+    Deliberately NOT part of assert_story. Archiving must never retroactively break a
+    book that already shipped: the whole point of an archive is that history stays
+    renderable and its provenance stays honest. So this is a WARNING channel that
+    authoring tools read, and the refusal lives at the point of NEW casting (the
+    casting sweep and the spread compiler), not at the pre-render gate.
+    """
+    story = store.stories.get(story_id)
+    if story is None:
+        return [f"unknown story '{story_id}'"]
+    seen: list[str] = []
+    ids = list(story.features)
+    for b in story.beats:
+        if b.get("location"):
+            ids.append(b["location"])
+        ids += list(b.get("characters") or [])
+    for eid in dict.fromkeys(ids):
+        e = store.entity(eid)
+        if e is not None and e.is_archived:
+            seen.append(e.archive_note())
+    return seen
+
+
+def archived_entities(store: CanonStore) -> list[str]:
+    """Every archived entity in the universe, newest-archived first where dated."""
+    out = []
+    for eid, e in store.entities.items():
+        if e.is_archived:
+            out.append(((e.raw.get("archived") or {}).get("on") or "", e.archive_note()))
+    return [n for _, n in sorted(out, reverse=True)]
+
+
 def lock_level(store: CanonStore, eid: str) -> str:
     """Advisory reference-completeness of an entity: 'stub' | 'partial' | 'locked'.
 

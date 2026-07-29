@@ -20,6 +20,25 @@ The reuse-first gate that runs before a manuscript names anyone. It stops the un
 ## Gates honored
 - **Reuse-first:** never invent an entity an existing one already covers. Every reuse is a crossover receipt.
 
+
+## Archived canon is NOT a reuse candidate (SPEC v0.16)
+
+Reuse-first has an obvious failure mode once a universe is old enough to retire things: the sweep is
+looking for an entity that fits the role, and a RETIRED one fits as well as it ever did. Reusing it
+is not a crossover receipt, it is a regression.
+
+Skip any entity whose `lifecycle` is `archived`. If it declares `archived.supersededBy`, that id is
+the candidate to evaluate instead, and it should be evaluated the same as any other reuse rather
+than adopted blindly. Say in the casting table that the archived one was considered and why it was
+skipped, so the decision is visible rather than silent:
+
+```
+counsel place | the-creek-path | REUSE (jerrys-porch is archived 2026-07-29, supersededBy)
+```
+
+`agenticstory archived <universe>` lists everything retired, and the spread compiler refuses an
+archived cast before spending, so a sweep that misses one is caught. Catching it here is cheaper.
+
 ## Not this skill
 - Creating the NEW entities (that is the `add-*` skills).
 - Writing the story (that is `add-story`).

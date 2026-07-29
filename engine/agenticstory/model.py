@@ -16,6 +16,11 @@ from typing import Any
 ENTITY_KINDS = {
     "character", "setting", "visual-metaphor", "doctrine", "motif", "beat", "prop", "group",
 }
+
+# EDITORIAL STANDING, orthogonal to `status` (reference-completeness).
+# 'archived' means: do not cast this in anything NEW. It never invalidates art
+# that already shipped.
+ENTITY_LIFECYCLES = {"active", "archived"}
 SETTING_CONTRACT_FIELDS = ("turnaround", "emptyPlates", "blueprint", "scalePlate", "map", "blocking", "dressing", "scale")
 
 
@@ -115,6 +120,40 @@ class Entity:
         dead = set(al.get("supersedes") or [])
         return [i for i in base if i not in dead] + list(al.get("invariants") or [])
 
+    # ---- LIFECYCLE (SPEC v0.16) -------------------------------------------------
+    # `status` is REFERENCE-COMPLETENESS (locked | unlocked): is the art on disk.
+    # `lifecycle` is EDITORIAL STANDING (active | archived): may a NEW story cast it.
+    # They are deliberately ORTHOGONAL. An archived entity is usually still fully
+    # locked, and its art stays valid forever, because every book that already
+    # shipped with it must keep rendering and its provenance must stay honest.
+    # Conflating the two would retroactively break history, which is the one thing
+    # an archive must never do.
+
+    @property
+    def lifecycle(self) -> str:
+        v = self.raw.get("lifecycle")
+        return v if v in ENTITY_LIFECYCLES else "active"
+
+    @property
+    def is_archived(self) -> bool:
+        return self.lifecycle == "archived"
+
+    @property
+    def superseded_by(self) -> str | None:
+        return ((self.raw.get("archived") or {}).get("supersededBy")) or None
+
+    def archive_note(self) -> str:
+        """One line an author can act on: why it was retired and what to cast instead."""
+        a = self.raw.get("archived") or {}
+        bits = [f"'{self.id}' is ARCHIVED"]
+        if a.get("on"):
+            bits.append(f"on {a['on']}")
+        if a.get("reason"):
+            bits.append(f"({a['reason']})")
+        if a.get("supersededBy"):
+            bits.append(f"-> cast '{a['supersededBy']}' instead")
+        return " ".join(bits)
+
     def is_locked_setting(self) -> bool:
         """A setting/visual-metaphor is locked only when every contract field is present."""
         if self.kind not in ("setting", "visual-metaphor"):
@@ -144,6 +183,16 @@ class Entity:
             p.append("entity missing 'id'")
         if self.kind not in ENTITY_KINDS:
             p.append(f"{self.id}: unknown kind '{self.kind}' (allowed: {sorted(ENTITY_KINDS)})")
+        lc = self.raw.get("lifecycle")
+        if lc is not None and lc not in ENTITY_LIFECYCLES:
+            p.append(f"{self.id}: unknown lifecycle '{lc}' (allowed: {sorted(ENTITY_LIFECYCLES)})")
+        if self.is_archived:
+            a = self.raw.get("archived")
+            if not isinstance(a, dict) or not (a.get("on") and a.get("reason")):
+                p.append(
+                    f"{self.id}: an archived entity needs an 'archived' block with 'on' and "
+                    f"'reason' (an archive with no recorded reason is unauditable)"
+                )
         # Consumption decides structure: an entity a renderer draws needs sheets + requiredForRender.
         if self.kind == "character":
             if not (self.structured.get("sheets")):

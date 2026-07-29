@@ -11,6 +11,10 @@ Agentic Story CLI.
   agenticstory build-canon <universe> [--check|--adopt]  # regenerate CANON.md from per-record files
   agenticstory add-entity <universe> <kind> <eid> [--name N] [--origin S] [--photo path ...]
                                                # scaffold a schema-valid entity stub
+  agenticstory archive <universe> <eid> --reason R [--superseded-by ID]
+                                               # retire an entity from NEW casting
+  agenticstory unarchive <universe> <eid>      # put a retired entity back in service
+  agenticstory archived <universe> [--story ID] # what is retired, and who still casts it
 
 Exit code is non-zero when validation/assertion finds problems, so gen scripts
 and CI can gate on it.
@@ -48,6 +52,17 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("assert-spread"); sp.add_argument("universe")
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
     ll = sub.add_parser("lock-level"); ll.add_argument("universe"); ll.add_argument("entity")
+    ar = sub.add_parser("archive", help="retire an entity from NEW casting (history keeps rendering)")
+    ar.add_argument("universe"); ar.add_argument("eid")
+    ar.add_argument("--reason", required=True,
+                    help="why it is being retired; an archive with no recorded reason is unauditable")
+    ar.add_argument("--superseded-by", default=None,
+                    help="the entity an author should cast instead")
+    ar.add_argument("--on", default=None, help="ISO date; defaults to today")
+    ua = sub.add_parser("unarchive", help="put a retired entity back in service")
+    ua.add_argument("universe"); ua.add_argument("eid")
+    ad = sub.add_parser("archived", help="list retired entities, or who still casts them")
+    ad.add_argument("universe"); ad.add_argument("--story", default=None)
     ls2 = sub.add_parser("lock-shot", help="lock a generated reference shot into an entity")
     ls2.add_argument("universe"); ls2.add_argument("eid"); ls2.add_argument("shot"); ls2.add_argument("path")
     ls2.add_argument("--look", default=None,
@@ -237,6 +252,59 @@ def main(argv: list[str] | None = None) -> int:
                                refs.assert_spread(store, chars, args.location or None))
     if args.cmd == "lock-level":
         print(refs.lock_level(store, args.entity))
+        return 0
+    if args.cmd in ("archive", "unarchive"):
+        uni = Path(args.universe)
+        e = store.entity(args.eid)
+        if e is None:
+            print(f"unknown entity '{args.eid}'")
+            return 1
+        path = uni / "canon" / "entities" / f"{args.eid}.json"
+        raw = json.loads(path.read_text())
+        if args.cmd == "archive":
+            import datetime
+            raw["lifecycle"] = "archived"
+            raw["archived"] = {
+                "on": args.on or datetime.date.today().isoformat(),
+                "reason": args.reason,
+                "supersededBy": args.superseded_by,
+            }
+            path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
+            print(f"archived {args.eid}")
+            if args.superseded_by:
+                print(f"  cast '{args.superseded_by}' instead")
+            # Tell the author what this just made stale, without breaking any of it.
+            still = []
+            for sid in store.stories:
+                if any(args.eid in n for n in refs.archived_casts(store, sid)):
+                    still.append(sid)
+            if still:
+                print(f"  {len(still)} existing stor{'y' if len(still) == 1 else 'ies'} still cast it "
+                      f"and REMAIN RENDERABLE (archiving never breaks history):")
+                for sid in still:
+                    print(f"    - {sid}")
+            return 0
+        raw.pop("archived", None)
+        raw["lifecycle"] = "active"
+        path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
+        print(f"unarchived {args.eid}")
+        return 0
+    if args.cmd == "archived":
+        if args.story:
+            notes = refs.archived_casts(store, args.story)
+            if not notes:
+                print(f"{args.story}: casts no archived entity")
+                return 0
+            print(f"{args.story} casts {len(notes)} archived entit(ies):")
+            for n in notes:
+                print(f"  - {n}")
+            return 0
+        notes = refs.archived_entities(store)
+        if not notes:
+            print("no archived entities")
+            return 0
+        for n in notes:
+            print(f"  - {n}")
         return 0
     if args.cmd == "add-entity":
         from .authoring import scaffold_entity

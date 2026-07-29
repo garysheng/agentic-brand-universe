@@ -130,7 +130,7 @@ SINGLE_IMAGE_GUARD = (
 # of these compiles byte-identically to before.
 _SPREAD_OVERRIDES = (
     "style", "negatives", "guardedNegatives", "anchorRef",
-    "allowMultiPanel", "allowUncast", "size", "settingRule",
+    "allowMultiPanel", "allowUncast", "allowArchived", "size", "settingRule",
 )
 
 
@@ -507,6 +507,33 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         if rule:
             out = f"{out} {rule}" if out else rule
         return out
+
+    # ARCHIVED ENTITIES ARE REFUSED AT THE POINT OF NEW CASTING (SPEC v0.16).
+    # Not at the pre-render gate: archiving must never retroactively break a book that
+    # already shipped. So an old book re-renders only after someone consciously sets
+    # allowArchived on the spread, which leaves an auditable trace of the decision,
+    # while a NEW book cannot quietly pick the retired thing back up.
+    if not eff.get("allowArchived"):
+        retired = []
+        for c in entries:
+            ent0 = load(uroot / "canon" / "entities" / f"{c['id']}.json")
+            if ent0.get("lifecycle") == "archived":
+                a = ent0.get("archived") or {}
+                note = f"'{c['id']}' is ARCHIVED"
+                if a.get("on"):
+                    note += f" on {a['on']}"
+                if a.get("reason"):
+                    note += f" ({a['reason']})"
+                if a.get("supersededBy"):
+                    note += f" -> cast '{a['supersededBy']}' instead"
+                retired.append(note)
+        if retired:
+            raise Refuse(
+                f"ARCHIVED ENTITY CAST ({spread_id}): "
+                + "; ".join(retired)
+                + ". Cast the replacement, or set allowArchived on this spread if you are "
+                  "deliberately re-rendering a book that shipped before the archive."
+            )
 
     for c in entries:
         ent = load(uroot / "canon" / "entities" / f"{c['id']}.json")

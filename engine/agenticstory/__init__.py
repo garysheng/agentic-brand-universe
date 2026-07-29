@@ -1,7 +1,8 @@
 """Agentic Story engine v0 — a universe is first-class; stories are compositions; refs are load-bearing."""
 from .model import CraftCanon, Entity, Relation, StorySpec  # noqa: F401
 from .store import CanonStore  # noqa: F401
-from .refs import assert_story, assert_spread, resolve_entity_assets, resolve_setting, lock_level  # noqa: F401
+from .refs import (assert_story, assert_spread, resolve_entity_assets, resolve_setting,  # noqa: F401
+                   lock_level, archived_casts, archived_entities)
 from .matrix import REFERENCE_MATRIX, matrix_for  # noqa: F401
 from .authoring import scaffold_entity, lock_shot  # noqa: F401
 
@@ -17,6 +18,6 @@ __version__ = "0.0.1"
 # universe the engine scaffolded claimed conformance to a spec two releases old.
 # `lint-universe` now checks a universe's pin against this value, so the two can no
 # longer disagree quietly.
-SPEC_VERSION = "0.15"
+SPEC_VERSION = "0.16"
 SPEC_WIKI = "https://agenticstory.wiki"
 SPEC_URL = "https://agenticstory.wiki/spec"
