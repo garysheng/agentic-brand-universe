@@ -802,6 +802,9 @@ class TestAltLookResolution(unittest.TestCase):
 
 
 # ---------------------------------------------------------------- lifecycle / archive
+from agenticstory import refs as refs_mod
+
+
 class TestLifecycle(unittest.TestCase):
     """Archiving is EDITORIAL STANDING, orthogonal to reference-completeness."""
 
@@ -839,6 +842,37 @@ class TestLifecycle(unittest.TestCase):
 
     def test_active_entity_needs_no_archived_block(self):
         self.assertEqual([p for p in self._e().validate() if "archived" in p], [])
+
+    def test_archived_casts_survives_mixed_id_shapes(self):
+        """Real canon is not uniformly typed: beats hold ids OR {"id": ...} objects.
+
+        The first version of this assumed strings and raised on the first mixed story,
+        which is exactly the shape the nation-of-fire canon already had.
+        """
+        import tempfile, json as _json
+        from pathlib import Path as _P
+        from agenticstory.store import CanonStore
+        with tempfile.TemporaryDirectory() as td:
+            root = _P(td)
+            (root / "canon" / "entities").mkdir(parents=True)
+            (root / "stories").mkdir()
+            (root / "universe.json").write_text(_json.dumps({"identity": {}}))
+            (root / "canon" / "entities" / "porch.json").write_text(_json.dumps({
+                "id": "porch", "kind": "setting", "status": "locked", "contract": {},
+                "lifecycle": "archived",
+                "archived": {"on": "2026-07-29", "reason": "overused"},
+            }))
+            (root / "stories" / "s.json").write_text(_json.dumps({
+                "id": "s", "status": "full", "spine": "thesis", "refrain": "r",
+                "logline": "l", "features": ["porch", {"id": "porch"}],
+                "beats": [{"n": 1, "text": "t", "provenance": "p",
+                           "location": {"id": "porch"},
+                           "characters": ["porch", {"id": "porch"}]}],
+            }))
+            store = CanonStore(root)
+            notes = refs_mod.archived_casts(store, "s")
+        self.assertEqual(len(notes), 1)
+        self.assertIn("porch", notes[0])
 
     def test_archiving_never_breaks_an_already_shipped_story(self):
         """THE load-bearing property.

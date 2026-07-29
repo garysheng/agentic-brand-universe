@@ -41,6 +41,41 @@ Each was paid for with defective renders. You do not write any of them into a bo
 
 5. **Per-spread preamble override.** A book may carry MORE THAN ONE visual register when the change is **diegetic**: a game world on a screen, a vision blooming out of a canon device, a memory, a dream. A spread may override `style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`, `allowMultiPanel`, `allowUncast`. Anything it does not name falls back to the book preamble. Do NOT reach for a second render-spec to get a second register: that duplicates the whole preamble and drifts the moment one copy is edited. The universe's own `rejectedPoles` are identity and are never shed by a spread.
 
+### Declare the SIZE of anything that recurs, not just its look
+
+An entity file happily describes a thing's form, its colour, its materials and its
+rules, and never once says HOW BIG IT IS. Nothing catches that: every gate here
+checks identity, register and composition, and a thing can satisfy all of them at
+any scale. The result is a recurring object that is a different size on every
+page, which a reader notices immediately and no check ever will.
+
+Earned on what-a-book-is-made-of, 2026-07-29. The supercharged laptop appears in
+most of twenty-one spreads and ranged from a notebook to a small television.
+Colour was meaning in that universe and scale was a guess.
+
+Any entity of ANY kind may carry `structured.scale`:
+
+    "scale": {
+      "absolute": "a 14-inch notebook, 33cm wide, its open screen about twice the
+                   height of a mug beside it and about a quarter of the desk width",
+      "relativeTo": {"other-entity-id": "several inches shorter than"}
+    }
+
+`absolute` is emitted as a TRUE SIZE line whenever that entity is in frame, alone
+or not, for every kind. `relativeTo` still emits the RELATIVE SCALE line and still
+requires both entities to be in frame. Before this, scale was read only off
+CHARACTERS and only fired when two of them related to each other, so a prop could
+not state its size at all.
+
+**Pin the size to things a render already contains.** "33cm wide" is unverifiable
+in a painting; "about twice the height of the mug beside it" is checkable at
+read-back by looking. Write the ratio, then the measurement.
+
+**A code-drawn scale plate is the cheapest way to get the ratios right.** Model
+the object beside a desk, a mug and a spread hand in a `massing` spec and render
+it: deterministic, free, and it gives you a reference image to pass as well as the
+numbers to write down. See `reference/supercharged-laptop/scale.png`.
+
 ### The book `style` must describe the BOOK, never the CAST
 
 A book-wide `style` string is prepended to EVERY spread, so anything it names is

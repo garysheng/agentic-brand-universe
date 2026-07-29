@@ -808,6 +808,64 @@ class TestSettingContractGeometry(unittest.TestCase):
         self.assertIn("home exactly as its reference plate: warm test kitchen", p)
 
 
+class TestAbsoluteScale(unittest.TestCase):
+    """A recurring PROP must be able to state how big it is.
+
+    The relative-scale block only fires when two or more CHARACTERS declare a
+    relation to each other, and scale was only ever read off characters. So a prop
+    could not contribute scale at all, and a solo entity's own size was never
+    stated. That is how one laptop ended up ranging from a notebook to a small
+    television across a single book.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _scale(self, eid, scale):
+        p = self.root / "canon" / "entities" / f"{eid}.json"
+        d = json.loads(p.read_text())
+        d.setdefault("structured", {})["scale"] = scale
+        p.write_text(json.dumps(d))
+
+    def out(self, cast):
+        r = run(self.root, write_spec(self.root, cast))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)["prompt"]
+
+    def test_prop_absolute_scale_is_emitted(self):
+        self._scale("tome", {"absolute": "a paperback, about as tall as a mug"})
+        p = self.out([{"id": "clean"}, {"id": "tome"}])
+        self.assertIn("TRUE SIZE", p)
+        self.assertIn("a paperback, about as tall as a mug", p)
+
+    def test_solo_entity_absolute_scale_is_emitted(self):
+        """The old relative block needed TWO characters; absolute needs nobody."""
+        self._scale("clean", {"absolute": "about six foot"})
+        p = self.out([{"id": "clean"}])
+        self.assertIn("TRUE SIZE", p)
+        self.assertIn("about six foot", p)
+
+    def test_no_scale_declared_emits_nothing(self):
+        self.assertNotIn("TRUE SIZE", self.out([{"id": "clean"}]))
+
+    def test_absolute_and_relative_coexist(self):
+        """The two blocks are independent and must not suppress each other."""
+        self._scale("tome", {"absolute": "a paperback"})
+        self._scale("stache", {"relativeTo": {"scout": "several inches shorter than"}})
+        p = self.out([{"id": "stache"}, {"id": "scout"}, {"id": "tome"}])
+        self.assertIn("RELATIVE SCALE", p)
+        self.assertIn("TRUE SIZE", p)
+
+    def test_offframe_entity_scale_is_not_emitted(self):
+        self._scale("tome", {"absolute": "a paperback"})
+        self.assertNotIn("a paperback", self.out([{"id": "clean"}]))
+
+
 # MUST be the LAST statement in this file. Any test class defined AFTER it never
 # runs: unittest.main() executes and exits at import time. TestAltLookDropSheets and
 # TestAltLookRenderBlock sat below it and were dead for weeks while the suite still

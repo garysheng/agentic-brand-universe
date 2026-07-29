@@ -109,11 +109,26 @@ def archived_casts(store: CanonStore, story_id: str) -> list[str]:
     if story is None:
         return [f"unknown story '{story_id}'"]
     seen: list[str] = []
-    ids = list(story.features)
+    # Ids arrive from three places and REAL canon is not uniformly typed: a beat's
+    # `characters` may hold plain ids or {"id": ...} objects, and `features` may hold
+    # either. Normalise instead of assuming, or this raises on the first mixed story.
+    def _ids(v) -> list[str]:
+        out = []
+        for x in v or []:
+            if isinstance(x, str):
+                out.append(x)
+            elif isinstance(x, dict) and isinstance(x.get("id"), str):
+                out.append(x["id"])
+        return out
+
+    ids = _ids(story.features)
     for b in story.beats:
-        if b.get("location"):
-            ids.append(b["location"])
-        ids += list(b.get("characters") or [])
+        loc = b.get("location")
+        if isinstance(loc, str) and loc:
+            ids.append(loc)
+        elif isinstance(loc, dict) and isinstance(loc.get("id"), str):
+            ids.append(loc["id"])
+        ids += _ids(b.get("characters"))
     for eid in dict.fromkeys(ids):
         e = store.entity(eid)
         if e is not None and e.is_archived:

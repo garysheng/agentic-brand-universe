@@ -476,6 +476,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     qa: list[str] = []
     char_invsets: dict[str, list[str]] = {}
     char_scales: dict[str, dict] = {}
+    entity_scales: dict[str, dict] = {}
 
     def add_refs(paths):
         for p in paths:
@@ -538,6 +539,9 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     for c in entries:
         ent = load(uroot / "canon" / "entities" / f"{c['id']}.json")
         kind = ent.get("kind")
+        # Scale is collected for EVERY kind, not only characters: a recurring PROP
+        # drifting size across a book is the commonest form of this defect.
+        entity_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"))
             add_refs(r)
@@ -629,6 +633,27 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             + ((". " + "; ".join(heights) + ".") if len(heights) >= 2 else ".")
         )
 
+    # ABSOLUTE SCALE. The relative block above only fires when TWO OR MORE
+    # CHARACTERS declare a relation to each other, and `char_scales` is only ever
+    # filled from characters. So two whole classes of drift had no way to be
+    # stated at all: a PROP could not contribute scale even when it declared one,
+    # and a SOLO entity's own size was never emitted.
+    #
+    # That is how a recurring prop ends up a different size on every page. On
+    # what-a-book-is-made-of the supercharged laptop appears in most of twenty-one
+    # spreads and ranged from a notebook to a small television, because the entity
+    # declared its FORM, its COLOUR and its rules and never once declared its SIZE.
+    # Colour was meaning; scale was a guess. Gary caught it by eye: "why does the
+    # laptop look different sizes?"
+    #
+    # Any in-frame entity of ANY kind may now carry `structured.scale.absolute`, a
+    # plain sentence pinning its size to things a render already contains (a desk,
+    # a mug, a hand). It is emitted whenever that entity is in frame, alone or not.
+    abs_lines = [f"{eid} is {(sc or {}).get('absolute')}"
+                 for eid, sc in entity_scales.items()
+                 if (sc or {}).get("absolute")]
+    abs_block = ("TRUE SIZE, hold it exactly: " + "; ".join(abs_lines) + ".") if abs_lines else None
+
     # Negatives: universe rejectedPoles + book-wide unconditional negatives, then
     # GUARDED negatives — a blanket negative (e.g. "no facial hair") is emitted
     # ONLY when no in-frame character's selected look positively satisfies it.
@@ -675,6 +700,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             *ent_blocks,
             disambig or "",
             scale_block or "",
+            abs_block or "",
             sp.get("extra", ""),  # authored per-spread instruction (e.g. bake a title glyph); DATA, not improvisation
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
