@@ -427,6 +427,66 @@ def _section_for(body, shot):
     return m.group(1) if m else ""
 
 
+def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
+    """Generate ONE shot and write its recipe. Returns 0 on success.
+
+    Extracted from the chain loop so `--shoot-seed` can use the SAME code path.
+    Before this, the refusal on an unblessed seed told the operator to "generate it
+    alone", which is the framework instructing you to leave the framework: the seed
+    got shot by a hand-written provider call, so it carried no recipe, no register
+    line and no size from prompts.md, and it was the one plate every other shot in
+    the matrix would inherit from. The human gate is still a human gate. Only the
+    hand-rolling is gone.
+    """
+    out = refdir / f"{shot}.png"
+    # STYLE FIRST. The register leads every shot body, because the medium is
+    # the thing a reference sheet drifts off first and the anchor image alone
+    # does not hold it. See style_line().
+    prompt = " ".join(x for x in [style_line(plan["register"], plan["poles"]),
+                                  plan["prompts"][shot], SAME_SUBJECT,
+                                  REAL_PERSON if plan["photos"] else "", neg] if x)
+    # Per-shot size when prompts.md declared one; --size is only the fallback.
+    shot_size = plan["sizes"].get(shot, args.size)
+    # CONDITIONING WINDOW. Identity is carried by the blessed seed plus the few
+    # most recent accepted shots, NOT by every golden ever made: the back view
+    # adds payload, not likeness. Passing all of them grows the request at every
+    # step until the tail of a big matrix dies on an API timeout, which is the
+    # worst place to fail because those shots are the most expensive to redo.
+    cond = goldens
+    if args.max_conditioning and len(goldens) > args.max_conditioning:
+        cond = [goldens[0]] + goldens[-(args.max_conditioning - 1):]
+    cmd = ["uv", "run", _provider_script(), "--prompt", prompt, "--filename", str(out),
+           "--size", shot_size, "--quality", "high", "--no-open",
+           "--input-image", anchor_abs]
+    # photographs BEFORE the painted goldens: the likeness is the thing the
+    # chain must not drift on, and later references carry more weight.
+    for ph in plan["photos"]:
+        cmd += ["--input-image", ph]
+    for g in cond:
+        cmd += ["--input-image", g]
+    # Cross-entity refs: another entity in frame is conditioned on ITS locked
+    # art, never redrawn from prose.
+    for other in plan["refs"].get(shot, []):
+        for p in entity_ref_images(plan["uroot"], other):
+            cmd += ["--input-image", p]
+    rc = subprocess.run(cmd).returncode
+    if rc != 0 or not out.exists():
+        print(f"{shot}: FAILED rc={rc}; chain STOPS (a defect must not propagate)", file=sys.stderr)
+        return 1
+    # provenance travels with the asset (nothing is a mystery)
+    (refdir / f"{shot}.recipe.json").write_text(json.dumps({
+        "shot": shot, "entity": plan["entity"], "kind": plan["kind"],
+        "model": "gpt-image-2", "size": shot_size, "prompt": prompt,
+        "anchor": {"path": plan["anchor"], "sha256_16": sha(Path(anchor_abs))},
+        "photoStack": [{"path": p, "sha256_16": sha(Path(p))} for p in plan["photos"]],
+        "conditionedOn": [{"path": g, "sha256_16": sha(Path(g))} for g in cond],
+        "method": ("golden-chain (sequential; each shot conditions on the blessed seed "
+                   f"plus the most recent accepted shots, window={args.max_conditioning or 'unbounded'})"),
+    }, indent=1))
+    print(f"{shot}: OK (conditioned on {len(cond)} golden(s), size {shot_size})")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("universe")
@@ -456,6 +516,9 @@ def main() -> int:
     ap.add_argument("--print-plan", action="store_true")
     ap.add_argument("--bless-seed", metavar="SHOT",
                     help="record HUMAN approval of the seed so the chain may proceed")
+    ap.add_argument("--shoot-seed", action="store_true",
+                    help="generate the seed shot ALONE (anchor + photo stack only, no goldens) "
+                         "and stop, so a human can look at it and then --bless-seed it")
     args = ap.parse_args()
 
     uroot = Path(args.universe)
@@ -505,11 +568,32 @@ def main() -> int:
         print(f"seed blessed: {blessed}" + ("" if blessed else "  <-- chain will REFUSE"))
         return 0
 
+    neg = ("NEGATIVES: " + ", ".join(plan["negatives"]) + ".") if plan["negatives"] else ""
+    anchor_abs = str((uroot / plan["anchor"]).resolve())
+
+    if args.shoot_seed:
+        # No goldens. The seed is the first painted thing this entity has, so it is
+        # conditioned on the register anchor and (for a real person) the photographs,
+        # and on nothing else. It is deliberately NOT blessed here: a run that shot
+        # its own seed and then approved it would have no human in the loop at all,
+        # which is the one thing this whole chain exists to prevent.
+        rc = _shoot(plan, seed, [], args, anchor_abs, neg, refdir, uroot)
+        if rc != 0:
+            return rc
+        print(f"\nSEED SHOT, NOT BLESSED: {refdir / (seed + '.png')}")
+        print("Look at it with a human. If it is right:")
+        print(f"  chain_matrix.py <universe> {plan['entity']} --bless-seed {seed}")
+        print("If it is wrong, re-run --shoot-seed. Nothing downstream exists yet, so a "
+              "bad seed costs one image and not a matrix.")
+        return 0
+
     # The human gate. Golden is not something the agent may award itself.
     if not marker(refdir, seed).exists():
-        print(f"REFUSE: seed '{seed}' is not blessed. Generate/iterate it alone, have a human look "
-              f"at it, then: chain_matrix.py <universe> {plan['entity']} --bless-seed {seed}",
-              file=sys.stderr)
+        img = refdir / f"{seed}.png"
+        how = ("--shoot-seed to generate it" if not img.exists()
+               else f"--bless-seed {seed} once a human has looked at it")
+        print(f"REFUSE: seed '{seed}' is not blessed. Run: chain_matrix.py <universe> "
+              f"{plan['entity']} {how}", file=sys.stderr)
         return 2
 
     goldens = [str((refdir / f"{seed}.png").resolve())]
@@ -517,60 +601,14 @@ def main() -> int:
         print(f"REFUSE: blessed seed image missing: {goldens[0]}", file=sys.stderr)
         return 2
 
-    neg = ("NEGATIVES: " + ", ".join(plan["negatives"]) + ".") if plan["negatives"] else ""
-    anchor_abs = str((uroot / plan["anchor"]).resolve())
-
     for shot in plan["order"][1:]:
         out = refdir / f"{shot}.png"
         if args.skip_existing and out.exists():
             print(f"{shot}: exists, skip")
             goldens.append(str(out.resolve()))
             continue
-        # STYLE FIRST. The register leads every shot body, because the medium is
-        # the thing a reference sheet drifts off first and the anchor image alone
-        # does not hold it. See style_line().
-        prompt = " ".join(x for x in [style_line(plan["register"], plan["poles"]),
-                                      plan["prompts"][shot], SAME_SUBJECT,
-                                      REAL_PERSON if plan["photos"] else "", neg] if x)
-        # Per-shot size when prompts.md declared one; --size is only the fallback.
-        shot_size = plan["sizes"].get(shot, args.size)
-        # CONDITIONING WINDOW. Identity is carried by the blessed seed plus the few
-        # most recent accepted shots, NOT by every golden ever made: the back view
-        # adds payload, not likeness. Passing all of them grows the request at every
-        # step until the tail of a big matrix dies on an API timeout, which is the
-        # worst place to fail because those shots are the most expensive to redo.
-        cond = goldens
-        if args.max_conditioning and len(goldens) > args.max_conditioning:
-            cond = [goldens[0]] + goldens[-(args.max_conditioning - 1):]
-        cmd = ["uv", "run", _provider_script(), "--prompt", prompt, "--filename", str(out),
-               "--size", shot_size, "--quality", "high", "--no-open",
-               "--input-image", anchor_abs]
-        # photographs BEFORE the painted goldens: the likeness is the thing the
-        # chain must not drift on, and later references carry more weight.
-        for ph in plan["photos"]:
-            cmd += ["--input-image", ph]
-        for g in cond:
-            cmd += ["--input-image", g]
-        # Cross-entity refs: another entity in frame is conditioned on ITS locked
-        # art, never redrawn from prose.
-        for other in plan["refs"].get(shot, []):
-            for p in entity_ref_images(plan["uroot"], other):
-                cmd += ["--input-image", p]
-        rc = subprocess.run(cmd).returncode
-        if rc != 0 or not out.exists():
-            print(f"{shot}: FAILED rc={rc}; chain STOPS (a defect must not propagate)", file=sys.stderr)
+        if _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) != 0:
             return 1
-        # provenance travels with the asset (nothing is a mystery)
-        (refdir / f"{shot}.recipe.json").write_text(json.dumps({
-            "shot": shot, "entity": plan["entity"], "kind": plan["kind"],
-            "model": "gpt-image-2", "size": shot_size, "prompt": prompt,
-            "anchor": {"path": plan["anchor"], "sha256_16": sha(Path(anchor_abs))},
-            "photoStack": [{"path": p, "sha256_16": sha(Path(p))} for p in plan["photos"]],
-            "conditionedOn": [{"path": g, "sha256_16": sha(Path(g))} for g in cond],
-            "method": ("golden-chain (sequential; each shot conditions on the blessed seed "
-                       f"plus the most recent accepted shots, window={args.max_conditioning or 'unbounded'})"),
-        }, indent=1))
-        print(f"{shot}: OK (conditioned on {len(cond)} golden(s), size {shot_size})")
         goldens.append(str(out.resolve()))
 
     print(f"CHAIN COMPLETE: {len(goldens)} mutually-consistent shot(s). "

@@ -593,3 +593,28 @@ inside the run.** Each felt like "just getting unstuck" at the time.
 2026-07-30 · PROMOTED: `chain_matrix.py` now REFUSES to shoot from an unfilled `prompts.md`, closing the largest gap the previous entry named. The diagnosis turned out to be sharper than "a tool is missing": the tool already existed and already did chaining, the register anchor, negatives and `--skip-existing`. What was missing was a GATE on the authoring step. `add-entity` scaffolds every shot body as `TODO(author): replace each body below`, nothing checked it, and an agent meeting that stub wrote its prompts inline in five throwaway bash scripts and called the provider directly, because routing around the tool was easier than noticing the step had been skipped. The refusal is wired into `parse_prompts`, the single choke point every shoot passes through, and its message names the anti-pattern explicitly rather than just reporting a missing value. The reason it matters is reproducibility: a prompt in `prompts.md` is versioned, diffable and reused on every re-run, while the same prompt in `/tmp/shoot-thing.sh` is gone when the session ends, so the entity's own art ends up with no recorded intent. Verified by running it against a real stub and watching it refuse. Plugin 0.55.0 → 0.56.0.
 
 2026-07-30 · PROMOTED: the anti-hand-rolling machinery, after Gary asked the question that exposed it ("are we even activating the sub-agent that exists in the plugin?"). The answer was no. `abu-steward` ships in this plugin, its stated job is "reach for the RIGHT framework verb instead of hand-rolling, and FLAG any gap rather than silently working around it", and it was invoked ZERO times across a full book session in which the main agent hand-rolled five shoot scripts, a photo-stack extraction, and prompt assembly the framework already owned. The countermeasure was installed and unused for the entire run. Three changes. (1) `make-a-book` now DISPATCHES the steward per chain step that touches canon or art, rather than merely having it. The reasoning is written down because it is not obvious: the main agent is carrying the book's momentum and is therefore the WORST judge of "should I write a quick script here", while a fresh context whose only question is "which verb is this" has no such incentive and has not spent an hour becoming attached to a plan. (2) The governing principle is now stated in the chain: PROSE DOES NOT BIND, REFUSALS BIND. Every rule broken on 2026-07-30 existed as prose (use AskUserQuestion at a gate, ignored four times; angels are light beings, a European man rendered; show the operator every shot, written that same session then not done). Every rule obeyed was a refusal in code (assert-story, build-docs --check, the uncast-character guard, and the prompts.md TODO refusal that ended a five-times-repeated workaround the moment it existed). So when a rule is broken, do not restate it more emphatically; move it into something that stops you, at the choke point every path already goes through. (3) `pave-the-path` gained `detect_handroll.py`, because discouragement is not detection. It scans a scratchpad for scripts calling a provider directly or hardcoding the register, and a universe for art sitting beside a `prompts.md` that still says TODO(author). Its FIRST RUN returned 79 findings across at least SEVEN different sessions: `shoot.py`, `gen.sh`, `shoot-r1.sh`, `shoot-r2.sh`, `room_variants.py` in scratchpads weeks apart. The expectation was five, from today. Hand-rolling was never an incident, it was the normal usage pattern, invisible the whole time because nothing ever looked. Plugin 0.56.0 → 0.57.0.
+
+## 2026-07-30 — 0.58.0 — two verbs the framework was telling you to work around
+
+`backfill-prompts` (engine, `promptsfile.py`, 11 tests). The inverse of
+`backfill-provenance`: it recovers a scaffolded `prompts.md` from the `.recipe.json`
+files beside it. Shoot a matrix outside the framework and the art lands with a recipe
+while `prompts.md` stays all `TODO(author)`, so the prompt survives only as an
+attestation of one past call and never as a live instruction. It refuses to overwrite
+an authored body, leaves a shot with no recipe honestly TODO, and appends a heading
+when the entity's slots moved after the scaffold was written. Constrained to the
+entity's DECLARED sheets, because unconstrained it proposed 384 headings against 21
+real recoveries on Nation of Fire. `--entity` scopes the apply; the plan stays
+universe-wide. Nation of Fire has 253 recoverable prompts still outstanding.
+
+`chain_matrix.py --shoot-seed`. The chain refused an unblessed seed with the advice
+"generate it alone", which is the framework instructing you to leave the framework.
+The seed then got shot by a hand-written provider call: no recipe, no register line,
+no size from prompts.md, on the one plate every other shot in the matrix inherits
+from. Now it shoots the seed through the same code path as every other shot and stops
+without blessing it, because a run that shot its own seed and then approved it would
+have no human in the loop at all. The per-shot generate was extracted to `_shoot()`
+so both paths share it.
+
+Both were found by working a real book (Two Angels and a Forklift) rather than by
+reading the framework. 655 tests green.

@@ -118,6 +118,14 @@ def build_parser() -> argparse.ArgumentParser:
     bp.add_argument("universe")
     bp.add_argument("--apply", action="store_true",
                     help="write the recipes; without this it reports the plan and changes nothing")
+    bpr = sub.add_parser("backfill-prompts",
+                         help="recover a scaffolded prompts.md from the recipes beside it, so "
+                              "a matrix shot outside the framework still records its prompts")
+    bpr.add_argument("universe")
+    bpr.add_argument("--apply", action="store_true",
+                     help="write the prompts.md files; without this it reports the plan and changes nothing")
+    bpr.add_argument("--entity", action="append", default=None,
+                     help="scope to one entity id (repeatable); default is the whole universe")
     bd = sub.add_parser("build-docs", help="regenerate the framework's own derived docs (README + docs/REFERENCE.md)")
     bd.add_argument("--root", default=None,
                     help="framework repo root (default: inferred from this module's location)")
@@ -211,6 +219,31 @@ def main(argv: list[str] | None = None) -> int:
             print("  (plan only; pass --apply to write)")
         print("  NOTE: no image was regenerated. Locked goldens are never re-rendered "
               "to repair metadata.")
+        return 0
+
+    if args.cmd == "backfill-prompts":
+        from pathlib import Path as _P
+        from . import promptsfile
+        u = _P(args.universe)
+        r = promptsfile.run(u, apply=args.apply, only=args.entity)
+        verb = "filled" if args.apply else "would fill"
+        print(f"backfill-prompts [{u.name}]: {verb} {r['filled']} shot prompt(s) from recipes, "
+              f"{r['appended']} of them into slots the scaffold never had; "
+              f"{r['still_todo']} shot(s) have no recipe and stay TODO (never shot).")
+        for f in r["files"]:
+            if not (f["filled"] or f["appended"]):
+                continue
+            rel = _P(f["path"]).parent.name
+            got = ", ".join(s for s, _ in f["filled"]) or "-"
+            line = f"  {rel}: {len(f['filled'])} from recipe ({got})"
+            if f["appended"]:
+                line += f"; APPENDED {', '.join(s for s, _ in f['appended'])} (slot missing)"
+            if f["still_todo"]:
+                line += f"; {len(f['still_todo'])} unshot"
+            print(line)
+        if not args.apply:
+            print("  (plan only; pass --apply to write)")
+        print("  An authored body is never overwritten, so a re-run is a no-op.")
         return 0
 
     if args.cmd == "build-docs":
