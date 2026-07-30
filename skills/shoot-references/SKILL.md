@@ -13,6 +13,14 @@ Turn a scaffolded entity's empty matrix slots into locked reference shots. This 
 - The target universe (a path with `universe.json`) and the entity id.
 - Read `identity.register` (anchor + rejectedPoles). If `register.anchor` is null, STOP: the universe's style is not locked. Point the operator at the start-universe style-lock step and do not generate.
 
+### Multi-register universes: `--register <pack-id>`
+
+`identity.register` is the right anchor for a universe with ONE look. It is the wrong one for a universe where `identity.register` names only the **default** and each look is its own Style Pack under `reference/style/<id>/` (`gary-sheng-art` is the reference case). There, an entity whose story declares a different register would have its whole matrix shot in a medium it is never rendered in, and a sheet in the wrong medium is a weaker identity reference than one in the right medium.
+
+So `chain_matrix.py` takes `--register <pack-id>`: it resolves `reference/style/<pack-id>/pack.json`, uses that pack's anchor and its `rejectedPoles`, and **does not** merge the default register's poles (a pack that permits what the default rejects would otherwise be fighting a negative it never declared). It refuses loudly on an unknown pack or an anchor that is not on disk, rather than falling back to the default and quietly shooting the wrong look. Omit the flag and behaviour is exactly as before.
+
+Check which register a story declares before shooting its cast: `stories/<id>.json` may carry its own `register` block that overrides the universe default.
+
 ## Procedure
 1. **Resolve the work.** Read `canon/entities/<id>.json` (its kind, matrix, invariants, and for a real person the `realPerson` photo stack + sensitive list) and `reference/<id>/prompts.md`. Run `agenticstory lock-level <universe> <id>` to see what remains.
 2. **For each shot that is missing or was a DEFECT** (skip already-locked passers, so re-runs are cheap):

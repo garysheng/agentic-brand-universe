@@ -365,5 +365,57 @@ class ConditioningWindow(unittest.TestCase):
         self.assertNotIn("...", r.stdout)
 
 
+# --- multi-register universes ----------------------------------------------
+# A universe where `identity.register` names only the DEFAULT and each look is
+# its own Style Pack. Without an override, every entity's matrix is shot in the
+# default medium, including entities that are only ever rendered in another one,
+# and a sheet in the wrong medium is a weak identity reference.
+class TestRegisterOverride(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = build(Path(self.tmp.name))
+        pack = self.root / "reference" / "style" / "inky"
+        png(pack / "refs" / "anchor.png")
+        (pack / "pack.json").write_text(json.dumps({
+            "id": "inky", "name": "Inky",
+            "anchor": "refs/anchor.png",
+            "rejectedPoles": ["crayon", "pastel"],
+        }))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_defaults_to_the_universe_register(self):
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("register=test register", r.stdout)
+        self.assertIn("photoreal", r.stdout)
+
+    def test_override_uses_the_named_packs_poles_not_the_universes(self):
+        r = run(self.root, "--register", "inky", "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("register=inky", r.stdout)
+        neg = [l for l in r.stdout.splitlines() if l.startswith("negatives:")][0]
+        self.assertIn("crayon", neg)
+        # The default register's poles must not leak into an overridden shoot:
+        # "photoreal" is the universe's, and a pack that permits it would be
+        # silently fighting a negative it never declared.
+        self.assertNotIn("photoreal", neg)
+
+    def test_refuses_an_unknown_register_rather_than_falling_back(self):
+        r = run(self.root, "--register", "ghost", "--print-plan")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("no Style Pack", r.stderr)
+
+    def test_refuses_a_pack_whose_anchor_is_not_on_disk(self):
+        pack = self.root / "reference" / "style" / "hollow"
+        pack.mkdir(parents=True)
+        (pack / "pack.json").write_text(json.dumps({
+            "id": "hollow", "anchor": "refs/missing.png"}))
+        r = run(self.root, "--register", "hollow", "--print-plan")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("not on disk", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

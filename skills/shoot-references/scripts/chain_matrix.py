@@ -208,12 +208,48 @@ def marker(refdir: Path, shot: str) -> Path:
     return refdir / f"{shot}.golden.json"
 
 
-def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None):
+def resolve_register(uroot: Path, uni: dict, override=None):
+    """Which Style Pack this matrix is shot in.
+
+    Defaults to `identity.register`, which is correct for a universe that has
+    ONE look. It is not correct for a universe where `identity.register` names
+    only the DEFAULT and each look is its own Style Pack under
+    `reference/style/<id>/`: there, an entity whose story declares a different
+    register would have its matrix shot in a medium it is never rendered in,
+    and a sheet in the wrong medium is a weaker identity reference than one in
+    the right medium. Hence the override.
+
+    Returns (universe-relative anchor path, rejected poles, register id).
+    """
+    if not override:
+        reg = (uni.get("identity") or {}).get("register") or {}
+        anchor = reg.get("anchor")
+        if not anchor:
+            raise Refuse(
+                "identity.register.anchor is null: the universe style is not locked; "
+                "do not generate")
+        return anchor, list(reg.get("rejectedPoles", [])), reg.get("name")
+
+    pack_rel = Path("reference") / "style" / override
+    pack_file = uroot / pack_rel / "pack.json"
+    if not pack_file.exists():
+        raise Refuse(f"--register {override}: no Style Pack at {pack_file}")
+    pack = load(pack_file)
+    a = pack.get("anchor")
+    if not a:
+        raise Refuse(f"--register {override}: {pack_file} declares no anchor")
+    # A pack's `anchor` is relative to the pack dir; every other path here is
+    # universe-relative, so normalise it once rather than at each use site.
+    anchor = str(pack_rel / a)
+    if not (uroot / anchor).exists():
+        raise Refuse(f"--register {override}: anchor not on disk: {uroot / anchor}")
+    return anchor, list(pack.get("rejectedPoles", [])), override
+
+
+def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
+               register_override=None):
     uni = load(uroot / "universe.json")
-    reg = (uni.get("identity") or {}).get("register") or {}
-    anchor = reg.get("anchor")
-    if not anchor:
-        raise Refuse("identity.register.anchor is null: the universe style is not locked; do not generate")
+    anchor, poles, register_id = resolve_register(uroot, uni, register_override)
 
     ent = load(uroot / "canon" / "entities" / f"{eid}.json")
     kind = ent.get("kind", "character")
@@ -268,12 +304,12 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None):
     rest = [s for s in shots if s != seed]
     return {
         "entity": eid, "kind": kind, "anchor": anchor, "refdir": refdir,
+        "register": register_id,
         "photos": photos,
         "seed": seed, "order": [seed] + rest, "prompts": prompts,
-        # universe rejectedPoles FIRST, then the entity's own negatives from
+        # register rejectedPoles FIRST, then the entity's own negatives from
         # prompts.md. Both reach the model; neither is silently dropped.
-        "negatives": list(dict.fromkeys(
-            list(reg.get("rejectedPoles", [])) + parsed["negatives"])),
+        "negatives": list(dict.fromkeys(poles + parsed["negatives"])),
         "refs": parsed["refs"],
         "sizes": parsed.get("sizes", {}),
         "uroot": uroot,
@@ -296,6 +332,14 @@ def main() -> int:
                          "accepted shots ride along. Unbounded accumulation makes every "
                          "step a larger upload than the last until the final shots of a "
                          "big matrix time out. 0 disables the cap.")
+    ap.add_argument("--register", metavar="ID",
+                    help="Shoot the matrix in the Style Pack at "
+                         "reference/style/<ID>/ instead of the universe's "
+                         "identity.register. For a MULTI-REGISTER universe, where "
+                         "identity.register names only the default and each look is "
+                         "its own pack: an entity whose story declares a different "
+                         "register needs its sheets shot in the medium it is actually "
+                         "rendered in. Defaults to the universe register.")
     ap.add_argument("--skip-existing", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--print-plan", action="store_true")
@@ -306,7 +350,8 @@ def main() -> int:
     uroot = Path(args.universe)
     try:
         plan = build_plan(uroot, args.entity, args.seed,
-                          args.shots.split(",") if args.shots else None)
+                          args.shots.split(",") if args.shots else None,
+                          register_override=args.register)
     except Refuse as e:
         print(f"REFUSE: {e}", file=sys.stderr)
         return 2
@@ -327,7 +372,8 @@ def main() -> int:
         return 0
 
     if args.print_plan or args.dry_run:
-        print(f"entity={plan['entity']} kind={plan['kind']}")
+        print(f"entity={plan['entity']} kind={plan['kind']} "
+              f"register={plan['register'] or '(universe default)'}")
         print(f"seed (hero) = {seed}")
         for i, s in enumerate(plan["order"]):
             # Show the ACTUAL conditioning window, not every prior shot: a plan that
