@@ -45,6 +45,14 @@ Hand-rolling **once, consciously, to keep momentum** is fine — the framework i
    - Plugin: `.claude-plugin/plugin.json` `version` — patch for a fix/new-skill, minor for a spec/contract change.
    - Spec: if `SPEC.md` changed the contract, bump its `vX.Y` and every `conformsTo`/`SPEC_VERSION` reference (engine `__init__`, init scaffolder). Universes conform to a spec version; do not break that silently.
 5. **Test:** `./run-tests.sh` (engine green) if you touched the engine or spec-driven scaffolding.
+   It also runs `build-docs --check`, so **adding a skill, a CLI verb, a form, a provider or a test
+   makes the derived docs stale and the suite RED.** The fix is one command, not a prose edit:
+   `(cd engine && python3 -m agenticstory.cli build-docs)`, then commit the result. Never hand-edit
+   inside a `BEGIN GENERATED` fence in `README.md` or `docs/REFERENCE.md`; the generator owns those,
+   and the sources are the SKILL.md frontmatter, the real argparse parser, `forms/`,
+   `registry/providers.json` and `SPEC.md`. Hand-written docs that the generator does NOT own
+   (`QUICKSTART.md`, `docs/GLOSSARY.md`, the narrative half of `README.md`) are yours to update by
+   hand when behavior changes.
 6. **Sync + DELIVER:** run `./sync-plugin.sh`. Then commit AND push BOTH repos (agenticstory source + garysheng-claude-plugins marketplace). Re-run `./sync-plugin.sh` until it prints in-sync-and-delivered (not STALE). Tell Gary to run `/plugin update` (only he can); the change is not live until he does.
 7. **Log it:** append a timestamped one-liner to `SAVE-LOG.md` (what promoted, version, why), matching the existing entry style. No em dashes; Gary is sole author (no Claude co-author on framework content).
 8. **Update THIS skill** if the process itself changed (new repo in the chain, new version file, a new recurring gap worth naming). The meta-skill must always describe the current reality — a stale updater is the worst kind.
@@ -58,4 +66,5 @@ When invoked because Gary is frustrated we are hand-rolling, first **take stock 
 - The gap is a real framework artifact (skill/engine/spec/template), universe-agnostic, tested where applicable.
 - Versions bumped; `sync-plugin.sh` reports delivered (committed + pushed in both repos), not STALE; Gary prompted to `/plugin update`.
 - `SAVE-LOG.md` has the entry; if the process changed, this skill was updated too.
+- `./run-tests.sh` is green INCLUDING its `docs` line, so the generated reference describes the framework as it now is rather than as it was.
 - The universe that triggered this no longer hand-rolls the thing — it calls the framework.

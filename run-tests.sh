@@ -53,6 +53,20 @@ for tf in skills/*/tests/test*.py; do
   run "$skill/$(basename "$tf")" "$skill" python3 "tests/$(basename "$tf")"
 done
 
+# The derived docs. Prose rots silently while the thing it describes keeps moving, so
+# staleness is a FAILING TEST rather than something a reader discovers months later.
+# (This is also covered by engine/tests/test_docsfile.py; it runs here too so the fix
+# is printed in the runner's own output instead of buried in a traceback.)
+docs_out=$( cd engine && python3 -m agenticstory.cli build-docs --check 2>&1 ); docs_status=$?
+if [ $docs_status -ne 0 ]; then
+  echo "=== docs === STALE"
+  printf '%s\n' "$docs_out"
+  echo "  fix: (cd engine && python3 -m agenticstory.cli build-docs) then commit the result"
+  fail=1
+else
+  echo "=== docs === generated blocks current"
+fi
+
 echo
 echo "$files skill test file(s) discovered, $total tests total"
 if [ $fail -eq 0 ]; then echo "ALL GREEN"; else echo "FAILURES ABOVE"; fi

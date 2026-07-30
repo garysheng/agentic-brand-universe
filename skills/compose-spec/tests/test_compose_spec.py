@@ -109,5 +109,49 @@ class TestComposeSpec(unittest.TestCase):
             self.assertEqual(json.loads(out.read_text())["spreads"][0]["scene"], "")
 
 
+
+
+class TestSettingIsNotClobbered(unittest.TestCase):
+    """A re-sync must never move a spread to a different room behind your back.
+
+    `setting` was classed as derived and refreshed from beat.location every run. A
+    render-spec legitimately diverges: a beat says "their house", the book stages it in a
+    room that did not exist when the beat was written. Refreshing reverted 16 spreads of
+    gain-everything-lose-nothing to a banned room, and the run reported nothing, because
+    only the setting had moved. Earned by this tool on the book it was built for.
+    """
+
+    def test_existing_setting_is_kept_and_the_divergence_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp); out = Path(tmp) / "spec.json"
+            _run(root, out)
+            spec = json.loads(out.read_text())
+            (root / "canon" / "entities" / "other-room.json").write_text(json.dumps({
+                "id": "other-room", "kind": "setting",
+                "structured": {"sheets": {"wide": "w.png"}}}))
+            spec["spreads"][0]["setting"] = "other-room"
+            spec["spreads"][0]["plate"] = "wide"
+            out.write_text(json.dumps(spec))
+
+            r = _run(root, out)
+            got = json.loads(out.read_text())["spreads"][0]
+            self.assertEqual(got["setting"], "other-room",
+                             "a re-sync must not move the spread back to the beat's location")
+            self.assertEqual(got["plate"], "wide")
+            self.assertIn("DIVERGENCE", r.stdout)
+            self.assertIn("other-room", r.stdout)
+
+    def test_a_plate_that_is_not_a_sheet_of_its_setting_is_flagged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp); out = Path(tmp) / "spec.json"
+            _run(root, out)
+            spec = json.loads(out.read_text())
+            spec["spreads"][0]["plate"] = "notAPlate"
+            out.write_text(json.dumps(spec))
+            r = _run(root, out)
+            self.assertIn("is NOT a sheet of setting", r.stdout)
+            self.assertIn("notAPlate", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

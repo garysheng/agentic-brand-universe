@@ -75,15 +75,35 @@ def main() -> int:
         sid = f"spread-{int(b['n']):02d}"
         old = {} if a.force else dict(by_id.get(sid) or {})
         sp = {"id": sid}
+        # SETTING IS CARRIED FORWARD, NOT BLINDLY REFRESHED.
+        #
+        # It was classed as derived, so a re-sync rewrote it from beat.location every run.
+        # A render-spec legitimately diverges from its story: a beat says "their house" and
+        # the book stages it in one specific room that did not exist when the beat was
+        # written. Refreshing silently reverted 16 spreads of gain-everything-lose-nothing
+        # to a banned room, and the run REPORTED "plates altered: NONE" because only the
+        # setting had moved. Earned 2026-07-30, by this tool, on the book it was built for.
+        #
+        # So: fill it when absent, keep it when present, and REPORT the divergence loudly.
         loc = b.get("location")
-        if loc:
-            sp["setting"] = loc
-        ent = entity(uroot, loc) if loc else None
+        existing = old.get("setting")
+        if existing and loc and existing != loc:
+            notes.append(f"{sid}: DIVERGENCE, spec stages this in '{existing}' but the beat "
+                         f"says '{loc}'. Keeping '{existing}'. Fix the story's beat.location "
+                         "if the spec is right, or the spec if the story is right.")
+        chosen_setting = existing or loc
+        if chosen_setting:
+            sp["setting"] = chosen_setting
+        ent = entity(uroot, chosen_setting) if chosen_setting else None
 
         # CHOSEN: carried forward if already chosen, never chosen on the author's behalf.
         sp["plate"] = old.get("plate") if "plate" in old else None
-        if loc and not sp.get("plate"):
-            notes.append(f"{sid}: setting '{loc}' has no plate chosen "
+        if chosen_setting and sp.get("plate") and sp["plate"] not in plates_for(ent):
+            notes.append(f"{sid}: plate '{sp['plate']}' is NOT a sheet of setting "
+                         f"'{chosen_setting}' (has: {plates_for(ent) or 'none'}). The render "
+                         "will refuse, or silently fall back to a filename that may not exist.")
+        if chosen_setting and not sp.get("plate"):
+            notes.append(f"{sid}: setting '{chosen_setting}' has no plate chosen "
                          f"(available: {plates_for(ent) or 'NONE - shoot a shot list'})")
 
         old_cast = {c.get("id"): c for c in (old.get("cast") or []) if isinstance(c, dict)}

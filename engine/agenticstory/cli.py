@@ -9,6 +9,7 @@ Agentic Story CLI.
   agenticstory assert-spread <universe> --characters a,b [--location X]
   agenticstory lock-level <universe> <entity>  # advisory reference-completeness report
   agenticstory build-canon <universe> [--check|--adopt]  # regenerate CANON.md from per-record files
+  agenticstory build-docs [--root R] [--check]  # regenerate THIS repo's derived docs (README, REFERENCE)
   agenticstory add-entity <universe> <kind> <eid> [--name N] [--origin S] [--photo path ...]
                                                # scaffold a schema-valid entity stub
   agenticstory archive <universe> <eid> --reason R [--superseded-by ID]
@@ -40,18 +41,33 @@ def _print_problems(title: str, problems: list[str]) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """The CLI surface, as data.
+
+    Extracted from `main` so it can be introspected without being run. `docsfile`
+    walks these subparsers to emit the CLI reference, which is why every verb
+    carries a `help=`: a verb with no help renders as a blank row in the docs,
+    and a blank row is how an undocumented verb hides in plain sight.
+    """
     ap = argparse.ArgumentParser(prog="agenticstory")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("validate", "list"):
-        s = sub.add_parser(name); s.add_argument("universe")
-    lc = sub.add_parser("list-craft"); lc.add_argument("universe")
-    c = sub.add_parser("crossovers"); c.add_argument("universe"); c.add_argument("entity")
-    rel = sub.add_parser("relations"); rel.add_argument("universe"); rel.add_argument("entity")
-    a = sub.add_parser("assert-story"); a.add_argument("universe"); a.add_argument("story")
-    sp = sub.add_parser("assert-spread"); sp.add_argument("universe")
+    va = sub.add_parser("validate", help="typecheck a universe against the spec schema")
+    va.add_argument("universe")
+    li = sub.add_parser("list", help="list every entity in a universe")
+    li.add_argument("universe")
+    lc = sub.add_parser("list-craft", help="list a universe's craft-canon records")
+    lc.add_argument("universe")
+    c = sub.add_parser("crossovers", help="list the crossovers an entity appears in")
+    c.add_argument("universe"); c.add_argument("entity")
+    rel = sub.add_parser("relations", help="list an entity's typed relations")
+    rel.add_argument("universe"); rel.add_argument("entity")
+    a = sub.add_parser("assert-story", help="the pre-render gate: refuse a story whose cast lacks real art on disk")
+    a.add_argument("universe"); a.add_argument("story")
+    sp = sub.add_parser("assert-spread", help="the pre-render gate for ONE spread's cast and location")
+    sp.add_argument("universe")
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
-    ll = sub.add_parser("lock-level"); ll.add_argument("universe"); ll.add_argument("entity")
+    ll = sub.add_parser("lock-level", help="report how locked an entity is (which matrix slots are filled)")
+    ll.add_argument("universe"); ll.add_argument("entity")
     ar = sub.add_parser("archive", help="retire an entity from NEW casting (history keeps rendering)")
     ar.add_argument("universe"); ar.add_argument("eid")
     ar.add_argument("--reason", required=True,
@@ -96,6 +112,11 @@ def main(argv: list[str] | None = None) -> int:
     bc.add_argument("universe")
     bc.add_argument("--check", action="store_true", help="fail if stale or if any crossover number is duplicated")
     bc.add_argument("--adopt", action="store_true", help="create records for hand-appended rows with no backing record")
+    bd = sub.add_parser("build-docs", help="regenerate the framework's own derived docs (README + docs/REFERENCE.md)")
+    bd.add_argument("--root", default=None,
+                    help="framework repo root (default: inferred from this module's location)")
+    bd.add_argument("--check", action="store_true",
+                    help="fail if any generated block is stale, instead of rewriting it")
     ld = sub.add_parser("land", help="merge a finished work branch home, or queue it if that is not safe yet")
     ld.add_argument("repo", help="any git repo (a universe, a platform repo, anything)")
     ld.add_argument("--branch", default=None, help="the work branch (default: the current branch of --repo)")
@@ -113,7 +134,11 @@ def main(argv: list[str] | None = None) -> int:
     ini.add_argument("--asset-root", default=".", help="where entity asset paths resolve (default: the universe dir)")
     ini.add_argument("--example", action="store_true", help="also scaffold a worked example (character/setting/story/relation)")
     ini.add_argument("--force", action="store_true", help="overwrite an existing universe.json")
+    return ap
 
+
+def main(argv: list[str] | None = None) -> int:
+    ap = build_parser()
     args = ap.parse_args(argv)
 
     # massing does not load a store: it draws a blueprint from a standalone spec file
@@ -161,6 +186,22 @@ def main(argv: list[str] | None = None) -> int:
         print("next: `validate` →", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
         print("      then `assert-story <id>` before rendering (it refuses until real assets exist).")
         return 0 if not problems else 1
+
+    if args.cmd == "build-docs":
+        from pathlib import Path as _P
+        from . import docsfile
+        droot = _P(args.root) if args.root else docsfile.repo_root()
+        if args.check:
+            return _print_problems("build-docs --check", docsfile.check(droot))
+        changed = docsfile.build(droot)
+        if not changed:
+            print("build-docs: already current")
+        else:
+            print(f"build-docs: regenerated {len(changed)} file(s)")
+            for c in changed:
+                print(f"  ~ {c}")
+        return _print_problems("build-docs", [p for p in docsfile.check(droot)
+                                              if "stale" not in p and "missing" not in p])
 
     if args.cmd == "build-canon":
         from pathlib import Path as _P
