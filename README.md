@@ -21,7 +21,7 @@ rendered from.
 - **The spec:** [`SPEC.md`](./SPEC.md) — the cartridge architecture (six layers, primitives, invariants).
 - **The architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — how the layers fit, what the
   linter checks, and why the runtime is Managed Agents. Diagrams included, all machine-emitted.
-- **The engine spec:** [`BRAND-OS-SPEC.md`](./BRAND-OS-SPEC.md) — the Agentic Brand OS (the console/runtime that loads a cartridge and generates on-brand deliverables). **v0.1, early draft.**
+- **The engine spec:** [`BRAND-OS-SPEC.md`](./BRAND-OS-SPEC.md) — the Agentic Brand OS (the console/runtime that loads a cartridge and generates on-brand deliverables). **v0.1, early draft, partially overtaken:** the console that shipped for most users is your own harness with the `abu` plugin installed. Design notes for the hosted path, not a contract.
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
   canon), and [`hyperagentic-age`](https://github.com/garysheng/hyperagentic-age), a public universe

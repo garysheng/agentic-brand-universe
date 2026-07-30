@@ -1,6 +1,6 @@
-# Agentic Brand OS — Engine Spec
+**v0.1 — 2026-07-19. EARLY DRAFT, PARTIALLY OVERTAKEN BY REALITY.** Read the status note below before building against this.
 
-**v0.1 — 2026-07-19. EARLY DRAFT.** The runtime/engine spec: the deployed console that **loads a
+> **Status, 2026-07-30.** This spec describes the console as a bespoke deployed runtime. One exists and runs (the AITX Brand OS), so the idea is not dead. But the console that actually shipped for most users is the **agentic harness itself**: ABU installs into Claude Code as a plugin, and the harness becomes the runtime. Nothing in this repo implements this document, and it has not moved since it was written. Treat it as design notes for the hosted-console path, not as a contract. The live contract is [`SPEC.md`](./SPEC.md).
 brand universe (a cartridge) and generates any on-brand deliverable from it** — in plain language,
 with provenance, held to the brand's rules, and getting sharper every time it runs. Home:
 `agenticbranduniverse.com`. Reference implementation: the **AITX Brand OS** (`garysheng/aitx`),
