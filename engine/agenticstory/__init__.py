@@ -19,5 +19,10 @@ __version__ = "0.0.1"
 # `lint-universe` now checks a universe's pin against this value, so the two can no
 # longer disagree quietly.
 SPEC_VERSION = "0.16"
-SPEC_WIKI = "https://agenticstory.wiki"
-SPEC_URL = "https://agenticstory.wiki/spec"
+SPEC_WIKI = "https://agenticbranduniverse.com"
+# The spec URL must RESOLVE. agenticstory.wiki was cited as the authority in every
+# universe manifest and served nothing (parked DNS, no HTTP response), and its
+# replacement agenticbranduniverse.com/spec 404s. A citation that does not resolve is
+# the same defect as a recipe pointing at a file that is not there, so this points at
+# the spec document itself, which is verifiably served.
+SPEC_URL = "https://github.com/garysheng/agentic-brand-universe/blob/master/SPEC.md"

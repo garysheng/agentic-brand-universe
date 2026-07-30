@@ -20,7 +20,7 @@ work is normal canon commits plus a renderer skill (e.g. `create-brand-os-pictur
 The framework spec is the source of truth for every field contract and invariant. Read it,
 do not re-derive it:
 
-- **Spec:** `agenticstory/SPEC.md` (the repo this skill lives in) — canonical home `https://agenticstory.wiki`.
+- **Spec:** `agenticstory/SPEC.md` (the repo this skill lives in) — canonical home `https://agenticbranduniverse.com`.
 - **Engine:** `agenticstory/engine/` — the scaffolder + validator + gate. Run its CLI; do
   not hand-write universe files the engine can generate and check.
 

@@ -216,7 +216,7 @@ class TestScaffold(unittest.TestCase):
             man = json.loads((target / "universe.json").read_text())
             self.assertEqual(man["name"], "myverse")
             self.assertEqual(man["spec"]["version"], SPEC_VERSION)
-            self.assertIn("agenticstory.wiki", man["spec"]["wiki"])
+            self.assertIn("agenticbranduniverse.com", man["spec"]["wiki"])
             self.assertIn(f"v{SPEC_VERSION}", man["spec"]["conformsTo"])
 
     def test_gate_wrapper_written_and_executable(self):
