@@ -163,6 +163,42 @@ def lint(root):
                              f"sheet, but its `sheets` list is {named or '[]'} and carries no such "
                              "sheet. Prose cannot make the compiler pass a file.")
 
+    # A CHARACTER WHOSE WARDROBE IS ONLY AN ADJECTIVE WILL DRIFT.
+    #
+    # Consistency has to be pinned to something the compiler can PASS. jerry-man pins his
+    # clothes with capsule sheets plus per-look `ql-*` poses, so his cardigan is identical
+    # in every spread. selah carried the same intent as the words "refined modern-chic
+    # wardrobe in CREAM AND GOLD", with no wardrobe sheet and no wardrobe pose anywhere, so
+    # the model invented a different cream garment on every render of a 20-spread book and
+    # every one of them satisfied canon. Earned 2026-07-30. A colour adjective is not a
+    # wardrobe; a reference is.
+    #
+    # Flag a character that RECURS (has locked sheets and a render block) but has no pose
+    # carrying a wardrobe-ish sheet. WARNING, never an error: a character who appears once
+    # does not need a capsule.
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("kind") != "character":
+                continue
+            eid = e.get("id", ef.stem)
+            st = e.get("structured") or {}
+            sheets = st.get("sheets") or {}
+            poses = ((st.get("render") or {}).get("poses") or {})
+            if not sheets or not poses:
+                continue
+            WARDROBE_HINT = ("capsule", "wardrobe", "outfit", "look", "items", "closet")
+            has_wardrobe_sheet = any(any(h in k.lower() for h in WARDROBE_HINT) for k in sheets)
+            pose_passes_wardrobe = any(
+                any(any(h in str(sk).lower() for h in WARDROBE_HINT) for sk in (p.get("sheets") or []))
+                for p in poses.values() if isinstance(p, dict))
+            if not has_wardrobe_sheet and not pose_passes_wardrobe:
+                warn("CHARACTER-WARDROBE-NOT-PINNED",
+                     f"{eid}: has locked sheets and {len(poses)} render pose(s) but NO wardrobe "
+                     "sheet and no pose that passes one, so their clothing is steered by prose "
+                     "alone and will differ on every render. Pin it the way jerry-man does: a "
+                     "capsule sheet plus per-look poses that pass it.")
+
     # A SETTING NEEDS A SHOT LIST, NOT ONE MASTER PLATE.
     #
     # A character gets a reference matrix at creation (SPEC 12): eight shots, made

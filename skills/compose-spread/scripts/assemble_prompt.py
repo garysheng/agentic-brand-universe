@@ -726,6 +726,29 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             if block:
                 ent_blocks.append(block)
             continue
+        # A BAKE MUST NOT SILENTLY REPLACE A LOCKED CHARACTER'S IDENTITY.
+        #
+        # entity_block() lets a cast entry's `bake` REPLACE the derived block. That is
+        # right for a multi-state prop, and catastrophic for a character: the canon block
+        # is where ONE LOCKED FACE, the wardrobe rules and the modesty anatomy live, so a
+        # hand-typed paragraph in a render-spec quietly becomes the whole description and
+        # the character stops looking like herself. Earned 2026-07-30: all 17 spreads of
+        # gain-everything-lose-nothing carried a typed Selah paragraph that replaced her
+        # canon block, even aging her a decade past what canon says. It shipped.
+        #
+        # Refuse when the replaced entity declares identity invariants. Opting out stays
+        # possible but must be deliberate and auditable.
+        _inv_keys = set((ent.get("structured") or {}).get("invariants") or [])
+        _identity = {k for k in _inv_keys
+                     if "locked-face" in k or "one-locked" in k or k.startswith("face-")}
+        if c.get("bake") and _identity and not c.get("allowIdentityOverride"):
+            raise Refuse(
+                f"BAKE WOULD REPLACE A LOCKED IDENTITY ({sp.get('id')}): cast entry for "
+                f"'{c['id']}' sets `bake`, which REPLACES the canon render block that "
+                f"carries {sorted(_identity)}. The character stops being described by canon "
+                "and starts being described by the render-spec. Use `look`/`pose` for a "
+                "variation, put scene-specific detail in `scene` (which is additive), or "
+                "set allowIdentityOverride if you really mean to override canon.")
         r, inv = resolve_character(ent, c.get("look"), uroot)
         add_refs(r)
         # Canon's prescribed prompt-craft (structured.render) is emitted ALONGSIDE
