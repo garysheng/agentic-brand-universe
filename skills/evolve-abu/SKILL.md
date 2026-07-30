@@ -5,7 +5,7 @@ description: Evolve the Agentic Brand Universe framework itself — its skills, 
 
 # Evolve Agentic Brand Universe (the meta-skill)
 
-The framework at `~/Documents/github-repos/agenticstory` is a **work in progress**. It is normal to hit a gap mid-build and hand-roll a step to keep moving. What is NOT normal is letting that hand-rolled thing calcify. This skill is the forcing function that turns "I wrote a one-off script / did a manual step" into "the framework now owns it, versioned and delivered, so no universe ever hand-rolls it again."
+The framework at `~/Documents/github-repos/agentic-brand-universe` is a **work in progress**. It is normal to hit a gap mid-build and hand-roll a step to keep moving. What is NOT normal is letting that hand-rolled thing calcify. This skill is the forcing function that turns "I wrote a one-off script / did a manual step" into "the framework now owns it, versioned and delivered, so no universe ever hand-rolls it again."
 
 ## The Promotion Rule (the "fix the generator" principle)
 
@@ -26,7 +26,7 @@ Hand-rolling **once, consciously, to keep momentum** is fine — the framework i
 
 ## The repo and how a change ships (know this cold)
 
-**There is ONE repo:** `~/Documents/github-repos/agenticstory` (public as
+**There is ONE repo:** `~/Documents/github-repos/agentic-brand-universe` (public as
 `garysheng/agentic-brand-universe`). It holds `SPEC.md` (the contract, versioned vX.Y),
 `engine/` (Python + tests), `skills/`, `providers/` (vendored generation scripts),
 `registry/`, `SAVE-LOG.md` (changelog), and `run-tests.sh`.
