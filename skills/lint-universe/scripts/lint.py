@@ -99,7 +99,106 @@ def lint(root):
     # the size in human terms. Prose survives a re-render; a plate does not.
     #
     # WARNING, never an error: a setting with no scale plate still locks and still renders.
+    # PROSE THAT NAMES A FILE THE COMPILER CANNOT PASS.
+    #
+    # A rule that lives only in prose is a memory test, not a gate. Two forms of this
+    # were found in ONE session (nation-of-fire, 2026-07-30), each silently degrading
+    # every render that touched it, each caught only by a human eyeballing the canon:
+    #
+    #   1. jerry-man's EIGHT ql-* poses each said "matching FIGURE N FROM THE LEFT on the
+    #      supplied capsule reference sheet" while listing only `face` in the pose's
+    #      `sheets`. The capsule was never passed, so the wardrobe was steered by words
+    #      alone and drifted across whole batches.
+    #   2. christofuturist-village's prose named village-sanctuary.png,
+    #      village-construction.png and village-fenceline-night.png by FILE PATH while
+    #      `structured.sheets` carried only master/turnaround/blueprint. Those three
+    #      could never be passed, so every render fell back to the daytime master
+    #      regardless of era or angle.
+    #
+    # So: flag prose or bake text that names a `reference/...` path not present in the
+    # entity's `sheets`, and pose bakes that talk about a "sheet" while passing none.
+    # WARNING, never an error: the render still happens, it is just quietly worse.
     ents_dir = root/"canon"/"entities"
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            eid = e.get("id", ef.stem)
+            st = e.get("structured") or {}
+            sheets = st.get("sheets") or {}
+            wired = {str(v) for v in sheets.values()}
+            # Match on BASENAME too: prose legitimately writes a shorthand path.
+            wired |= {str(v).rsplit("/", 1)[-1] for v in sheets.values()}
+            # These contract keys ARE path fields, consumed directly rather than via
+            # `sheets`. Scanning them would flag every correctly-wired setting in every
+            # universe, and a rule that cries wolf is a rule everyone learns to skip.
+            PATH_FIELDS = {"turnaround", "blueprint", "scalePlate", "emptyPlates", "plates"}
+            blobs = []
+            for k, v in (e.get("prose") or {}).items():
+                if isinstance(v, str): blobs.append((f"prose.{k}", v))
+            for k, v in (e.get("contract") or {}).items():
+                if k in PATH_FIELDS: continue
+                if isinstance(v, str): blobs.append((f"contract.{k}", v))
+            render = st.get("render") or {}
+            for pname, pose in (render.get("poses") or {}).items():
+                if isinstance(pose, dict) and isinstance(pose.get("bake"), str):
+                    blobs.append((f"pose.{pname}.bake", pose["bake"]))
+            for where, text in blobs:
+                for path in set(re.findall(r"reference/[\w./-]+\.(?:png|webp|jpg|jpeg)", text)):
+                    if path not in wired and path.rsplit("/", 1)[-1] not in wired:
+                        warn("PROSE-NAMES-UNWIRED-FILE",
+                             f"{eid}: {where} names {path}, which is not in structured.sheets. "
+                             "The compiler passes files from `sheets`, so this reference is never "
+                             "actually sent and the rule survives only as words.")
+            for pname, pose in (render.get("poses") or {}).items():
+                if not isinstance(pose, dict): continue
+                bake = pose.get("bake") or ""
+                if not isinstance(bake, str): continue
+                if re.search(r"supplied .{0,40}sheet|reference sheet|FIGURE\s+\d+\s+FROM THE LEFT", bake, re.I):
+                    named = [k for k in (pose.get("sheets") or [])]
+                    studyish = [k for k in named if any(t in k.lower() for t in
+                                ("capsule", "items", "lineup", "turnaround", "study", "sheet"))]
+                    if not studyish:
+                        warn("POSE-CITES-SHEET-IT-DOES-NOT-PASS",
+                             f"{eid}: pose `{pname}` tells the model to match a supplied reference "
+                             f"sheet, but its `sheets` list is {named or '[]'} and carries no such "
+                             "sheet. Prose cannot make the compiler pass a file.")
+
+    # A SETTING NEEDS A SHOT LIST, NOT ONE MASTER PLATE.
+    #
+    # A character gets a reference matrix at creation (SPEC 12): eight shots, made
+    # BEFORE anything renders, so no later beat has to invent a view of them. Settings
+    # got a master, a turnaround and a blueprint, and every camera after that was
+    # improvised from the wide shot. That asymmetry is a real gap, and it fails the
+    # same way every time: a close-up cannot inherit what the wide plate does not show,
+    # so the model re-invents the parts that are out of frame, differently each spread.
+    #
+    # Earned 2026-07-30 (nation-of-fire, the-teaching-room). One wide master was locked
+    # and twelve teaching beats were then asked for at conversational distance. The
+    # audience seating drifted spread to spread until a dedicated chairsCloseUp plate
+    # was shot; after that, every two-shot inherited the same chairs. Gary: "when you're
+    # creating a setting, you should basically create all the shots that you want inside
+    # that setting."
+    #
+    # WARNING, never an error: a one-plate setting used for one beat is perfectly fine.
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("kind") != "setting":
+                continue
+            eid = e.get("id", ef.stem)
+            st = e.get("structured") or {}
+            sheets = st.get("sheets") or {}
+            camera_ish = [k for k in sheets
+                          if k not in ("blueprint", "scalePlate", "turnaround")]
+            if e.get("status") == "locked" and len(camera_ish) < 2:
+                warn("SETTING-HAS-NO-SHOT-LIST",
+                     f"{eid}: locked with only {len(camera_ish)} camera plate(s) "
+                     f"({camera_ish or '[]'}). A setting used for more than one beat needs a "
+                     "SHOT LIST shot at creation, the way a character gets a reference matrix: "
+                     "typically a wide establishing, at least one conversational-distance plate, "
+                     "and a plate per recurring camera the story actually needs. Every framing "
+                     "not shot up front gets re-invented at render time.")
+
     if ents_dir.exists():
         for ef in sorted(ents_dir.glob("*.json")):
             e = jload(ef) or {}

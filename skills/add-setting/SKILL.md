@@ -83,3 +83,47 @@ So every setting gets ONE extra plate whose only job is size:
 ## Not this skill
 - Generating/locking the plates and flipping `status` to `locked` → `shoot-references`.
 - A character, visual-metaphor, motif, prop, story, or relation → the sibling `add-*` skills.
+
+## Shoot the SHOT LIST at creation, not one master plate
+
+A character gets a reference matrix at creation: eight shots, made before anything
+renders, so no later beat has to invent a view of them. **A setting needs the same
+thing and for the same reason.** A close-up cannot inherit what the wide plate does
+not show, so every framing you did not shoot up front gets re-invented at render
+time, differently on every spread.
+
+So before locking, ask what cameras this place will actually be asked for across the
+property, and shoot each one as an EMPTY plate:
+
+- **wide establishing** — the canonical view, the one that fixes the geometry
+- **conversational distance** — the two-shot/close plate, with the far parts of the
+  room OUT of frame entirely
+- **reverse** — looking back the other way, if any beat needs it
+- **a plate per recurring camera the story genuinely uses** (a doorway, a table, a
+  specific corner)
+- plus the non-camera plates: `blueprint`, `turnaround`, `scalePlate`
+
+Name them in `structured.sheets` so the compiler can pass them; a plate that exists
+on disk but is not in `sheets` can never be sent, and the rule naming it survives
+only as words.
+
+**Scope each plate to what it contains.** A close-up is not a wide shot with a
+tighter crop: it does not contain the seating, the far wall or the crowd, and being
+told about them is what makes the model paint them anyway. Declare that in
+`contract.plates`:
+
+```json
+"plates": {
+  "master":       { "note": "The wide establishing view. Use for arrival and departure." },
+  "chairsCloseUp": { "includeBlocking": false,
+                     "note": "Only the two chairs and the table are in frame. No tiers, no audience." }
+}
+```
+
+`includeBlocking: false` drops the room-wide blocking law for that plate, which is
+exactly what a close-up needs. Earned 2026-07-30: one wide master was locked and
+twelve teaching beats were then asked for at conversational distance; the audience
+drifted every spread until a dedicated close plate was shot and scoped.
+
+`lint-universe` warns with `SETTING-HAS-NO-SHOT-LIST` when a setting locks with
+fewer than two camera plates.

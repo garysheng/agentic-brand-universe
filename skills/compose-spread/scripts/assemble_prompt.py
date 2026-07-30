@@ -566,8 +566,31 @@ def resolve_setting(ent: dict, plate: str | None):
     """
     refs = resolve_plate(ent, plate)
     con = ent.get("contract", {})
-    parts = [con.get(k) for k in ("map", "blocking", "dressing", "scale")]
+
+    # A CLOSE-UP DOES NOT CONTAIN THE SAME ELEMENTS AS A WIDE SHOT.
+    #
+    # This used to inject the WHOLE contract on every render regardless of camera.
+    # `blocking` is room-wide law ("sixteen guests seated in the tiers, two banks, a
+    # centre aisle"), so a close two-shot of two chairs was still told the room was
+    # full of seated people. The model put them in, and re-invented them every time,
+    # because no plate showed them at that distance. Earned 2026-07-30 in
+    # nation-of-fire (gain-everything-lose-nothing): the audience kept reappearing in
+    # close-ups and its seating drifted spread to spread.
+    #
+    # So a plate may now scope what the model is told, via contract.plates:
+    #   "plates": {"chairsCloseUp": {"note": "...", "includeBlocking": false}}
+    # `note` is appended for that plate; includeBlocking:false drops the room-wide
+    # blocking law, which is exactly what a close-up needs. Absent config, behaviour
+    # is unchanged, so every existing universe renders byte-identically.
+    pcfg = ((con.get("plates") or {}).get(plate) or {}) if plate else {}
+    keys = ["map", "blocking", "dressing", "scale"]
+    if pcfg.get("includeBlocking") is False:
+        keys.remove("blocking")
+    parts = [con.get(k) for k in keys]
     parts = [p.strip() for p in parts if isinstance(p, str) and p.strip()]
+    note = pcfg.get("note")
+    if isinstance(note, str) and note.strip():
+        parts.append(note.strip())
     if not parts:
         return refs, None
     return refs, f"{ent['id']} exactly as its reference plate: " + " ".join(parts)
