@@ -141,6 +141,14 @@ shots. Idempotent, so a re-run only shoots what is missing.
 
 - **Independent renders run PARALLEL; a reference matrix runs CHAINED.** Chain master -> face ->
   the rest, so every plate inherits one identity.
+- **A code-drawn massing seed is right for ARCHITECTURE and wrong for an ORGANIC SILHOUETTE.**
+  Boxes ARE the truth of a boat, a street or a walled city, and seeding those off a massing sheet
+  returned one consistent vessel across open, shut and afloat. Seeding a colossal HUMAN-FORM
+  figure off the same crude boxes made the boxes the DESIGN: blocky limbs, a floating cube head,
+  glowing seams that read as neon piping, a video-game asset instead of a dread-object. The
+  blueprint guard says paint none of its surface, but it cannot stop the model inheriting a
+  silhouette that was only ever scaffolding. For anything whose correct shape is organic,
+  describe the form in prose and let the model find the silhouette.
 - **Seed a multi-state object's chain on a CODE-DRAWN BLUEPRINT, not a state plate.** A schematic
   fixing geometry and arguing nothing leaves the model the least to invent, so every state
   inherits one shape. Three states generated in parallel come back as three different objects.
