@@ -3,6 +3,9 @@ name: book-doctor
 description: Grade a RENDERED book on local disk against what its render-spec declares, BEFORE it is delivered anywhere. Checks that every declared spread exists, that the endcaps (front cover and closing plate) are portrait while interiors are landscape, that every generated asset carries its provenance recipe, that no spread was generated from another spread render, and optionally that every cast entity is registered and locked. Deliberately knows nothing about any delivery surface: no bucket, no CDN, no reader URL, no network, no API key. Use when Gary says "book doctor", "is this book done", "check the book", "grade this book", "/book-doctor", or before declaring ANY rendered book finished. Complements assert-story (pre-render gate, no output yet to measure), lint-universe (static warnings) and universe-doctor (grades the whole universe); a delivery platform's own doctor probing its storage is a separate, platform-owned tool and the two do not overlap.
 ---
 
+> `$ABU` below is wherever ABU is installed. Find it with `ABU=$(python3 -c "import agenticstory,pathlib;print(pathlib.Path(agenticstory.__file__).resolve().parents[2])" 2>/dev/null || echo ~/.claude/plugins/cache/garysheng/abu/*/)`, or just ask the harness; never hardcode a home directory.
+
+
 # Book Doctor
 
 The Doctor Pattern applied to one rendered property: a fixed rubric, a punch-list, and an exit code. Run it before you call a book finished.
@@ -23,7 +26,7 @@ The Doctor Pattern applied to one rendered property: a fixed rubric, a punch-lis
 ## Usage
 
 ```bash
-python3 ~/Documents/github-repos/agenticstory/skills/book-doctor/scripts/book_doctor.py \
+python3 $ABU/skills/book-doctor/scripts/book_doctor.py \
   <book-dir> [--universe <universe-path>] [--json]
 ```
 

@@ -42,7 +42,7 @@ which spec **version** it conforms to and the wiki that defines it — provenanc
 ### Phase 0 — Route & confirm scope
 Confirm this is a NEW world, not a new property in an old one. If the operator names an
 existing universe, stop and redirect to that universe's canon + renderer. Pick the canon
-repo home (default: a new top-level repo `~/Documents/github-repos/<universe>/` with a
+repo home (default: a new top-level repo `<universe>/` beside your other repos (ask where they keep projects; never assume) with a
 `universe/` canon dir inside, mirroring `nation-of-fire/nof-universe`). One repo per universe
 (SPEC §8) — do not add to a shared multi-universe store.
 

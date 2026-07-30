@@ -3,6 +3,9 @@ name: make-a-book
 description: The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. Runs the full chain in the load-bearing order (story -> cast -> lock -> render -> cover -> narrate -> deliver -> publish -> land -> pave), delegates every step to the matching abu:* skill, and AUTO-ADVANCES between steps instead of asking what to do next. Universe-parameterized: a per-universe CARTRIDGE skill (make-a-nof-book, make-a-hyperagent-book) supplies the universe path, register, mark, delivery wiring and universe law, then invokes this. Use directly when making a book in a universe that has no cartridge yet. NOT for a brand-new universe (start-new-story-universe) and NOT for editing an existing book (update-book).
 ---
 
+> `$ABU` below is wherever ABU is installed. Find it with `ABU=$(python3 -c "import agenticstory,pathlib;print(pathlib.Path(agenticstory.__file__).resolve().parents[2])" 2>/dev/null || echo ~/.claude/plugins/cache/garysheng/abu/*/)`, or just ask the harness; never hardcode a home directory.
+
+
 # Make a Book (base orchestrator)
 
 The single door over the agenticstory pipeline for **any** universe. The engine is a pipeline,
@@ -74,7 +77,7 @@ If one is live, say so in a sentence or two, publish nothing, and wait. Otherwis
 
 - **The engine is NOT pip-installed.** Run the CLI from its repo dir:
   ```bash
-  ENG=~/Documents/github-repos/agenticstory/engine
+  ENG=$ABU/engine
   (cd "$ENG" && python3 -m agenticstory.cli <cmd> ...)
   ```
 - **Precheck the style lock.** `universe.json` `identity.register.anchor` must be non-null. If it

@@ -21,8 +21,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+def _abu_root(start=None):
+    """Walk up for a marker; see the note in generate.py. A fixed depth encodes
+    one layout and this runs from a clone and from a plugin cache."""
+    p = Path(start or __file__).resolve()
+    for c in [p, *p.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            return c
+    raise SystemExit("abu: cannot locate the ABU root from " + str(p))
+
+
+REPO = _abu_root()
 SKILL = Path(__file__).resolve().parents[1]
-REPO = SKILL.parents[1]
 sys.path.insert(0, str(REPO / "engine"))
 
 from agenticstory import workspace  # noqa: E402

@@ -19,7 +19,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+def _abu_root(start=None):
+    p = Path(start or __file__).resolve()
+    for c in [p, *p.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            return c
+    raise SystemExit("abu: cannot locate the ABU root from " + str(p))
+
+
+REPO = _abu_root()
 sys.path.insert(0, str(REPO / "engine"))
 
 from agenticstory import providers  # noqa: E402

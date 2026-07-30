@@ -59,12 +59,30 @@ def shrink_ref(path, max_edge, tmpdir):
         return path
 
 
+def _abu_root(start=None):
+    """The ABU root, found by walking UP for a marker instead of counting parents.
+
+    A fixed `parents[N]` encodes one directory layout. This code runs from at least
+    two: a git clone, and a plugin cache under ~/.claude/plugins. Counting worked in
+    the clone and would fail silently or wrongly in the other, which is the class of
+    bug that made the framework uninstallable in the first place."""
+    from pathlib import Path as _PP
+    p = _PP(start or __file__).resolve()
+    for c in [p, *p.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            return c
+    raise SystemExit(
+        "abu: cannot locate the ABU root from " + str(p) + ".\n"
+        "  Looked upward for engine/agenticstory. If ABU was installed as a plugin,\n"
+        "  reinstall it: /plugin marketplace add garysheng/agentic-brand-universe")
+
+
 def _engine_on_path():
     """This script lives at <repo>/skills/<name>/scripts/, so the repo root is 3 up.
     `.resolve()` first, because skills are installed by symlinking into
     ~/.claude/skills and an unresolved __file__ points outside the repo."""
     from pathlib import Path
-    eng = str(Path(__file__).resolve().parents[3] / "engine")
+    eng = str(_abu_root() / "engine")
     if eng not in sys.path:
         sys.path.insert(0, eng)
     return eng

@@ -73,3 +73,49 @@ class TestNoDeadCitations(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPortability(unittest.TestCase):
+    """Nothing a stranger installs may point into the author's home directory."""
+
+    # evolve-abu is the MAINTAINER's skill: it edits the framework's own working
+    # copy and is meaningless without it. Every other skill ships to strangers.
+    MAINTAINER_ONLY = {"evolve-abu"}
+
+    def _shipped(self):
+        for f in sorted((ROOT / "skills").rglob("SKILL.md")):
+            if f.parent.name not in self.MAINTAINER_ONLY:
+                yield f
+        for f in sorted((ROOT / "skills").rglob("*.py")):
+            if "__pycache__" not in f.parts and f.parent.parent.name not in self.MAINTAINER_ONLY:
+                yield f
+
+    def test_no_personal_absolute_paths(self):
+        bad = []
+        for f in self._shipped():
+            for i, line in enumerate(f.read_text().splitlines(), 1):
+                if "Documents/github-repos" in line or "/Users/" in line:
+                    bad.append(f"{f.relative_to(ROOT)}:{i}")
+        self.assertEqual(bad, [], "personal paths in shipped skills:\n" + "\n".join(bad))
+
+    def test_no_fixed_depth_engine_lookup(self):
+        """A fixed parents[N] encodes ONE directory layout. This code runs from a
+        git clone and from a plugin cache, and counting silently picks wrong."""
+        bad = []
+        for f in (ROOT / "skills").rglob("*.py"):
+            # Test harnesses always run from a clone, never from a plugin cache,
+            # so counting parents is safe there and only there.
+            if "__pycache__" in f.parts or "tests" in f.parts:
+                continue
+            for i, line in enumerate(f.read_text().splitlines(), 1):
+                if "parents[" in line and "engine" in line:
+                    bad.append(f"{f.relative_to(ROOT)}:{i}: {line.strip()[:70]}")
+        self.assertEqual(bad, [], "fixed-depth engine lookup:\n" + "\n".join(bad))
+
+    def test_root_finder_walks_up_from_a_deep_path(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "skills" / "abu" / "scripts"))
+        import importlib
+        status = importlib.import_module("status")
+        deep = ROOT / "skills" / "abu" / "scripts" / "status.py"
+        self.assertEqual(status._abu_root(deep), ROOT)
