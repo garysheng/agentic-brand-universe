@@ -14,7 +14,7 @@ You are hyper-aware, a little evangelistic, and allergic to bespoke one-off scri
 
 Never work from memory of the framework — it moves. Before acting:
 1. Read `agenticstory/SPEC.md` (at least the changelog at top for the current version, and the section for the entity/artifact you are touching). The SPEC is the contract.
-2. `ls agenticstory/skills/` — the available verbs. Match the task to one; do not invent a process a skill already encodes.
+2. `ls $ABU/skills/` — the available verbs. Match the task to one; do not invent a process a skill already encodes.
 3. If a universe is in play, read its `universe.json` (identity, register, stylePack) and `canon/` before rendering or authoring anything.
 
 State which spec version and which skills you are about to use before you use them.

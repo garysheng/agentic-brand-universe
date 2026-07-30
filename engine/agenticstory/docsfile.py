@@ -278,6 +278,26 @@ def check(root: Path | None = None) -> list[str]:
             f"spec version mismatch: SPEC.md declares v{sv}, engine SPEC_VERSION is "
             f"v{SPEC_VERSION}. Bump them in lockstep.")
 
+    # The PUBLIC site is the credibility surface, and it is hand-designed HTML rather
+    # than a generated block, so it is CHECKED instead. It claimed spec v0.5 against
+    # v0.16 for weeks, in three places, sitting beside a "five layers" claim against
+    # six. Collect EVERY version token rather than a few phrasings: the first attempt
+    # matched "spec v0.5" and "standard · v0.5" and missed "The spec is v0.5" three
+    # inches away, which is how the drift survived a sweep that was looking for it.
+    site = root / "site" / "index.html"
+    if site.is_file():
+        allowed = {sv}
+        bos = root / "BRAND-OS-SPEC.md"
+        if bos.is_file():
+            m = re.search(r"\*\*v(\d+\.\d+)", bos.read_text())
+            if m:
+                allowed.add(m.group(1))   # the Brand OS spec is a separate document
+        wrong = sorted(set(re.findall(r"\bv(\d+\.\d+)\b", site.read_text())) - allowed)
+        if wrong:
+            problems.append(
+                f"site/index.html claims v{', v'.join(wrong)}; the repo declares "
+                f"v{' and v'.join(sorted(allowed))}")
+
     for rel in BLOCKS:
         path = root / rel
         if not path.is_file():
