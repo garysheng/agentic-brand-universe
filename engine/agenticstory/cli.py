@@ -112,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
     bc.add_argument("universe")
     bc.add_argument("--check", action="store_true", help="fail if stale or if any crossover number is duplicated")
     bc.add_argument("--adopt", action="store_true", help="create records for hand-appended rows with no backing record")
+    bp = sub.add_parser("backfill-provenance",
+                        help="record provenance for art that predates the adapter, without "
+                             "regenerating it (never invokes a model)")
+    bp.add_argument("universe")
+    bp.add_argument("--apply", action="store_true",
+                    help="write the recipes; without this it reports the plan and changes nothing")
     bd = sub.add_parser("build-docs", help="regenerate the framework's own derived docs (README + docs/REFERENCE.md)")
     bd.add_argument("--root", default=None,
                     help="framework repo root (default: inferred from this module's location)")
@@ -186,6 +192,26 @@ def main(argv: list[str] | None = None) -> int:
         print("next: `validate` →", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
         print("      then `assert-story <id>` before rendering (it refuses until real assets exist).")
         return 0 if not problems else 1
+
+    if args.cmd == "backfill-provenance":
+        from pathlib import Path as _P
+        from . import provenance
+        u = _P(args.universe)
+        r = (provenance.apply if args.apply else provenance.plan)(u, SPEC_VERSION)
+        print(f"backfill-provenance [{u.name}]: {r['already_have_recipe']}/{r['total_images']} "
+              f"already had a recipe; {r['to_backfill']} to backfill")
+        for kind, n in sorted(r["by_kind"].items(), key=lambda kv: -kv[1]):
+            print(f"  {n:5} {kind}")
+        if r["rerunnable_for_true_recipe"]:
+            print(f"  note: {r['rerunnable_for_true_recipe']} are code-built; re-run "
+                  f"`abu massing`/`elevation` from their specs for a TRUE recipe, free.")
+        if args.apply:
+            print(f"  wrote {r['written']} recipe file(s)")
+        else:
+            print("  (plan only; pass --apply to write)")
+        print("  NOTE: no image was regenerated. Locked goldens are never re-rendered "
+              "to repair metadata.")
+        return 0
 
     if args.cmd == "build-docs":
         from pathlib import Path as _P

@@ -119,16 +119,44 @@ def grade_universe(udir):
     def _pack_managed(p):
         parts = p.parts
         return ("style" in parts or "lookbook" in parts) and "refs" in parts
-    pngs = [p for p in ref.rglob("*.png") if not _pack_managed(p)] if ref.exists() else []
+    # A photo-stack input is not generated output, so "the generating call was not
+    # recorded" is false about it. It leaves the denominator entirely.
+    def _source(p):
+        import re as _re
+        return bool(_re.match(r"photo[-_ ]?\d*$", p.stem, _re.I)) or "photos" in p.parts
+    pngs = [p for p in ref.rglob("*.png")
+            if not _pack_managed(p) and not _source(p)] if ref.exists() else []
     if not pngs:
         scores["provenance"] = 10
     else:
-        with_recipe = sum(1 for p in pngs if (p.parent / (p.name + ".recipe.json")).exists())
-        scores["provenance"] = round(10 * with_recipe / len(pngs))
-        if with_recipe < len(pngs):
-            issues.append((round(10 * (len(pngs) - with_recipe) / len(pngs)) + 1, "provenance",
-                           f"{len(pngs)-with_recipe}/{len(pngs)} images have no .recipe.json",
-                           "on-brand-image (regenerate via the adapter)"))
+        # What is scored is whether every image carries a provenance RECORD, not
+        # whether every call was captured. Art predating the adapter cannot have its
+        # call recovered, and the old rule scored that permanently unfixable: the only
+        # way to 100 was to re-render locked goldens, i.e. to mutate canon to repair
+        # metadata. An honest `unrecorded: true` record counts, because a truthful
+        # "we do not know, here is the hash and the commit" IS the recoverable good.
+        # The attested count is reported separately so the truth stays visible on the
+        # report instead of being laundered by the score.
+        recipes = [(p, p.parent / (p.name + ".recipe.json")) for p in pngs]
+        with_recipe = [(p, r) for p, r in recipes if r.exists()]
+        attested = 0
+        for _p, r in with_recipe:
+            try:
+                if json.loads(r.read_text()).get("unrecorded"):
+                    attested += 1
+            except Exception:
+                pass
+        missing = len(pngs) - len(with_recipe)
+        scores["provenance"] = round(10 * len(with_recipe) / len(pngs))
+        if missing:
+            issues.append((round(10 * missing / len(pngs)) + 1, "provenance",
+                           f"{missing}/{len(pngs)} images have no provenance record",
+                           "abu backfill-provenance (records what is knowable; never re-renders)"))
+        if attested:
+            issues.append((1, "provenance",
+                           f"{attested}/{len(pngs)} records are attested-only "
+                           f"(predate the adapter; the generating call is unrecoverable)",
+                           "no action: history, not a defect"))
 
     # 6) CRAFT-CANON ----------------------------------------------------------
     craft = root / "canon" / "craft"

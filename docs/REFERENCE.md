@@ -74,6 +74,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `archived` | list retired entities, or who still casts them |
 | `assert-spread` | the pre-render gate for ONE spread's cast and location |
 | `assert-story` | the pre-render gate: refuse a story whose cast lacks real art on disk |
+| `backfill-provenance` | record provenance for art that predates the adapter, without regenerating it (never invokes a model) |
 | `build-canon` | regenerate CANON.md from canon/properties + canon/crossovers |
 | `build-docs` | regenerate the framework's own derived docs (README + docs/REFERENCE.md) |
 | `crossovers` | list the crossovers an entity appears in |
