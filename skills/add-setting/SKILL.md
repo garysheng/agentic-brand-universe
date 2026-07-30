@@ -127,3 +127,28 @@ drifted every spread until a dedicated close plate was shot and scoped.
 
 `lint-universe` warns with `SETTING-HAS-NO-SHOT-LIST` when a setting locks with
 fewer than two camera plates.
+
+## Set dressing goes in the PLATE, never in the cast
+
+A recurring crowd, a congregation, a market, a classroom of children: these are scenery,
+and scenery re-described per spread is re-invented per spread. Sixteen guests described
+in prose came back as sixteen different people in different seats on every render of one
+evening.
+
+The instinct is to model them as a cast (a group entity, a lineup sheet, a seat roster).
+**That is cast machinery and it is far too much for scenery.** Set dressing is made
+consistent the same way the furniture is: **bake it into a populated plate.**
+
+So a setting's shot list may carry BOTH states of the same camera:
+
+- `fromTheChairs` — the empty plate, which fixes the geometry
+- `fromTheChairsFull` — the *same camera* with the crowd already seated in it
+
+Scope the populated plate so a scene may say which ONE person is speaking, or what the
+faces are doing, and nothing else about them. One image cannot drift.
+
+Reach for a real entity only when a member of the crowd must be recognised BY NAME across
+books. Otherwise the plate is the answer, and it is one render instead of a cast.
+
+Earned 2026-07-30, nation-of-fire: "they are mostly just setting ornaments, just need to
+make sure there is consistency of shots."

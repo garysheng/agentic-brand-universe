@@ -44,3 +44,44 @@ One character, into a universe's canon, as a typed record with its reference mat
 ## Not this skill
 - Generating/locking the shots → `shoot-references`.
 - A setting, prop, motif, story, or relation → the sibling `add-*` skills.
+
+## Pin the WARDROBE to a capsule sheet, not to an adjective
+
+A character's clothes drift for exactly the reason their face does not: the face is
+pinned to a sheet the compiler passes, and the clothes are usually a phrase. "Refined
+modern-chic wardrobe in cream and gold" is a colour with an adjective attached, and the
+model invents a different cream garment on every render while satisfying canon perfectly.
+Over a 20-spread book that is 20 different shirts.
+
+Earned 2026-07-30 (nation-of-fire, `selah`): her three poses were NECKLACE and CALLING
+states, not outfits, and all three passed only face sheets. `jerry-man` had had the right
+shape all along and nobody had generalised it. `lint-universe` then found **123** unpinned
+characters in that one universe; he was the only one pinned to anything.
+
+So for any character who RECURS:
+
+1. **Shoot a wardrobe capsule sheet.** One study sheet, 4 figures of the SAME character
+   standing in a row against a neutral ground, each in a different complete outfit drawn
+   from their canon palette and modesty rules. Register it in `structured.sheets`.
+2. **Add one pose per look**, each naming its figure and PASSING the capsule:
+   ```json
+   "ql-shirt-trousers": {
+     "sheets": ["quietLuxuryCapsule", "goldenPath", "faceTruth"],
+     "bake": "WARDROBE, matching FIGURE 1 FROM THE LEFT on the supplied capsule reference
+              sheet and no other figure on it: <the outfit, concretely>. The capsule is a
+              multi-figure STUDY SHEET: take the CLOTHING from it, never its layout."
+   }
+   ```
+3. **A book then selects a look once** and it holds across every spread.
+
+**The pose's `sheets` list is what makes this real.** A bake that says "matching the
+supplied capsule sheet" while listing only `face` passes no capsule at all, and the rule
+survives as words. That exact defect sat in all eight of `jerry-man`'s `ql-*` poses.
+
+**State modesty and any body rule as ANATOMY, not adjectives.** "Covenant-modest" does not
+survive a render; "neckline high and closed at or above the collarbone, buttoned to the
+second button, no cleavage at any scale, sleeves at least to the elbow" does. Same lesson
+as an "undefended face" needing brow, eyes and mouth spelled out.
+
+`lint-universe` warns `CHARACTER-WARDROBE-NOT-PINNED` when a recurring character has no
+wardrobe sheet and no pose passing one.

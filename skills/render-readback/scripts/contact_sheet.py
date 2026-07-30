@@ -1,78 +1,60 @@
-#!/usr/bin/env -S uv run --with pillow --script
+#!/usr/bin/env python3
+"""Build a labelled contact sheet from renders, for read-back.
+
+`render-readback` says a contact sheet of four is the right read-back unit, because it
+catches composition, wrong character, invented people, panels, photoreal drift and gross
+canon breaches in one look. It shipped no tool, so every run hand-rolled the same PIL
+montage. Ten times in one session (nation-of-fire, 2026-07-30) before this was promoted.
+
+  python3 contact_sheet.py --out sheet.png a.png b.png c.png d.png
+  python3 contact_sheet.py --out sheet.png --cols 3 --width 700 spreads/*.png
 """
-Build a labelled contact sheet from a list of images, for READ-BACK.
+import argparse, os, sys
 
-A contact sheet of four is the right read-back unit for a long book (earned on
-he-didnt-know, 40 spreads): it catches composition, wrong character, invented
-people, panel drift, photoreal drift and gross canon breaches in one look, and
-you then crop-zoom only what a beat actually depends on.
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("images", nargs="+")
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--cols", type=int, default=2)
+    ap.add_argument("--width", type=int, default=690, help="per-cell width in px")
+    ap.add_argument("--label", action="store_true", default=True)
+    ap.add_argument("--no-label", dest="label", action="store_false")
+    a = ap.parse_args()
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return int(bool(sys.stderr.write("contact_sheet: needs pillow (uv run --with pillow)\n")))
 
-Usage:
-  contact_sheet.py OUT.png [--cols N] [--width PX] IMG [IMG ...]
+    paths = [p for p in a.images if os.path.exists(p)]
+    missing = [p for p in a.images if not os.path.exists(p)]
+    if missing:
+        # Fail loudly: a silently short contact sheet reads as "everything I rendered",
+        # which is exactly how a missing spread goes unnoticed.
+        sys.stderr.write("contact_sheet: MISSING, refusing to build a partial sheet:\n")
+        for m in missing:
+            sys.stderr.write(f"  {m}\n")
+        return 1
+    if not paths:
+        sys.stderr.write("contact_sheet: no images\n")
+        return 1
 
-Labels are the input filenames (stem), so a defect is reportable by name.
-"""
-import os
-import sys
-from PIL import Image, ImageDraw, ImageFont
+    first = Image.open(paths[0])
+    cell_h = max(1, round(a.width * first.size[1] / first.size[0]))
+    pad = 22 if a.label else 0
+    cols = max(1, min(a.cols, len(paths)))
+    rows = (len(paths) + cols - 1) // cols
+    sheet = Image.new("RGB", (a.width * cols, (cell_h + pad) * rows), "white")
+    draw = ImageDraw.Draw(sheet)
+    for i, p in enumerate(paths):
+        im = Image.open(p).convert("RGB").resize((a.width, cell_h))
+        x, y = (i % cols) * a.width, (i // cols) * (cell_h + pad)
+        sheet.paste(im, (x, y + pad))
+        if a.label:
+            draw.text((x + 8, y + 6), os.path.basename(p), fill="black")
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)) or ".", exist_ok=True)
+    sheet.save(a.out)
+    print(f"[contact-sheet] {len(paths)} image(s), {cols}x{rows} -> {a.out}")
+    return 0
 
-args = sys.argv[1:]
-if not args:
-    sys.exit("usage: contact_sheet.py OUT.png [--cols N] [--width PX] IMG [IMG ...]")
-
-out_path = args.pop(0)
-cols, cell_w = 2, 760
-rest = []
-i = 0
-while i < len(args):
-    if args[i] == "--cols":
-        cols = int(args[i + 1]); i += 2
-    elif args[i] == "--width":
-        cell_w = int(args[i + 1]); i += 2
-    else:
-        rest.append(args[i]); i += 1
-
-if not rest:
-    sys.exit("no input images")
-
-PAD, CAP, PAPER, INK = 18, 34, (240, 238, 232), (30, 34, 42)
-
-
-def font(sz):
-    for p in ("/System/Library/Fonts/Supplemental/Courier New Bold.ttf",
-              "/System/Library/Fonts/Supplemental/Arial.ttf"):
-        try:
-            return ImageFont.truetype(p, sz)
-        except Exception:
-            continue
-    return ImageFont.load_default()
-
-
-F = font(20)
-
-tiles = []
-for p in rest:
-    im = Image.open(p).convert("RGB")
-    h = round(im.height * cell_w / im.width)
-    tiles.append((os.path.splitext(os.path.basename(p))[0], im.resize((cell_w, h), Image.LANCZOS)))
-
-rows = (len(tiles) + cols - 1) // cols
-row_h = [max(t[1].height for t in tiles[r * cols:(r + 1) * cols]) for r in range(rows)]
-
-W = PAD + cols * (cell_w + PAD)
-H = PAD + sum(h + CAP + PAD for h in row_h)
-sheet = Image.new("RGB", (W, H), PAPER)
-d = ImageDraw.Draw(sheet)
-
-y = PAD
-for r in range(rows):
-    x = PAD
-    for name, im in tiles[r * cols:(r + 1) * cols]:
-        sheet.paste(im, (x, y))
-        d.rectangle([x, y, x + cell_w, y + im.height], outline=INK, width=2)
-        d.text((x + 2, y + im.height + 8), name, font=F, fill=INK, anchor="lt")
-        x += cell_w + PAD
-    y += row_h[r] + CAP + PAD
-
-sheet.save(out_path)
-print("wrote", out_path, sheet.size, f"({len(tiles)} tiles)")
+if __name__ == "__main__":
+    raise SystemExit(main())
