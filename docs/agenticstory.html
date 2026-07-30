@@ -1,207 +1,24 @@
-<title>Agentic Story</title>
-<style>
-  :root{
-    --ground:#0e1117; --surface:#171d26; --surface-2:#1e2530; --line:#2b3542;
-    --struct:#3f4c5a; --text:#c9d3df; --muted:#7d8896; --bright:#eef3f9;
-    --gold:#e3b341; --gold-soft:#f0cd78; --good:#5bbf8f; --warn:#d98a4a;
-    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
-    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    --maxw:64rem;
-  }
-  @media (prefers-color-scheme: light){
-    :root{
-      --ground:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --line:#dde3ea;
-      --struct:#c2ccd6; --text:#26303c; --muted:#5c6976; --bright:#0f1620;
-      --gold:#b5851a; --gold-soft:#caa03a; --good:#2f8f66; --warn:#b96a26;
-    }
-  }
-  :root[data-theme="dark"]{
-    --ground:#0e1117; --surface:#171d26; --surface-2:#1e2530; --line:#2b3542;
-    --struct:#3f4c5a; --text:#c9d3df; --muted:#7d8896; --bright:#eef3f9;
-    --gold:#e3b341; --gold-soft:#f0cd78; --good:#5bbf8f; --warn:#d98a4a;
-  }
-  :root[data-theme="light"]{
-    --ground:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --line:#dde3ea;
-    --struct:#c2ccd6; --text:#26303c; --muted:#5c6976; --bright:#0f1620;
-    --gold:#b5851a; --gold-soft:#caa03a; --good:#2f8f66; --warn:#b96a26;
-  }
+<!doctype html>
+<meta charset="utf-8">
+<title>Agentic Brand Universe</title>
+<link rel="canonical" href="https://agenticbranduniverse.com">
+<meta http-equiv="refresh" content="0; url=https://agenticbranduniverse.com">
+<meta name="robots" content="noindex">
+<!--
+  This page was a presentation of the standard when it was called Agentic Story and
+  the spec was v0.2. The project is now Agentic Brand Universe and the spec is far
+  past that, so every claim the old page made about layers, versions and naming was
+  wrong. It is kept as a redirect rather than deleted, because a URL someone may have
+  saved should move them forward instead of 404ing.
 
-  *{box-sizing:border-box}
-  body{margin:0}
-  .page{
-    background:var(--ground); color:var(--text); font-family:var(--sans);
-    line-height:1.6; -webkit-font-smoothing:antialiased;
-    padding:clamp(1.25rem,4vw,3rem) 1.25rem 4rem;
-  }
-  .wrap{max-width:var(--maxw); margin:0 auto}
-  .eyebrow{
-    font-family:var(--mono); font-size:.72rem; letter-spacing:.22em; text-transform:uppercase;
-    color:var(--muted); display:flex; gap:.6rem; align-items:center; flex-wrap:wrap;
-  }
-  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
-  h1,h2,h3{color:var(--bright); text-wrap:balance; line-height:1.08; margin:0}
-  .thesis{
-    font-weight:800; letter-spacing:-.025em; margin:1.1rem 0 0;
-    font-size:clamp(1.9rem,5.4vw,3.4rem);
-  }
-  .thesis em{font-style:normal; color:var(--gold); }
-  .lede{color:var(--muted); font-size:clamp(1rem,2vw,1.15rem); max-width:52ch; margin:1.1rem 0 0}
-
-  /* terminal */
-  .term{
-    margin-top:2.2rem; background:var(--surface); border:1px solid var(--line);
-    border-radius:12px; overflow:hidden; box-shadow:0 20px 50px -30px rgba(0,0,0,.6);
-  }
-  .term-bar{
-    display:flex; align-items:center; gap:.5rem; padding:.7rem .95rem;
-    border-bottom:1px solid var(--line); background:var(--surface-2);
-    font-family:var(--mono); font-size:.72rem; color:var(--muted); letter-spacing:.02em;
-  }
-  .term-bar .b{width:11px;height:11px;border-radius:50%;background:var(--struct)}
-  .term-bar .b:first-child{background:var(--warn)} .term-bar .b:nth-child(2){background:var(--gold)}
-  .term-bar .path{margin-left:.5rem}
-  .term-body{padding:1.1rem 1.15rem; overflow-x:auto; font-family:var(--mono); font-size:.82rem; line-height:1.75}
-  .term-body pre{margin:0; white-space:pre; color:var(--text)}
-  .c-cmd{color:var(--bright)} .c-mut{color:var(--muted)}
-  .c-ok{color:var(--good)} .c-gold{color:var(--gold)} .c-warn{color:var(--warn)}
-  .caption{font-family:var(--mono); font-size:.74rem; color:var(--muted); margin:.85rem 0 0; letter-spacing:.02em}
-  .caption b{color:var(--gold); font-weight:600}
-
-  section{margin-top:3.4rem}
-  .kicker{
-    font-family:var(--mono); font-size:.72rem; letter-spacing:.2em; text-transform:uppercase;
-    color:var(--gold); margin:0 0 1.1rem; display:flex; align-items:center; gap:.7rem;
-  }
-  .kicker::after{content:""; flex:1; height:1px; background:var(--line)}
-  h2.h{font-size:clamp(1.3rem,3vw,1.7rem); font-weight:800; letter-spacing:-.02em; margin-bottom:.4rem}
-
-  .bets{display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:.9rem}
-  .bet{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem 1.1rem}
-  .bet .n{font-family:var(--mono); font-size:.72rem; color:var(--gold); letter-spacing:.05em}
-  .bet .t{color:var(--bright); font-weight:700; margin:.35rem 0 .25rem; letter-spacing:-.01em}
-  .bet .d{font-size:.9rem; color:var(--muted)}
-
-  /* layer stack */
-  .stack{display:flex; flex-direction:column; gap:.5rem}
-  .layer{
-    display:grid; grid-template-columns:9.5rem 1fr; gap:1rem; align-items:center;
-    background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--struct);
-    border-radius:9px; padding:.85rem 1.05rem;
-  }
-  .layer .lname{font-family:var(--mono); font-weight:600; color:var(--bright); letter-spacing:.02em}
-  .layer .ldesc{font-size:.9rem; color:var(--muted)}
-  .layer .ldesc b{color:var(--text); font-weight:600}
-  .layer.load{border-left-color:var(--gold); box-shadow:inset 0 0 0 1px rgba(227,179,65,.08)}
-  .layer.load .lname{color:var(--gold)}
-  .layer.cross{border-left-style:dashed; border-left-color:var(--struct); background:var(--surface-2)}
-  @media (max-width:34rem){.layer{grid-template-columns:1fr; gap:.3rem}}
-
-  /* verdict */
-  .verdict{display:grid; grid-template-columns:repeat(auto-fit,minmax(8rem,1fr)); gap:.9rem; margin-bottom:1.4rem}
-  .stat{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem 1.1rem}
-  .stat .num{font-family:var(--mono); font-size:1.9rem; font-weight:700; color:var(--gold); letter-spacing:-.02em; font-variant-numeric:tabular-nums}
-  .stat .lab{font-size:.82rem; color:var(--muted); margin-top:.15rem}
-  .findings{display:grid; grid-template-columns:repeat(auto-fit,minmax(16rem,1fr)); gap:.7rem}
-  .finding{display:flex; gap:.7rem; background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:.8rem .95rem; font-size:.9rem}
-  .finding .fx{font-family:var(--mono); color:var(--gold); font-size:.8rem}
-  .finding b{color:var(--bright)}
-  .note{margin-top:1.2rem; padding:1rem 1.15rem; border:1px dashed var(--struct); border-radius:9px; background:var(--surface-2); font-size:.92rem; color:var(--muted)}
-  .note b{color:var(--text)}
-
-  .status{
-    margin-top:3.4rem; padding-top:1.4rem; border-top:1px solid var(--line);
-    display:flex; flex-wrap:wrap; gap:.55rem;
-  }
-  .pill{
-    font-family:var(--mono); font-size:.74rem; letter-spacing:.03em; color:var(--text);
-    background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:.35rem .8rem;
-    display:inline-flex; gap:.45rem; align-items:center;
-  }
-  .pill .g{color:var(--good)} .pill .y{color:var(--gold)}
-  footer{margin-top:2.4rem; font-family:var(--mono); font-size:.74rem; color:var(--muted); letter-spacing:.02em}
-  footer b{color:var(--gold); font-weight:500}
-  a{color:var(--gold-soft)}
-</style>
-
-<div class="page">
-<div class="wrap">
-
-  <p class="eyebrow"><span class="dot"></span> Agentic Story · spec v0.2 · engine v0 running</p>
-  <h1 class="thesis">A story is a query over an evolving <em>canon</em>, rendered into a medium, held to craft and to taste.</h1>
-  <p class="lede">A first-principles architecture for compelling, agentically writable, composable, evolvable story generation. The universe is first-class; stories are compositions over it; references are load-bearing — their absence is a crash, not a drift.</p>
-
-  <div class="term" role="img" aria-label="Terminal output: the engine validating the real Not Every Fire Is Holy story and blocking only on the unlocked arena setting">
-    <div class="term-bar"><span class="b"></span><span class="b"></span><span class="b"></span><span class="path">agenticstory · assert-story</span></div>
-    <div class="term-body"><pre><span class="c-mut">$</span> <span class="c-cmd">agenticstory assert-story nation-of-fire not-every-fire-is-holy</span>
-
-<span class="c-mut">resolving 6 featured entities against real assets on disk…</span>
-  jerry-man        <span class="c-ok">✓ man, face</span>
-  brenda-gentry    <span class="c-ok">✓ gabr</span>  <span class="c-mut">(real person · gated until she blesses)</span>
-  anjali-sambalu   <span class="c-ok">✓ gabr</span>
-  wally-boone      <span class="c-ok">✓ gabr</span>
-  wisp             <span class="c-ok">✓ gabr</span>
-  the-fear-thing   <span class="c-ok">✓ sheet</span>
-
-<span class="c-warn">assert-story [not-every-fire-is-holy]: 1 blocker</span>
-  <span class="c-gold">- beat 20: setting 'the-arena' is UNLOCKED —</span>
-    <span class="c-mut">turnaround · emptyPlates · blueprint · map · blocking · dressing all required first</span>
-
-<span class="c-mut">exit 1  ·  the story cannot render until the arena is really locked.</span></pre></div>
-  </div>
-  <p class="caption">Not a mockup — the actual engine, run against the real Nation of Fire canon. Every character sheet resolves on disk; the book is refused for <b>exactly one</b> true reason. That is a reference being load-bearing.</p>
-
-  <section>
-    <p class="kicker">The six bets</p>
-    <h2 class="h">First principles</h2>
-    <div class="bets">
-      <div class="bet"><div class="n">01</div><div class="t">Universe-first</div><div class="d">The evolving canon is primary. A work is a projection of it, and writes back into it.</div></div>
-      <div class="bet"><div class="n">02</div><div class="t">Canon is medium-neutral</div><div class="d">Entities carry no medium assumptions. Rendering is a pluggable layer. One renderer first.</div></div>
-      <div class="bet"><div class="n">03</div><div class="t">References are load-bearing</div><div class="d">Every asset resolves to a real file or the build fails loudly. A ref you can forget is a wish.</div></div>
-      <div class="bet"><div class="n">04</div><div class="t">Quality = taste × craft × truth</div><div class="d">Human gates, encoded craft-canon, and provenance — wired as steps, never left to memory.</div></div>
-      <div class="bet"><div class="n">05</div><div class="t">Evolution is version control</div><div class="d">Every canon change is a commit. Contradictions are diffs. Git is the evolution substrate.</div></div>
-      <div class="bet"><div class="n">06</div><div class="t">Agent-writable by construction</div><div class="d">Everything load-bearing is schema-checked data or prose in a known slot. Nothing hides in a head.</div></div>
-    </div>
-  </section>
-
-  <section>
-    <p class="kicker">The stack</p>
-    <h2 class="h">Five layers</h2>
-    <div class="stack">
-      <div class="layer cross"><div class="lname">Quality</div><div class="ldesc">taste gates · craft-canon · provenance — <b>cross-cuts every layer</b></div></div>
-      <div class="layer"><div class="lname">Renderer</div><div class="ldesc">projects canon + story into a medium — <b>picture-book first</b>, novels/scripts later</div></div>
-      <div class="layer"><div class="lname">Story spec</div><div class="ldesc">a composition: selects canon + a beat sheet + a declared <b>spine</b> + provenance</div></div>
-      <div class="layer load"><div class="lname">Refs</div><div class="ldesc">the load-bearing resolver: entity → real asset, or <b>crash</b> — this layer kills silent drift</div></div>
-      <div class="layer"><div class="lname">Canon</div><div class="ldesc">typed entities + relations, git-versioned — <b>the living universe</b></div></div>
-    </div>
-  </section>
-
-  <section>
-    <p class="kicker">Backtested against reality</p>
-    <h2 class="h">Would the books already made be creatable on this?</h2>
-    <div class="verdict">
-      <div class="stat"><div class="num">24</div><div class="lab">real properties audited</div></div>
-      <div class="stat"><div class="num">~18</div><div class="lab">fit cleanly, as-is</div></div>
-      <div class="stat"><div class="num">4</div><div class="lab">strained v0.1 — now folded in</div></div>
-      <div class="stat"><div class="num">24</div><div class="lab">crossovers, native as relations</div></div>
-    </div>
-    <div class="findings">
-      <div class="finding"><span class="fx">f1</span><div><b>Non-journey spines.</b> An Honest Primer isn't a hero-journey — spine is now per-story declared.</div></div>
-      <div class="finding"><span class="fx">f2</span><div><b>Visual-metaphor</b> as a first-class kind — the locked scale, the bazaar of cages.</div></div>
-      <div class="finding"><span class="fx">f3</span><div><b>Register</b> as first-class — the paint-language, anchorable to a real artist's canvases.</div></div>
-      <div class="finding"><span class="fx">f4</span><div><b>realPerson dossier</b> — photo stack, approval state, sensitive list, wardrobe eras, group count.</div></div>
-    </div>
-    <p class="note"><b>Honest caveat:</b> the framework was reverse-engineered from these books, so post-hoc expressibility is half-circular. Its real value isn't describing the last fifteen — it's stopping the <b>recurring mechanical</b> failures (scattered refs, drifting settings, the wrong-face leak, unsourced beats) and giving <b>discovered taste</b> a home so it's paid for once. Craft-canon grows by making stories; the system captures it, it doesn't pretend to precede it.</p>
-  </section>
-
-  <div class="status">
-    <span class="pill"><span class="g">●</span> spec v0.2</span>
-    <span class="pill"><span class="g">●</span> engine v0 · 11 tests green</span>
-    <span class="pill"><span class="y">●</span> reference universe: Nation of Fire</span>
-    <span class="pill"><span class="y">◐</span> dogfood: Not Every Fire Is Holy (gated)</span>
-    <span class="pill"><span class="g">●</span> stdlib only · zero deps</span>
-  </div>
-
-  <footer><b>agenticstory</b> — a story is a query over an evolving canon, rendered into a medium, held to craft and to taste.</footer>
-
-</div>
-</div>
+  The living page is site/index.html, published at agenticbranduniverse.com.
+-->
+<body style="font:16px/1.6 system-ui;max-width:34rem;margin:12vh auto;padding:0 1.25rem">
+  <h1 style="font-size:1.25rem;margin:0 0 .75rem">This page moved</h1>
+  <p style="margin:0 0 1rem">The standard is now <strong>Agentic Brand Universe</strong>.
+  It was called Agentic Story when this page was written, and the spec has moved on a
+  long way since.</p>
+  <p style="margin:0"><a href="https://agenticbranduniverse.com">agenticbranduniverse.com</a>
+  &middot; <a href="https://github.com/garysheng/agentic-brand-universe">the repo</a>
+  &middot; <a href="https://github.com/garysheng/agentic-brand-universe/blob/master/WELCOME.md">start here</a></p>
+</body>
