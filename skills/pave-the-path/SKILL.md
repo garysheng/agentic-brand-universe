@@ -31,15 +31,34 @@ Pave a thing **only** when you can complete this sentence with a specific, named
 
 If you cannot name Y, do not pave. Write it down as an observation and move on.
 
-**Paving the wrong thing is worse than hand-rolling twice.** A hand-roll costs one session.
-A bad abstraction calcifies into every future run, and every later author has to work
-around it or is silently constrained by it. This is why the skill is CAUTIOUS by default:
-its output is a ranked proposal, and the operator's default answer may legitimately be "not
-yet."
+**INTEGRATE BY DEFAULT. The bar is the only gate.** If a candidate clears the naming
+sentence, you BUILD it, in this session, through `evolve-agentic-story`. You do not file it
+as a suggestion and move on.
 
-**Corollary: two occurrences beat one prediction.** A step you performed once and can
-imagine repeating is a candidate. A step you performed twice IN THE SAME RUN, or once in
-each of two runs, is a decision. Prefer evidence over foresight.
+This is the correction that matters most in this file, and it was earned by this skill's own
+first run failing at it (Gary, 2026-07-29: *"how am I supposed to integrate the pave-the-path
+suggestions that are in SAVE-LOG.md? I feel like the default should be to integrate. Am I
+crazy?"*). He was not crazy. That first run wrote six ranked proposals into a log and shipped
+none of them, which is precisely the failure `fix-the-generator` already names: **writing down
+a hazard is not removing it.** A suggestion in a log is a to-do nobody does, and a sweep whose
+output is a list has simply moved the hand-rolling into the future and added paperwork.
+
+So the caution in this skill lives in the BAR and nowhere else. The bar is genuinely strict:
+most improvised things fail it, and DECLINING is the common outcome. But once something passes,
+"proposed" is not a state it is allowed to rest in.
+
+**Paving the wrong thing is still worse than hand-rolling twice.** A hand-roll costs one
+session; a bad abstraction calcifies into every future run. That is what the bar is for. It is
+not a reason to defer a candidate that already cleared it.
+
+**The two things you may legitimately stop and ask about**, and they are exceptions, not the
+default:
+- A pave that changes behaviour for work ALREADY SHIPPED by someone else, where a human has to
+  weigh the churn.
+- A pave large enough to be its own project, where landing it half-done is worse than not
+  starting. Say so plainly, name the size, and get a decision.
+
+Anything else that clears the bar: build it, test it, land it, and report what you BUILT.
 
 ## Procedure
 
@@ -81,20 +100,23 @@ The highest-yield sources, in order:
 - **LEAVE.** Genuinely one-off. Say so explicitly, so the next reader knows it was
   considered and declined rather than missed.
 
-### 3. Route it, do not do it here
+### 3. Build it. Do not merely route it.
 
-- PAVE / BUG → `evolve-agentic-story` (it owns the edit, the test, the version bump, the
-  plugin re-sync and the log).
+- PAVE / BUG → `evolve-agentic-story`, and see it THROUGH: the edit, the test that proves it,
+  the version bump, the plugin re-sync, the log. Invoking the verb is not the finish line;
+  a green test on the new behaviour is.
 - GATE → the same, plus name which existing gate list it joins.
 - GUIDANCE → route by scope, exactly as `make-a-book` already specifies: universal to the
   base skill, universe-specific to the cartridge. **If two cartridges would say the same
   thing, that is the signal to promote it.**
 - Anything touching the engine, spec or CLI → the `agenticstory` repo, same session.
 
-### 4. Report, ranked, with the naming sentence attached
+### 4. Report what you BUILT, then what you declined
 
-One table, most-valuable first. Every row carries its "next invocation that needs it," or
-it does not belong in the table.
+One table, most-valuable first, and its rows are PAST TENSE. Every row carries its "next
+invocation that needs it," or it does not belong in the table. A row that is still a
+suggestion has to say why it was not built, in the two allowed shapes above; if it cannot,
+it was not really above the bar and belongs in DECLINED.
 
 ## Worked example (the run that earned this skill)
 
@@ -133,6 +155,9 @@ inside the run.** Each one felt like "just getting unstuck" at the time.
   clothes.
 - **Silently swallowing a BUG as a PAVE.** Building a helper on top of a broken cap leaves
   the cap broken for everyone else.
+- **Shipping a list instead of a change.** The single worst outcome available to this skill,
+  because it looks like diligence. If the sweep's artifact is a log entry and the repo is
+  otherwise unchanged, the sweep did not run; it rehearsed.
 
 ## Gates honored
 - Evidence before proposal (read the diff and the scratchpad, never recall).
