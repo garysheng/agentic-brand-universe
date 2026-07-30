@@ -29,6 +29,12 @@ class TestSelfMarketplace(unittest.TestCase):
     def test_plugin_is_named_abu(self):
         self.assertEqual(json.loads(PLUGIN.read_text())["name"], "abu")
 
+    def test_marketplace_name_differs_from_plugin_name(self):
+        """Naming both `abu` makes the install read `abu@abu`. The marketplace is the
+        SOURCE; the plugin is the thing inside it."""
+        m = json.loads(MARKET.read_text())
+        self.assertNotEqual(m["name"], m["plugins"][0]["name"])
+
     def test_marketplace_points_at_this_repo(self):
         entries = json.loads(MARKET.read_text())["plugins"]
         self.assertEqual(len(entries), 1)
