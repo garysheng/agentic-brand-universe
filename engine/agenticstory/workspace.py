@@ -118,6 +118,13 @@ def resolve(explicit: str | None = None, start: Path | None = None) -> list[Path
         return [p]
     here = find_upward(start)
     if here:
+        # Seeing a universe is enough to remember it. Without this, `abu` from
+        # anywhere else reports "you have none" about a universe you were standing
+        # in five minutes ago, which reads as amnesia rather than as a front door.
+        try:
+            register(here)
+        except (ValueError, OSError):
+            pass
         return [here]
     return registered()
 
@@ -139,6 +146,12 @@ def record(universe: Path, score: int, grade: str, on: str | None = None) -> dic
     all_state = _read(state_path(), {})
     prev = all_state.get(key)
     entry = {"score": int(score), "grade": grade, "on": on or date.today().isoformat()}
+    # Keep a short trail. One previous reading answers "did it move"; a trail answers
+    # "am I on a run", which is the question that actually keeps someone going.
+    hist = list((prev or {}).get("history") or [])
+    if prev and prev.get("on") != entry["on"]:
+        hist.append({"score": prev["score"], "grade": prev["grade"], "on": prev["on"]})
+    entry["history"] = hist[-10:]
     all_state[key] = entry
     _write(state_path(), all_state)
     return {
@@ -149,6 +162,36 @@ def record(universe: Path, score: int, grade: str, on: str | None = None) -> dic
 
 
 # ------------------------------------------------------------------ next moves
+
+
+# What each dimension means in a sentence a person would say, with `{n}` for the count.
+# The grader's own `fix` strings are written for whoever maintains the grader
+# ("write canon/properties/<id>.json, then `abu build-canon`"), and a front door whose
+# entire premise is that you never see a command cannot hand those to a human. The
+# grader keeps its vocabulary; this translates at the edge.
+# NO COUNTS HERE, deliberately. The obvious version interpolated the group size and
+# said "1 image(s) cannot say how they were made" about 276 images: the grader
+# AGGREGATES, so one issue record can stand for hundreds of files. That is the same
+# trap that made the first `small` selector pick the largest job. The sentence carries
+# the meaning; the grader's own `what` string carries the numbers, because it is the
+# only thing that actually knows them.
+OUTCOMES = {
+    "validity":       "some canon records do not parse, so the universe cannot be trusted to load",
+    "identity":       "the universe has no settled look yet: no register anchor, mark, or voice to render against",
+    "entities":       "some characters, places or objects have no art yet, so every render invents them fresh",
+    "setting_size":   "some places cannot prove their own size, so people and rooms drift out of scale",
+    "provenance":     "some images cannot say how they were made",
+    "craft_canon":    "the universe has no recorded rules of craft, so taste lives in prompts instead of in canon",
+    "stories":        "something you have made is not registered as a story over this canon",
+    "self_contained": "some references point outside the universe, so a copy of it would not render",
+}
+
+
+def humanize(dimension: str, detail: str = "", fallback: str = "") -> str:
+    """The outcome in a sentence, with the grader's own detail carrying the numbers."""
+    sentence = OUTCOMES.get(dimension) or fallback or f"open items in {dimension}"
+    detail = " ".join((detail or "").split())
+    return f"{sentence} ({detail})" if detail else sentence
 
 
 def plan(issues: list[dict], small_max: int = 2) -> dict:
@@ -177,6 +220,7 @@ def plan(issues: list[dict], small_max: int = 2) -> dict:
         })
         g["count"] += 1
         g["impact"] = max(g["impact"], int(i.get("impact", 0)))
+        g["human"] = humanize(g["dimension"], i.get("what", ""), g["fix"])
         if len(g["examples"]) < 3:
             g["examples"].append(i.get("what", ""))
 

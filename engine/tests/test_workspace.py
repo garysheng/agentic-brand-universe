@@ -170,5 +170,70 @@ class TestPlan(unittest.TestCase):
         self.assertEqual(p["total_issues"], 0)
 
 
+
+class TestErgonomics(Base):
+    def test_standing_in_a_universe_registers_it(self):
+        """Without this, `abu` from anywhere else reports 'you have none' about a
+        universe you were standing in five minutes ago."""
+        u = self.make_universe()
+        self.assertEqual(workspace.registered(), [])
+        workspace.resolve(start=u)
+        self.assertEqual(workspace.registered(), [u.resolve()])
+
+    def test_explicit_path_also_leaves_registry_usable(self):
+        a = self.make_universe("a")
+        self.assertEqual(workspace.resolve(str(a)), [a.resolve()])
+
+    def test_history_accumulates_across_days(self):
+        u = self.make_universe()
+        for score, grade, day in ((71, "C", "2026-07-01"), (79, "C", "2026-07-02"),
+                                  (80, "B", "2026-07-03")):
+            workspace.record(u, score, grade, on=day)
+        hist = workspace.last_seen(u)["history"]
+        self.assertEqual([h["score"] for h in hist], [71, 79])
+        self.assertEqual(workspace.last_seen(u)["score"], 80)
+
+    def test_same_day_rereads_do_not_pad_history(self):
+        u = self.make_universe()
+        workspace.record(u, 71, "C", on="2026-07-01")
+        workspace.record(u, 72, "C", on="2026-07-01")
+        self.assertEqual(workspace.last_seen(u)["history"], [])
+
+    def test_history_is_bounded(self):
+        u = self.make_universe()
+        for i in range(20):
+            workspace.record(u, i, "F", on=f"2026-07-{i+1:02d}")
+        self.assertLessEqual(len(workspace.last_seen(u)["history"]), 10)
+
+
+class TestHumanize(unittest.TestCase):
+    def test_no_fabricated_counts(self):
+        """The regression: the grader AGGREGATES, so interpolating the group size
+        said '1 image(s)' about 276 images."""
+        for dim, tmpl in workspace.OUTCOMES.items():
+            self.assertNotIn("{n}", tmpl, dim)
+
+    def test_detail_carries_the_real_numbers(self):
+        s = workspace.humanize("provenance", "18/1304 images have no provenance record")
+        self.assertIn("cannot say how they were made", s)
+        self.assertIn("18/1304", s)
+
+    def test_no_command_leaks_into_a_known_dimension(self):
+        """The front door's premise is that a person never sees a command."""
+        s = workspace.humanize("stories", "71 stories with no record",
+                               fallback="write canon/properties/<id>.json, then `abu build-canon`")
+        for tell in ("canon/properties", "`abu", ".json"):
+            self.assertNotIn(tell, s)
+
+    def test_unknown_dimension_falls_back(self):
+        self.assertIn("something odd", workspace.humanize("mystery", "", "something odd"))
+
+    def test_plan_attaches_human_to_every_group(self):
+        issues = [{"impact": 9, "dimension": "provenance", "what": "18/1304 images", "fix": "f"},
+                  {"impact": 1, "dimension": "entities", "what": "x unlocked", "fix": "g"}]
+        for g in workspace.plan(issues)["groups"]:
+            self.assertTrue(g["human"])
+            self.assertNotIn("{n}", g["human"])
+
 if __name__ == "__main__":
     unittest.main()

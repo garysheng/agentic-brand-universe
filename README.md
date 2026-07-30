@@ -46,7 +46,7 @@ v0.14. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 36 | `skills/*/SKILL.md` |
 | CLI verbs | 20 | `abu --help` |
-| Tests | 617 | across 27 files; `./run-tests.sh` |
+| Tests | 627 | across 27 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,

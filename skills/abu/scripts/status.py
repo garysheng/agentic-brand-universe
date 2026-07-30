@@ -96,22 +96,27 @@ def main() -> int:
         print("Next: `onboard` to install, or `start-new-story-universe` to make one.")
         return 0
 
+    multi = len(out["universes"]) > 1
     for r in out["universes"]:
         if "error" in r:
             print(f"{r['name']}: could not grade ({r['error']})")
             continue
-        d = r["progress"].get("delta")
-        move = "" if d is None else (f"  ({d:+d} since {r['progress']['previous']['on']})"
-                                     if d else "  (no change)")
-        print(f"{r['name']}: {r['grade']} {r['score']}/100{move}")
-        p = r["plan"]
-        if p["headline"]:
-            h = p["headline"]
-            print(f"  biggest win : {h['fix']}  [{h['count']} item(s), {h['dimension']}]")
-        if p["small"]:
-            s = p["small"]
-            print(f"  if bored    : {s['fix']}  [{s['count']} item(s), {s['dimension']}]")
-        print(f"  {p['total_issues']} open item(s) across {len(p['groups'])} kind(s)")
+        prog, d = r["progress"], r["progress"].get("delta")
+        move = "" if d is None else (f"  ({d:+d} since {prog['previous']['on']})" if d else "  (no change)")
+        trail = [h["score"] for h in (prog["now"].get("history") or [])][-3:]
+        run = f"   {' -> '.join(str(s) for s in trail + [r['score']])}" if trail else ""
+        print(f"{r['name']}: {r['grade']} {r['score']}/100{move}{run}")
+        if multi:
+            continue
+        w = (r.get("weakest") or [None])[0]
+        if w and w["gap"]:
+            print(f"  weakest     : {w['label']} ({w['score']}/{w['max']}, {w['gap']} to gain)")
+        p_ = r["plan"]
+        if p_["headline"]:
+            print(f"  biggest win : {p_['headline']['human']}")
+        if p_["small"]:
+            print(f"  if bored    : {p_['small']['human']}")
+        print(f"  {r['to_100']} point(s) from 100, {p_['total_issues']} open item(s)")
     return 0
 
 

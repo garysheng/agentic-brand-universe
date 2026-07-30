@@ -33,7 +33,22 @@ python3 <skill>/scripts/status.py --json
 It resolves the universe (an explicit path, else the one you are standing in, else
 everything registered), grades it via `universe-doctor`, diffs against the last score
 it saw, and selects the moves worth mentioning. It exits 0 even when there are no
-universes at all, because "you have none yet" is an answer, not an error.
+universes at all, because "you have none yet" is an answer, not an error. Standing in
+a universe also REGISTERS it, so it is findable from anywhere afterwards.
+
+Read these fields and let them do the work; do not re-derive them:
+
+| Field | Use it for |
+|---|---|
+| `plan.headline.human` | The biggest win, already phrased as an outcome. **Say this, not `plan.headline.fix`,** which is the grader's internal instruction and contains commands. |
+| `plan.small.human` | The ten-minute option. |
+| `weakest[0]` | The dimension with the most points available (`label`, `score`, `max`, `gap`). |
+| `to_100` | Points from a perfect score. |
+| `progress.delta` + `progress.now.history` | "78 to 80 since Tuesday", and the run before that. |
+
+The `human` strings carry the grader's real numbers and never a fabricated count. The
+grader aggregates, so one issue record can stand for hundreds of files; never multiply
+`count` by anything or present it as a number of files.
 
 **2. If there are no universes,** this is an onboarding moment. Do not report an
 absence and stop. Ask what they are making. If they describe a look with no recurring
