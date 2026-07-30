@@ -16,7 +16,28 @@ Usage:
     --gate "<assertion>" [--gate ...]       (>=1 required) \\
     --max-elements 5
 """
-import argparse, json, os, shutil, sys
+import argparse, hashlib, json, os, shutil, sys
+
+def _sha256(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def _same_bytes(a, b):
+    """Identical content must REUSE the name, never fork to `<stem>-1`.
+
+    The rename loop keeps two DIFFERENT sources sharing a basename from clobbering
+    each other. On a re-run, though, the file already in refs/ is a byte-identical
+    copy of the same source, and renaming it points the manifest at a copy whose
+    `.recipe.json` stayed beside the original. Earned 2026-07-30 in christofuturism,
+    where re-scaffolding a lookbook stranded the provenance of 8 of 12 exemplars.
+    """
+    try:
+        return os.path.getsize(a) == os.path.getsize(b) and _sha256(a) == _sha256(b)
+    except OSError:
+        return False
 
 def main():
     ap = argparse.ArgumentParser()
@@ -56,7 +77,8 @@ def main():
         # keep basenames unique inside the pack
         dest = os.path.join(refs_dir, base)
         n = 1
-        while os.path.exists(dest) and os.path.abspath(dest) != src:
+        while (os.path.exists(dest) and os.path.abspath(dest) != src
+               and not _same_bytes(dest, src)):
             stem, ext = os.path.splitext(base); dest = os.path.join(refs_dir, f"{stem}-{n}{ext}"); n += 1
         if os.path.abspath(dest) != src:
             shutil.copy2(src, dest)
