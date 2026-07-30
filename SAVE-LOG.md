@@ -469,32 +469,62 @@ the end of the run; all five were the SAME missing capability wearing different 
   the authoritative guard) and the guards were not idempotent (`_GUARD_UI` says "Screens",
   so a second pass inferred a device). 8 tests, one of which proves the guard can stay silent.
 
-### PROPOSED, RANKED (not yet paved — "not yet" is a valid answer)
+### PAVED IN THIS SESSION, part two (after Gary corrected the skill's default)
 
-1. **Batch render mode in the renderer.** Five scratchpad scripts (`gen.sh`, `worker.sh`,
-   `render-all.sh`, `render-all2.sh`, `rerender-victory.sh`) all did: render a list of spreads
-   N-way parallel, retry on stochastic `moderation_blocked`, skip what already exists. Next
-   invocation: every multi-spread book. Three shell traps cost real time and one entirely
-   wasted 17-spread pass that reported OK: `export -f` does not survive zsh into `bash -c`;
-   macOS `xargs` has no `-a`; and a `for n in $VAR` parking loop silently no-opped, so every
-   re-render reported SKIP against the OLD files. A tested Python driver removes all three.
-2. **`BookEntry` required-field assertion in `gen:books`.** The manifest was missing `slug`,
-   `assetBase` and `releasedAt`; nothing caught it, and the failure surfaced much later as
-   `generate-narration.ts` reporting "no book with slug X in the registry" — an actively
-   misleading message, since the book WAS in the registry. Next invocation: every new book.
-3. **Caption-verbatim gate.** A one-off script proved all 40 manifest captions were
-   byte-identical to the blessed manuscript. That is the words-before-art gate's last mile
-   and it belongs in a test. Next invocation: every book.
-4. **Column-budget gate.** subtitle 52, tagline 90, closingNote 450, all of which CLIP
-   SILENTLY. Same one-off script, same home. Next invocation: every book.
-5. **`book_doctor` treats every `spreads[]` entry as a landscape interior.** The endcaps must
-   live in `spreads[]` to render through the framework compiler, so the doctor demanded 3:2 of
-   a 3:4 cover and could never say healthy until they were renamed `cover-0`/`plate-0`. It
-   should read the declared per-spread `size`. Next invocation: any book whose endcaps render
-   through the compiler.
-6. **Face-crop step in `shoot-references`.** Source photos were hand-cropped to
-   head-and-shoulders so the reference carried IDENTITY and not stage wardrobe. Next
-   invocation: every real person.
+The first version of this sweep wrote the items below into this file as ranked *proposals* and
+shipped none of them. Gary: *"how am I supposed to integrate the pave-the-path suggestions that
+are in SAVE-LOG.md? I feel like the default should be to integrate. Am I crazy?"* He was not. A
+suggestion in a log is a to-do nobody does, and it is the exact failure `fix-the-generator`
+already names: writing down a hazard is not removing it. The skill's default is now INTEGRATE,
+the caution lives in the bar and nowhere else, and "shipping a list instead of a change" is
+recorded there as its worst available outcome.
+
+- **The book-manifest contract, three gates, BUILT** as
+  `garysheng-books/apps/web/content/__tests__/book-manifest-contract.test.ts`. Each is calibrated
+  to what could actually be verified, which turned out to be the whole job:
+  - *BookEntry required fields*: HARD, all 178 books, verified clean today so it is a true
+    invariant. This book shipped missing `slug`/`assetBase`/`releasedAt` and the failure surfaced
+    much later in disguise, as narration reporting "no book with slug X in the registry" for a
+    book that WAS in the registry.
+  - *Captions verbatim from the blessed manuscript*: HARD for books released on/after the cutoff,
+    reported before it. Unscoped it fails ~135 assertions across the back catalogue and every one
+    opened was a REAL divergence, so the gate works; failing a hundred shipped books would just
+    train everyone to ignore a red suite. It earned its keep within the hour, verifying all 44
+    captions after the 40-to-44 restructure.
+  - *Column budgets*: REPORT-ONLY, deliberately, and this is the honest part. The check detects
+    an overrun; the three LIMITS are unverified, 99 of 178 books exceed them (longest subtitle is
+    261 against a documented 52), and three of those shipped the same day from other sessions.
+    Asserting an unverified number would break sibling work and encode a guess as a contract. The
+    promotion path is written into the file.
+- **`pave-the-path` is now auto-called**, which was the other half of the problem: a
+  retrospective skill nothing invokes does not run. It is step 9 of `make-a-book`'s load-bearing
+  order (story -> ... -> publish -> land -> **pave**), so it fires on every book, and it is a
+  first-class item in `save-my-progress`, whose survey reads the git diff and would otherwise
+  never see a scratchpad script at all.
+- **A travel-direction guard**, from Gary catching spread 18: a character ARRIVING somewhere had
+  the building behind her, so she read as leaving. Same failure shape as the readable-surface bug
+  and the same resolution, now stated in the guard: the destination is AHEAD of an arriving
+  character, and if you need their face, move the CAMERA to the destination side. Never turn the
+  subject round.
+- **`structured.seating` on settings**, from Gary catching that two women had swapped sides
+  fifteen spreads into one dining room. The universe had already learned this once and written it
+  as prose on `brendas-suv` ("FIXED SEATING, continuity-critical"); it is now DATA the compiler
+  emits whenever two of the named entities share a frame.
+
+### STILL PROPOSED, with the reason it was not built
+
+- **Batch render mode in the renderer.** Five scratchpad scripts did the same job: render a list
+  N-way parallel, retry on stochastic `moderation_blocked`, skip what exists. Three shell traps
+  cost real time and one entirely wasted 17-spread pass that reported OK (`export -f` does not
+  survive zsh into `bash -c`; macOS `xargs` has no `-a`; a `for n in $VAR` parking loop silently
+  no-opped). NOT BUILT because it is the one item large enough to be its own project, and landing
+  it half-done mid-book would have put the book at risk. It is the top of the next sweep.
+- **`book_doctor` treats every `spreads[]` entry as a landscape interior**, so it demanded 3:2 of
+  a 3:4 cover and could not say healthy until the endcaps were renamed `cover-0`/`plate-0`. It
+  should read the declared per-spread `size`. NOT BUILT because it changes a gate other books
+  depend on and deserves its own verification pass.
+- **Face-crop step in `shoot-references`.** Small; deferred with the batch driver since both live
+  in the same neighbourhood.
 
 ### DECLINED, and recorded so a later reader knows it was considered
 

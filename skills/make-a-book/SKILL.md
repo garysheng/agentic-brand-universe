@@ -1,6 +1,6 @@
 ---
 name: make-a-book
-description: The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Story universe. Runs the full chain in the load-bearing order (story -> cast -> lock -> render -> cover -> narrate -> deliver -> publish), delegates every step to the matching agenticstory:* skill, and AUTO-ADVANCES between steps instead of asking what to do next. Universe-parameterized: a per-universe CARTRIDGE skill (make-a-nof-book, make-a-hyperagent-book) supplies the universe path, register, mark, delivery wiring and universe law, then invokes this. Use directly when making a book in a universe that has no cartridge yet. NOT for a brand-new universe (start-new-story-universe) and NOT for editing an existing book (update-book).
+description: The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Story universe. Runs the full chain in the load-bearing order (story -> cast -> lock -> render -> cover -> narrate -> deliver -> publish -> land -> pave), delegates every step to the matching agenticstory:* skill, and AUTO-ADVANCES between steps instead of asking what to do next. Universe-parameterized: a per-universe CARTRIDGE skill (make-a-nof-book, make-a-hyperagent-book) supplies the universe path, register, mark, delivery wiring and universe law, then invokes this. Use directly when making a book in a universe that has no cartridge yet. NOT for a brand-new universe (start-new-story-universe) and NOT for editing an existing book (update-book).
 ---
 
 # Make a Book (base orchestrator)
@@ -10,7 +10,7 @@ not one skill; `render-book` is deliberately LAST. This skill sequences the chai
 reimplements a step.
 
 **The order is load-bearing: story -> cast -> lock -> render -> cover -> narrate -> deliver ->
-publish.** Invoking `render-book` first cannot work; nothing is cast or locked yet.
+publish -> land -> pave.** Invoking `render-book` first cannot work; nothing is cast or locked yet.
 
 ## How this is used
 
@@ -270,10 +270,28 @@ worktree, QUEUES when a live session holds it dirty, and never uses `git update-
 - **Historical provenance keeps its pre-rename paths.** A recipe records what was actually passed
   at generation time; rewriting it to match a later move falsifies it.
 
+## 9. Pave the path -> `agenticstory:pave-the-path` (ALWAYS, the real last step)
+
+**Run it after the book ships and the branches land, on every book, without being asked.**
+
+This step exists because the skill it calls is retrospective, and a retrospective skill that
+depends on somebody REMEMBERING it does not run. Its first outing had to be requested by hand,
+and its output was a list of suggestions nobody would have actioned. Both failures had the same
+root: nothing invoked it. Now the chain does.
+
+It reads the run's diff and the scratchpad (never your memory of the run), finds the hand-rolled
+code and repeated manual steps that will certainly recur, and BUILDS the ones that clear its bar.
+It integrates by default; it does not file suggestions. Expect most candidates to be declined and
+a small number to be paved.
+
+The signal that this step is being skipped: a scratchpad full of `*.sh` files at the end of a run
+and a framework that is byte-identical to how it started. Every one of those scripts is a thing
+you will write again on the next book.
+
 ## Gates honored
 Words-before-art + voice-gate; casting reuse-first; register-anchor-first on every render;
 readback-from-scratch on any defect; spine declared not assumed; provenance per beat; render only
-against locked references; publish proven at the reader's own path.
+against locked references; publish proven at the reader's own path; the run's hand-rolled work swept and paved.
 
 ## The cartridge contract
 

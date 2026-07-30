@@ -601,6 +601,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     char_invsets: dict[str, list[str]] = {}
     char_scales: dict[str, dict] = {}
     entity_scales: dict[str, dict] = {}
+    seating_charts: dict[str, str] = {}
 
     def add_refs(paths):
         for p in paths:
@@ -666,6 +667,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         # Scale is collected for EVERY kind, not only characters: a recurring PROP
         # drifting size across a book is the commonest form of this defect.
         entity_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}
+        seating_charts.update((ent.get("structured") or {}).get("seating") or {})
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"))
             add_refs(r)
@@ -778,6 +780,34 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                  if (sc or {}).get("absolute")]
     abs_block = ("TRUE SIZE, hold it exactly: " + "; ".join(abs_lines) + ".") if abs_lines else None
 
+    # FIXED PLACEMENT. A setting where the same people talk to each other again and
+    # again has a SEATING CHART, and nothing in the contract could state it: `blocking`
+    # describes the CAMERAS and `map` describes the ROOM, so who sits where was decided
+    # afresh in every spread's scene text. Fifteen spreads into one dining room the two
+    # women had swapped sides, and a reader cannot tell whether they moved or the book
+    # made a mistake.
+    #
+    # The universe had already learned this once, per-book, and written it down as an
+    # entity note: brendas-suv carries "FIXED SEATING, continuity-critical: Brenda drives
+    # front-LEFT, Jerry rides front-RIGHT, never swapped." That note is prose a human has
+    # to remember to obey. This makes it data the compiler emits.
+    #
+    # A setting (or any entity) may declare `structured.seating` as {entity-id: phrase}.
+    # Emitted only when TWO OR MORE of the named entities are in the SAME frame, because
+    # "on the viewer's left" is meaningless about a person standing alone, and a solo
+    # over-the-shoulder single must stay free to put them wherever the camera needs.
+    seated = [(eid, ph) for eid, ph in seating_charts.items() if eid in char_invsets]
+    seating_block = None
+    if len(seated) >= 2:
+        seating_block = (
+            "FIXED PLACEMENT, hold it exactly and never swap it between spreads: "
+            + "; ".join(f"{eid} is {ph}" for eid, ph in seated)
+            + ". This placement is continuity, not composition: it is the same in every "
+              "spread of this setting. If the camera moves to the far side of the room, the "
+              "people do NOT change places; their apparent left/right is whatever the stated "
+              "placement looks like from the NEW camera position."
+        )
+
     # Negatives: universe rejectedPoles + book-wide unconditional negatives, then
     # GUARDED negatives — a blanket negative (e.g. "no facial hair") is emitted
     # ONLY when no in-frame character's selected look positively satisfies it.
@@ -825,6 +855,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             disambig or "",
             scale_block or "",
             abs_block or "",
+            seating_block or "",
             _cast_closure(sorted(char_invsets), sp.get("anonymous", "")),
             sp.get("extra", ""),  # authored per-spread instruction (e.g. bake a title glyph); DATA, not improvisation
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
