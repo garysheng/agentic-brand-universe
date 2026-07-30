@@ -59,6 +59,33 @@ HERO_BY_KIND = {
     "motif":           ["hero", "master", "sheet", "gabr"],
 }
 
+def style_line(register_name: str | None, poles) -> str:
+    """The register, restated IN EVERY SHOT'S PROMPT.
+
+    The scaffolded prompts.md writes the register into the file HEADER, but the
+    parser only ever sent each shot's BODY, so the style never actually reached
+    the model. The file implied a guarantee it did not provide, which is exactly
+    the bug already fixed for the `Negatives (every shot)` header; the register
+    was the remaining instance.
+
+    Passing the anchor IMAGE and the rejected poles as bare negatives is NOT
+    enough on its own. "Character reference sheet" carries very strong
+    photographic priors, and four character seeds in a row came back photoreal
+    in a universe whose register explicitly rejects `photoreal` and whose anchor
+    is a painting (earned 2026-07-30, The Lord Saw). Naming the medium
+    positively, in the body, is what actually moves it.
+
+    Sourced from `universe.json` (or the Style Pack) rather than from the
+    markdown, so a prompts.md that forgets to mention the register still gets it.
+    """
+    if not register_name:
+        return ""
+    out = f"STYLE, AND IT OVERRIDES ANY OTHER READING OF THE REFERENCE IMAGES: render this in {register_name}."
+    if poles:
+        out += " It is NEVER " + ", never ".join(poles) + "."
+    return out
+
+
 SAME_SUBJECT = (
     "CRITICAL: every reference image after the first shows THE SAME SINGLE SUBJECT, already locked. "
     "Reproduce it EXACTLY as those images show it: the same shapes, proportions, materials, colors, "
@@ -319,6 +346,10 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         # register rejectedPoles FIRST, then the entity's own negatives from
         # prompts.md. Both reach the model; neither is silently dropped.
         "negatives": list(dict.fromkeys(poles + parsed["negatives"])),
+        # The register's OWN rejected poles, kept separate from the merged
+        # negative list so the style line names the medium's opposites and not
+        # every prop the entity happens to forbid.
+        "poles": list(poles),
         "refs": parsed["refs"],
         "sizes": parsed.get("sizes", {}),
         "uroot": uroot,
@@ -424,7 +455,11 @@ def main() -> int:
             print(f"{shot}: exists, skip")
             goldens.append(str(out.resolve()))
             continue
-        prompt = " ".join(x for x in [plan["prompts"][shot], SAME_SUBJECT,
+        # STYLE FIRST. The register leads every shot body, because the medium is
+        # the thing a reference sheet drifts off first and the anchor image alone
+        # does not hold it. See style_line().
+        prompt = " ".join(x for x in [style_line(plan["register"], plan["poles"]),
+                                      plan["prompts"][shot], SAME_SUBJECT,
                                       REAL_PERSON if plan["photos"] else "", neg] if x)
         # Per-shot size when prompts.md declared one; --size is only the fallback.
         shot_size = plan["sizes"].get(shot, args.size)

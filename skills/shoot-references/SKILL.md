@@ -55,6 +55,12 @@ invariants it does not supersede), not against today's.
 
 ## Gates honored
 - **Register-first:** every generation leads with the universe style anchor; no anchor means stop.
+  The register is ALSO named positively, in words, at the head of every shot's prompt (`style_line`),
+  because the anchor image plus the rejected poles as bare negatives does not hold the medium on its
+  own. A scaffolded `prompts.md` states the register in its HEADER, which the parser never sent, so
+  four character seeds in a row came back photoreal in a universe that explicitly rejects photoreal
+  and whose anchor is a painting (2026-07-30, The Lord Saw). It is sourced from `universe.json`, not
+  from the markdown, so a `prompts.md` that forgets to mention it still gets it.
 - **Read-back:** no shot locks without passing every invariant; DEFECT means regenerate from scratch.
 - **Subject-approval:** a real person stays `realPerson.approval.state: "gated"` after art. This skill NEVER flips it to "approved"; that is the subject's own blessing, recorded separately.
 - **Sensitivity:** the sensitive list is honored on every real-person render.

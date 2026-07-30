@@ -402,6 +402,34 @@ class TestRegisterOverride(unittest.TestCase):
         # silently fighting a negative it never declared.
         self.assertNotIn("photoreal", neg)
 
+    def test_the_register_reaches_every_shot_body_not_just_the_header(self):
+        # The scaffolded prompts.md writes the register into the file HEADER,
+        # which the parser never sent. Four character seeds in a row came back
+        # photoreal in a universe that explicitly rejects it, off a painted
+        # anchor (2026-07-30, The Lord Saw). The medium must be named
+        # POSITIVELY in the body of every shot.
+        sys.path.insert(0, str(SCRIPTS))
+        import chain_matrix
+        line = chain_matrix.style_line("test register", ["photoreal", "anime"])
+        self.assertIn("test register", line)
+        self.assertIn("never anime", line)
+        self.assertIn("photoreal", line)
+
+    def test_style_line_is_empty_when_a_register_has_no_name(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import chain_matrix
+        self.assertEqual(chain_matrix.style_line(None, ["photoreal"]), "")
+
+    def test_the_plan_carries_the_registers_own_poles_separate_from_negatives(self):
+        # The style line names the MEDIUM's opposites; it must not inherit every
+        # prop the entity happens to forbid, or it grows unbounded per entity.
+        sys.path.insert(0, str(SCRIPTS))
+        import chain_matrix
+        plan = chain_matrix.build_plan(self.root, "room")
+        self.assertIn("photoreal", plan["poles"])
+        for p in plan["poles"]:
+            self.assertIn(p, plan["negatives"])
+
     def test_refuses_an_unknown_register_rather_than_falling_back(self):
         r = run(self.root, "--register", "ghost", "--print-plan")
         self.assertEqual(r.returncode, 2)
