@@ -635,7 +635,23 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # cast member; handle both, characters and settings alike, from canon.
     entries = list(sp.get("cast", []))
     if sp.get("setting"):
-        entries.append({"id": sp["setting"], "plate": sp.get("plate")})
+        # A SETTING CAST WITH NO PLATE PASSES NO SETTING IMAGE AT ALL.
+        #
+        # resolve_plate returns [] for a null plate, so the spread renders the place from
+        # prose alone and the model invents the room from scratch, differently every time.
+        # This was silent: nothing warned, and the render looked plausible. An audit of
+        # nation-of-fire found 10 such spreads across shipped books, plus 42 selecting a
+        # plate absent from the entity's `sheets` map and resolving only through a
+        # filename fallback. Earned 2026-07-30.
+        st_id = sp["setting"]
+        st_plate = sp.get("plate")
+        if not st_plate and not sp.get("allowPlatelessSetting"):
+            raise Refuse(
+                f"SETTING CAST WITH NO PLATE ({sp.get('id')}): casts setting "
+                f"'{st_id}' but selects no plate, so NO setting image is passed and the "
+                "place is invented from prose. Name a plate from the entity's sheets, or "
+                "set allowPlatelessSetting if the place genuinely must not be shown.")
+        entries.append({"id": st_id, "plate": st_plate})
 
     # A book may append EXTRA prose to one entity's block without editing canon: the
     # same room legitimately reads colder in a cancellation beat than in a homecoming.
