@@ -1,6 +1,6 @@
 ---
 name: update-book
-description: Edit or extend an existing picture book in an Agentic Story universe: add, insert, revise, or remove a spread, renumber, and regenerate only the touched art + narration. Honors the words-before-art gate (voice-gate on any changed text) and re-resolves canon (canon-resolve) + reads back (render-readback) on every regenerated spread. Generic and universe-parameterized.
+description: Edit or extend an existing picture book in an Agentic Brand Universe: add, insert, revise, or remove a spread, renumber, and regenerate only the touched art + narration. Honors the words-before-art gate (voice-gate on any changed text) and re-resolves canon (canon-resolve) + reads back (render-readback) on every regenerated spread. Generic and universe-parameterized.
 ---
 
 # Update Book

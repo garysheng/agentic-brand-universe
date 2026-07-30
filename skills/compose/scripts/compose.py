@@ -529,7 +529,16 @@ def _run_slot(unit, proj, comp, work):
                               f"{work}/verdicts/{sid}-{idx}.json, then re-run."), roll
 
 SKILLS = pathlib.Path(__file__).resolve().parents[2]
-GEN_SCRIPT = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")
+def _provider_script(provider="gpt-image-2"):
+    """The generation script, resolved rather than assumed. This script lives at
+    <repo>/skills/<name>/scripts/, so the repo root is 3 up; `.resolve()` first
+    because skills are installed by symlinking into ~/.claude/skills."""
+    from pathlib import Path as _P
+    eng = str(_P(__file__).resolve().parents[3] / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.providers import resolve_str
+    return resolve_str(provider)
 
 def load_pack(root, pack_ref):
     """A style pack is the look, as data. Resolve it and its refs to real paths."""
@@ -625,7 +634,7 @@ def generate(prompt, refs, out, size):
     if missing:
         return False, ("reference(s) do not resolve, refusing to render rather than "
                        "generate without them: " + ", ".join(missing))
-    cmd = [GEN_SCRIPT, "--prompt", prompt, "--filename", out, "--size", size,
+    cmd = [_provider_script(), "--prompt", prompt, "--filename", out, "--size", size,
            "--quality", "high", "--no-open"]
     for r in refs: cmd += ["--input-image", r]
     r = subprocess.run(["uv", "run"] + cmd, capture_output=True, text=True)

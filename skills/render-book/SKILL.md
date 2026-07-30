@@ -1,6 +1,6 @@
 ---
 name: render-book
-description: Render a story from an Agentic Story universe into a picture book. Wraps the universal create-brand-os-picture-book pipeline and adds the universe layer from DATA: the story's spine + genre (craft-canon records), the universe's register (identity.register style anchor, passed first on every render), the mark (identity.mark), canon resolved via canon-resolve, text checked by voice-gate, every render checked by render-readback. Generic and universe-parameterized: pass the target universe + story id.
+description: Render a story from an Agentic Brand Universe into a picture book. Wraps the universal create-brand-os-picture-book pipeline and adds the universe layer from DATA: the story's spine + genre (craft-canon records), the universe's register (identity.register style anchor, passed first on every render), the mark (identity.mark), canon resolved via canon-resolve, text checked by voice-gate, every render checked by render-readback. Generic and universe-parameterized: pass the target universe + story id.
 ---
 
 # Render Book

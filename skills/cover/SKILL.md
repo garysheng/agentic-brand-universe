@@ -1,6 +1,6 @@
 ---
 name: cover
-description: Create a picture-book cover for a story in an Agentic Story universe, at the platform's portrait aspect. Bakes the diegetic title + the universe mark (identity.mark), passes the register anchor first, and runs render-readback on the title spelling + hero likeness + register discipline. Generic and universe-parameterized.
+description: Create a picture-book cover for a story in an Agentic Brand Universe, at the platform's portrait aspect. Bakes the diegetic title + the universe mark (identity.mark), passes the register anchor first, and runs render-readback on the title spelling + hero likeness + register discipline. Generic and universe-parameterized.
 ---
 
 # Cover

@@ -192,7 +192,7 @@ def render_status(root: Path) -> list[str]:
         ["Engine conforms to", f"v{SPEC_VERSION}", "`engine/agenticstory/__init__.py`"],
         ["Engine version", f"v{__version__}", "`engine/agenticstory/__init__.py`"],
         ["Skills", str(len(skills(root))), "`skills/*/SKILL.md`"],
-        ["CLI verbs", str(len(cli_verbs())), "`agenticstory --help`"],
+        ["CLI verbs", str(len(cli_verbs())), "`abu --help`"],
         ["Tests", str(tc["tests"]), f"across {tc['files']} files; `./run-tests.sh`"],
     ]
     return _table(["", "Value", "Source"], rows)
@@ -281,11 +281,11 @@ def check(root: Path | None = None) -> list[str]:
     for rel in BLOCKS:
         path = root / rel
         if not path.is_file():
-            problems.append(f"{rel} is missing: run `agenticstory build-docs`")
+            problems.append(f"{rel} is missing: run `abu build-docs`")
             continue
         try:
             if build_file(root, rel) != path.read_text():
-                problems.append(f"{rel} is stale: run `agenticstory build-docs`")
+                problems.append(f"{rel} is stale: run `abu build-docs`")
         except ValueError as exc:
             problems.append(f"{rel}: {exc}")
     return problems

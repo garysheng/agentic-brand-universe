@@ -1,5 +1,5 @@
 """
-Agentic Story — load-bearing references.
+Agentic Brand Universe — load-bearing references.
 
 The layer that makes a reference load-bearing: an entity's asset, or a story's
 setting, either resolves to a real file on disk or it is a HARD problem. This is

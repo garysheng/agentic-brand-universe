@@ -1,6 +1,6 @@
 ---
 name: make-a-book
-description: The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Story universe. Runs the full chain in the load-bearing order (story -> cast -> lock -> render -> cover -> narrate -> deliver -> publish -> land -> pave), delegates every step to the matching agenticstory:* skill, and AUTO-ADVANCES between steps instead of asking what to do next. Universe-parameterized: a per-universe CARTRIDGE skill (make-a-nof-book, make-a-hyperagent-book) supplies the universe path, register, mark, delivery wiring and universe law, then invokes this. Use directly when making a book in a universe that has no cartridge yet. NOT for a brand-new universe (start-new-story-universe) and NOT for editing an existing book (update-book).
+description: The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. Runs the full chain in the load-bearing order (story -> cast -> lock -> render -> cover -> narrate -> deliver -> publish -> land -> pave), delegates every step to the matching abu:* skill, and AUTO-ADVANCES between steps instead of asking what to do next. Universe-parameterized: a per-universe CARTRIDGE skill (make-a-nof-book, make-a-hyperagent-book) supplies the universe path, register, mark, delivery wiring and universe law, then invokes this. Use directly when making a book in a universe that has no cartridge yet. NOT for a brand-new universe (start-new-story-universe) and NOT for editing an existing book (update-book).
 ---
 
 # Make a Book (base orchestrator)
@@ -95,11 +95,11 @@ If one is live, say so in a sentence or two, publish nothing, and wait. Otherwis
 
 ## The chain
 
-### 1. Story -> `agenticstory:add-story`
+### 1. Story -> `abu:add-story`
 Author `stories/<id>.json`: logline, the **spine** (a primer explains, a thesis argues, a testimony
 recounts; never assume hero-journey), the **refrain**, and the **beats** (each with `text`,
 `characters`, optional `location`, and **provenance** — every beat traces to a real source). Then
-the **casting sweep** (`agenticstory:casting-sweep`): reuse-first. Every reuse is a crossover
+the **casting sweep** (`abu:casting-sweep`): reuse-first. Every reuse is a crossover
 receipt; only genuinely new names become new entities.
 
 ### 2. Cast -> `add-character` / `add-setting` / `add-visual-metaphor` / `add-motif` / `add-prop`
@@ -134,7 +134,7 @@ Leave `requiredForRender: []` until `shoot-references` locks the sheets.
 - **When you add a pose, add its sheet key in the same edit**, or the compiler hard-exits on a
   pose naming a sheet that does not exist.
 
-### 3. Lock -> `agenticstory:shoot-references`
+### 3. Lock -> `abu:shoot-references`
 Generate, read back, and lock each new entity's reference matrix (register-anchor-first, rejected
 poles as negatives, regenerate-from-scratch on defect). Set `requiredForRender` to the locked
 shots. Idempotent, so a re-run only shoots what is missing.
@@ -161,19 +161,19 @@ shots. Idempotent, so a re-run only shoots what is missing.
   state. A reference image outranks any number of words, so the thing that is supposed to be gone
   comes back. Negate the missing thing by name.
 
-### 4. Words + render -> `agenticstory:render-book` (per spread: `compose-spread`)
-Words-before-art: run `agenticstory:voice-gate` on the manuscript FIRST. Then:
+### 4. Words + render -> `abu:render-book` (per spread: `compose-spread`)
+Words-before-art: run `abu:voice-gate` on the manuscript FIRST. Then:
 ```bash
 (cd "$ENG" && python3 -m agenticstory.cli validate "$U")            # must be OK
 (cd "$ENG" && python3 -m agenticstory.cli assert-story "$U" <id>)   # the load-bearing gate
 ```
 
-**Render through the framework compiler, `agenticstory:compose-spread`.** It assembles the prompt
+**Render through the framework compiler, `abu:compose-spread`.** It assembles the prompt
 from canon so a per-book prompt can never drop a rule, and it carries the guards below. **Never
 fork it per universe.** A universe-local compiler cannot see guards earned elsewhere and drifts
 into a disjoint feature set; that failure is documented and cost real books.
 
-Then `agenticstory:render-readback` every image.
+Then `abu:render-readback` every image.
 
 **The compiler already enforces these. Read what it prints and you get them free:**
 - **Uncast characters named in scene text.** A scene mentioning a person the spec does not cast
@@ -236,7 +236,7 @@ Then `agenticstory:render-readback` every image.
 - **Do not re-roll good art over a sub-legible detail.** A badge or pendant too small to read is
   correctly just a shape; read it back only where the beat frames it legibly.
 
-### 5. Cover -> `agenticstory:cover`
+### 5. Cover -> `abu:cover`
 Portrait 3:4, register anchor first, the universe mark, and the title baked as integrated
 lettering with the exact string quoted. Read the cover back and check spelling letter by letter;
 regenerate from scratch on any typo.
@@ -257,7 +257,7 @@ Cartridge-specific wiring. The universal parts:
 - **Captions may not be server-rendered.** Grepping the live HTML for caption text is an invalid
   check on a client-rendered reader. Verify against the deployed bundle or the reader itself.
 
-## Land the work -> `agenticstory:land-work` (ALWAYS, never "parked")
+## Land the work -> `abu:land-work` (ALWAYS, never "parked")
 
 The run is not over until every branch it opened is merged or queued. Never end a report with
 "committed but parked". Parking is an unfinished job that compounds into stale worktrees.
@@ -278,7 +278,7 @@ worktree, QUEUES when a live session holds it dirty, and never uses `git update-
 - **Historical provenance keeps its pre-rename paths.** A recipe records what was actually passed
   at generation time; rewriting it to match a later move falsifies it.
 
-## 9. Pave the path -> `agenticstory:pave-the-path` (ALWAYS, the real last step)
+## 9. Pave the path -> `abu:pave-the-path` (ALWAYS, the real last step)
 
 **Run it after the book ships and the branches land, on every book, without being asked.**
 

@@ -53,7 +53,7 @@ def grade_universe(udir):
             bad.append(f"entity {f.name} missing id/kind")
     scores["validity"] = 15 if not bad else max(0, 15 - 5 * len(bad))
     if bad:
-        issues.append((15, "validity", "; ".join(bad[:3]), "agenticstory validate"))
+        issues.append((15, "validity", "; ".join(bad[:3]), "abu validate"))
 
     # 2) IDENTITY -------------------------------------------------------------
     reg = ident.get("register", {}) if isinstance(ident, dict) else {}
@@ -164,7 +164,7 @@ def grade_universe(udir):
             issues.append((min(8, 2 * len(unregistered)), "stories",
                            f"{len(unregistered)} full story/stories with NO canon/properties record, so they are "
                            f"invisible to casting sweeps: {', '.join(unregistered[:5])}",
-                           "write canon/properties/<id>.json, then `agenticstory build-canon`"))
+                           "write canon/properties/<id>.json, then `abu build-canon`"))
 
     # 8) SELF-CONTAINED -------------------------------------------------------
     asset_root = uni.get("assetRoot", ".")

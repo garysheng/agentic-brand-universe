@@ -56,7 +56,7 @@ model for and still not get exactly right.
    report-only-what-changed. Hand-copying a generated file into N repos is how N repos drift, and it
    is not hypothetical: one site shipped a mark from a rebrand fourteen months stale while another
    shipped an incomplete icon set, because both were copies.
-8. **Validate:** `agenticstory validate <universe>` — the engine checks kind, entrypoint existence,
+8. **Validate:** `abu validate <universe>` — the engine checks kind, entrypoint existence,
    determinism/seed coherence, declared-vs-written outputs, and install sources.
 9. **Test your assumptions rather than asserting them.** The whole advantage here is that checking is
    cheap. State a design belief in a comment, then disprove it: "the bevel is mush below 48px" held up

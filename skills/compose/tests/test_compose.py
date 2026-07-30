@@ -23,7 +23,7 @@ def universe(tmp, projections):
 
 
 BASE = {"id": "base", "surface": {"geometry": {"w": 1500, "h": 900}},
-        "slots": [{"id": "text", "type": "deterministic", "emitter": "agenticstory:brand-card"},
+        "slots": [{"id": "text", "type": "deterministic", "emitter": "abu:brand-card"},
                   {"id": "art", "type": "generated", "geometry": {"w": 600, "h": 900}}],
         "generators": [{"for": "art", "capability": "image",
                         "producibleAspects": [1.0, 0.667, 1.5], "tolerance": 0.25}],
@@ -799,7 +799,7 @@ class TestProvenanceRecipes(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             comp = {"universe": t, "slots": {"text": {"title": "hello"}}}
             r, err = compose.assemble_one(proj, comp, "text", 0, "deterministic",
-                                          "agenticstory:brand-card")
+                                          "abu:brand-card")
         self.assertIsNone(err)
         self.assertEqual(r["emitter"], "brand-card")
         self.assertNotIn("out", r["payload"])
@@ -807,7 +807,7 @@ class TestProvenanceRecipes(unittest.TestCase):
     def test_an_unknown_emitter_is_an_error_not_a_recipe(self):
         with tempfile.TemporaryDirectory() as t:
             r, err = compose.assemble_one({"id": "p"}, {"universe": t, "slots": {"x": {}}},
-                                          "x", 0, "deterministic", "agenticstory:nope")
+                                          "x", 0, "deterministic", "abu:nope")
         self.assertIsNone(r)
         self.assertIn("unknown emitter", err)
 

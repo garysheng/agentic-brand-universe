@@ -1,4 +1,4 @@
-# Agentic Story — Engine v0
+# Agentic Brand Universe — Engine v0
 
 The first executable slice of the framework. Stdlib Python, no dependencies (same discipline as the
 Nation of Fire resolver it generalizes). Implements the load-bearing layers of [`../SPEC.md`](../SPEC.md):

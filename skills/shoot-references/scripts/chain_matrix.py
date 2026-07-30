@@ -38,7 +38,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-GEN = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")
+def _provider_script(provider="gpt-image-2"):
+    """The generation script, resolved rather than assumed. This script lives at
+    <repo>/skills/<name>/scripts/, so the repo root is 3 up; `.resolve()` first
+    because skills are installed by symlinking into ~/.claude/skills."""
+    from pathlib import Path as _P
+    eng = str(_P(__file__).resolve().parents[3] / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.providers import resolve_str
+    return resolve_str(provider)
 
 # Which shot seeds the chain, per kind: the view exposing the MOST geometry, so
 # the least is left for the model to invent downstream. First match wins.
@@ -427,7 +436,7 @@ def main() -> int:
         cond = goldens
         if args.max_conditioning and len(goldens) > args.max_conditioning:
             cond = [goldens[0]] + goldens[-(args.max_conditioning - 1):]
-        cmd = ["uv", "run", GEN, "--prompt", prompt, "--filename", str(out),
+        cmd = ["uv", "run", _provider_script(), "--prompt", prompt, "--filename", str(out),
                "--size", shot_size, "--quality", "high", "--no-open",
                "--input-image", anchor_abs]
         # photographs BEFORE the painted goldens: the likeness is the thing the

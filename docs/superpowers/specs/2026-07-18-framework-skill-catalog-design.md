@@ -1,4 +1,4 @@
-# Agentic Story — framework skill catalog + reference-matrix standard (v0.4)
+# Agentic Brand Universe — framework skill catalog + reference-matrix standard (v0.4)
 
 Date: 2026-07-18
 Status: design approved, pending spec review
@@ -6,7 +6,7 @@ Parent: `agenticstory/SPEC.md` (extends v0.3 §11 Skills & Identity layer)
 
 ## Goal
 
-Give the Agentic Story framework a **complete catalog of generic, atomic, universe-parameterized skills** — one per load-bearing unit of building and growing a universe — plus a **reference-matrix standard** that defines what "a locked entity" means per kind, and a **first-class register/style** so a universe renders in a consistent illustrative look. Then **migrate the nine Nation of Fire skills** onto this catalog so NoF becomes the reference *data*, not a fork of the machinery.
+Give the Agentic Brand Universe framework a **complete catalog of generic, atomic, universe-parameterized skills** — one per load-bearing unit of building and growing a universe — plus a **reference-matrix standard** that defines what "a locked entity" means per kind, and a **first-class register/style** so a universe renders in a consistent illustrative look. Then **migrate the nine Nation of Fire skills** onto this catalog so NoF becomes the reference *data*, not a fork of the machinery.
 
 The test of success: standing up universe #2 (AITX) and adding a character, a setting, and a story to it uses only framework skills reading AITX's `identity` + canon. No per-universe skill code. No path or style hardcoded in a skill.
 

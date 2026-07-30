@@ -181,7 +181,7 @@ Create `skills/render-readback/SKILL.md`:
 ```markdown
 ---
 name: render-readback
-description: After EVERY render in an Agentic Story universe, read the image back and crop-zoom each of the in-frame entity's invariants, returning a per-invariant PASS or DEFECT verdict. Any DEFECT means regenerate the image FROM SCRATCH (never stack an edit pass). Use immediately after each generated image, before accepting or locking it. Generic and universe-parameterized: the invariants come from the entity's `structured.invariants`.
+description: After EVERY render in an Agentic Brand Universe, read the image back and crop-zoom each of the in-frame entity's invariants, returning a per-invariant PASS or DEFECT verdict. Any DEFECT means regenerate the image FROM SCRATCH (never stack an edit pass). Use immediately after each generated image, before accepting or locking it. Generic and universe-parameterized: the invariants come from the entity's `structured.invariants`.
 ---
 
 # Render Read-back
@@ -220,7 +220,7 @@ Create `skills/lock-references/SKILL.md`:
 ```markdown
 ---
 name: lock-references
-description: Generate and lock an entity's reference matrix in an Agentic Story universe. For each unlocked or DEFECT matrix slot, generate the shot from the entity's `reference/<id>/prompts.md` (passing `identity.register.anchor` first, plus the photo stack for a real person and any already-locked shots for identity consistency), read it back against the entity's invariants, and lock passers via `agenticstory lock-shot`. Idempotent. Real-person entities stay subject-approval gated after art. Use after `add-*` has scaffolded an entity, to give it its art.
+description: Generate and lock an entity's reference matrix in an Agentic Brand Universe. For each unlocked or DEFECT matrix slot, generate the shot from the entity's `reference/<id>/prompts.md` (passing `identity.register.anchor` first, plus the photo stack for a real person and any already-locked shots for identity consistency), read it back against the entity's invariants, and lock passers via `abu lock-shot`. Idempotent. Real-person entities stay subject-approval gated after art. Use after `add-*` has scaffolded an entity, to give it its art.
 ---
 
 # Lock References
@@ -232,12 +232,12 @@ Turn a scaffolded entity's null matrix slots into locked reference shots. This i
 - Read `identity.register` (anchor + rejectedPoles). If `register.anchor` is null, STOP: the universe's style is not locked. Point the operator at the start-universe style-lock step and do not generate.
 
 ## Procedure
-1. **Resolve the work.** Read `canon/entities/<id>.json` (its kind, matrix, invariants, and for a real person the `realPerson` photo stack + sensitive list) and `reference/<id>/prompts.md`. Run `agenticstory lock-level <universe> <id>` to see what remains.
+1. **Resolve the work.** Read `canon/entities/<id>.json` (its kind, matrix, invariants, and for a real person the `realPerson` photo stack + sensitive list) and `reference/<id>/prompts.md`. Run `abu lock-level <universe> <id>` to see what remains.
 2. **For each shot that is missing or was a DEFECT** (skip already-locked passers, so re-runs are cheap):
    a. **Generate** via the `chatgpt-images` skill (gpt-image-2): pass `identity.register.anchor` as the FIRST input image; bake `register.rejectedPoles` as negatives; for a real person pass the photo stack (build from real photos, never a painting-of-a-painting) and honor the sensitive list; pass any already-locked shots of this entity so the face/build stays consistent; use the shot's prompt block from `prompts.md`. Write to `reference/<id>/<shot>.png`.
    b. **Read back** with `render-readback`: crop-zoom each of the entity's invariants, PASS/DEFECT. On any DEFECT, regenerate that shot FROM SCRATCH (never an edit pass), naming the defect as an explicit negative.
    c. **Lock the passer:** `python3 -m agenticstory.cli lock-shot <universe> <id> <shot> reference/<id>/<shot>.png`. This sets the sheet path and promotes `requiredForRender` as the required shots lock.
-3. **Verify + commit.** `agenticstory validate <universe>` stays green. `lock-level` should reach `partial` once the required shots pass and `locked` once the full matrix passes. Commit the generated art + the updated entity JSON.
+3. **Verify + commit.** `abu validate <universe>` stays green. `lock-level` should reach `partial` once the required shots pass and `locked` once the full matrix passes. Commit the generated art + the updated entity JSON.
 
 ## Gates honored
 - **Register-first:** every generation leads with the universe style anchor; no anchor means stop.

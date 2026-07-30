@@ -1,5 +1,5 @@
 """
-Agentic Story — canon store.
+Agentic Brand Universe — canon store.
 
 Loads a universe directory into a queryable in-memory graph of entities and
 relations. A universe is:

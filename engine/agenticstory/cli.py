@@ -1,21 +1,21 @@
 """
-Agentic Story CLI.
+Agentic Brand Universe CLI.
 
-  agenticstory validate <universe>            # structural validation of all canon + stories
-  agenticstory list <universe>                # entities + stories
-  agenticstory list-craft <universe>          # craft-canon records (spine/genre/register-rule)
-  agenticstory crossovers <universe> <entity> # crossover relations for an entity
-  agenticstory assert-story <universe> <id>   # THE pre-render gate for a whole story
-  agenticstory assert-spread <universe> --characters a,b [--location X]
-  agenticstory lock-level <universe> <entity>  # advisory reference-completeness report
-  agenticstory build-canon <universe> [--check|--adopt]  # regenerate CANON.md from per-record files
-  agenticstory build-docs [--root R] [--check]  # regenerate THIS repo's derived docs (README, REFERENCE)
-  agenticstory add-entity <universe> <kind> <eid> [--name N] [--origin S] [--photo path ...]
+  abu validate <universe>            # structural validation of all canon + stories
+  abu list <universe>                # entities + stories
+  abu list-craft <universe>          # craft-canon records (spine/genre/register-rule)
+  abu crossovers <universe> <entity> # crossover relations for an entity
+  abu assert-story <universe> <id>   # THE pre-render gate for a whole story
+  abu assert-spread <universe> --characters a,b [--location X]
+  abu lock-level <universe> <entity>  # advisory reference-completeness report
+  abu build-canon <universe> [--check|--adopt]  # regenerate CANON.md from per-record files
+  abu build-docs [--root R] [--check]  # regenerate THIS repo's derived docs (README, REFERENCE)
+  abu add-entity <universe> <kind> <eid> [--name N] [--origin S] [--photo path ...]
                                                # scaffold a schema-valid entity stub
-  agenticstory archive <universe> <eid> --reason R [--superseded-by ID]
+  abu archive <universe> <eid> --reason R [--superseded-by ID]
                                                # retire an entity from NEW casting
-  agenticstory unarchive <universe> <eid>      # put a retired entity back in service
-  agenticstory archived <universe> [--story ID] # what is retired, and who still casts it
+  abu unarchive <universe> <eid>      # put a retired entity back in service
+  abu archived <universe> [--story ID] # what is retired, and who still casts it
 
 Exit code is non-zero when validation/assertion finds problems, so gen scripts
 and CI can gate on it.
@@ -49,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
     carries a `help=`: a verb with no help renders as a blank row in the docs,
     and a blank row is how an undocumented verb hides in plain sight.
     """
-    ap = argparse.ArgumentParser(prog="agenticstory")
+    ap = argparse.ArgumentParser(prog="abu")
     sub = ap.add_subparsers(dest="cmd", required=True)
     va = sub.add_parser("validate", help="typecheck a universe against the spec schema")
     va.add_argument("universe")

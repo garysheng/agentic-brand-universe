@@ -1,6 +1,6 @@
 ---
 name: pave-the-path
-description: The retrospective sweep at the END of a chain run. Read what the session actually wrote, find the hand-rolled code and manual steps that WILL recur on the next invocation, and pave them into deterministic substeps the framework owns. Fires after the deliverable ships, not mid-flinch: the whole point is that the path has already been walked, so you are paving a real desire path instead of speculating about one. Use when a book/work/universe run is finishing, when Gary says "pave the path", "what did we hand-roll", "memorialize this", "turn that into a step", "audit this run for reusable pieces", or as the last step of make-a-book / compose / add-work. NOT the in-the-moment reflex (that is fix-the-generator) and NOT the mechanics of editing the framework (that is evolve-agentic-story, which this skill dispatches to).
+description: The retrospective sweep at the END of a chain run. Read what the session actually wrote, find the hand-rolled code and manual steps that WILL recur on the next invocation, and pave them into deterministic substeps the framework owns. Fires after the deliverable ships, not mid-flinch: the whole point is that the path has already been walked, so you are paving a real desire path instead of speculating about one. Use when a book/work/universe run is finishing, when Gary says "pave the path", "what did we hand-roll", "memorialize this", "turn that into a step", "audit this run for reusable pieces", or as the last step of make-a-book / compose / add-work. NOT the in-the-moment reflex (that is fix-the-generator) and NOT the mechanics of editing the framework (that is evolve-abu, which this skill dispatches to).
 ---
 
 # Pave The Path
@@ -18,9 +18,9 @@ promotes the ones that will certainly recur into **deterministic substeps of the
 | --- | --- | --- |
 | `fix-the-generator` | mid-flinch, the moment you reach for a one-off | "Should I be hand-rolling this at all?" |
 | `pave-the-path` | **after the run ships** | "What did I hand-roll that I will hand-roll again?" |
-| `evolve-agentic-story` | once a decision is made | "How do I actually land it, version it, deliver it?" |
+| `evolve-abu` | once a decision is made | "How do I actually land it, version it, deliver it?" |
 
-`pave-the-path` decides WHAT to pave. `evolve-agentic-story` does the paving. Always
+`pave-the-path` decides WHAT to pave. `evolve-abu` does the paving. Always
 dispatch to it rather than editing the framework here.
 
 ## The bar (this is the whole skill)
@@ -32,7 +32,7 @@ Pave a thing **only** when you can complete this sentence with a specific, named
 If you cannot name Y, do not pave. Write it down as an observation and move on.
 
 **INTEGRATE BY DEFAULT. The bar is the only gate.** If a candidate clears the naming
-sentence, you BUILD it, in this session, through `evolve-agentic-story`. You do not file it
+sentence, you BUILD it, in this session, through `evolve-abu`. You do not file it
 as a suggestion and move on.
 
 This is the correction that matters most in this file, and it was earned by this skill's own
@@ -102,7 +102,7 @@ The highest-yield sources, in order:
 
 ### 3. Build it. Do not merely route it.
 
-- PAVE / BUG → `evolve-agentic-story`, and see it THROUGH: the edit, the test that proves it,
+- PAVE / BUG → `evolve-abu`, and see it THROUGH: the edit, the test that proves it,
   the version bump, the plugin re-sync, the log. Invoking the verb is not the finish line;
   a green test on the new behaviour is.
 - GATE → the same, plus name which existing gate list it joins.
@@ -163,7 +163,7 @@ inside the run.** Each one felt like "just getting unstuck" at the time.
 - Evidence before proposal (read the diff and the scratchpad, never recall).
 - Naming sentence required per row (no unnamed next invocation, no paving).
 - Cautious by default (propose ranked, never auto-merge; "not yet" is a valid answer).
-- Route, do not edit (all framework edits go through `evolve-agentic-story`).
+- Route, do not edit (all framework edits go through `evolve-abu`).
 - Declines are recorded, so a later reader knows they were considered.
 
 ## Skill improvement

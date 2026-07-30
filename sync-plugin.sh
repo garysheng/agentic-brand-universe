@@ -8,7 +8,7 @@
 # diff at the end and fail loudly.
 #
 # COPYING IS NOT DELIVERING. This script once printed "in sync: 23 skills, scripts
-# verified" for an entire day while every `agenticstory:*` invocation ran the previous
+# verified" for an entire day while every `abu:*` invocation ran the previous
 # morning's code, because the files had been copied into the marketplace repo and never
 # committed or pushed, and the INSTALLED plugin is a separate clone of that remote. The
 # check was true and useless. So the copy check now runs to the end of the chain:
@@ -17,7 +17,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC="$ROOT/skills"
-DST="$HOME/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/skills"
+DST="$HOME/Documents/github-repos/garysheng-claude-plugins/plugins/abu/skills"
 
 [ -d "$DST" ] || { echo "plugin skills dir not found: $DST"; exit 2; }
 rsync -a --delete-excluded --exclude '__pycache__' --exclude '*.pyc' "$SRC"/ "$DST"/
@@ -26,7 +26,7 @@ rsync -a --delete-excluded --exclude '__pycache__' --exclude '*.pyc' "$SRC"/ "$D
 # A plugin ships agents from its agents/ dir; a copied-but-undelivered agent is as
 # useless as a copied-but-undelivered skill, so mirror + verify it the same way.
 AGENT_SRC="$ROOT/agents"
-AGENT_DST="$HOME/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/agents"
+AGENT_DST="$HOME/Documents/github-repos/garysheng-claude-plugins/plugins/abu/agents"
 if [ -d "$AGENT_SRC" ]; then
   mkdir -p "$AGENT_DST"
   rsync -a --delete-excluded --exclude '__pycache__' --exclude '*.pyc' "$AGENT_SRC"/ "$AGENT_DST"/
@@ -77,11 +77,11 @@ fi
 # answer became "STALE, but not mine", and a gate whose failure you routinely explain
 # away has stopped being a gate. Earned 2026-07-26, when an unrelated `telontologist/`
 # plugin and another chat's edit held this one hostage.
-PLUGIN_DIR="$(dirname "$DST")"                        # .../plugins/agenticstory
+PLUGIN_DIR="$(dirname "$DST")"                        # .../plugins/abu
 PLUGIN_REPO="$(dirname "$PLUGIN_DIR")"                # .../plugins
 PLUGIN_REPO="$(dirname "$PLUGIN_REPO")"               # repo root
 cd "$PLUGIN_REPO" || exit 1
-REL="${PLUGIN_DIR#"$PLUGIN_REPO"/}"                   # plugins/agenticstory
+REL="${PLUGIN_DIR#"$PLUGIN_REPO"/}"                   # plugins/abu
 
 # OURS decides delivered-vs-stale.
 dirty=$(git status --porcelain -- "$REL" | wc -l | tr -d ' ')
@@ -117,12 +117,12 @@ MANIFEST_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\
   "$(dirname "$DST")/.claude-plugin/plugin.json" 2>/dev/null | head -1)
 CACHE=""
 if [ -n "$MANIFEST_VERSION" ] && \
-   [ -d "$HOME/.claude/plugins/cache/garysheng/agenticstory/$MANIFEST_VERSION/skills" ]; then
-  CACHE="$HOME/.claude/plugins/cache/garysheng/agenticstory/$MANIFEST_VERSION/skills"
+   [ -d "$HOME/.claude/plugins/cache/garysheng/abu/$MANIFEST_VERSION/skills" ]; then
+  CACHE="$HOME/.claude/plugins/cache/garysheng/abu/$MANIFEST_VERSION/skills"
 else
   # No dir for the declared version means it genuinely has not been installed yet.
   # Fall back to the most RECENTLY MODIFIED cache so the message names something real.
-  CACHE=$(ls -dt "$HOME"/.claude/plugins/cache/garysheng/agenticstory/*/skills 2>/dev/null | head -1)
+  CACHE=$(ls -dt "$HOME"/.claude/plugins/cache/garysheng/abu/*/skills 2>/dev/null | head -1)
   [ -n "$CACHE" ] && echo "note: no cache dir for manifest version ${MANIFEST_VERSION:-unknown}; comparing newest ($CACHE)"
 fi
 if [ -n "$CACHE" ] && [ -d "$CACHE" ]; then
@@ -135,14 +135,14 @@ if [ -n "$CACHE" ] && [ -d "$CACHE" ]; then
     echo "  nothing for it. The cache refreshes on a VERSION CHANGE, so a manifest with"
     echo "  no version (or an unchanged one) makes /plugin update a silent no-op."
     echo "  Fix: bump \"version\" in"
-    echo "    <marketplace>/plugins/agenticstory/.claude-plugin/plugin.json"
+    echo "    <marketplace>/plugins/abu/.claude-plugin/plugin.json"
     echo "  then run /plugin update in Claude Code."
     exit 1
   fi
 else
   echo
   echo "CANNOT VERIFY: no installed plugin cache found under"
-  echo "  ~/.claude/plugins/cache/garysheng/agenticstory/*/skills"
+  echo "  ~/.claude/plugins/cache/garysheng/abu/*/skills"
   echo "  Either the plugin is not installed, or the layout moved. Do not assume it is"
   echo "  current: an unverifiable check is not a passing one."
   exit 1

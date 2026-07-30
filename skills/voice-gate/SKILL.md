@@ -1,6 +1,6 @@
 ---
 name: voice-gate
-description: Run a voice check on any manuscript, narration script, or overlaid caption text BEFORE it is locked or rendered to audio, in an Agentic Story universe. Blocks the lock until the text is clean of the universal rules (no em dashes, no filler, no performative "not X but Y" inversions) plus the universe's own term rules from identity.voice (words to capitalize, words to keep one-word). Generic and universe-parameterized: pass the target universe.
+description: Run a voice check on any manuscript, narration script, or overlaid caption text BEFORE it is locked or rendered to audio, in an Agentic Brand Universe. Blocks the lock until the text is clean of the universal rules (no em dashes, no filler, no performative "not X but Y" inversions) plus the universe's own term rules from identity.voice (words to capitalize, words to keep one-word). Generic and universe-parameterized: pass the target universe.
 ---
 
 # Voice Gate

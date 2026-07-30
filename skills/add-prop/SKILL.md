@@ -1,6 +1,6 @@
 ---
 name: add-prop
-description: Add ONE prop (a discrete physical object a character holds, wears, or uses, that must render identically wherever it appears) to an Agentic Story universe (interview what it is and its load-bearing detail, reuse-first via casting sweep, then scaffold a typed `prop` entity with SPEC §12's hero + detail reference slots and ready-to-run generation prompts). Art is NOT generated here (that is `shoot-references`). Use when a specific object needs to stay consistent across many renders. Generic and universe-parameterized: pass the target universe.
+description: Add ONE prop (a discrete physical object a character holds, wears, or uses, that must render identically wherever it appears) to an Agentic Brand Universe (interview what it is and its load-bearing detail, reuse-first via casting sweep, then scaffold a typed `prop` entity with SPEC §12's hero + detail reference slots and ready-to-run generation prompts). Art is NOT generated here (that is `shoot-references`). Use when a specific object needs to stay consistent across many renders. Generic and universe-parameterized: pass the target universe.
 ---
 
 # Add Prop
@@ -24,7 +24,7 @@ One physical object, into a universe's canon, as a typed record with its referen
    This writes `canon/entities/<id>.json` with `structured.sheets: {"hero": null, "detail": null}` and `requiredForRender: []`. It prints `lock_level: stub`.
 4. **Fill the prose + invariants.** Edit `prose` (voice/lore/rules: what the object means, who is allowed to touch it) and `structured.invariants` (the load-bearing rules the read-back will check, e.g. the exact detail from step 2).
 5. **Write the generation prompts.** Create `reference/<id>/prompts.md`: a **hero** shot (the object cleanly framed, its full form visible) and a **detail** crop (a tight close-up on the load-bearing feature). Each prompt: (a) passes `identity.register.anchor` FIRST and bakes `register.rejectedPoles` as negatives; (b) states the invariant that must never drift; (c) names the target output path `reference/<id>/<shot>.png`. These are what `shoot-references` will run.
-6. **Validate + commit.** `agenticstory validate <universe>` stays green. Commit the entity + reference dir + prompts.md. Report `lock_level: stub` and that the next step is `shoot-references <universe> <id>`.
+6. **Validate + commit.** `abu validate <universe>` stays green. Commit the entity + reference dir + prompts.md. Report `lock_level: stub` and that the next step is `shoot-references <universe> <id>`.
 
 ## Gates honored
 - **Reuse-first** (step 1): never invent a second prop an existing entity already covers.

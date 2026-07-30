@@ -1,11 +1,11 @@
 ---
 name: add-relation
-description: Record ONE typed relation between two ids in an Agentic Story universe's canon graph (`crossover-with`, `appears-in`, `derived-from`, `contradicts`, `supersedes`) as a `from`/`rel`/`to`/`story`/`note` record written to `canon/relations/`. Keeps the graph queryable (every crossover, every story touching a doctrine) and makes contradictions and supersessions explicit records instead of silent edits to history. Art is NOT touched by this skill at all. Use whenever two canon entities, or an entity and a story, need a recorded relationship. Generic and universe-parameterized: pass the target universe.
+description: Record ONE typed relation between two ids in an Agentic Brand Universe's canon graph (`crossover-with`, `appears-in`, `derived-from`, `contradicts`, `supersedes`) as a `from`/`rel`/`to`/`story`/`note` record written to `canon/relations/`. Keeps the graph queryable (every crossover, every story touching a doctrine) and makes contradictions and supersessions explicit records instead of silent edits to history. Art is NOT touched by this skill at all. Use whenever two canon entities, or an entity and a story, need a recorded relationship. Generic and universe-parameterized: pass the target universe.
 ---
 
 # Add Relation
 
-One typed relation, into a universe's canon graph, as a record written directly to `canon/relations/`. This is pure bookkeeping: no entity scaffolding, no prose, no art. It ends with a validated record the graph queries can read (`agenticstory crossovers <id>`, `agenticstory relations <id>`).
+One typed relation, into a universe's canon graph, as a record written directly to `canon/relations/`. This is pure bookkeeping: no entity scaffolding, no prose, no art. It ends with a validated record the graph queries can read (`abu crossovers <id>`, `abu relations <id>`).
 
 ## Inputs
 - The target universe (a path containing `universe.json`). Read its `canon/entities/` and `stories/` so both sides of the relation can be confirmed.
@@ -25,7 +25,7 @@ One typed relation, into a universe's canon graph, as a record written directly 
    { "from": "<id>", "rel": "crossover-with", "to": "<id>", "story": "<story-id-or-null>", "note": "…" }
    ```
    `story`: which story established or witnessed this relation (nullable if it is a general canon fact). `note`: the one-line reason, load-bearing for `contradicts`/`supersedes` (what changed and why, so the record explains itself without needing the git history dug up).
-4. **Validate + commit.** `agenticstory validate <universe>` stays green: an unresolved `from`/`to` is a hard error ("relation references unknown id"). Commit the relation file. Spot-check with `agenticstory crossovers <universe> <id>` or `agenticstory relations <universe> <id>` that the new record reads back correctly.
+4. **Validate + commit.** `abu validate <universe>` stays green: an unresolved `from`/`to` is a hard error ("relation references unknown id"). Commit the relation file. Spot-check with `abu crossovers <universe> <id>` or `abu relations <universe> <id>` that the new record reads back correctly.
 
 ## Gates honored
 - **Both sides must resolve**: a relation never points at a name that isn't already real canon.

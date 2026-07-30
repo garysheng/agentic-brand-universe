@@ -204,7 +204,7 @@ invariants that make a brand **universe** — version-controlled canon + golden 
 first-class object, deliverables **compositions** over it, references **load-bearing** (their absence
 is a crash, not a drift), and quality a set of **wired gates** rather than a memory feat. It is
 designed to be written and evolved primarily **by agents**, with the human in the loop exactly where
-taste is irreducible. (An **Agentic Story** — the picture-book / comic — is one such deliverable.)
+taste is irreducible. (An **Agentic Brand Universe** — the picture-book / comic — is one such deliverable.)
 
 ## 2. First principles (the bets)
 
@@ -364,7 +364,7 @@ Three wired mechanisms, applied at defined points:
   blocking, dressing }` — all required before any spread in that location renders. A null contract
   field means **unlocked** and the resolver refuses to render it. (Environment load-bearing fix; §6.)
   **`blueprint` SHOULD be a code-built 3D MASSING RENDER shot from the setting's own locked cameras**
-  (v0.15, advisory): `agenticstory massing <spec.json> --out .../blueprint.png`. A top-down plan still
+  (v0.15, advisory): `abu massing <spec.json> --out .../blueprint.png`. A top-down plan still
   validates, but it forces the image model to infer the perspective, which is where room proportion
   and handedness drift. Keep the massing sheet crude on purpose so it reads as scaffolding, and pass
   it with the standard blueprint guard: layout reference only, never painted.
@@ -1018,9 +1018,9 @@ expressed either way, prefer the generator, because it is reproducible, reviewab
 
 ## 6. Nation of Fire as the reference implementation
 
-Everything above already exists in Nation of Fire, informally. Agentic Story is the act of naming it.
+Everything above already exists in Nation of Fire, informally. Agentic Brand Universe is the act of naming it.
 
-| Agentic Story layer / primitive | Nation of Fire today | Gap to close |
+| Agentic Brand Universe layer / primitive | Nation of Fire today | Gap to close |
 | --- | --- | --- |
 | Canon (entities + relations) | `nof-universe/CANON.md` (prose) + typed `canon/entities` | promote to typed records; keep prose as fields |
 | Refs (load-bearing) | `nof-universe/canon` (typed) + `assert.sh` → the engine | **built 2026-07-15**; generalized `nof-*` → universe-agnostic (the engine); **reference implementation made self-contained 2026-07-18** — all canon assets moved into `nof-universe/` (`assetRoot: "."`), so the universe resolves every reference inside its own repo and the folder was renamed `universe/` → `nof-universe/` |

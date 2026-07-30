@@ -96,7 +96,7 @@ class TestRendering(unittest.TestCase):
 
 class TestGate(unittest.TestCase):
     def test_docs_are_current(self):
-        """THE test. If this fails, run `agenticstory build-docs` and commit the result.
+        """THE test. If this fails, run `abu build-docs` and commit the result.
 
         It is the whole reason this module exists: a generated doc that nobody is
         forced to regenerate rots exactly like the hand-written one it replaced."""

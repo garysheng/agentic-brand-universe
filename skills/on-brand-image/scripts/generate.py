@@ -2,7 +2,7 @@
 """
 generate.py — the framework's PROVIDER ADAPTER. The single generate path.
 
-Every image in an Agentic Story universe/pack goes through here, and it CANNOT
+Every image in an Agentic Brand Universe/pack goes through here, and it CANNOT
 produce an image without also writing its recipe. Provenance is not a separate
 step you remember at lock time; it is a side effect of generating. This closes
 the gap where candidate renders (everything before a lock) had no provenance.
@@ -58,8 +58,25 @@ def shrink_ref(path, max_edge, tmpdir):
     except Exception:
         return path
 
-GPT  = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")
-NANO = os.path.expanduser("~/.claude/skills/nano-banana-pro/scripts/generate_image.py")
+
+def _engine_on_path():
+    """This script lives at <repo>/skills/<name>/scripts/, so the repo root is 3 up.
+    `.resolve()` first, because skills are installed by symlinking into
+    ~/.claude/skills and an unresolved __file__ points outside the repo."""
+    from pathlib import Path
+    eng = str(Path(__file__).resolve().parents[3] / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    return eng
+
+
+def provider_script(provider):
+    """Resolved at CALL time rather than import time, so a machine with no
+    nano-banana install can still render with gpt-image-2."""
+    _engine_on_path()
+    from agenticstory.providers import resolve_str
+    return resolve_str(provider)
+
 
 def sha256(p):
     h = hashlib.sha256()
@@ -68,7 +85,7 @@ def sha256(p):
             h.update(b)
     return h.hexdigest()
 
-ENGINE = os.path.expanduser("~/Documents/github-repos/agenticstory/engine")
+ENGINE = None  # resolved lazily by _engine_on_path(); see engine/agenticstory/providers.py
 
 
 def resolve_entities(specs):
@@ -79,12 +96,11 @@ def resolve_entities(specs):
     plausible picture of the wrong person, which is far more expensive than a hard
     stop, because it passes review.
     """
-    if ENGINE not in sys.path:
-        sys.path.insert(0, ENGINE)
+    eng = _engine_on_path()
     try:
         from agenticstory.store import CanonStore
     except ImportError:
-        sys.exit(f"generate.py: --entity needs the agenticstory engine on disk at {ENGINE}")
+        sys.exit(f"generate.py: --entity needs the engine on disk at {eng}")
 
     refs, invariants, rules, meta = [], [], [], []
     for spec in specs:
@@ -266,9 +282,9 @@ def main():
     out = os.path.abspath(a.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     if a.model.startswith("nano"):
-        cmd = ["uv", "run", NANO, "--prompt", prompt, "--filename", out, "--resolution", "2K"]
+        cmd = ["uv", "run", provider_script("nano-banana-pro"), "--prompt", prompt, "--filename", out, "--resolution", "2K"]
     else:
-        cmd = ["uv", "run", GPT, "--prompt", prompt, "--filename", out,
+        cmd = ["uv", "run", provider_script("gpt-image-2"), "--prompt", prompt, "--filename", out,
                "--size", a.size, "--quality", a.quality, "--no-open"]
         if a.timeout:
             cmd += ["--timeout", str(a.timeout)]

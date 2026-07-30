@@ -436,7 +436,7 @@ In Phase 3, in the Entities bullet, add a sentence:
   A renderer-consumed entity is complete when its **reference matrix** (SPEC §12) is locked: for a
   character, the ~8-shot set (face-neutral/3q/expressions, forward-fullbody, profile L+R, back,
   signature-pose); for a setting, its contract plates; for a visual-metaphor, its states. Use
-  `agenticstory lock-level <universe> <entity>` to see stub/partial/locked. Authoring a new entity
+  `abu lock-level <universe> <entity>` to see stub/partial/locked. Authoring a new entity
   is the job of the `add-*` framework skills (they scaffold the matrix slots + prompts).
 ```
 
@@ -495,7 +495,7 @@ Edit `/Users/garysheng/Documents/github-repos/aitx/universe/universe.json` to ad
       "rejectedPoles": ["photoreal", "anime", "washed-out"]
     }
   },
-  "note": "AITX universe canon (agenticstory schema v0.4). Self-contained: assetRoot is '.' and every referenced asset lives inside this repo. Generic Agentic Story skills read the identity block above. Register style anchor to be locked via the style-lock step."
+  "note": "AITX universe canon (agenticstory schema v0.4). Self-contained: assetRoot is '.' and every referenced asset lives inside this repo. Generic Agentic Brand Universe skills read the identity block above. Register style anchor to be locked via the style-lock step."
 }
 ```
 
@@ -525,7 +525,7 @@ git commit -m "feat: add identity block (mark, register, voice, subject-approval
 - [ ] Engine: `cd .../agenticstory/engine && python3 -m unittest discover -s tests -p 'test_*.py'` → OK (all tests, including the 2 new ones).
 - [ ] Back-compat: `python3 -m agenticstory.cli validate` on BOTH `aitx/universe` and `nation-of-fire/nof-universe` → each prints its normal result (AITX OK; NoF its 2 pre-existing `readier-than-a-year-ago` notes). No new failure.
 - [ ] `nof-universe` self-containment unchanged: `cd .../nof-universe && python3 scripts/verify_selfcontained.py` → A=0, B=0, C=0.
-- [ ] A fresh `agenticstory init` scaffolds a universe with `identity.register` + `reference/register/` and validates green.
+- [ ] A fresh `abu init` scaffolds a universe with `identity.register` + `reference/register/` and validates green.
 - [ ] `SPEC.md` reads v0.4 with §12 present and §11 carrying `register`.
 
 ## Out of scope (later phases)

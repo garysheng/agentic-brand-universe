@@ -1,5 +1,5 @@
 """
-Agentic Story engine v0 — tests. Stdlib unittest (no deps).
+Agentic Brand Universe engine v0 — tests. Stdlib unittest (no deps).
 
 Runs against a SELF-CONTAINED synthetic fixture (tests/fixtures/example) so the
 engine has no dependency on any content repo. The fixture mirrors the real

@@ -1,5 +1,5 @@
 """
-Agentic Story — core model.
+Agentic Brand Universe — core model.
 
 Typed canon entities, relations, and story specs, with hand-rolled validation
 (stdlib only, no deps — same discipline as the resolver). Validation returns a

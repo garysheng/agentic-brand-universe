@@ -197,7 +197,7 @@ def check(uroot: Path) -> list[str]:
     canon = uroot / "CANON.md"
     if canon.exists() and PROPS_BEGIN in canon.read_text():
         if canon.read_text() != build(uroot, persist_numbers=False):
-            problems.append("CANON.md is stale: run `agenticstory build-canon <universe>`")
+            problems.append("CANON.md is stale: run `abu build-canon <universe>`")
     return problems
 
 

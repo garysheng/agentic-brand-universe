@@ -22,7 +22,16 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from assemble_prompt import build, load, Refuse  # noqa: E402
 
-GEN = os.path.expanduser("~/.agents/skills/chatgpt-images/scripts/generate_image.py")
+def _provider_script(provider="gpt-image-2"):
+    """The generation script, resolved rather than assumed. This script lives at
+    <repo>/skills/<name>/scripts/, so the repo root is 3 up; `.resolve()` first
+    because skills are installed by symlinking into ~/.claude/skills."""
+    from pathlib import Path as _P
+    eng = str(_P(__file__).resolve().parents[3] / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.providers import resolve_str
+    return resolve_str(provider)
 
 
 def _sha16(path) -> str:
@@ -63,7 +72,7 @@ def write_recipe(out: Path, universe: Path, spec: dict, spread_id: str,
         "model": "gpt-image-2",
         "quality": quality,
         "size": job["size"],
-        "generatedBy": "agenticstory:compose-spread render_spread.py",
+        "generatedBy": "abu:compose-spread render_spread.py",
         "universe": str(universe),
         "universeCommit": _git_head(universe),
         "book": spec.get("book"),
@@ -127,7 +136,7 @@ def main() -> int:
 
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
-        "uv", "run", GEN,
+        "uv", "run", _provider_script(),
         "--prompt", job["prompt"],
         "--filename", str(out),
         "--size", job["size"],

@@ -1,11 +1,11 @@
 ---
 name: start-new-story-universe
-description: Stand up a brand-new story universe on the Agentic Story framework — a typed, git-versioned canon with a load-bearing pre-render gate, conforming to a named spec version. Interview the creator, scaffold via `agenticstory init`, seed the first canon (entities/relations/first story), wire the gate, and hand back a universe that validates green and refuses to render until real references exist. Use when the operator says "start a new story universe", "spin up a universe for X", "/start-new-story-universe", "I want a canon/story world for Y", or is about to build the first book/property of a NEW world (not a new book in an existing one). One-time generation, not for ongoing canon edits.
+description: Stand up a brand-new story universe on the Agentic Brand Universe framework — a typed, git-versioned canon with a load-bearing pre-render gate, conforming to a named spec version. Interview the creator, scaffold via `abu init`, seed the first canon (entities/relations/first story), wire the gate, and hand back a universe that validates green and refuses to render until real references exist. Use when the operator says "start a new story universe", "spin up a universe for X", "/start-new-story-universe", "I want a canon/story world for Y", or is about to build the first book/property of a NEW world (not a new book in an existing one). One-time generation, not for ongoing canon edits.
 ---
 
 # Start New Story Universe
 
-Birth a new **universe** on the Agentic Story framework. A universe is the first-class
+Birth a new **universe** on the Agentic Brand Universe framework. A universe is the first-class
 object: a typed, git-versioned canon (entities + relations), with stories as compositions
 over it, references made load-bearing (their absence is a crash, not a drift), and quality
 wired as gates rather than remembered. This skill does the one-time generation; ongoing
@@ -105,7 +105,7 @@ do not invent fields). Minimum viable first canon:
   A renderer-consumed entity is complete when its **reference matrix** (SPEC §12) is locked: for a
   character, the ~8-shot set (face-neutral/3q/expressions, forward-fullbody, profile L+R, back,
   signature-pose); for a setting, its contract plates; for a visual-metaphor, its states. Use
-  `agenticstory lock-level <universe> <entity>` to see stub/partial/locked. Authoring a new entity
+  `abu lock-level <universe> <entity>` to see stub/partial/locked. Authoring a new entity
   is the job of the `add-*` framework skills (they scaffold the matrix slots + prompts).
 - **Relations:** any known `appears-in` / `crossover-with` / `derived-from` edges.
 - **First story:** one `stories/<id>.json`. Register it as `status: "stub"` (spine + logline

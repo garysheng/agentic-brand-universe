@@ -1,6 +1,6 @@
 ---
 name: universe-doctor
-description: Grade how COMPLETE and how HIGH-QUALITY an Agentic Story / Agentic Brand Universe is, then work the punch-list. Runs a self-contained scorecard over the universe (identity, entity reference matrices, setting size-contracts, provenance coverage, craft-canon, stories, self-containment), returns a letter grade + per-dimension scores + a prioritized list of what to fix and which framework verb to reach for, and then tackles the top issues by dispatching those verbs. The rubric IS the framework's definition of "a done, good universe." Use when Gary says "grade this universe", "how complete is X", "universe checkup / health check / doctor", "what's left to do on this universe", "/universe-doctor", or when you want to know if a universe is ready to render/ship. Complements validate (schema pass/fail) and lint-universe (static warnings): this is the holistic completeness + quality report.
+description: Grade how COMPLETE and how HIGH-QUALITY an Agentic Brand Universe is, then work the punch-list. Runs a self-contained scorecard over the universe (identity, entity reference matrices, setting size-contracts, provenance coverage, craft-canon, stories, self-containment), returns a letter grade + per-dimension scores + a prioritized list of what to fix and which framework verb to reach for, and then tackles the top issues by dispatching those verbs. The rubric IS the framework's definition of "a done, good universe." Use when Gary says "grade this universe", "how complete is X", "universe checkup / health check / doctor", "what's left to do on this universe", "/universe-doctor", or when you want to know if a universe is ready to render/ship. Complements validate (schema pass/fail) and lint-universe (static warnings): this is the holistic completeness + quality report.
 ---
 
 # Universe Doctor
@@ -12,7 +12,7 @@ universe, and what do I do next to make it better* — and the rubric it grades 
 framework's working definition of success.
 
 Where its neighbors stop short:
-- **`agenticstory validate`** answers *is the canon schema-valid?* (pass/fail gate).
+- **`abu validate`** answers *is the canon schema-valid?* (pass/fail gate).
 - **`lint-universe`** answers *are there static best-practice warnings?* (advisory list).
 - **`universe-doctor`** answers *is it complete and high-quality, and what's the next highest-leverage fix?* (a graded report you can act on).
 

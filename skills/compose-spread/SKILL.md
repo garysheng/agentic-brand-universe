@@ -1,6 +1,6 @@
 ---
 name: compose-spread
-description: Render ONE spread of an Agentic Story book as an atomic unit — resolve canon, deterministically ASSEMBLE the prompt + refs from canon (register-anchor-first, each in-frame entity's block for its SELECTED look including alt-looks, auto-disambiguation, and negatives COMPUTED from the selected looks so a blanket negative can never fight a canon alt-look), generate, then read back. This is the atomic step render-book and update-book used to describe in prose and every book re-hand-rolled as its own gen-spread.py. Character/setting truth is read from canon/entities, never retyped per book. Generic and universe-parameterized.
+description: Render ONE spread of an Agentic Brand Universe book as an atomic unit — resolve canon, deterministically ASSEMBLE the prompt + refs from canon (register-anchor-first, each in-frame entity's block for its SELECTED look including alt-looks, auto-disambiguation, and negatives COMPUTED from the selected looks so a blanket negative can never fight a canon alt-look), generate, then read back. This is the atomic step render-book and update-book used to describe in prose and every book re-hand-rolled as its own gen-spread.py. Character/setting truth is read from canon/entities, never retyped per book. Generic and universe-parameterized.
 ---
 
 # Compose Spread
@@ -152,7 +152,7 @@ declares a camera you have not used, ask why not before you finish.
 
 ### Never fork this into a universe-local compiler
 
-A per-universe `compile_render.py` / `gen-spread.py` is the failure this skill exists to prevent, and it is not hypothetical: Nation of Fire ran one for months (SPEC v0.5 even named it the reference impl). The two implementations drifted into **disjoint** feature sets. The fork held all four guards above; the framework held alt-looks, auto-disambiguation, guarded negatives and `anchorRef`. Neither could see the other's, so every guard earned in one universe was invisible to every other, and every framework capability was invisible to the universe doing the most rendering. If the assembler is missing something you need, add it HERE with a test (`evolve-agentic-story`), never in a universe.
+A per-universe `compile_render.py` / `gen-spread.py` is the failure this skill exists to prevent, and it is not hypothetical: Nation of Fire ran one for months (SPEC v0.5 even named it the reference impl). The two implementations drifted into **disjoint** feature sets. The fork held all four guards above; the framework held alt-looks, auto-disambiguation, guarded negatives and `anchorRef`. Neither could see the other's, so every guard earned in one universe was invisible to every other, and every framework capability was invisible to the universe doing the most rendering. If the assembler is missing something you need, add it HERE with a test (`evolve-abu`), never in a universe.
 
 ## Procedure
 

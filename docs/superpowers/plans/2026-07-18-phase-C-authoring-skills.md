@@ -245,7 +245,7 @@ Create `skills/add-character/SKILL.md`:
 ```markdown
 ---
 name: add-character
-description: Add ONE character to an Agentic Story universe — interview the source (a real person's story/wardrobe/sensitive-list, or a fictional design brief), reuse-first via casting sweep, then scaffold a typed `character` entity with the SPEC §12 reference-matrix slots (8 shots) and a ready-to-run generation prompt per shot. Real people get a photo stack and a subject-approval gate; art is NOT generated here (that is `lock-references`). Use when adding a person/character to a universe. Generic and universe-parameterized: pass the target universe.
+description: Add ONE character to an Agentic Brand Universe — interview the source (a real person's story/wardrobe/sensitive-list, or a fictional design brief), reuse-first via casting sweep, then scaffold a typed `character` entity with the SPEC §12 reference-matrix slots (8 shots) and a ready-to-run generation prompt per shot. Real people get a photo stack and a subject-approval gate; art is NOT generated here (that is `lock-references`). Use when adding a person/character to a universe. Generic and universe-parameterized: pass the target universe.
 ---
 
 # Add Character
@@ -270,7 +270,7 @@ One character, into a universe's canon, as a typed record with its reference mat
    This writes `canon/entities/<id>.json` with the 8 matrix slots (null), `requiredForRender: []`, and (for a real person with photos) a `gated` `realPerson` block. It prints `lock_level: stub`.
 4. **Fill the prose + invariants.** Edit the entity's `prose` (voice/lore/rules) and `structured.invariants` (the load-bearing identity rules the read-back will check — e.g. `no-lenses`, `double-eyelid-crease`). For a real person, fill `realPerson.wardrobeEras` and confirm `sensitiveList` points at the universe `RESEARCH.md#sensitive` entry you populated.
 5. **Write the generation prompts.** Create `reference/<id>/prompts.md`: one block per matrix shot (face-neutral, face-3q, expressions, forward-fullbody, profile-left, profile-right, back, signature-pose). Each prompt: (a) passes `identity.register.anchor` FIRST as the style anchor and bakes `register.rejectedPoles` as negatives; (b) for a real person, passes the photo stack (build from photos, never a painting-of-a-painting); (c) states the shot's angle + the entity's invariants; (d) names the target output path `reference/<id>/<shot>.png`. These are what `lock-references` will run.
-6. **Validate + commit.** `agenticstory validate <universe>` stays green. Commit the entity + reference dir + prompts.md. Report the `lock_level` (stub) and that the next step is `lock-references <universe> <id>`.
+6. **Validate + commit.** `abu validate <universe>` stays green. Commit the entity + reference dir + prompts.md. Report the `lock_level` (stub) and that the next step is `lock-references <universe> <id>`.
 
 ## Gates honored
 - **Reuse-first** (step 1) — never invent a character an existing entity already covers.

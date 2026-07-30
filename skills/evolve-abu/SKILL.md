@@ -1,9 +1,9 @@
 ---
-name: evolve-agentic-story
-description: Evolve the Agentic Story framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. Invoke mid-session the moment you catch yourself (or Gary catches you) doing framework-shaped work by hand: a bespoke generate/provenance script, a manual step you keep repeating, a missing scaffolder (e.g. no create-style-pack), a look with no Style Pack, provenance saved by memory instead of by tool. The framework is young and WILL be missing things; hand-rolling once is fine, hand-rolling twice is a bug in the framework. This skill promotes the hand-rolled thing UP into the framework, bumps the version, re-syncs + delivers the plugin, logs it, and updates itself. Use when Gary says "why are we hand-rolling this", "update the framework/templates/skills", "fix the generator", "we know better", "/evolve-agentic-story", or is visibly frustrated that a repeated manual action should be a tool.
+name: evolve-abu
+description: Evolve the Agentic Brand Universe framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. Invoke mid-session the moment you catch yourself (or Gary catches you) doing framework-shaped work by hand: a bespoke generate/provenance script, a manual step you keep repeating, a missing scaffolder (e.g. no create-style-pack), a look with no Style Pack, provenance saved by memory instead of by tool. The framework is young and WILL be missing things; hand-rolling once is fine, hand-rolling twice is a bug in the framework. This skill promotes the hand-rolled thing UP into the framework, bumps the version, re-syncs + delivers the plugin, logs it, and updates itself. Use when Gary says "why are we hand-rolling this", "update the framework/templates/skills", "fix the generator", "we know better", "/evolve-abu", or is visibly frustrated that a repeated manual action should be a tool.
 ---
 
-# Evolve Agentic Story (the meta-skill)
+# Evolve Agentic Brand Universe (the meta-skill)
 
 The framework at `~/Documents/github-repos/agenticstory` is a **work in progress**. It is normal to hit a gap mid-build and hand-roll a step to keep moving. What is NOT normal is letting that hand-rolled thing calcify. This skill is the forcing function that turns "I wrote a one-off script / did a manual step" into "the framework now owns it, versioned and delivered, so no universe ever hand-rolls it again."
 
@@ -26,9 +26,9 @@ Hand-rolling **once, consciously, to keep momentum** is fine — the framework i
 
 ## Repos and the delivery chain (know these cold)
 
-- **Framework source:** `~/Documents/github-repos/agenticstory` — `SPEC.md` (the contract, versioned vX.Y), `engine/` (Python + tests), `skills/` (every `agenticstory:*` skill), `registry/`, `SAVE-LOG.md` (changelog), `run-tests.sh`, `sync-plugin.sh`.
+- **Framework source:** `~/Documents/github-repos/agenticstory` — `SPEC.md` (the contract, versioned vX.Y), `engine/` (Python + tests), `skills/` (every `abu:*` skill), `registry/`, `SAVE-LOG.md` (changelog), `run-tests.sh`, `sync-plugin.sh`.
 - **Plugin / marketplace repo:** `~/Documents/github-repos/garysheng-claude-plugins/plugins/agenticstory/` — `.claude-plugin/plugin.json` holds the **plugin `version`**; `skills/` is a **copy** of the source skills (not a symlink), so EDITING THE MARKETPLACE COPY IS EDITING THE ARTIFACT: the next `sync-plugin.sh` overwrites it from source. Always patch `agenticstory/skills/...` and let sync push it down.
-- **Installed plugin cache:** what `agenticstory:*` invocations actually run — a separate clone of the marketplace remote, under a versioned hash dir.
+- **Installed plugin cache:** what `abu:*` invocations actually run — a separate clone of the marketplace remote, under a versioned hash dir.
 
 **COPYING IS NOT DELIVERING.** The chain is `agenticstory/skills → marketplace repo → installed cache`. **The marketplace is a DIRECTORY source, not a git remote, so pushing is hygiene and NOT what delivers.** What actually refreshes the installed cache is a **VERSION CHANGE** in `.claude-plugin/plugin.json` followed by `/plugin update`; an unchanged version makes `/plugin update` a silent no-op. So a change is live only after: synced, `version` bumped, and Gary runs `/plugin update` (only he can). Commit and push both repos anyway so the work is durable and reviewable. `sync-plugin.sh` enforces all of this and reports STALE for anything short of delivered, INCLUDING when the installed cache is simply behind the manifest — trust its output, do not eyeball it. Check the cache version it names against the manifest: if several bumps have gone undelivered, say so explicitly rather than assuming the last one landed.
 

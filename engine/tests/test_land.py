@@ -1,5 +1,5 @@
 """
-Tests for `agenticstory land` — merging finished work home without corrupting a
+Tests for `abu land` — merging finished work home without corrupting a
 sibling agent session.
 
 These build REAL git repos in a temp dir rather than mocking git, because every

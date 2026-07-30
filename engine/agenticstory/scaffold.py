@@ -1,5 +1,5 @@
 """
-Agentic Story — universe scaffolder.
+Agentic Brand Universe — universe scaffolder.
 
 `init` lays down a schema-valid, empty universe (universe.json + canon/ + stories/
 + the pre-render gate wrapper + a canon README). With --example it also drops one
@@ -31,7 +31,7 @@ def _assert_sh(baked_engine: Path) -> str:
     resolved from $AGENTICSTORY_ENGINE (override) or the path baked at init time.
     """
     return f'''#!/usr/bin/env bash
-# Load-bearing PRE-RENDER GATE for this universe, via the Agentic Story engine.
+# Load-bearing PRE-RENDER GATE for this universe, via the Agentic Brand Universe engine.
 #
 # A renderer/gen-script MUST call this BEFORE generating a unit. If a required
 # character sheet is missing or a spread's setting is not locked, this exits

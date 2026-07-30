@@ -36,7 +36,7 @@ skipped, so the decision is visible rather than silent:
 counsel place | the-creek-path | REUSE (jerrys-porch is archived 2026-07-29, supersededBy)
 ```
 
-`agenticstory archived <universe>` lists everything retired, and the spread compiler refuses an
+`abu archived <universe>` lists everything retired, and the spread compiler refuses an
 archived cast before spending, so a sweep that misses one is caught. Catching it here is cheaper.
 
 ## Not this skill

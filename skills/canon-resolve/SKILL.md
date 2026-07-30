@@ -1,6 +1,6 @@
 ---
 name: canon-resolve
-description: Before writing ANY render prompt in an Agentic Story universe, resolve every named character, setting, and motif to its canon entity: output the locked sheet paths (requiredForRender), the invariants to enforce, and the entity's prose rules, then run the load-bearing gate (assert.sh spread|story). Prevents reinventing locked designs, passing draft or wrong-era references, and prompting from memory. Generic and universe-parameterized: pass the target universe.
+description: Before writing ANY render prompt in an Agentic Brand Universe, resolve every named character, setting, and motif to its canon entity: output the locked sheet paths (requiredForRender), the invariants to enforce, and the entity's prose rules, then run the load-bearing gate (assert.sh spread|story). Prevents reinventing locked designs, passing draft or wrong-era references, and prompting from memory. Generic and universe-parameterized: pass the target universe.
 ---
 
 # Canon Resolve
