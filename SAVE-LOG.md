@@ -665,28 +665,23 @@ spread-06's ref list from six images to three.
 
 655 tests green.
 
-## 2026-07-30 — 0.61.0 — limb-anatomy guard
+## 2026-07-30 — 0.62.0 — the limb-anatomy guard is REVERTED
 
-Two broken arms in one thirteen-spread movement, both caught by Gary and not by any
-gate. A man sitting braced on a bed got an arm with no elbow whose forearm outran his
-thigh. A man lying under the covers got a sleeved arm attached at his HIPS reaching back
-toward his head, running the wrong direction against the body it belonged to.
+Added in 0.61.0 and removed the same hour by Gary: "it's over engineering something that
+just needs reroll."
 
-Both prompts were specific about the POSE and silent about the ARM, because nobody
-writes "his arms are the length of arms". The model does not assume it.
+He is right, and the distinction is worth keeping even though the code is not. Generation
+is stochastic, so a one-off ugly limb is a ROLL, not a rule. Guards are for things that
+come back wrong the SAME WAY every time from a knowable cause: a screen painted on the
+back of a laptop, a page rotated square to the lens, a figure walking away from the thing
+they are walking toward. Those have a mechanism, so a sentence can fix them permanently.
+A stretched arm has no mechanism; it is variance, and the cost of the guard is a permanent
+paragraph on every braced-figure prompt in every universe, forever, to save one re-roll.
 
-The guard fires on BRACED or REACHING language, not on every figure: an arm hanging at a
-side is short and vertical and hard to get wrong, while an arm reaching to plant a hand
-invites the model to stretch the limb to meet the hand instead of moving the shoulder or
-bending the elbow. It requires a visible bent elbow on every bearing arm, forbids
-stretching a limb to reach a placed hand, and names the specific failure: a sleeve that
-runs the length of a body with no joint in it.
+The test for the next candidate guard: can you name the WRONG THING THE MODEL BELIEVES? If
+yes, guard it. If the honest answer is "it just came out badly", re-roll and move on.
 
-Ported to nano-banana-pro in the same commit, which is the drift that provider's own
-header warns about.
-
-Craft note earned alongside it: the better fix for the sleeping spread was not a better
-description of the arm, it was showing LESS of the man. Head on the pillow and one hand
-gripping the sheet at his own chin, everything else a shape under the bedding, so there
-is no long limb to get wrong. When a figure is not the subject, cropping the problem out
-beats specifying it.
+The craft lesson from the same two spreads stands and cost nothing: on the sleeping
+spread, showing LESS of the man beat describing his arm better. Head on the pillow, one
+hand at his own chin, everything else a shape under the bedding, and there is no long limb
+in frame to get wrong. When a figure is not the subject, crop the problem out.

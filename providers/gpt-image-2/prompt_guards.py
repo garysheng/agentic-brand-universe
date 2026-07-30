@@ -119,43 +119,10 @@ _GUARD_UI = (
 # failed twice. A caller's paraphrase would therefore have SUPPRESSED the authoritative
 # guard, which is precisely backwards. A weak restatement must be superseded by this
 # file, never allowed to silence it. The guard is appended last, so it wins.
-# Earned 2026-07-30, Two Angels and a Forklift, TWICE inside one thirteen-spread movement.
-# A man sitting on a bed braced on his hands got an arm with no elbow whose forearm was
-# longer than his thigh; a man lying on his side got a sleeved arm that ran the entire
-# length of his body, shoulder to hand, with no joint anywhere in it. Both prompts were
-# specific about the POSE and said nothing about the ARM, because nobody writes "his arms
-# are the length of arms". The model does not assume it.
-#
-# It fires on a BRACED or WEIGHT-BEARING limb specifically, not on every figure. That is
-# where it goes wrong: an arm hanging at a side is short and vertical and hard to get
-# wrong, while an arm reaching to plant a hand invites the model to stretch the limb to
-# meet the hand rather than move the shoulder or bend the elbow.
-_LIMB_WORDS = (
-    "braced", "bracing", "propped", "leaning on", "resting on", "gripping",
-    "reaching", "planted", "hands on", "hand on", "clutching", "holding onto",
-    "sitting on the edge", "pushing up", "steadying",
-)
-
-_GUARD_LIMB = (
-    "HUMAN LIMB ANATOMY, NON-NEGOTIABLE: every arm and leg in this image belongs to a real "
-    "skeleton and is the length of a real limb. An adult's upper arm is about the length of "
-    "their thigh and the forearm is slightly shorter; the two together CANNOT span the length "
-    "of a torso. EVERY bearing or reaching arm shows a VISIBLE, BENT ELBOW between the "
-    "shoulder and the wrist, and the elbow sits roughly level with the bottom of the ribs. "
-    "NEVER stretch a limb to reach where a hand is placed: if the hand cannot reach, MOVE THE "
-    "HAND CLOSER or turn the shoulder toward it. A hand planted on a surface is planted just "
-    "outside the hip or thigh on that same side, never across the body and never out beyond "
-    "the edge of what the figure is sitting on. Each shoulder has exactly ONE arm and each arm "
-    "has exactly ONE hand with FIVE fingers. Trace every arm from its own shoulder to its own "
-    "hand before finishing: a sleeve that runs the length of a body without a joint is the "
-    "specific failure to avoid."
-)
-
 _DEVICE_PROBES = ("the glowing display is on the screen side",)
 _SURFACE_PROBES = ("readable surfaces are oriented for their reader",)
 _TRAVEL_PROBES = ("travel direction must match the story",)
 _UI_PROBES = ("no user interface anywhere:",)
-_LIMB_PROBES = ("human limb anatomy, non-negotiable",)
 
 
 def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[str]]:
@@ -173,13 +140,12 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if not enabled:
         return prompt, []
     scan = prompt.lower()
-    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI, _GUARD_LIMB):
+    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI):
         scan = scan.replace(block.lower(), " ")
     added: list[str] = []
     has_device = any(w in scan for w in _DEVICE_WORDS)
     has_surface = any(w in scan for w in _SURFACE_WORDS)
     has_travel = any(w in scan for w in _TRAVEL_WORDS)
-    has_limb = any(w in scan for w in _LIMB_WORDS)
     low = prompt.lower()   # probes look at the WHOLE prompt, guard text included
 
     if has_device and not any(p in low for p in _DEVICE_PROBES):
@@ -191,9 +157,6 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if has_travel and not any(p in low for p in _TRAVEL_PROBES):
         prompt += "\n\n" + _GUARD_TRAVEL
         added.append("travel-direction")
-    if has_limb and not any(p in low for p in _LIMB_PROBES):
-        prompt += "\n\n" + _GUARD_LIMB
-        added.append("limb-anatomy")
     if (has_device or has_surface) and not any(p in low for p in _UI_PROBES):
         prompt += "\n\n" + _GUARD_UI
         added.append("no-ui-chrome")
