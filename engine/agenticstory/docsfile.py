@@ -287,11 +287,6 @@ def check(root: Path | None = None) -> list[str]:
     site = root / "site" / "index.html"
     if site.is_file():
         allowed = {sv}
-        bos = root / "BRAND-OS-SPEC.md"
-        if bos.is_file():
-            m = re.search(r"\*\*v(\d+\.\d+)", bos.read_text())
-            if m:
-                allowed.add(m.group(1))   # the Brand OS spec is a separate document
         wrong = sorted(set(re.findall(r"\bv(\d+\.\d+)\b", site.read_text())) - allowed)
         if wrong:
             problems.append(
