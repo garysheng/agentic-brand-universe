@@ -443,3 +443,68 @@ so it applies to any repo, not just a universe.
 2026-07-29T22:10:00Z · CAST CLOSURE IS NOW EMITTED ON EVERY RENDER (plugin 0.30.0 -> 0.31.0). The prompt always said who IS in frame and never said that was ALL who is. Every other guard here reads the SCENE; this defect comes from the PREAMBLE, because a book-wide `style` string is prepended to every spread, so any figure it mentions is present on every spread whether or not that spread cast them. The uncast-character refusal cannot see it. Nor is it catchable by name: both styles that caused it described the cast GENERICALLY ('a small hand-made helper', 'a man at a desk'), so no entity name appears anywhere to match on.
     Cost in one session across two books: eleven re-renders. A different invented robot in five spreads of one book, one of them three spreads before that character is introduced in the story and one rendered twice in the same frame at two different sizes; then a man appearing in two spreads of another book whose scenes said the room was empty. THE LESSON WAS WRITTEN INTO THE SKILL AFTER THE FIRST OCCURRENCE AND THE SAME SENTENCE WAS WRITTEN AGAIN TWICE MORE, which is a fair measure of what a documentation-only fix is worth. The assembler now states the closure itself, derived from the cast, so an author cannot forget it and a preamble cannot contradict it. Empty-character spreads get a flat 'there are no people of any kind' instead.
     Two doc lessons landed alongside it. A LOAD-BEARING EXCLUSION GOES FIRST: two spreads kept rendering a seated figure through two rolls with the exclusion appended at the end of a two-hundred-word scene, and moving that same sentence to the front plus tightening the camera fixed it with no new words. And DO NOT COMPOSE FOR THE READ-BACK: side-on shows a face and a face is easy to verify, so it becomes the silent default; every interior spread of what-a-book-is-made-of came out side-on and the blueprint's own over-the-shoulder camera was never referenced once, in a book whose thesis is that the man is outside the machine looking in. Tests 478 -> 483.
+
+## 2026-07-29 — pave-the-path, first run (she-had-everything-but-peace, 40 spreads)
+
+The skill's own maiden sweep, run on the book that earned it. Evidence read from the diff
+and the scratchpad, not from memory. Five throwaway scripts existed in the scratchpad by
+the end of the run; all five were the SAME missing capability wearing different names.
+
+### PAVED IN THIS SESSION (both were BUGs, both tested)
+
+- **`realPerson.photoStack` cap did nothing on a directory stack.** The `[:2]` slice ran on
+  the RAW list, and a stack entry may be a DIRECTORY, so a one-entry directory stack passed
+  every photo in the folder. nof `victory` shipped SIX refs on 17 spreads, two of them
+  multi-person family-band photographs. Fixed: expand first, cap after, default uncapped
+  (which is what SPEC's own "5+ real photos" always meant), `realPerson.photoLimit` to cap.
+  9 tests.
+- **The readable-surface prompt guard contradicted itself.** It had no `card` in its word
+  list and simultaneously demanded "NO real readable letters", so a scene specifying exact
+  designed text made the model choose, and it chose legible-by-rotating-to-the-lens. Caught
+  by Gary twice (it-was-not-broken sp36, she-had-everything-but-peace sp16). Fixed by naming
+  the resolution — legibility is a CAMERA problem, move the camera to the reader's side,
+  never turn the page — and by moving the guards into ONE shared `prompt_guards.py` that both
+  generators import, because `nano-banana-pro` had no guards at all. Two further bugs found
+  while fixing it: probes matched paraphrases (so a book's weaker restatement would SUPPRESS
+  the authoritative guard) and the guards were not idempotent (`_GUARD_UI` says "Screens",
+  so a second pass inferred a device). 8 tests, one of which proves the guard can stay silent.
+
+### PROPOSED, RANKED (not yet paved — "not yet" is a valid answer)
+
+1. **Batch render mode in the renderer.** Five scratchpad scripts (`gen.sh`, `worker.sh`,
+   `render-all.sh`, `render-all2.sh`, `rerender-victory.sh`) all did: render a list of spreads
+   N-way parallel, retry on stochastic `moderation_blocked`, skip what already exists. Next
+   invocation: every multi-spread book. Three shell traps cost real time and one entirely
+   wasted 17-spread pass that reported OK: `export -f` does not survive zsh into `bash -c`;
+   macOS `xargs` has no `-a`; and a `for n in $VAR` parking loop silently no-opped, so every
+   re-render reported SKIP against the OLD files. A tested Python driver removes all three.
+2. **`BookEntry` required-field assertion in `gen:books`.** The manifest was missing `slug`,
+   `assetBase` and `releasedAt`; nothing caught it, and the failure surfaced much later as
+   `generate-narration.ts` reporting "no book with slug X in the registry" — an actively
+   misleading message, since the book WAS in the registry. Next invocation: every new book.
+3. **Caption-verbatim gate.** A one-off script proved all 40 manifest captions were
+   byte-identical to the blessed manuscript. That is the words-before-art gate's last mile
+   and it belongs in a test. Next invocation: every book.
+4. **Column-budget gate.** subtitle 52, tagline 90, closingNote 450, all of which CLIP
+   SILENTLY. Same one-off script, same home. Next invocation: every book.
+5. **`book_doctor` treats every `spreads[]` entry as a landscape interior.** The endcaps must
+   live in `spreads[]` to render through the framework compiler, so the doctor demanded 3:2 of
+   a 3:4 cover and could never say healthy until they were renamed `cover-0`/`plate-0`. It
+   should read the declared per-spread `size`. Next invocation: any book whose endcaps render
+   through the compiler.
+6. **Face-crop step in `shoot-references`.** Source photos were hand-cropped to
+   head-and-shoulders so the reference carried IDENTITY and not stage wardrobe. Next
+   invocation: every real person.
+
+### DECLINED, and recorded so a later reader knows it was considered
+
+- **A generic Wikimedia photo fetcher.** LEAVE. Every real person needs different sources
+  under different licences, and a generic fetcher would encourage using whatever it returned.
+- **"Chain a known-good sibling in as the control."** GUIDANCE, not code: which sibling is
+  trustworthy is a judgement, and `make-a-book` already says it.
+- **The contact-sheet builder.** Borderline; built ~8 times with small variations. Declined
+  for now because each sheet's crop was scene-specific, and three of my crops were wrong in
+  ways a helper would not have prevented.
+
+The tell that the sweep was worth running: **five of the six proposals were invisible from
+inside the run.** Each felt like "just getting unstuck" at the time.
