@@ -887,3 +887,87 @@ class TestLifecycle(unittest.TestCase):
         src = inspect.getsource(refs.assert_story)
         self.assertNotIn("lifecycle", src)
         self.assertNotIn("archived", src)
+
+
+class TestUnshotCastIsRefused(unittest.TestCase):
+    """The pre-render gate must refuse a cast that has been SCAFFOLDED but not SHOT.
+
+    Earned on knowledge-shall-increase (2026-07-30). Eight new entities were scaffolded by
+    `add-entity`, every reference slot was still null, three carried `status: unlocked`, and
+    `assert-story` returned OK. The gate verified that DECLARED sheets resolve on disk, so an
+    entity whose `requiredForRender` was empty skipped the check entirely. That is the single
+    most common pre-render state in a real book run, and the gate could not see it.
+    """
+
+    def _universe(self, d, entity):
+        target = Path(d) / "u"
+        scaffold.scaffold_universe(target, name="u")
+        (target / "canon" / "entities" / f"{entity['id']}.json").write_text(json.dumps(entity))
+        (target / "stories").mkdir(exist_ok=True)
+        (target / "stories" / "s.json").write_text(json.dumps({
+            "id": "s", "status": "full", "logline": "l", "spine": "thesis",
+            "features": [entity["id"]],
+            "beats": [{"n": 2, "text": "t", "characters": [entity["id"]]}],
+        }))
+        return CanonStore(target)
+
+    def test_declared_slots_all_empty_is_refused(self):
+        ent = {"id": "unshot", "kind": "prop",
+               "structured": {"sheets": {"hero": None, "detail": None},
+                              "requiredForRender": [], "invariants": []},
+               "prose": {"rules": "r"}}
+        with tempfile.TemporaryDirectory() as d:
+            problems = refs.assert_story(self._universe(d, ent), "s")
+        self.assertTrue(any("unshot" in p and "filled none" in p for p in problems), problems)
+
+    def test_unlocked_visual_metaphor_is_refused(self):
+        ent = {"id": "vm", "kind": "visual-metaphor", "status": "unlocked",
+               "structured": {"sheets": {"master": None}, "requiredForRender": [],
+                              "invariants": []},
+               "contract": {"turnaround": None, "emptyPlates": [], "blueprint": None,
+                            "map": "", "blocking": "", "dressing": "", "scale": ""},
+               "prose": {"rules": "r"}}
+        with tempfile.TemporaryDirectory() as d:
+            problems = refs.assert_story(self._universe(d, ent), "s")
+        self.assertTrue(any("vm" in p and "unlocked" in p for p in problems), problems)
+
+    def test_entity_with_no_slots_at_all_still_passes(self):
+        # A doctrine or a pure-prose motif declares no reference slots. It was never meant
+        # to be refused and must not become collateral damage of the fix above.
+        ent = {"id": "doc", "kind": "doctrine",
+               "structured": {"sheets": {}, "requiredForRender": [], "invariants": []},
+               "prose": {"rules": "r"}}
+        with tempfile.TemporaryDirectory() as d:
+            problems = refs.assert_story(self._universe(d, ent), "s")
+        self.assertFalse([p for p in problems if "doc" in p], problems)
+
+
+class TestRenderBlockIsValidated(unittest.TestCase):
+    """`structured.render.poses` written as bare strings must be caught by validate.
+
+    Also earned on knowledge-shall-increase. Four characters were authored with
+    `poses: {"master": "a sentence"}`. `validate` passed them, and the first thing that
+    actually read the block was the spread assembler, which did `pose.get("bake")` and died
+    with AttributeError mid-batch. The render block is the prose that steers the model, so a
+    malformed one is expensive and silent right up until render time.
+    """
+
+    def _entity(self, render):
+        return Entity("e", "character", {
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"master": "reference/e/master.png"},
+                           "requiredForRender": [], "invariants": [], "render": render},
+            "prose": {"rules": "r"},
+        })
+
+    def test_pose_as_bare_string_is_refused(self):
+        p = self._entity({"always": "a", "poses": {"master": "standing three-quarter"}}).validate()
+        self.assertTrue(any("must be an object" in x for x in p), p)
+
+    def test_pose_naming_unknown_sheet_is_refused(self):
+        p = self._entity({"poses": {"master": {"bake": "b", "sheets": ["nope"]}}}).validate()
+        self.assertTrue(any("not in structured.sheets" in x for x in p), p)
+
+    def test_well_formed_render_block_passes(self):
+        p = self._entity({"always": "a", "poses": {"master": {"bake": "b", "sheets": ["master"]}}}).validate()
+        self.assertEqual([x for x in p if "render" in x], [], p)

@@ -200,6 +200,46 @@ class Entity:
             for k in self.required_sheet_keys():
                 if not self.sheet_path(k):
                     p.append(f"{self.id}: requiredForRender '{k}' has no path in sheets")
+        # structured.render is PROMPT-CRAFT and it is what actually steers the model, so a
+        # malformed one is worse than a missing one: nothing here refused it before, and the
+        # first thing that read it was the spread assembler, at render time, with an
+        # AttributeError. Earned on knowledge-shall-increase 2026-07-30, where four characters
+        # were authored with `poses: {name: "a sentence"}` and every spread casting them
+        # refused mid-batch. The shape is poses.<key> = {"bake": str, "sheets": [str]}.
+        render = self.structured.get("render")
+        if render is not None:
+            if not isinstance(render, dict):
+                p.append(f"{self.id}: structured.render must be an object")
+            else:
+                if "always" in render and not isinstance(render["always"], str):
+                    p.append(f"{self.id}: structured.render.always must be a string")
+                poses = render.get("poses")
+                if poses is not None:
+                    if not isinstance(poses, dict):
+                        p.append(f"{self.id}: structured.render.poses must be an object")
+                    else:
+                        for key, pose in poses.items():
+                            if not isinstance(pose, dict):
+                                p.append(
+                                    f"{self.id}: structured.render.poses['{key}'] must be an "
+                                    f"object with optional 'bake' and 'sheets', not "
+                                    f"{type(pose).__name__} (a bare string passes validate and "
+                                    f"then crashes the spread assembler)"
+                                )
+                                continue
+                            if "bake" in pose and not isinstance(pose["bake"], str):
+                                p.append(f"{self.id}: render.poses['{key}'].bake must be a string")
+                            sheets = pose.get("sheets")
+                            if sheets is not None:
+                                if not isinstance(sheets, list):
+                                    p.append(f"{self.id}: render.poses['{key}'].sheets must be a list")
+                                else:
+                                    for sk in sheets:
+                                        if sk not in (self.structured.get("sheets") or {}):
+                                            p.append(
+                                                f"{self.id}: render.poses['{key}'] names sheet "
+                                                f"'{sk}' which is not in structured.sheets"
+                                            )
         if self.kind in ("setting", "visual-metaphor"):
             if "status" not in self.raw:
                 p.append(f"{self.id}: {self.kind} needs a 'status' (locked|unlocked)")

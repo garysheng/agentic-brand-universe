@@ -88,6 +88,29 @@ def assert_story(store: CanonStore, story_id: str) -> list[str]:
         if e.required_sheet_keys():
             _, missing = resolve_entity_assets(store, fid)
             problems += missing
+        else:
+            # AN ENTITY THAT DECLARES NOTHING USED TO PASS TRIVIALLY, which made this gate
+            # unable to refuse the single most common pre-render state: a cast scaffolded by
+            # add-entity and not yet shot. The gate verified that DECLARED sheets exist, so an
+            # empty requiredForRender skipped the check entirely and a story whose whole new
+            # cast had zero art on disk returned OK. Earned on knowledge-shall-increase
+            # 2026-07-30: eight new entities, no plates, gate green.
+            # An entity with no sheet slots at all (a doctrine, a pure-prose motif) is still
+            # fine; what is refused is one that HAS slots and has filled none of them.
+            slots = (e.structured.get("sheets") or {})
+            if slots and not any(slots.values()):
+                problems.append(
+                    f"'{fid}' declares {len(slots)} reference slot(s) and has filled none of "
+                    f"them, and requiredForRender is empty, so nothing about it is locked. "
+                    f"Shoot its matrix (shoot-references) before rendering."
+                )
+        # A setting or visual-metaphor carries its own lock flag, and an unlocked one is
+        # explicitly not renderable. Nothing checked it here before.
+        if e.kind in ("setting", "visual-metaphor") and e.raw.get("status") == "unlocked":
+            problems.append(
+                f"'{fid}' is status 'unlocked' and may not be rendered against. Lock it once "
+                f"its plates pass read-back."
+            )
     # every beat's declared location must be a locked, on-disk setting
     for b in story.beats:
         loc = b.get("location")
