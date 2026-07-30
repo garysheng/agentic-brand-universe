@@ -582,9 +582,30 @@ def lint(root):
                 if stale else ""))
 
     # ---- projections
-    pdir = root/"projections"
+    # forms/ is what `add-form` scaffolds since SPEC v0.14; projections/ is the legacy
+    # flat layout. Checking only the old one told a universe built by the current
+    # scaffolder that it "declares no projections" while its forms sat right there.
+    fdir = root/"forms"
+    pdir = pdir_legacy = root/"projections"
+    if fdir.exists():
+        pdir = fdir
+    def form_files():
+        """Every form file, in either layout: forms/<id>/form.json (current) or
+        projections/<id>.json (legacy flat). Globbing only the flat pattern found
+        NOTHING in a forms/ universe while reporting no problems, which is worse
+        than the missing-directory warning it replaced."""
+        out = list(fdir.glob("*/form.json")) if fdir.exists() else []
+        out += list(pdir_legacy.glob("*.json")) if pdir_legacy.exists() else []
+        return out
+
+    def form_file(name):
+        for c in (fdir/name/"form.json", pdir_legacy/(name + ".json")):
+            if c.exists():
+                return c
+        return None
+
     if not pdir.exists():
-        warn("NO-PROJECTIONS", "universe declares no projections; it can only make storybooks by hand")
+        warn("NO-FORMS", "universe declares no forms; it can only make storybooks by hand")
         # CAUTION: this RETURNS, so every check written below runs only for universes that
         # declare projections. nation-of-fire declares none, so a new rule added past this
         # point silently never runs for the universe doing the most rendering. A summary
@@ -605,15 +626,15 @@ def lint(root):
         name = ref.split("@")[0]
         if name in seen:
             return p, f"{p.get('id', pj.stem)}: extends cycle through '{name}'"
-        base_f = pdir/(name + ".json")
-        if not base_f.exists():
+        base_f = form_file(name)
+        if base_f is None:
             return p, f"{p.get('id', pj.stem)}: extends {ref} not found"
         base, e = resolve(base_f, seen + (name,))
         if base is None: return p, e
         merged = {**base, **{k: v for k, v in p.items() if v is not None}}
         return merged, e
 
-    for pj in sorted(pdir.glob("*.json")):
+    for pj in sorted(form_files()):
         raw = jload(pj)
         if not raw: continue
         p, chain_err = resolve(pj)

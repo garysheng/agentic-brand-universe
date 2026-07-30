@@ -1,3 +1,9 @@
+import json
+import subprocess
+import sys
+import tempfile
+import pathlib
+import unittest
 #!/usr/bin/env python3
 """Tests for the brand universe linter.
 
@@ -765,6 +771,48 @@ class TestCharacterScaleAndFutureLooks(unittest.TestCase):
                 "beef", altLooks={"bearded": {"anchorPhoto": "reference/beef/alt.png"}}))
             _, w = run(root)
             self.assertNotIn("LOOK-NO-IDENTITY-ANCHOR", w)
+
+
+
+
+class TestFormsLayout(unittest.TestCase):
+    """SPEC v0.14 renamed Projection to Form and `add-form` now scaffolds
+    forms/<id>/form.json. The readers were never updated, so a universe built by the
+    current scaffolder was told it "declares no projections" and its forms were never
+    checked at all. Both layouts must resolve."""
+
+    def _universe(self, tmp, layout):
+        u = pathlib.Path(tmp)/"u"; (u/"canon"/"entities").mkdir(parents=True)
+        (u/"universe.json").write_text(json.dumps(
+            {"name": "u", "assetRoot": ".", "spec": {"version": "0.16"}}))
+        form = {"id": "demo", "surface": {"medium": "x"}}
+        if layout == "forms":
+            d = u/"forms"/"demo"; d.mkdir(parents=True)
+            (d/"form.json").write_text(json.dumps(form))
+        else:
+            d = u/"projections"; d.mkdir(parents=True)
+            (d/"demo.json").write_text(json.dumps(form))
+        return u
+
+    def _run(self, u):
+        r = subprocess.run([sys.executable, str(pathlib.Path(__file__).parents[1]/"scripts"/"lint.py"),
+                            str(u)], capture_output=True, text=True)
+        return r.stdout + r.stderr
+
+    def test_current_layout_is_not_reported_as_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertNotIn("NO-FORMS", self._run(self._universe(tmp, "forms")))
+
+    def test_legacy_layout_still_works(self):
+        """hyperagentic-age ships 8 forms in the flat layout; they must keep linting."""
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertNotIn("NO-FORMS", self._run(self._universe(tmp, "projections")))
+
+    def test_a_universe_with_neither_is_warned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            u = pathlib.Path(tmp)/"u"; (u/"canon"/"entities").mkdir(parents=True)
+            (u/"universe.json").write_text(json.dumps({"name": "u", "assetRoot": "."}))
+            self.assertIn("NO-FORMS", self._run(u))
 
 
 if __name__ == "__main__":

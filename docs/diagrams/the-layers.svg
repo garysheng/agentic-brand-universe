@@ -26,10 +26,10 @@
 <text class="s onclay" x="48" y="100">the agent that plans, compiles, generates, and repairs</text>
 <text class="b onclay" x="844" y="90" text-anchor="end">AGENTIC</text>
 <rect class="row" x="28" y="120" width="844" height="54" rx="8"/>
-<text class="n ink" x="48" y="143">COMPOSITION</text>
+<text class="n ink" x="48" y="143">WORK</text>
 <text class="s mute" x="48" y="162">ONE instance: this book, this flyer, this card</text>
 <rect class="row" x="28" y="182" width="844" height="54" rx="8"/>
-<text class="n ink" x="48" y="205">PROJECTION</text>
+<text class="n ink" x="48" y="205">FORM</text>
 <text class="s mute" x="48" y="224">the typed contract for a KIND of deliverable</text>
 <rect class="row" x="28" y="244" width="844" height="54" rx="8"/>
 <text class="n ink" x="48" y="267">GOLDENS</text>

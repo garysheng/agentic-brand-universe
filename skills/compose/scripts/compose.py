@@ -17,10 +17,29 @@ Implements the parts the spec asserted and nothing ran:
 """
 import json, os, pathlib, re, subprocess, sys, hashlib
 
+def form_path(root, name):
+    """Where a form lives, new layout first.
+
+    SPEC v0.14 renamed Projection to Form, and `add-form` was updated to scaffold
+    `forms/<id>/form.json`. This reader was not, so a universe built with the current
+    scaffolder wrote a form the composer could not find at all. Both layouts resolve
+    now; the legacy flat file is still read so the 8 forms already shipped in
+    hyperagentic-age keep working.
+    """
+    root = pathlib.Path(root)
+    for cand in (root / "forms" / name / "form.json",
+                 root / "projections" / f"{name}.json"):
+        if cand.exists():
+            return cand
+    raise FileNotFoundError(
+        f"no form {name!r} in {root}: looked for forms/{name}/form.json and "
+        f"projections/{name}.json")
+
+
 def load_projection(root, ref):
-    """Resolve a projection and its `extends` chain. Child overrides parent key-wise."""
+    """Resolve a form and its `extends` chain. Child overrides parent key-wise."""
     name = ref.split("@")[0]
-    p = json.loads((pathlib.Path(root) / "projections" / f"{name}.json").read_text())
+    p = json.loads(form_path(root, name).read_text())
     if p.get("extends"):
         base = load_projection(root, p["extends"])
         merged = {**base, **{k: v for k, v in p.items() if v is not None}}

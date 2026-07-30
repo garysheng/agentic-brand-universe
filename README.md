@@ -20,7 +20,7 @@ rendered from.
 
 - **The spec:** [`SPEC.md`](./SPEC.md) — the cartridge architecture (six layers, primitives, invariants).
 - **The architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — how the layers fit, what the
-  linter checks, and why the runtime is Managed Agents. Diagrams included, all machine-emitted.
+  linter checks, and why the runtime is Managed Agents. Diagrams included (hand-authored SVG; there is no generator for them yet).
 - **The engine spec:** [`BRAND-OS-SPEC.md`](./BRAND-OS-SPEC.md) — the Agentic Brand OS (the console/runtime that loads a cartridge and generates on-brand deliverables). **v0.1, early draft, partially overtaken:** the console that shipped for most users is your own harness with the `abu` plugin installed. Design notes for the hosted path, not a contract.
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
@@ -57,7 +57,7 @@ v0.14. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 36 | `skills/*/SKILL.md` |
 | CLI verbs | 20 | `abu --help` |
-| Tests | 640 | across 28 files; `./run-tests.sh` |
+| Tests | 643 | across 28 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,

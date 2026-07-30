@@ -12,10 +12,10 @@ from the palette in the spec. None was drawn by hand or by a model.
 ![The six layers](./diagrams/the-layers.svg)
 
 Read it bottom up as a sentence. **Canon** is what is true. **Goldens** are what it looks like once
-locked. A **projection** is a kind of thing you can make. A **composition** is one of them. The
+locked. A **form** is a kind of thing you can make. A **work** is one of them. The
 **composer** is the agent that makes it and answers to a gate.
 
-The split that matters most is between the middle two. **A projection is a type; a composition is an
+The split that matters most is between the middle two. **A form is a type; a work is an
 instance.** Conflating them is what made this standard storybook-shaped for its first five versions:
 the one primitive that existed carried a story's required fields (`logline`, `spine`, `refrain`,
 `beats`), so every deliverable had to be a story to be expressible. A flyer has no beats.
@@ -98,7 +98,7 @@ legitimate.
 ## The linter
 
 Everything above is only true if it is checked. `skills/lint-universe` runs static checks over a
-universe and everything it declares: packs, projections, slots, emitters, generators, goldens, and
+universe and everything it declares: packs, forms, slots, emitters, generators, goldens, and
 provider quirks. No generation, no API, no cost.
 
 ```bash
@@ -113,7 +113,7 @@ Every check corresponds to a failure that actually shipped:
 | `SURFACE-INFEASIBLE` | a declared surface no generator can physically make (the 0.333 class) |
 | `SLOT-NO-GENERATOR` | a generated slot nothing is assigned to produce |
 | `INVARIANT-UNTYPED` | a rule that is neither `computed` nor `judged`, so nobody knows who checks it |
-| `EXTENDS-UNRESOLVED` | a fork pointing at a projection that does not exist |
+| `EXTENDS-UNRESOLVED` | a fork pointing at a form that does not exist |
 | `REGISTER-UNLOCKED` | a null style anchor, meaning generation should refuse |
 | `GOLDEN-MISSING` | a required reference that will crash at render time |
 | `PACK-NO-GATE` | a style pack with no read-back rules, which is a mood board |
@@ -130,7 +130,7 @@ inherited rather than overrode.
 
 **`INVARIANT-VS-QUIRK` is the behavioural twin of `SURFACE-INFEASIBLE`.** One catches a contract that
 is internally coherent and geometrically undeliverable; the other catches one that is internally
-coherent and *behaviourally* expensive. A projection demanded "four fingers plus a thumb" and pinned a
+coherent and *behaviourally* expensive. A form demanded "four fingers plus a thumb" and pinned a
 provider whose registry entry says it loses a digit on stylized hands. Seven artifacts went to
 independent judges and six failed on that one item, twice each, with the prompt counter attached.
 Nothing was wrong with either file alone; the contradiction lived between them.
@@ -140,7 +140,7 @@ the true cost is re-rolls. A brand is allowed to demand something hard. What it 
 surprise discovered after paying for generation.
 
 There is one more check that runs in the **composer** rather than the linter, because it needs the
-composition and not just the universe: a scene may not *name* something its style pack rejects. A beat
+work and not just the universe: a scene may not *name* something its style pack rejects. A beat
 described a grid as "receding" for a pack that rejects perspective, and the compiler dutifully
 appended "no perspective" to the same prompt, so the model received both instructions and picked one.
 
@@ -156,7 +156,7 @@ failed three consecutive rolls, because it had to get the same fragile thing rig
 Rewriting that scene to use one hand was worth more than any amount of prompt strengthening, and it
 cost nothing.
 
-The general rule: when a judged invariant has a known failure rate, the composition controls its own
+The general rule: when a judged invariant has a known failure rate, the work controls its own
 exposure. Invoke the fragile element fewer times and the expected number of re-rolls drops with it.
 That is an authoring decision, not a contract change, and it is the cheapest lever available before
 anyone reaches for relaxing the rule or repinning the provider.
@@ -169,7 +169,7 @@ which is the opposite of a style rule. They live in `registry/providers.json`, f
 project learning something benefits every other.
 
 Quirks bind to the provider a slot **resolves to**, not to its pin. Binding them to the pin left the
-one projection deliberately kept provider-agnostic as the only unguarded one, which is backwards.
+one form deliberately kept provider-agnostic as the only unguarded one, which is backwards.
 
 Each quirk carries a `counter` appended automatically to every compiled prompt, and a `check` that
 becomes a gate item, because countering something in a prompt is never assumed to have worked.
@@ -189,4 +189,4 @@ plugin and was never tracked here, plus two skills whose scripts *and tests* exi
 
 - [SPEC.md](../SPEC.md), the normative standard.
 - [PROJECTION.json](https://appliedai.wiki/reference/standards/projection-json), the contract format on its own.
-- [hyperagentic-age](https://github.com/garysheng/hyperagentic-age), a universe with eight projections and real committed output.
+- [hyperagentic-age](https://github.com/garysheng/hyperagentic-age), a universe with eight forms and real committed output.
