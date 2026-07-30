@@ -41,6 +41,22 @@ Hand-rolling **once, consciously, to keep momentum** is fine — the framework i
    - *A contract/invariant changed* → `SPEC.md` (this is what forces a **spec** version bump and updates `conformsTo` strings).
    - *A new scaffolder/template is missing* (e.g. `create-style-pack`) → it is a skill; author it so it emits the same shape the consumers expect (read `on-brand-image`'s `pack.json` fields; read `shoot-references`'s `recipe.json`).
 3. **Register the skill** in the plugin manifest `description` catalog (`.claude-plugin/plugin.json`) if you added one, so it is discoverable.
+
+**If you are RENAMING anything (a skill, the namespace, a verb), two rules, both earned
+the hard way during the `agenticstory` to `abu` rename:**
+
+- **Sweep with `find -L`, never `rg` and never `Path.rglob`.** Both silently skip
+  directories reached through a symlink, and Gary's skills are symlinked from
+  `~/.agents/skills` into the repos that own them. `rg` reported 5 external references
+  where `find -L | xargs grep` found 12, and a later Python `rglob` pass missed
+  `make-a-nof-book` entirely, leaving a cartridge skill pointing at a namespace that
+  no longer resolved. A rename verified by the wrong tool looks finished and is not.
+- **Never rewrite a historical record.** `.recipe.json` files and dated canon
+  attestations ("LOCKED 2026-07-26: generated via `agenticstory:shoot-references`")
+  state what actually ran, under the name it had then. Rewriting them to the new name
+  falsifies them, which is precisely what `backfill-provenance` exists to prevent.
+  Change live INSTRUCTIONS; leave every ATTESTATION alone. In the rename that taught
+  this, that split was 5 files to fix and 1,213 to leave.
 4. **Bump the version(s):**
    - Plugin: `.claude-plugin/plugin.json` `version` — patch for a fix/new-skill, minor for a spec/contract change.
    - Spec: if `SPEC.md` changed the contract, bump its `vX.Y` and every `conformsTo`/`SPEC_VERSION` reference (engine `__init__`, init scaffolder). Universes conform to a spec version; do not break that silently.
