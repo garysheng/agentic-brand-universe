@@ -252,6 +252,36 @@ bread, and it argued the wrong thing for that beat.
 - The cover (portrait + baked title) → `cover` (may share the assembler).
 - Whole-book orchestration (worktrees, manuscript gate, delivery) → `render-book`; editing a shipped book → `update-book`. Both invoke THIS skill for the per-spread step.
 
+## State a device's orientation RELATIONALLY, never camera-relative
+
+The generator already injects a device guard: *the glowing display is on the screen side, and that
+side FACES ITS USER.* A scene can still defeat it, and the way it defeats it looks like good
+camera direction: **"over his shoulder from behind, so we see the back and edge of his laptop."**
+
+That sentence asserts a CAMERA-RELATIVE fact. It is only true when the camera sits exactly behind
+the user, and the camera almost never lands exactly there. Put it a few degrees to one side and the
+model still obeys the words: it turns the lid away from the viewer, which now means turning it away
+from the USER too. The screen ends up facing a wall, or facing the reader while the character
+stares past it, and the character is using a machine he cannot see.
+
+Say instead what is true from every camera:
+
+    BAD:   over his shoulder so we see the BACK and edge of his laptop
+    GOOD:  the open lid tilts BACK TOWARD HIM so the screen points at his face and the keyboard
+           lies between the screen and his hands; we read it only by the light thrown up onto him
+
+Then describe the camera separately, and do not tell the model what it will see of the device.
+If you want the screen CONTENT visible, that is a different composition: put the camera behind the
+user and say the screen is visible over their shoulder, which is consistent rather than in conflict.
+
+The same trap applies to anything with a front and a back that belongs to a character: a phone, a
+book, a hand mirror, a photograph being shown to someone. Orient it to its owner, never to the lens.
+
+Earned 2026-07-29 on *Atlas Surrendered*, twice from one copied sentence: spread 11 rendered the
+screen facing the viewer and spread 29 rendered the lid opening away from the man toward the wall.
+Both scenes ALSO contained a correct relational clause ("the screen faces him"); the camera-relative
+sentence won because it was more specific.
+
 ## Reading material faces the reader, never the camera
 
 A book, notebook, page, ledger, letter or document that a character is reading or writing belongs to THEM, so it is oriented for them: top edge away from them, text running the direction they read, and therefore foreshortened, tilted or partly upside down from the camera. Image models default to squaring the page up to the lens so the viewer can read it, because that is what stock illustration does, and the result reads as staged the instant you notice it. If the camera cannot see the page clearly, that is correct.
