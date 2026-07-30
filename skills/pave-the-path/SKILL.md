@@ -169,3 +169,26 @@ inside the run.** Each one felt like "just getting unstuck" at the time.
 ## Skill improvement
 If a paved step later gets ripped out, record WHY here: a bad pave is the most valuable
 evidence this skill can carry, because the bar above exists to prevent exactly that.
+
+## Run the detector first. Do not rely on remembering the run.
+
+```
+python3 <skill>/scripts/detect_handroll.py <scratchpad-dir> [--universe DIR]
+```
+
+It looks for the mechanical signatures of a run that routed around a framework verb: a
+script calling a provider generate script directly, a script hardcoding the register line
+canon already owns, and art sitting beside a `prompts.md` that still says `TODO(author)`,
+which means the prompt that made it is recorded nowhere. Exit 1 on any finding, so a chain
+step can gate on it.
+
+**First run, 2026-07-30: 79 findings, across at least SEVEN different sessions.** That was
+the real result. The assumption going in was "I hand-rolled five scripts today"; what the
+scan showed was `shoot.py`, `gen.sh`, `shoot-r1.sh`, `shoot-r2.sh` and `room_variants.py`
+sitting in the scratchpads of sessions weeks apart. Hand-rolling was not an incident, it was
+the framework's normal usage pattern, invisible the entire time because nothing looked.
+
+Treat every finding as a GAP, never as a scolding. Each one means the verb does not exist,
+or it exists and was harder to reach than writing the script. Both are the framework's
+problem to fix, and both route to `evolve-abu`.
+

@@ -89,6 +89,42 @@ compromise you already reported is NOT a major concern. Ship and say what you se
 
 If one is live, say so in a sentence or two, publish nothing, and wait. Otherwise ship.
 
+## DISPATCH THE STEWARD. It ships with the plugin and nobody uses it.
+
+`abu-steward` is a subagent in this plugin whose entire job is "reach for the RIGHT framework
+verb instead of hand-rolling, and FLAG any gap rather than silently working around it." On
+2026-07-30 it was invoked **zero times** across a full book session in which the main agent
+hand-rolled five shoot scripts, a photo-stack extraction, and prompt assembly the framework
+already owned. The countermeasure was installed and unused for the entire run.
+
+**So dispatch it, do not merely have it.** For each chain step that touches canon or art
+(cast, lock, render, cover), hand the step to `abu-steward` via the Agent tool rather than
+doing it inline.
+
+Why a separate context and not more instructions to yourself: the main agent is carrying the
+book's momentum and is therefore the WORST judge of "should I write a quick script here." It
+has a reason to keep moving. A fresh context whose only question is "which framework verb is
+this" has no such incentive, and it has not spent an hour becoming attached to a plan.
+
+Give it: the universe path, the step, and the entities involved. Expect back: the verb it
+used, or an explicit FLAGGED GAP. **A gap it flags is a real finding, not a failure of the
+run** — route it to `evolve-abu` and keep going.
+
+You still own the two operator gates and the final report. The steward owns verb selection.
+
+## Prose does not bind. Refusals bind.
+
+Every rule this chain BROKE on 2026-07-30 existed as prose in a skill file: use
+`AskUserQuestion` at a gate (ignored four times), angels are light beings (a European man was
+rendered), show the operator every shot (written that same session, then not done). Every
+rule it OBEYED was a refusal in code: `assert-story` on unlocked references, `build-docs
+--check` failing the suite, the uncast-character guard, and the `prompts.md` TODO refusal,
+which ended a five-times-repeated workaround the moment it existed.
+
+**So when you catch a rule being broken, do not restate it more emphatically. Move it into
+something that stops you**, and put the refusal at the choke point every path already goes
+through. A rule that lives only in prose is a suggestion with good intentions.
+
 ## Environment
 
 - **The engine is NOT pip-installed.** Run the CLI from its repo dir:
