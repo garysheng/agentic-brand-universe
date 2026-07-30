@@ -80,6 +80,14 @@ def main(argv: list[str] | None = None) -> int:
     ms.add_argument("--entity", default=None, help="entity id, recorded in the provenance recipe")
     ms.add_argument("--no-recipe", action="store_true", help="skip writing <out>.recipe.json")
 
+    el = sub.add_parser("elevation", help="render an OBJECT's blueprint as a code-built 2D elevation sheet "
+                                         "from a declarative spec (deterministic, no model, no cost)")
+    el.add_argument("spec", help="path to the elevation spec JSON (parts + scale + laws)")
+    el.add_argument("--out", required=True, help="output PNG path (the entity's contract.blueprint)")
+    el.add_argument("--universe", default=None, help="universe path, recorded in the provenance recipe")
+    el.add_argument("--entity", default=None, help="entity id, recorded in the provenance recipe")
+    el.add_argument("--no-recipe", action="store_true", help="skip writing <out>.recipe.json")
+
     ae = sub.add_parser("add-entity", help="scaffold a schema-valid entity stub with reference-matrix slots")
     ae.add_argument("universe"); ae.add_argument("kind"); ae.add_argument("eid")
     ae.add_argument("--name", default=""); ae.add_argument("--origin", default=None)
@@ -119,6 +127,21 @@ def main(argv: list[str] | None = None) -> int:
         if not args.no_recipe:
             rec = _massing.write_recipe(out, args.spec, universe=args.universe,
                                         spec_version=_SV, entity=args.entity)
+            print(f"wrote {rec}")
+        return 0
+
+    # elevation is massing's 2D sibling: an OBJECT is argued flat and head-on, not from a
+    # camera, so it declares parts in the object's own units instead of solids and cameras.
+    # Like massing it reads no canon and stays usable before a universe exists.
+    if args.cmd == "elevation":
+        from . import elevation as _elev
+        from . import SPEC_VERSION as _SV
+        spec = json.load(open(args.spec))
+        out = _elev.render_sheet(spec, args.out)
+        print(f"wrote {out}")
+        if not args.no_recipe:
+            rec = _elev.write_recipe(out, args.spec, universe=args.universe,
+                                     spec_version=_SV, entity=args.entity)
             print(f"wrote {rec}")
         return 0
 
