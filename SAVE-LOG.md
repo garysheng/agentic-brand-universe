@@ -642,3 +642,25 @@ Still open, found the same way: `assert-story` checks `requiredForRender` but NO
 sheets that `structured.render.poses` name. Two Angels passed the gate with seven pose
 sheets missing from disk, which `compose-spread` hard-exits on. The gate should catch
 what the compiler will refuse.
+
+## 2026-07-30 — 0.60.0 — chain_matrix --look: era plates get a shoot path
+
+`lock-shot --look` could FILE an era plate and `make-a-book` documented at length how one
+must be generated, but nothing generated one. So every alt-look in this framework was
+either shot by a hand-written provider call or never shot at all, and the second outcome
+is silent: the look's prose says "gaunt and grey" while the references passed are the
+entity's HEALTHY plates, and a reference image outranks a word. Two Angels and a Forklift
+rendered seven illness-era spreads with a hale man in them before anyone looked.
+
+`--look <key>` shoots into `reference/<id>/<look>/` from that look's own prompts.md, and
+seeds the chain off the entity's FACE sheets and photo stack rather than
+`forward-fullbody`, which is the silhouette the look supersedes.
+
+One correction earned inside the same hour: those face refs are for the SEED ONLY. Passed
+to the second shot they carry the very body being superseded, and the `wasted` full-body
+came back as a hale man in a blazer with a wings pin against a prompt asking for a thinner
+man in loose plain clothes. Once a look has its own blessed plate, that plate is the
+identity. `altLooks.dropSheets` then removes the default plates at render time, which took
+spread-06's ref list from six images to three.
+
+655 tests green.

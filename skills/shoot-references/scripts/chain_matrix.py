@@ -321,13 +321,47 @@ def resolve_register(uroot: Path, uni: dict, override=None):
 
 
 def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
-               register_override=None):
+               register_override=None, look=None):
+    """`look` shoots a DECLARED ALT-LOOK (an era body, a wardrobe state) instead of the
+    default matrix.
+
+    This path did not exist. `lock-shot --look` could file an era plate into
+    `structured.altLooks[key].sheets`, and `make-a-book` documented at length how such a
+    plate must be generated, but nothing generated one, so every era look in this
+    framework was shot by a hand-written provider call or not shot at all. The second
+    outcome is the dangerous one and it is silent: the look's prose says "gaunt and grey"
+    while the references passed are the entity's HEALTHY plates, and a reference image
+    outranks a word every time. The pose reads as prose that had no effect, and a book
+    about a man being broken and remade renders him hale throughout.
+
+    Two rules, both from `make-a-book` and both load-bearing here:
+
+      * The look's plates live in `reference/<id>/<look>/` with their OWN prompts.md, so
+        an era body never lands in the default matrix.
+      * The chain seeds off the entity's FACE sheets and photo stack, NEVER off
+        `forward-fullbody`. That plate is the present-day silhouette the era supersedes,
+        and passing it drags the old body into the new one.
+    """
     uni = load(uroot / "universe.json")
     anchor, poles, register_id = resolve_register(uroot, uni, register_override)
 
     ent = load(uroot / "canon" / "entities" / f"{eid}.json")
     kind = ent.get("kind", "character")
     refdir = uroot / "reference" / eid
+    base_sheets = dict((ent.get("structured") or {}).get("sheets") or {})
+    if look:
+        declared_looks = (ent.get("structured") or {}).get("altLooks") or {}
+        if look not in declared_looks:
+            raise Refuse(
+                f"{eid} declares no altLook {look!r}. Known: "
+                f"{', '.join(sorted(declared_looks)) or '(none)'}. Declare it on the entity "
+                f"first; a look invented at the command line has no invariants to read back "
+                f"against.")
+        refdir = refdir / look
+        if not (refdir / "prompts.md").is_file():
+            raise Refuse(
+                f"no prompts.md at {refdir}. An alt-look needs its OWN prompt bodies: the "
+                f"default matrix describes the body this look supersedes.")
     parsed = parse_prompts_full(refdir / "prompts.md")
     prompts = parsed["prompts"]
 
@@ -347,7 +381,10 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
     # Without this check a prompts.md authored with '###' shot blocks parses its
     # PROSE headings as the shot list, and the chain silently generates garbage
     # conditioned on nothing instead of failing. Refuse loudly instead.
-    declared = set((ent.get("structured") or {}).get("sheets") or {})
+    declared = set(((ent.get("structured") or {}).get("altLooks", {}).get(look, {}) or {})
+                   .get("sheets") or {}) if look else set(base_sheets)
+    if look and not declared:
+        declared = set()          # a look shot for the first time has no sheets yet
     if declared:
         bogus = [s for s in shots if s not in declared]
         if bogus:
@@ -365,6 +402,23 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
     # along on EVERY shot, not just the seed. Refuse on a declared-but-missing
     # photo, the same discipline as a missing cross-entity ref: a path that does
     # not resolve is a silent downgrade to "invent the face from prose".
+    # The FACE sheets of the DEFAULT matrix, passed on every shot of an alt-look.
+    # `make-a-book`: generate an era look from the FACE, never from the body, because
+    # forward-fullbody is the present-day silhouette this look supersedes and a
+    # reference image outranks any number of words.
+    look_refs = []
+    if look:
+        for k in ("face-neutral", "face-3q", "expressions"):
+            rel = base_sheets.get(k)
+            if rel:
+                q = (uroot / rel).resolve()
+                if q.exists():
+                    look_refs.append(str(q))
+        if not look_refs:
+            raise Refuse(
+                f"{eid} has no locked FACE sheet, so an alt-look cannot be seeded from the "
+                f"face. Shoot the default matrix first.")
+
     photos = []
     for rel in ((ent.get("realPerson") or {}).get("photoStack") or []):
         p = (uroot / rel).resolve()
@@ -378,7 +432,7 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
     rest = [s for s in shots if s != seed]
     return {
         "entity": eid, "kind": kind, "anchor": anchor, "refdir": refdir,
-        "register": register_id,
+        "register": register_id, "look": look, "lookRefs": look_refs,
         "photos": photos,
         "seed": seed, "order": [seed] + rest, "prompts": prompts,
         # register rejectedPoles FIRST, then the entity's own negatives from
@@ -468,6 +522,15 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     # chain must not drift on, and later references carry more weight.
     for ph in plan["photos"]:
         cmd += ["--input-image", ph]
+    # LOOK REFS ARE FOR THE SEED ONLY. They are the DEFAULT matrix's face sheets,
+    # passed so the first plate of an alt-look has an identity to be built from. Once
+    # the look has its own blessed plate, those defaults become a liability: they carry
+    # the very body the look supersedes, and a reference image outranks a word. Passing
+    # them to the second shot of the `wasted` era returned a hale man in a blazer,
+    # against a prompt that asked for a thinner man in loose plain clothes.
+    if not goldens:
+        for lr in plan.get("lookRefs") or []:
+            cmd += ["--input-image", lr]
     for g in cond:
         cmd += ["--input-image", g]
     # Cross-entity refs: another entity in frame is conditioned on ITS locked
@@ -522,6 +585,11 @@ def main() -> int:
     ap.add_argument("--print-plan", action="store_true")
     ap.add_argument("--bless-seed", metavar="SHOT",
                     help="record HUMAN approval of the seed so the chain may proceed")
+    ap.add_argument("--look", default=None,
+                    help="shoot a declared altLook (an era body, a wardrobe state) into "
+                         "reference/<id>/<look>/ instead of the default matrix. The chain seeds "
+                         "off the FACE and the photo stack, never off forward-fullbody, which is "
+                         "the silhouette the look supersedes")
     ap.add_argument("--shoot-seed", action="store_true",
                     help="generate the seed shot ALONE (anchor + photo stack only, no goldens) "
                          "and stop, so a human can look at it and then --bless-seed it")
@@ -531,7 +599,7 @@ def main() -> int:
     try:
         plan = build_plan(uroot, args.entity, args.seed,
                           args.shots.split(",") if args.shots else None,
-                          register_override=args.register)
+                          register_override=args.register, look=args.look)
     except Refuse as e:
         print(f"REFUSE: {e}", file=sys.stderr)
         return 2
