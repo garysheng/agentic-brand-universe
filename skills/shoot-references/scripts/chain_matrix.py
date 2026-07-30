@@ -170,6 +170,20 @@ def parse_prompts_full(md: Path) -> dict:
         raise Refuse(f"no prompts.md at {md}")
     text = md.read_text()
 
+    # An UNFILLED prompts.md is refused here, at the one place every shoot passes
+    # through. `add-entity` scaffolds each body as "TODO(author): replace each body
+    # below"; nothing used to check it, so an agent that met the stub wrote its prompts
+    # inline in a throwaway bash script and called the model directly. That happened
+    # FIVE times in one session (2026-07-30). The tool existed; the authoring step had
+    # been skipped; routing around it was easier than noticing.
+    if TODO_MARKER in text:
+        raise Refuse(
+            f"{md} still contains {TODO_MARKER!r}. Fill the shot bodies there before "
+            "shooting. Do NOT put the prompts in a one-off script instead: that is the "
+            "failure this refusal exists to catch, and it loses the prompt the moment "
+            "the session ends."
+        )
+
     negatives: list[str] = []
     m = re.search(r"^\*\*Negatives[^:]*:\*\*\s*(.+)$", text, flags=re.M)
     if m:
@@ -372,6 +386,45 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         "sizes": parsed.get("sizes", {}),
         "uroot": uroot,
     }
+
+
+TODO_MARKER = "TODO(author)"
+
+
+def _unused_refuse_unfilled_prompts(prompts_path, shots):
+    """Refuse to shoot from a prompts.md nobody filled in.
+
+    `add-entity` scaffolds every shot body as `TODO(author): replace each body below`.
+    Nothing used to check it, so an agent that found the stub simply wrote its prompts
+    inline in a throwaway bash script and called the model directly. That happened FIVE
+    times in one session (2026-07-30): the tool existed, the authoring step had been
+    skipped, and routing around it was easier than noticing.
+
+    Failing loudly here is the whole point. The fix is to write the prompts into
+    `prompts.md`, where they are versioned, reviewable, and reused on every re-run,
+    rather than into a script that is deleted at the end of the session.
+    """
+    try:
+        body = Path(prompts_path).read_text()
+    except OSError:
+        return
+    if TODO_MARKER not in body:
+        return
+    stale = [s for s in shots if TODO_MARKER in _section_for(body, s)] if shots else []
+    raise SystemExit(
+        f"chain_matrix: {prompts_path} still contains {TODO_MARKER!r}"
+        + (f" for: {', '.join(stale)}" if stale else "")
+        + ".\n  Fill the shot bodies in prompts.md before shooting. Do NOT write the"
+        "\n  prompts into a one-off script instead: that is the failure this refusal"
+        "\n  exists to catch, and it loses the prompt the moment the session ends."
+    )
+
+
+def _section_for(body, shot):
+    """The prompt body under `## <shot>`, tolerant of the `## <shot> -> path` form."""
+    import re as _re
+    m = _re.search(rf"^##\s+{_re.escape(shot)}\b.*?$(.*?)(?=^##\s|\Z)", body, _re.M | _re.S)
+    return m.group(1) if m else ""
 
 
 def main() -> int:

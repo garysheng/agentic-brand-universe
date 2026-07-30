@@ -53,6 +53,25 @@ Two things differ from an ordinary shot, and both are load-bearing:
 Read back against the ERA's own invariants (`altLooks.<key>.invariants` plus the base
 invariants it does not supersede), not against today's.
 
+## Fill `prompts.md`. Never write the prompt into a throwaway script.
+
+`add-entity` scaffolds every shot body as `TODO(author): replace each body below`.
+**Filling those bodies is part of casting, not an optional extra**, and `chain_matrix.py`
+now REFUSES to shoot while the marker is still present.
+
+The refusal exists because of a specific, expensive failure (2026-07-30): faced with a
+stub, an agent wrote its prompts inline in five throwaway bash scripts and called the
+provider directly. The tool it needed already existed and already did chaining, the
+register, and `--skip-existing`. Routing around it was simply easier than noticing the
+authoring step had been skipped.
+
+A prompt in `prompts.md` is versioned, reviewable, diffable, and reused on every re-run.
+The same prompt in `/tmp/shoot-thing.sh` is gone when the session ends, which means the
+next run cannot reproduce the shot and the entity's own art has no recorded intent.
+
+So: write the shot bodies into `prompts.md` first, then shoot with `chain_matrix.py`. If a
+shot needs something the file cannot express, fix the file format, not the workflow.
+
 ## A multi-state object: the blueprint holds the OBJECT, not the FRAMING
 
 Seeding every state off one code-drawn blueprint is the right rule and it is not enough.
