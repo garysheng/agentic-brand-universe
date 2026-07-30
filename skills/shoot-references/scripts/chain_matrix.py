@@ -176,7 +176,13 @@ def parse_prompts_full(md: Path) -> dict:
     # inline in a throwaway bash script and called the model directly. That happened
     # FIVE times in one session (2026-07-30). The tool existed; the authoring step had
     # been skipped; routing around it was easier than noticing.
-    if TODO_MARKER in text:
+    # Scoped to the SHOT BODIES, deliberately. The scaffold's own header instruction is
+    # the string "TODO(author): replace each body below", so a whole-file scan can only
+    # be satisfied by DELETING the guidance that tells an author what a prompt must
+    # contain. A refusal whose only remedy is destroying documentation is a refusal
+    # people learn to route around, which is the exact behaviour this one exists to stop.
+    bodies = text[text.index("\n## "):] if "\n## " in text else ""
+    if TODO_MARKER in bodies:
         raise Refuse(
             f"{md} still contains {TODO_MARKER!r}. Fill the shot bodies there before "
             "shooting. Do NOT put the prompts in a one-off script instead: that is the "

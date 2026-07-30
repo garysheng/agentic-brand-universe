@@ -618,3 +618,27 @@ so both paths share it.
 
 Both were found by working a real book (Two Angels and a Forklift) rather than by
 reading the framework. 655 tests green.
+
+## 2026-07-30 — voice-gate becomes a script, and a refusal stops eating its own documentation
+
+`voice-gate` shipped as a SKILL.md and nothing else, which made the words-before-art
+gate prose, and prose does not bind. Now `scripts/voice_gate.py`, exiting non-zero. It
+skips quoted spans, because a verbatim quotation from a real person is never edited to
+satisfy a style rule and checking inside quotes rewards paraphrasing a testimony into
+house style. `Spirit` capitalisation and the `neverDisparage` list print as REVIEW
+rather than blocking: both need a human to read the sense, and a checker that blocks on
+them trains the author to pass `--force`. It caught three real intensifiers in Two
+Angels and a Forklift and one false positive of its own, `just as`, now excluded along
+with the other comparative, temporal and limiting senses of `just`.
+
+`chain_matrix`'s TODO refusal now scans the SHOT BODIES, not the whole file. The
+scaffold's own header instruction is literally "TODO(author): replace each body below",
+so the whole-file scan could only ever be satisfied by deleting the guidance that tells
+an author what a prompt must contain. A refusal whose only remedy is destroying
+documentation is one people learn to route around, which is the behaviour it exists to
+stop.
+
+Still open, found the same way: `assert-story` checks `requiredForRender` but NOT the
+sheets that `structured.render.poses` name. Two Angels passed the gate with seven pose
+sheets missing from disk, which `compose-spread` hard-exits on. The gate should catch
+what the compiler will refuse.
