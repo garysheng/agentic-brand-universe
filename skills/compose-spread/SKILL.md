@@ -286,6 +286,16 @@ sentence won because it was more specific.
 
 A book, notebook, page, ledger, letter or document that a character is reading or writing belongs to THEM, so it is oriented for them: top edge away from them, text running the direction they read, and therefore foreshortened, tilted or partly upside down from the camera. Image models default to squaring the page up to the lens so the viewer can read it, because that is what stock illustration does, and the result reads as staged the instant you notice it. If the camera cannot see the page clearly, that is correct.
 
-Bake this as a book-level negative rather than hoping per spread. It recurs on every spread with a desk, a Bible, a report card or a ledger, and it is invisible in a thumbnail and obvious at full size (caught by Gary on `it-was-not-broken` spread 36, 2026-07-25: "you continuously flip the book").
+DO NOT bake this as a per-book negative. It is enforced for you, on every render, by the shared prompt guard in
+`~/.agents/skills/chatgpt-images/scripts/prompt_guards.py`, which both image generators import. A per-book restatement
+is worse than nothing: the guard's own signature is what makes re-application idempotent, and an earlier version of the
+probe list matched paraphrases, so a book's weaker restatement SUPPRESSED the authoritative rule.
+
+History, because it took three passes to land: prose in a SKILL.md (ignored), then a per-book negative plus a guard
+whose word list had no entry for "card" and which simultaneously demanded "NO real readable letters" — so on a scene
+that specified exact designed text the model had to choose, and it chose legible-by-rotating-to-the-lens. Caught by Gary
+on `it-was-not-broken` spread 36 ("you continuously flip the book", 2026-07-25) and again on
+`she-had-everything-but-peace` spread 16 (2026-07-29). The guard now names the resolution: legibility is a CAMERA
+problem. Move the camera to the reader's side; never turn the page.
 
 The one exception is a page the scene explicitly presents TO the viewer as a designed element under CANON rule 6, which is a deliberate composition and not a character reading.
