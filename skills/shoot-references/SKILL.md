@@ -53,6 +53,33 @@ Two things differ from an ordinary shot, and both are load-bearing:
 Read back against the ERA's own invariants (`altLooks.<key>.invariants` plus the base
 invariants it does not supersede), not against today's.
 
+## SHOW THE OPERATOR EVERY SHOT. This is a GATE, not a courtesy.
+
+**No shot locks until the human has actually seen it.** Reading an image back yourself is
+QA, not delivery. The two are different and conflating them is the failure this rule exists
+to stop: an agent can crop-zoom forty renders, pass every invariant, lock them all, and the
+person who commissioned the book has seen nothing.
+
+**`open-in-preview` alone does NOT count as delivery.** It opens macOS Preview on one
+machine. Half the time the operator is remote, on a phone, or in another session, so
+"opened 10 images" reports success for something they cannot see. Earned 2026-07-30, when
+Gary asked directly why images were not reaching him after this exact pattern.
+
+So, every time art is generated:
+
+1. **Send the files to the operator** with the harness's own file-delivery tool, which
+   reaches them wherever they are. This is the delivery that counts.
+2. **Also open them locally** if they are at that machine. Convenience, not the mechanism.
+3. **Say what each one is and which are decisions**, so a batch is scannable rather than a
+   wall of pictures.
+
+A batch of four or more goes as ONE contact sheet plus individual files for anything being
+approved. `render-readback/scripts/contact_sheet.py` already builds the sheet and already
+refuses a partial one, so a short sheet cannot read as "everything I rendered".
+
+The tell that this is being skipped: a session that generated a dozen images and whose
+transcript contains no delivery, only `Read` calls the agent made to itself.
+
 ## Gates honored
 - **Register-first:** every generation leads with the universe style anchor; no anchor means stop.
   The register is ALSO named positively, in words, at the head of every shot's prompt (`style_line`),

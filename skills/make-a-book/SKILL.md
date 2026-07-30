@@ -299,6 +299,17 @@ The signal that this step is being skipped: a scratchpad full of `*.sh` files at
 and a framework that is byte-identical to how it started. Every one of those scripts is a thing
 you will write again on the next book.
 
+## Every image reaches the human, or the step is not done
+
+Applies to every art step in this chain: `shoot-references`, `compose-spread`, `cover`.
+
+**Send the art to the operator with the harness's file-delivery tool, every time.** Opening
+it in a local viewer is not delivery: they are frequently not at that machine, and "opened
+12 images" then reports success for something nobody saw. Reading an image back yourself is
+QA, and QA is not delivery.
+
+Batch of four or more: one contact sheet plus individual files for anything being approved.
+
 ## Gates honored
 Words-before-art + voice-gate; casting reuse-first; register-anchor-first on every render;
 readback-from-scratch on any defect; spine declared not assumed; provenance per beat; render only
