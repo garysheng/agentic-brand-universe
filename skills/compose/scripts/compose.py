@@ -11,9 +11,9 @@ Implements the parts the spec asserted and nothing ran:
   * PROVENANCE: every slot writes its recipe (model, exact prompt, every input by
     path and by content hash) before anything is generated
 
-    python3 compose.py <composition.json>                      compose
-    python3 compose.py <composition.json> --recipes-only        freeze a baseline, no generation
-    python3 compose.py <composition.json> --check-drift <dir>   compare to a baseline, exit 1 on drift
+    python3 compose.py <work.json>                      compose
+    python3 compose.py <work.json> --recipes-only        freeze a baseline, no generation
+    python3 compose.py <work.json> --check-drift <dir>   compare to a baseline, exit 1 on drift
 """
 import json, os, pathlib, re, subprocess, sys, hashlib
 
@@ -778,7 +778,7 @@ def main():
         del argv[i:i + 2]
     argv = [a for a in argv if a != "--recipes-only"]
     if not argv:
-        print(__doc__.strip().splitlines()[-1] if __doc__ else "usage: compose.py <composition.json>")
+        print(__doc__.strip().splitlines()[-1] if __doc__ else "usage: compose.py <work.json>")
         return 2
     comp = json.load(open(argv[0]))
     root = comp["universe"]

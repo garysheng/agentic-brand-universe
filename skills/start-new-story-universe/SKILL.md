@@ -6,7 +6,7 @@ description: Stand up a brand-new story universe on the Agentic Brand Universe f
 # Start New Story Universe
 
 Birth a new **universe** on the Agentic Brand Universe framework. A universe is the first-class
-object: a typed, git-versioned canon (entities + relations), with stories as compositions
+object: a typed, git-versioned canon (entities + relations), with stories as works
 over it, references made load-bearing (their absence is a crash, not a drift), and quality
 wired as gates rather than remembered. This skill does the one-time generation; ongoing
 work is normal canon commits plus a renderer skill (e.g. `create-brand-os-picture-book`).

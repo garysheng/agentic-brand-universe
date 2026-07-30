@@ -1,11 +1,11 @@
 ---
 name: add-story
-description: Add ONE story to an Agentic Brand Universe as a typed StorySpec (a medium-neutral composition, NOT an `add-entity` kind). Interview the logline, its declared spine (obedient-servant, thesis, primer, testimony, or another open-set value; a story is never assumed to be a hero-journey), its refrain, its register (defaults to the universe's `identity.register`, with a per-story override allowed), and its beats with per-beat provenance. Registers as `status: "stub"` (logline + spine only) or `"full"` (features + beats + provenance filled). Runs a casting sweep over the beats' named entities and hands off anything not yet in canon to add-character/add-setting/add-visual-metaphor/add-motif/add-prop. Art is NOT generated here. Use when composing a new property (book, chapter, or other unit) out of existing or new canon. Generic and universe-parameterized: pass the target universe.
+description: Add ONE story to an Agentic Brand Universe as a typed StorySpec (a medium-neutral work over canon, NOT an `add-entity` kind). Interview the logline, its declared spine (obedient-servant, thesis, primer, testimony, or another open-set value; a story is never assumed to be a hero-journey), its refrain, its register (defaults to the universe's `identity.register`, with a per-story override allowed), and its beats with per-beat provenance. Registers as `status: "stub"` (logline + spine only) or `"full"` (features + beats + provenance filled). Runs a casting sweep over the beats' named entities and hands off anything not yet in canon to add-character/add-setting/add-visual-metaphor/add-motif/add-prop. Art is NOT generated here. Use when composing a new property (book, chapter, or other unit) out of existing or new canon. Generic and universe-parameterized: pass the target universe.
 ---
 
 # Add Story
 
-One story, into a universe's canon, as a typed `StorySpec` written directly to `stories/<id>.json`. This is authoring, not art and not `add-entity` (a story is a composition over canon, not a canon entity itself). It ends with a validated record; the picture-book renderer projects it into a medium later, and `shoot-references` still owns any new entity's art.
+One story, into a universe's canon, as a typed `StorySpec` written directly to `stories/<id>.json`. This is authoring, not art and not `add-entity` (a story is a work over canon, not a canon entity itself). It ends with a validated record; the picture-book renderer projects it into a medium later, and `shoot-references` still owns any new entity's art.
 
 ## Inputs
 - The target universe (a path containing `universe.json`). Read its `identity` (mark, register, voice) and existing `canon/entities/` + `stories/`.

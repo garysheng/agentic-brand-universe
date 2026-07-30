@@ -25,7 +25,7 @@ rendered from.
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
   canon), and [`hyperagentic-age`](https://github.com/garysheng/hyperagentic-age), a public universe
-  declaring eight projections across image, text, and audio.
+  declaring eight forms across image, text, and audio.
 
 ## The six layers
 

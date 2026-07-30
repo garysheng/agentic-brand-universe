@@ -1,21 +1,21 @@
 ---
 name: compose
-description: Run the composer (SPEC 4.10) over a composition: resolve the projection and its extends chain, refuse an undeliverable surface at PLAN time, then execute each slot with durable per-slot state, parking a defective slot and continuing rather than halting. Use to produce any artifact declared by a projection.
+description: Run the composer (SPEC 4.10) over a work: resolve the form and its extends chain, refuse an undeliverable surface at PLAN time, then execute each slot with durable per-slot state, parking a defective slot and continuing rather than halting. Use to produce any artifact declared by a form.
 ---
 
 # Compose
 
 ```
-python3 scripts/compose.py <composition.json>                    compose
-python3 scripts/compose.py <composition.json> --recipes-only      freeze recipes, no generation
-python3 scripts/compose.py <composition.json> --check-drift <dir> compare recipes to a baseline
+python3 scripts/compose.py <work.json>                    compose
+python3 scripts/compose.py <work.json> --recipes-only      freeze recipes, no generation
+python3 scripts/compose.py <work.json> --check-drift <dir> compare recipes to a baseline
 ```
 
-The composition names its `universe`, its `projection`, and fills the projection's slots.
+The work names its `universe`, its `form`, and fills the form's slots.
 
 ## What it actually enforces
 
-**`extends` resolution.** A projection may fork another rather than copying it. The chain is merged
+**`extends` resolution.** A form may fork another rather than copying it. The chain is merged
 key-wise, child over parent, and printed so the resolution is never implicit.
 
 **Plan-time feasibility refusal.** Before generating anything, every generated slot's required aspect
@@ -31,7 +31,7 @@ than rhetorical.
 the artifact emits INCOMPLETE with a per-slot report. Exit code 1. One defect costs one slot.
 
 **Retry defects, resume successes.** Resuming a DEFECT would freeze the artifact broken forever, so
-only PASS and SKIP resume; a defective slot is always re-attempted. Repair the composition, re-run,
+only PASS and SKIP resume; a defective slot is always re-attempted. Repair the work, re-run,
 and pay only for the slot you fixed.
 
 **The full slot loop.** A generated slot runs compile, generate, judge, repair. The compiler

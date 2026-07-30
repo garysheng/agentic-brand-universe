@@ -1,6 +1,6 @@
 ---
 name: lint-universe
-description: Lint a brand universe. Static checks over the universe and everything it declares (style packs, projections, slots, emitters, generators, goldens, invariants, provider quirks) with no generation, no API calls, and no cost. Catches the failure classes that were previously only discovered by running a composition, sometimes an hour into one. Run it before composing anything.
+description: Lint a brand universe. Static checks over the universe and everything it declares (style packs, forms, slots, emitters, generators, goldens, invariants, provider quirks) with no generation, no API calls, and no cost. Catches the failure classes that were previously only discovered by running a work, sometimes an hour into one. Run it before composing anything.
 ---
 
 # Brand Universe Linter
@@ -12,7 +12,7 @@ Exit **0** clean, **1** warnings only, **2** errors.
 ## Why this exists
 
 Every check here corresponds to a failure that actually shipped and was only caught by executing a
-composition. A contract can be internally valid, reviewed by two people, and undeliverable. The linter
+work. A contract can be internally valid, reviewed by two people, and undeliverable. The linter
 moves those discoveries to the cheapest possible moment.
 
 On its first run against the reference universe it found a generated slot with **no generator declared
@@ -49,8 +49,8 @@ a pack without one is a mood board; `styleLine` exists. Warns under three refs.
 - A `generated` slot has a generator that declares `for` it.
 - `surface` is FEASIBLE: the slot's required aspect is within tolerance of the provider's
   `producibleAspects`. This is the 0.333 class, where the contract is coherent and no model can make it.
-- `extends` resolves to a projection that exists.
-- Every invariant is typed `computed` or `judged`. A projection with no invariants is flagged: nothing
+- `extends` resolves to a form that exists.
+- Every invariant is typed `computed` or `judged`. A form with no invariants is flagged: nothing
   can fail, so nothing is checked.
 
 **Goldens.** Every sheet named in an entity's `requiredForRender` resolves to a file

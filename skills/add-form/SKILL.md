@@ -78,7 +78,7 @@ two exist. A base extracted from one example is a guess about what the second on
 ## The rules that carry the weight
 
 **`requires` names kinds; the work binds ids.** This is the whole mechanism. The moment a
-projection names `warm-oil-curdles-cold` instead of `style-pack`, it is welded to one universe and
+form names `warm-oil-curdles-cold` instead of `style-pack`, it is welded to one universe and
 it has stopped being distributable. The engine rejects this.
 
 **Every computed invariant needs a machine-evaluable `rule`, not just an id.** A generic engine
