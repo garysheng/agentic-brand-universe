@@ -384,10 +384,63 @@ def resolve_render_block(ent: dict, pose: str | None, look: str | None = None):
     return sheets, (" ".join(parts) if parts else None)
 
 
-def resolve_character(ent: dict, look: str | None):
+# How many real photographs from a `realPerson.photoStack` reach the model.
+#
+# UNCAPPED BY DEFAULT (changed 2026-07-29). A good bare-face photo stack is an ASSET:
+# more angles make a stronger identity lock, which is the entire reason a real-person
+# entity carries photographs at all. Two was an arbitrary ceiling and it was the wrong
+# default. An entity that genuinely needs a ceiling now says so with
+# `realPerson.photoLimit`.
+PHOTO_LIMIT_DEFAULT = None  # None = pass them all
+
+
+def _photo_refs(ent: dict, uroot=None) -> list[str]:
+    """The real photographs for a realPerson entity: EXPANDED first, then capped.
+
+    `photoStack` may name individual files OR a DIRECTORY (the documented convention,
+    see resolve_ref). The cap must therefore be applied AFTER expansion. The old code
+    sliced the RAW list with `[:2]`, so a one-entry directory stack sailed straight past
+    the cap and passed every photograph in the folder: the ceiling silently did nothing
+    in exactly the case the convention encourages.
+
+    Found 2026-07-29 building `she-had-everything-but-peace`. Nation of Fire's `victory`
+    declares `photoStack: ["reference/victory/photos"]`, so seventeen spreads each
+    received SIX photo refs rather than two, two of which were multi-person family-band
+    photographs. Passing a group photo as an identity anchor is how a scene grows an
+    extra confident stranger, and nothing warned.
+
+    A STRING photoStack is treated as one path rather than iterated character by
+    character, which is the authoring mistake the SPEC already records.
+    """
+    rp = ent.get("realPerson") or {}
+    stack = rp.get("photoStack")
+    if not stack:
+        return []
+    if isinstance(stack, str):
+        stack = [stack]
+    out: list[str] = []
+    for entry in stack:
+        expanded = [entry]
+        if uroot is not None:
+            try:
+                expanded = resolve_ref(uroot, entry)
+            except Refuse:
+                expanded = [entry]
+        for p in expanded:
+            if p not in out:
+                out.append(p)
+    limit = rp.get("photoLimit", PHOTO_LIMIT_DEFAULT)
+    if isinstance(limit, int) and limit >= 0:
+        out = out[:limit]
+    return out
+
+
+def resolve_character(ent: dict, look: str | None, uroot=None):
     """Return (ref_paths, invariants) for a character in the selected look.
 
-    Default look: requiredForRender sheets + up to two real photos.
+    Default look: requiredForRender sheets + the real photo stack
+    (expanded and capped by _photo_refs; uncapped unless the entity sets
+    realPerson.photoLimit).
     Alt look: the alt anchor photo (+ any alt sheets), and invariants with the
     superseded base invariants removed and the alt invariants added. The default
     clean-shaven sheets are NOT passed for an alt look, so they cannot fight it.
@@ -433,8 +486,7 @@ def resolve_character(ent: dict, look: str | None):
             if p and p not in refs:
                 refs.append(p)
         if al.get("keepPhotos"):
-            rp = ent.get("realPerson") or {}
-            for p in list(rp.get("photoStack") or [])[:2]:
+            for p in _photo_refs(ent, uroot):
                 if p not in refs:
                     refs.append(p)
         # A BODY sheet is not an identity anchor. The check is whether anything in
@@ -461,8 +513,9 @@ def resolve_character(ent: dict, look: str | None):
             if not p:
                 raise Refuse(f"{ent['id']}.{key} is required but unlocked")
             refs.append(p)
-        rp = ent.get("realPerson") or {}
-        refs += list(rp.get("photoStack") or [])[:2]
+        for p in _photo_refs(ent, uroot):
+            if p not in refs:
+                refs.append(p)
         inv = base_inv
     return refs, inv
 
@@ -624,7 +677,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             # motif / prop: honour an explicit plate, else its locked default refs.
             r = resolve_plate(ent, c.get("plate"))
             if not r:
-                r, _inv = resolve_character(ent, c.get("look"))
+                r, _inv = resolve_character(ent, c.get("look"), uroot)
             add_refs(r)
             derived = ((ent.get("prose") or {}).get("rules")
                        or ((ent.get("structured") or {}).get("render") or {}).get("bake"))
@@ -632,7 +685,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             if block:
                 ent_blocks.append(block)
             continue
-        r, inv = resolve_character(ent, c.get("look"))
+        r, inv = resolve_character(ent, c.get("look"), uroot)
         add_refs(r)
         # Canon's prescribed prompt-craft (structured.render) is emitted ALONGSIDE
         # the invariant list: the invariants remain the QA keys, the render block

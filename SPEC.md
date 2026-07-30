@@ -332,6 +332,20 @@ Three wired mechanisms, applied at defined points:
   },
   "realPerson": {                          // present ONLY when the entity is a real person (backtest finding 4)
     "photoStack": ["reference/photos/…"],  // 5+ real photos; GABR built from the stack, never a painting-of-a-painting
+    // An entry may be a FILE or a DIRECTORY. A directory expands to the sorted image files
+    // directly inside it, so `["reference/<id>/photos"]` is the idiomatic whole-stack form.
+    "photoLimit": null,                    // v0.17: cap how many EXPANDED photos reach the model.
+    // null (default) = pass them ALL, which is what "5+ real photos" above always meant: more
+    // bare-face angles make a stronger identity lock. Set an integer only when a stack has more
+    // photos than a prompt should carry. THE CAP APPLIES AFTER DIRECTORY EXPANSION. Before v0.17
+    // the assembler hard-capped at 2 by slicing the RAW stack, so a one-entry DIRECTORY stack
+    // sailed past the cap entirely and passed every photo in the folder: the ceiling did nothing
+    // in exactly the case this convention encourages, and it contradicted the "5+" rule above.
+    // Found 2026-07-29 (she-had-everything-but-peace): nof `victory` passed SIX refs on every
+    // spread that cast her, two of them multi-person family-band photographs. A group photo used
+    // as an identity anchor is how a scene grows an extra confident stranger. When you cap, cap a
+    // stack of NAMED SOLO FILES rather than a directory: an alphabetical truncation of a folder
+    // picks whichever files sort first, not the best faces.
     "canonicalPhotos": { "face": "…", "fit": "…" },
     "approval": { "state": "gated", "by": "brenda-gentry", "on": null },  // gated | approved | none-required
     // `none-required` (v0.6.1) is for a universe whose identity.subjectApproval.realLivingPerson
