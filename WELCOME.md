@@ -7,23 +7,28 @@ plain language and the harness operates the machinery: it makes the images, hold
 look steady across everything, remembers what your characters and places look like,
 and refuses to render something it does not have the references for.
 
-**You are not expected to learn any commands.** There are none in this file on
-purpose. An earlier version of this page was a list of things to type, which is the
-wrong shape: in this model you state intent and the console does the operating.
+**You are not expected to learn any commands.** Two install lines below, and after
+that you talk. An earlier version of this page was a list of things to type, which is
+the wrong shape: in this model you state intent and the console does the operating.
 
-## Starting from scratch
+## Install
 
-Open your harness in this folder and say:
+In Claude Code, run these two lines. They are the only two you will ever type.
+
+    /plugin marketplace add garysheng/agentic-brand-universe
+    /plugin install abu
+
+Then say:
 
 > **set me up**
 
-It installs everything, checks what is missing, and tells you in plain sentences what
+It checks everything, installs what is missing, and tells you in plain sentences what
 is ready and what is blocked. Two things it cannot do for you, because both are
-credentials rather than chores: installing the harness itself, and holding an image
-API key. It will tell you if either is missing.
+credentials rather than chores: installing Claude Code itself, and getting an image
+API key. It will say so if either is missing.
 
-Then say what you are making. If you already have images you like, say so, because
-that is the fastest path to a first result.
+Then tell it what you are making. If you already have images you like, say that first.
+It is the fastest path to a result.
 
 ## Once you are running
 

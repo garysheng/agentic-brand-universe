@@ -18,9 +18,14 @@ Everything else is yours.
 
 ## Procedure
 
-**1. Find or place the repo.** If it is already on disk, use it. Otherwise clone
-`https://github.com/garysheng/agentic-brand-universe` somewhere sensible and say
-where you put it, because a file they cannot find later is a file they do not own.
+**1. They are probably already installed.** ABU ships as a Claude Code plugin from
+its own public repo, so if they ran
+
+    /plugin marketplace add garysheng/agentic-brand-universe
+    /plugin install abu
+
+then every skill is already present and there is nothing to clone. If they have a
+loose clone instead, use it in place; the installer links it.
 
 **2. Run the installer.**
 

@@ -1,5 +1,16 @@
 # Agentic Brand Universe
 
+**Talk to your AI harness, and it builds your brand: on-brand images that do not
+drift, characters that look the same every time, all version-controlled.**
+[Start here](./WELCOME.md), no commands to learn.
+
+```
+/plugin marketplace add garysheng/agentic-brand-universe
+/plugin install abu
+```
+
+---
+
 A first-principles standard for a **brand as version-controlled canon plus golden assets — the
 cartridge format** — agentically writable, composable, and evolvable, that any deliverable is
 rendered from.
@@ -46,7 +57,7 @@ v0.14. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 36 | `skills/*/SKILL.md` |
 | CLI verbs | 20 | `abu --help` |
-| Tests | 627 | across 27 files; `./run-tests.sh` |
+| Tests | 637 | across 28 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,
