@@ -53,6 +53,32 @@ Two things differ from an ordinary shot, and both are load-bearing:
 Read back against the ERA's own invariants (`altLooks.<key>.invariants` plus the base
 invariants it does not supersede), not against today's.
 
+## A multi-state object: the blueprint holds the OBJECT, not the FRAMING
+
+Seeding every state off one code-drawn blueprint is the right rule and it is not enough.
+Earned 2026-07-30 on `the-book-of-your-days`, twice in a row.
+
+The blueprint fixes what the object IS. It does not fix how the camera sees it, so two
+states seeded off the same blueprint came back with different cover proportions and read as
+two different books. For a thin state and a thick state of one book, that is fatal: the
+whole argument is that it is the SAME life, and it got fuller.
+
+So for any object whose states must read as one object:
+
+- **Pin the shared dimensions as NUMBERS in every state's prompt**, not just in the
+  blueprint. "The cover is a portrait rectangle exactly 1.4 times as tall as it is wide, and
+  it fills the same footprint in this frame regardless of how many pages are inside."
+- **Say what changes and what does not, in the same sentence.** "Only the thickness of the
+  page block changes."
+- **Put it on the ENTITY as an invariant**, so read-back can catch it and so the next state
+  anyone adds inherits it:
+  `every-state-shares-identical-cover-height-and-width-only-thickness-changes`.
+- If a later state still drifts, **chain it off the state that already passed** rather than
+  off the blueprint, so it inherits a cover that has been blessed.
+
+The general form: a blueprint constrains geometry, a prompt constrains framing, and a state
+set needs both pinned or the states are siblings rather than the same thing twice.
+
 ## SHOW THE OPERATOR EVERY SHOT. This is a GATE, not a courtesy.
 
 **No shot locks until the human has actually seen it.** Reading an image back yourself is

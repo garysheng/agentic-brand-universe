@@ -40,6 +40,22 @@ Everything else (casting, locking, per-spread rendering, cover, narration, stagi
 public publish**) is auto-advanced and reported, not asked. When torn between asking and
 continuing, continue and report.
 
+### Ask with the TOOL, not with prose (Gary, 2026-07-30: "use it a lot more")
+
+**Any question that has options is an `AskUserQuestion` call, not a paragraph.** This rule
+already existed and was still under-used four separate times in one session: the glow
+reading, the beat budget, Lorraine's likeness, and the book-thickness invariant were all
+asked in prose. Two of them went unanswered for hours because a question buried at the end
+of a long report is easy to scroll past, and a tappable option is not.
+
+The bar is low on purpose. If you are about to write "let me know which you prefer", "your
+call", "want me to X or Y", or a bulleted list of choices, that is the tool. Reserve prose
+for questions with genuinely no option set, which are rare.
+
+Lead with a recommendation marked "(Recommended)", and attach a `preview` whenever the
+options are concrete: candidate art, a beat budget drawn movement by movement, two versions
+of a defective spread. He should compare artifacts, not adjectives.
+
 ### When you DO surface him, use `AskUserQuestion`
 
 Auto-advance says **how often** to stop. This says **what stopping looks like**: tappable options,
