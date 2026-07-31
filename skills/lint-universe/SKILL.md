@@ -41,7 +41,7 @@ catches the drift that used to pass silently: a typo (`expectant-biograhpy`), a 
 (`teaching-testimony` vs `testimony-teaching`), or free-text prose stuffed into the genre field
 (`testimony (Jerry-voiced ...)`). The fix a warning points at is one JSON file: register the value as a
 craft record (which makes the mode discoverable data) or correct the value. It is a WARNING, not an
-error, so a universe mid-normalization still validates and composes.
+error, so a universe mid-normalization still validates and renders.
 
 **Style packs.** `pack.json` parses; the anchor and every ref resolve on disk; a `gate` exists, because
 a pack without one is a mood board; `styleLine` exists. Warns under three refs.
