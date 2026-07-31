@@ -520,6 +520,56 @@ def resolve_character(ent: dict, look: str | None, uroot=None):
     return refs, inv
 
 
+def _norm_key(s: str) -> str:
+    """Fold a key to compare a slug against a camelCase sheet name."""
+    return "".join(ch for ch in s.lower() if ch.isalnum())
+
+
+def _selector_bake_guard(c: dict, ent: dict, spread_id: str) -> None:
+    """Refuse a `bake` that is really a SHEET/POSE SELECTOR written in fork vocabulary.
+
+    THE SILENT DEFECT THIS CATCHES. In this assembler `plate` (non-characters) and
+    `pose` (characters) SELECT which locked reference is passed, and `bake` is FREE
+    PROSE appended to the entity's block. Nation of Fire's retired local compiler used
+    `bake` as the selector instead, so every render-spec written in that dialect, and
+    every new spec copied from one as a template, names a state that this assembler
+    treats as a stray sentence fragment.
+
+    Nothing errored, which is the whole problem: the entity's state plate was simply
+    never passed, the spread rendered off the style anchor alone, and the raw slug was
+    pasted into the prompt as text. Earned 2026-07-31 on `looked-like-hate`, whose
+    three-state spine object rendered with ZERO of its locked plates in the refs. It was
+    caught only by dumping the assembled refs by hand and noticing the count was 1.
+
+    The signal is unambiguous, so this fails CLOSED. A real bake is a sentence; a
+    selector is a bare slug that also happens to name one of this entity's own sheets or
+    poses. Both conditions must hold, which is why an ordinary prose bake mentioning a
+    state name in passing does not trip it.
+    """
+    bake = (c.get("bake") or "").strip()
+    if not bake or len(bake) > 60 or "." in bake or bake.count(" ") > 2:
+        return  # a sentence, not a selector
+    st = ent.get("structured") or {}
+    candidates: dict[str, str] = {}
+    for k in (st.get("sheets") or {}):
+        candidates.setdefault(_norm_key(k), f"\"plate\": \"{k}\"")
+    for k in ((st.get("render") or {}).get("poses") or {}):
+        candidates.setdefault(_norm_key(k), f"\"pose\": \"{k}\"")
+    hit = candidates.get(_norm_key(bake))
+    if not hit:
+        return
+    raise Refuse(
+        f"BAKE USED AS A SELECTOR ({spread_id}, cast '{c['id']}'): bake={bake!r} is not "
+        f"prose, it names one of this entity's own reference slots. In this assembler "
+        f"`bake` is free prose appended to the block, and the SELECTOR is {hit}. Left "
+        f"alone, the locked reference is never passed and the slug is pasted into the "
+        f"prompt as stray text, with no error. Fix the descriptor: set {hit}, and either "
+        f"drop `bake` or replace it with an actual sentence. This is the retired "
+        f"NoF compile_render.py dialect; `migrate_render_spec.py translate <spec>` "
+        f"converts a whole spec."
+    )
+
+
 def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     """Resolve ONE named plate/sheet for a non-character entity.
 
@@ -703,6 +753,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     for c in entries:
         ent = load(uroot / "canon" / "entities" / f"{c['id']}.json")
         kind = ent.get("kind")
+        _selector_bake_guard(c, ent, spread_id)
         # Scale is collected for EVERY kind, not only characters: a recurring PROP
         # drifting size across a book is the commonest form of this defect.
         entity_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}
