@@ -27,6 +27,13 @@ SAFE_MARGIN_BLOCK = (
     "edges will be trimmed."
 )
 
+# THE CONFORM EXTENDS, IT NEVER REMOVES. The model emits 2:3 and the reader wants 3:4, so
+# the image must get WIDER relative to its height; cropping height to reach that ratio
+# deletes a strip, and on a cover the bottom strip carries the byline and the universe
+# mark. This field used to say "safe-margin-crop", a mode `conform_cover.py` does not
+# implement, so every consumer had to guess what it meant and a runner guessing by
+# substring picked "crop" and cropped the mark off a finished cover (2026-07-30).
+# Emit a mode the conformer actually has.
 RENDER_SIZE = "1024x1536"  # the only portrait size gpt-image offers (2:3)
 
 
@@ -230,7 +237,10 @@ def main() -> int:
                 "prompt": prompt,
                 "refs": refs,
                 "size": RENDER_SIZE,
-                "conform": {"from_aspect": "2:3", "to_aspect": args.platform_aspect, "mode": "safe-margin-crop"},
+                # mode is "pad" because the conform EXTENDS and never removes; see the
+                # note beside RENDER_SIZE for the cover this rule was earned on.
+                "conform": {"from_aspect": "2:3", "to_aspect": args.platform_aspect,
+                            "mode": "pad"},
                 "textLines": text_lines,
                 "qa": qa,
             },

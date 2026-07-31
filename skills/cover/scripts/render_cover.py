@@ -90,7 +90,15 @@ def main() -> int:
     # reader crops it, and what it crops is the bottom of the frame, where the title is.
     c = job.get("conform") or {}
     if c.get("to_aspect"):
-        mode = "pad" if "pad" in (c.get("mode") or "") else "crop"
+        # A COVER CONFORM ALWAYS EXTENDS AND NEVER REMOVES (Gary, 2026-07-30: "crop is not
+        # the right move it's to extend what is generated"). The model emits 2:3 and the
+        # reader wants 3:4, so the image has to get WIDER relative to its height. Cropping
+        # height to reach that ratio deletes a strip off the frame, and on a cover the
+        # bottom strip is where the byline and the universe mark live: the first real run
+        # of this runner cropped 171px and took "A NATION OF FIRE story" with it. Padding
+        # the sides adds canvas and loses nothing, which is why the compiled prompt already
+        # reserves the outer 10% as safe margin. Any crop-flavoured mode is honoured as pad.
+        mode = "pad"
         rc = subprocess.run([sys.executable, str(HERE / "conform_cover.py"), str(out), str(out),
                              "--aspect", c["to_aspect"], "--mode", mode])
         if rc.returncode != 0:

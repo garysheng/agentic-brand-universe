@@ -724,9 +724,22 @@ A generator that stops one step short of the artifact is a generator nobody uses
 so the read-back has something to check that is not the operator's memory, and refuses to
 call itself done. `compile_cover.py` now exposes `textLines` on the job for the same reason.
 
-KNOWN BUG, found on the first real use and NOT yet fixed: the runner maps the job's
-`safe-margin-crop` to a plain centre `crop`, which removed the bottom 171px of a 1024x1536
-render and took the universe mark with it. `safe-margin-crop` is a distinct mode and needs
-implementing in `conform_cover.py`; until then a cover whose bottom line is the mark will
-lose it. The compiled prompt already reserves the outer 10% as safe margin, so the fix is
-to honour that reservation in the conform rather than to move the text.
+FIXED the same hour, and the cause is worth more than the bug. `compile_cover.py` emitted
+`mode: "safe-margin-crop"`, which `conform_cover.py` does not implement: it has `crop` and
+`pad` and nothing else. Rather than make the two components agree, the runner translated
+between them with a substring test, `"pad" if "pad" in mode else "crop"`. The string
+contains "crop", so it chose crop, removed the bottom 171px of a finished cover and took
+"A NATION OF FIRE story" with it. `make-a-book` had already said in writing to use
+`--mode pad`; a guess overrode a written instruction.
+
+THE RULE (Gary: "crop is not the right move it's to extend what is generated"): A COVER
+CONFORM EXTENDS AND NEVER REMOVES. The model emits 2:3 and the reader wants 3:4, so the
+image must get WIDER relative to its height. Cropping height to reach that ratio deletes a
+strip, and on a cover the bottom strip is the byline and the mark. Padding the sides adds
+canvas and loses nothing, which is why the compiled prompt reserves the outer 10% as safe
+margin in the first place.
+
+`compile_cover.py` now emits `mode: "pad"`, a mode the conformer actually has, so nothing
+downstream has to guess. The general lesson: when two components speak different
+vocabularies, make them agree. A translation layer in the middle is a place for a default
+to be wrong quietly, and the wrong default here was the destructive one.
