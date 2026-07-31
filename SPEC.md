@@ -210,7 +210,7 @@ that drift, references that silently go missing, beats that can't be traced to a
 
 The Agentic Brand Universe standard makes the implicit system explicit: a small set of primitives and
 invariants that make a brand **universe** — version-controlled canon + golden assets — the
-first-class object, deliverables **compositions** over it, references **load-bearing** (their absence
+first-class object, deliverables **works** over it, references **load-bearing** (their absence
 is a crash, not a drift), and quality a set of **wired gates** rather than a memory feat. It is
 designed to be written and evolved primarily **by agents**, with the human in the loop exactly where
 taste is irreducible. (An **Agentic Brand Universe** — the picture-book / comic — is one such deliverable.)
@@ -249,11 +249,11 @@ taste is irreducible. (An **Agentic Brand Universe** — the picture-book / comi
 ┌─────────────────────────────────────────────────────────────┐
 │  QUALITY      taste gates · craft-canon · read-back          │  (cross-cuts all)
 ├─────────────────────────────────────────────────────────────┤
-│  COMPOSER     agentic: plan → compile → generate → gate      │  §4.10
+│  COMPOSER     agentic, per form: plan → compile → gate       │  §4.10
 ├─────────────────────────────────────────────────────────────┤
-│  COMPOSITION  ONE instance: this book, this flyer, this meme │  §4.9
+│  WORK         ONE made thing: this book, this flyer, a meme  │  §4.9
 ├─────────────────────────────────────────────────────────────┤
-│  PROJECTION   the typed contract for a KIND of deliverable   │  §4.8
+│  FORM         what makes a work the KIND of thing it is      │  §4.8
 ├─────────────────────────────────────────────────────────────┤
 │  GOLDENS      load-bearing resolver: entity → real asset     │  §4.4
 ├─────────────────────────────────────────────────────────────┤
@@ -262,12 +262,20 @@ taste is irreducible. (An **Agentic Brand Universe** — the picture-book / comi
 ```
 
 Read it bottom-up as a sentence: *canon* is what is true, *goldens* are what it looks like once
-locked, a *projection* is a kind of thing you can make, a *composition* is one of them, and the
-*composer* is the agent that makes it and answers to the gate.
+locked, a *form* is what shapes canon into a kind of thing, a *work* is canon given that form, and a
+*composer* is the agent that makes one and answers to the gate.
 
-The split that v0.6 introduces is between the middle two. **A projection is a type; a composition is
-an instance.** Conflating them is what made this standard storybook-shaped: the one primitive that
-existed carried a story's required fields, so every deliverable had to be a story to be expressible.
+The split that v0.6 introduced is between the middle two, and that much is durable: **a form is a
+kind; a work is one made thing.** Conflating them is what made this standard storybook-shaped: the
+one primitive that existed carried a story's required fields, so every deliverable had to be a story
+to be expressible.
+
+> **How these two middle layers are ENCODED is open, not settled.** From v0.6 to v0.16 a form and a
+> work were typed documents executed by a single universal composer. That encoding is RETIRED
+> (§4.8, §4.9): it was authored from one imagined example and produced zero works across the whole
+> life of the framework. §4.8, §4.9 and §4.10 are now the record of what was retired and why, and
+> they deliberately name no replacement until a second real composer exists to abstract from.
+> Nothing at these two layers should be read as a live schema, here or there.
 
 ### 3.1 Canon (the universe)
 The living graph. **Entities** (characters, settings, doctrines, motifs, beats, props, groups) and
@@ -281,21 +289,30 @@ A resolver maps every entity to its real assets and **asserts** them before any 
 renamed, or unlocked → hard error. This is the layer that kills silent drift. (The Nation of Fire
 `resolve_gabr.py` + `gabr-index.json` are the v0 of this layer.)
 
-### 3.3 Projection (a kind of deliverable)
-The typed contract for a KIND of artifact: what surface it occupies, which canon it requires before it
-may render, what slots it composes, which generators it invokes, and which invariants it is held to.
-A storybook, a flyer, a meme, a share card, an explanatory plate and a slide deck are six projections
-of the same canon. Defining a new one is filling in a contract (§4.8), not writing a renderer.
+### 3.3 Form (a kind of deliverable)
+What makes a work the KIND of thing it is. A storybook, a flyer, a meme, a share card, an explanatory
+plate and a slide deck are six forms over one canon; the canon does not change when the kind does.
 
-### 3.4 Composition (one instance) and the Composer (who makes it)
-A **composition** is one flyer, one book: it names its projection, selects the canon entities to
-feature, and fills the projection's slots. It reads canon and, on completion, **writes back** (a new
-locked character, a new crossover, a new doctrine occurrence).
+*How* a form is written down is an open question rather than a settled contract. From v0.6 to v0.16
+this standard answered it with a typed document — surface, required kinds, slots, generators,
+invariants — and promised that defining a new kind of deliverable was filling that document in rather
+than writing a renderer. That encoding is retired, and **§4.8 is now the record of its retirement,
+not the specification of a live contract**. Until a second proven composer exists to abstract from, a
+form is whatever a proven composer needs it to be, and no universe is asked to conform to a schema
+this standard cannot yet justify.
 
-The **composer** (§4.10) is the agent that turns a composition into the artifact. It plans the slots
-and their order, calls the deterministic compiler (§4.6) per slot, invokes generators across
-modalities, and repairs against the gate. It never mutates canon; it emits medium output plus a
-`writesBack` proposal.
+### 3.4 Work (one made thing) and the composer (who makes it)
+A **work** is one flyer, one book: canon given form. It names the kind of thing it is, selects the
+canon entities it features, and carries **authorship** — decisions present in neither the canon nor
+the form. It never mutates canon: a finished work *proposes* new canon back (a newly locked
+character, a new crossover, a new doctrine occurrence) for the author to accept and commit (§5).
+
+A **composer** (§4.10) is the agent that turns canon plus a form into the work, calling the
+deterministic compiler (§4.6) and answering to the gate. It is **per form**, not one universal
+executor: a storybook, a diptych series and a deck genuinely plan differently, and what they share
+sits underneath the plan rather than inside it. What a work is encoded as, and which of a composer's
+parts belong *under* it rather than *inside* it, are questions §4.9 and §4.10 hold open rather than
+answer.
 
 ### 3.5 Quality (cross-cutting)
 Three wired mechanisms, applied at defined points:
@@ -440,15 +457,16 @@ every render — never left implicit inside the renderer.
 
 ### 4.5 Renderer interface (superseded by §4.10; invariants retained)
 
-**v0.6:** what this section called a *renderer* is now the **composer** (§4.10), and a *story spec* is
-now a **composition** (§4.9). The rename matters because "renderer" implies a deterministic template
-engine, and the layer that plans a composition is not one. Three invariants from this section survive
-unchanged and remain normative for the composer:
+**v0.6:** what this section called a *renderer* is now a **composer** (§4.10). The rename matters
+because "renderer" implies a deterministic template engine, and the layer that plans a work is not
+one. This section also once claimed a *story spec* had become an instance of the generic deliverable
+primitive; §4.9 retracts that, because it never happened. **§4.3 remains canonical for stories.**
+Three invariants from this section survive unchanged and remain normative for a composer:
 
 - It declares `consumes` (which entity fields it reads) and `produces` (medium artifacts).
 - It **must assert refs before every unit** (§4.4). No unit is generated whose `assert` has not passed.
-- It **never mutates canon.** It reads canon plus a composition and emits medium output plus a
-  `writesBack` proposal for the author to accept.
+- It **never mutates canon.** It reads canon plus the story or work it is making, and emits medium
+  output plus a `writesBack` proposal for the author to accept.
 
 ### 4.6 Prompt compiler (the render step)
 `assert-spread` guarantees the refs *exist*; it says nothing about the **prompt**. Left to a human or
@@ -1004,7 +1022,8 @@ closed.
 - **Universe / Canon** — the evolving graph of everything true in a story world.
 - **Entity** — a typed node in canon (character, setting, doctrine, motif, beat, prop, group).
 - **Load-bearing reference** — a reference whose absence is a build error, not a silent drift.
-- **Story spec** — a medium-neutral composition selecting canon + beats + spine + provenance.
+- **Story spec (§4.3)** — a medium-neutral spec selecting canon + beats + spine + provenance. The
+  live primitive every book actually uses; it never became an alias for anything else (§4.9).
 - **Renderer** — a pluggable projection of canon + story into one medium.
 - **Craft-canon** — narrative-craft rules encoded as enforceable invariants (discovered, then encoded).
 - **Write-back** — the new canon a finished story contributes to the universe.
@@ -1013,19 +1032,20 @@ closed.
   a single assumed shape.
 - **Visual-metaphor** — an entity kind: the central object a whole book zooms into and argues through
   (the locked scale, the bazaar of cages); the book's spine-object.
-- **Projection (§4.8)** — a typed, versioned, distributable contract for a KIND of deliverable
-  (storybook, flyer, meme, share card, explanatory plate). Declares surface, required canon BY KIND,
-  slots, generator capabilities, invariants, and outputs. Defining a new kind of deliverable is
-  filling in this contract, not writing a renderer.
-- **Composition (§4.9)** — ONE instance of a projection: it names the projection, binds real canon
-  entity ids to the projection's required kinds, and fills its slots. Supersedes `Story Spec`, which
-  remains a back-compatible alias for a composition whose projection is `storybook`.
-- **Composer (§4.10)** — the agentic layer that plans a composition into slots and sequences their
-  generation. The only layer where open-ended model intelligence belongs.
+- **Form (§4.8)** — what makes a work the KIND of thing it is (storybook, flyer, meme, share card,
+  explanatory plate). Called *Projection* before v0.14. How a form is encoded is an OPEN question:
+  the v0.6–v0.16 typed contract (surface, required kinds, slots, generators, invariants) is retired
+  and §4.8 records that retirement rather than specifying a live contract.
+- **Work (§4.9)** — ONE made thing: canon given form, carrying authorship present in neither. Called
+  *Composition* before v0.14. Its v0.6–v0.16 encoding is retired with §4.8's. It never superseded
+  `Story Spec`, which is still the live primitive for stories (§4.3).
+- **Composer (§4.10)** — the agentic layer that plans a work and sequences its generation, answering
+  to the gate. **Per form**, not one universal executor. The only layer where open-ended model
+  intelligence belongs.
 - **Gate, `computed` vs `judged` (§4.10)** — an invariant checkable by pure code versus one requiring
   a model to look. A `judged` invariant is evaluated in fresh context by an agent that never sees the
   plan, because the maker defends its own intent.
-- **Cross-slot invariant (§4.8)** — an invariant only checkable across several slots at once (a
+- **Cross-slot invariant** — an invariant only checkable across several generated units at once (a
   character being the same person on spread 3 and spread 19). The expensive class, and the thing
   locked goldens exist to serve. A deliverable's complexity is its cross-slot invariant count.
 - **Register** — a story's paint-language: a first-class per-story renderer config, sometimes anchored

@@ -1,4 +1,4 @@
-"""Agentic Brand Universe engine v0 — a universe is first-class; stories are compositions; refs are load-bearing."""
+"""Agentic Brand Universe engine v0 — a universe is first-class; a story spec is its own primitive (SPEC §4.3); refs are load-bearing."""
 from .model import CraftCanon, Entity, Relation, StorySpec  # noqa: F401
 from .store import CanonStore  # noqa: F401
 from .refs import (assert_story, assert_spread, resolve_entity_assets, resolve_setting,  # noqa: F401

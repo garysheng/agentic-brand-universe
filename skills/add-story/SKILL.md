@@ -70,7 +70,7 @@ When in doubt, ask the author how far forward the story goes and how much of the
 - **Reuse-first casting sweep** (step 3): never invent an entity a story's beats could cast from existing canon.
 - **Provenance**: every beat in a `full` story cites a real source; unsourced vivid detail is flagged before it ships.
 - **Spine not assumed**: every story declares its own arc invariant instead of inheriting a single hero-journey default.
-- **No art here**: art generation is `shoot-references`; medium projection is the renderer. This skill only writes the composition.
+- **No art here**: art generation is `shoot-references`; medium projection is the renderer. This skill only writes the story spec.
 
 ## Not this skill
 - Creating a canon entity named in a beat → the matching sibling `add-*` skill.

@@ -355,7 +355,11 @@ class StorySpec:
 
 @dataclass
 class Form:
-    """SPEC §4.8 — a form: what makes a work the KIND of thing it is.
+    """RETIRED encoding (SPEC §4.8) — a form: what makes a work the KIND of thing it is.
+
+    The CONCEPT survives; this specific encoding does not. It was retired in v0.17 having
+    produced zero works, and §4.8 records that rather than specifying a live contract. The
+    class is kept so a universe written against v0.6-v0.16 still loads and typechecks.
 
     Canon is the matter; a form is what shapes it; a Work (§4.9) is canon given form. The
     form names a surface, requires kinds, declares the slots to be filled and the
@@ -428,7 +432,12 @@ class Form:
 
 @dataclass
 class Work:
-    """SPEC §4.9 — a work: canon given form.
+    """RETIRED encoding (SPEC §4.9) — a work: canon given form.
+
+    As with Form above, the concept survives and this encoding does not; the class is kept
+    for backward compatibility. Note that a StorySpec is NOT a Work whose form is
+    storybook: that migration was recorded as done in v0.6 and never happened, so §4.3
+    stays canonical for stories.
 
     Not an "instance", which is why it stopped being called one. A book's identity is not
     derived from being an instance of a book-shaped thing: a work carries AUTHORSHIP that

@@ -20,7 +20,8 @@ rendered from.
 
 - **The spec:** [`SPEC.md`](./SPEC.md) — the cartridge architecture (six layers, primitives, invariants).
 - **The architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — how the layers fit, what the
-  linter checks, and why the runtime is Managed Agents. Diagrams included (hand-authored SVG; there is no generator for them yet).
+  linter checks, and where hosted execution is headed (aspirational, see SPEC §14; everything here runs
+  locally today). Diagrams included (hand-authored SVG; there is no generator for them yet).
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
   canon), and [`hyperagentic-age`](https://github.com/garysheng/hyperagentic-age), a public universe
@@ -30,14 +31,17 @@ rendered from.
 
 1. **Canon** — the living universe: typed entities + relations, git-versioned (evolvable).
 2. **Goldens** — locked reference assets: the visual answer of record, passed rather than described.
-3. **Form** — the typed contract for a KIND of deliverable (surface, requires, slots, invariants).
-4. **Work** — ONE instance of a form, binding actual canon ids to its requirements.
-5. **Composer** — the agentic layer: plans, compiles, generates, and repairs, answering to a gate.
+3. **Form** — what makes a work the KIND of thing it is: a storybook, a flyer, a share card.
+4. **Work** — ONE made thing: canon given form, carrying authorship neither of them holds.
+5. **Composer** — the agentic layer, one per form: plans, compiles, generates, repairs, answers to a gate.
 6. **Quality** — taste gates × craft-canon × provenance, wired as steps, not memory.
 
 Layers 3 and 4 are what let the standard express a flyer, a diagram, or a thank-you card rather than
 only a story. They arrived in v0.6 as Projection and Composition and were renamed to Form and Work in
-v0.14. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+v0.14. **How they are encoded is an open question**: the v0.6–v0.16 slot-model encoding, and the
+single universal composer that executed it, were retired in v0.17 having produced zero works, and no
+replacement is written until a second composer is proven. See SPEC §4.8, §4.9 and §4.10 for what was
+retired and why, and [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the layers fit.
 
 ## Start here
 

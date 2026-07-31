@@ -8,9 +8,15 @@ relations. A universe is:
       universe.json                 # { "name", "assetRoot" }  assetRoot is where entity asset paths resolve
       canon/entities/*.json         # one Entity per file
       canon/relations/*.json        # one Relation per file (or a list)
-      forms/*/form.json             # Form per directory  (SPEC §4.8)
-      works/*/work.json             # Work per directory  (SPEC §4.9)
-      stories/*.json                # StorySpec per file  (a Work whose form is storybook)
+      forms/*/form.json             # Form per directory  (RETIRED encoding, SPEC §4.8)
+      works/*/work.json             # Work per directory  (RETIRED encoding, SPEC §4.9)
+      stories/*.json                # StorySpec per file  (SPEC §4.3 — the LIVE primitive)
+
+The form/work loaders below are kept so a universe written against v0.6-v0.16 still
+loads and typechecks. Their encoding was retired in v0.17 having produced zero works,
+and no replacement is specified: see SPEC §4.8/§4.9. StorySpec is NOT an alias for a
+work whose form is storybook; that migration was recorded as done and never happened,
+so §4.3 is canonical for stories.
 
 Stdlib only.
 """
@@ -140,7 +146,7 @@ class CanonStore:
         return problems
 
     def _validate_works(self) -> list[str]:
-        """SPEC §4.8/§4.9 — does this work actually satisfy the form it claims?
+        """RETIRED encoding (SPEC §4.8/§4.9) — does this work satisfy the form it claims?
 
         Three checks a work cannot make about itself, because they need the form
         resolved: the form exists at the pinned version, every filled slot is a declared

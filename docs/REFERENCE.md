@@ -90,9 +90,12 @@ answers questions about it, and refuses renders whose references do not exist on
 
 ## Forms
 
-A **form** is the typed contract for a KIND of deliverable (surface, required kinds, slots,
-invariants). A **work** is one instance of a form with a brand's ids bound into it. See `add-form`
-and `add-work`.
+A **form** is what makes a work the KIND of thing it is; a **work** is one made thing, canon given
+form. The concepts survive; the v0.6–v0.16 encoding of them (a typed contract of surface, required
+kinds, slots and generators, plus the universal composer that executed it) was **retired in v0.17**
+having produced zero works, and the `add-form` / `add-work` verbs went with it. No replacement schema
+is written until a second composer is proven — see SPEC §4.8, §4.9 and §4.10. The table below lists
+whatever forms this repo still ships, and is empty when it ships none.
 
 <!-- BEGIN GENERATED: forms -->
 | Form | Medium | What it is |
