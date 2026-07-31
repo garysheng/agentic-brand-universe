@@ -685,3 +685,26 @@ The craft lesson from the same two spreads stands and cost nothing: on the sleep
 spread, showing LESS of the man beat describing his arm better. Head on the pillow, one
 hand at his own chin, everything else a shape under the bedding, and there is no long limb
 in frame to get wrong. When a figure is not the subject, crop the problem out.
+
+## 2026-07-30 — 0.63.0 — chain_matrix --look, and the casting sweep that has to cover LOOKS
+
+`--look <key>` shoots a declared alt-look into `reference/<id>/<look>/` from that look's own
+prompts.md, seeded off the look's `anchorPhoto` and `photoStack` when it declares them and
+off the base FACE sheets otherwise, never off `forward-fullbody`, which is the silhouette
+the look supersedes. A look that declares no face reference at all is allowed and says so:
+some looks exist to INTRODUCE a face the default matrix never had.
+
+The seed face refs are SEED-ONLY. Passed downstream they carry the body being superseded;
+the `wasted` era's full-body came back as a hale man in a blazer against a prompt asking
+for a thinner man in loose clothes.
+
+THE EXPENSIVE LESSON, and it is not about code. `add-character` step 1 says sweep canon
+for an existing entity before inventing one. That sweep was run over ENTITIES and not over
+ALT-LOOKS, so a whole "revealed" look was authored, a colour anchor generated from the
+FaithWalk engravings, the entity restructured, and every bit of it already existed:
+`the-lord.altLooks.incarnate`, built 2026-07-28 from the same source, non-blue, fully
+resolved, Levantine, explicitly never Anglo, with five poses. Reverted whole.
+
+The sweep is not "does this entity exist". It is "does this ENTITY OR ANY OF ITS LOOKS
+already cover what I am about to author". An entity with alt-looks is a small canon of its
+own, and the looks are where the specific authorizations live.

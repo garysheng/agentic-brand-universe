@@ -408,16 +408,33 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
     # reference image outranks any number of words.
     look_refs = []
     if look:
-        for k in ("face-neutral", "face-3q", "expressions"):
-            rel = base_sheets.get(k)
-            if rel:
-                q = (uroot / rel).resolve()
-                if q.exists():
-                    look_refs.append(str(q))
+        al = ((ent.get("structured") or {}).get("altLooks") or {}).get(look) or {}
+        # A look's OWN anchorPhoto and photoStack outrank the base face sheets, because a
+        # look that carries them exists precisely to REPLACE the face, and `compose-spread`
+        # already treats anchorPhoto that way at render time. Shooting the look from base
+        # sheets while rendering it from anchorPhoto would build the matrix off one face
+        # and then hand the spreads another.
+        for rel in ([al.get("anchorPhoto")] if al.get("anchorPhoto") else []) + list(
+                al.get("photoStack") or []):
+            q = (uroot / rel).resolve()
+            if not q.exists():
+                raise Refuse(f"{eid}.altLooks.{look} names {rel} (NOT ON DISK)")
+            if str(q) not in look_refs:
+                look_refs.append(str(q))
         if not look_refs:
-            raise Refuse(
-                f"{eid} has no locked FACE sheet, so an alt-look cannot be seeded from the "
-                f"face. Shoot the default matrix first.")
+            for k in ("face-neutral", "face-3q", "expressions"):
+                rel = base_sheets.get(k)
+                if rel:
+                    q = (uroot / rel).resolve()
+                    if q.exists():
+                        look_refs.append(str(q))
+        # No face reference at all is NOT an error. Some looks exist to introduce a face
+        # the default matrix never had: `the-lord`'s default look holds his face inside
+        # his light and resolves nothing, so a "revealed" look has no prior face to
+        # inherit and must be seeded from the register anchor alone.
+        if not look_refs:
+            print(f"note: {eid} has no locked FACE sheet and {look!r} declares no anchorPhoto; "
+                  f"seeding from the register anchor alone. The look DEFINES this face.")
 
     photos = []
     for rel in ((ent.get("realPerson") or {}).get("photoStack") or []):
