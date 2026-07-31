@@ -887,11 +887,23 @@ class TestSuiteNeverCallsAProvider(GenerateCase):
         self.assertEqual(r.cmd[0], "uv")
         self.assertIn("/nonexistent/never-executed-provider.py", r.cmd)
 
-    def test_the_gpt_path_passes_size_quality_and_no_open(self):
-        r = self.run_main(*self.base("--size", "1024x1024", "--quality", "medium"))
+    def test_the_gpt_path_passes_size_and_quality_and_OPENS_by_default(self):
+        """A single render OPENS in Preview. Looking at it is the gate.
+
+        This adapter used to append --no-open unconditionally, so an on-brand render
+        finished silently and the operator had to go find the file. Gary: "on brand
+        image, the image always opens up in preview... that should just be part of
+        the skill." Batch callers opt out; a single render does not have to opt in.
+        """
+        r = self.run_main(*self.base())
+        self.assertIn("--size", r.cmd)
+        self.assertIn("--quality", r.cmd)
+        self.assertNotIn("--no-open", r.cmd)
+
+    def test_no_open_is_passed_through_when_asked(self):
+        """Batch callers must still be able to suppress it, or N renders open N windows."""
+        r = self.run_main(*self.base("--no-open"))
         self.assertIn("--no-open", r.cmd)
-        self.assertEqual(r.cmd[r.cmd.index("--size") + 1], "1024x1024")
-        self.assertEqual(r.cmd[r.cmd.index("--quality") + 1], "medium")
 
     def test_the_timeout_is_passed_through_only_when_set(self):
         self.assertNotIn("--timeout", self.run_main(*self.base()).cmd)

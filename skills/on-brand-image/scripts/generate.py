@@ -180,6 +180,13 @@ def main():
     ap.add_argument("--quality", default="high")
     ap.add_argument("--spec-version", default="0.6")
     ap.add_argument("--style-pack", default="")
+    ap.add_argument("--no-open", action="store_true",
+                    help="Do not open the result in Preview. Use inside batch loops; a single "
+                         "render opens by default because looking at it is the gate.")
+    ap.add_argument("--ref-first", action="store_true",
+                    help="Put --ref images IN FRONT of the style pack's refs, the same standing "
+                         "entity refs get. Use for a mark, logo or any asset that must be "
+                         "reproduced exactly rather than stylistically influenced.")
     ap.add_argument("--permit", action="append", default=[], metavar="POLE",
                     help="Un-reject one of the style pack's rejectedPoles for THIS render "
                          "(case-insensitive substring, repeatable). Recorded in the recipe. "
@@ -313,8 +320,19 @@ def main():
                 continue
             seen.add(p)
             pack_refs.append(p)
-        a.ref = pack_refs + [r for r in a.ref
-                             if os.path.normpath(os.path.expanduser(r)) not in seen]
+        caller_refs = [r for r in a.ref
+                       if os.path.normpath(os.path.expanduser(r)) not in seen]
+        # --ref-first gives an explicit ref the same standing the CANON RESOLUTION block
+        # below already gives entity refs: in FRONT of the pack, because a pack pulls hard
+        # toward its own content and anything behind it gets averaged away.
+        #
+        # Earned on the first flyer. A trademark was passed via --ref and landed sixth of
+        # six, and the model rendered a generic equilateral star instead of the mark's
+        # dramatically-longer bottom point. Removing the prose description did not fix it,
+        # because the problem was never the words: the reference was outranked. A mark is
+        # geometry someone owns exactly, so it needs identity standing, not decoration
+        # standing.
+        a.ref = (caller_refs + pack_refs) if a.ref_first else (pack_refs + caller_refs)
         if not pack_refs:
             sys.exit(f"generate.py: style pack {pack_file} resolved zero references. "
                      "The look IS the references; refusing to render a pack-less render "
@@ -350,7 +368,14 @@ def main():
         cmd = ["uv", "run", provider_script("nano-banana-pro"), "--prompt", prompt, "--filename", out, "--resolution", "2K"]
     else:
         cmd = ["uv", "run", provider_script("gpt-image-2"), "--prompt", prompt, "--filename", out,
-               "--size", a.size, "--quality", a.quality, "--no-open"]
+               "--size", a.size, "--quality", a.quality]
+        # The provider opens the result in Preview by default; this adapter used to
+        # suppress that unconditionally, so a single on-brand render finished silently
+        # and the operator had to go find the file. Looking at the image IS the gate, so
+        # opening by default is not a convenience. Batch callers pass --no-open rather
+        # than opening N windows.
+        if a.no_open:
+            cmd.append("--no-open")
         if a.timeout:
             cmd += ["--timeout", str(a.timeout)]
     # Shrink references for UPLOAD ONLY. The recipe below still records every original
@@ -383,6 +408,8 @@ def main():
         recipe["stylePack"] = a.style_pack
         if lifted:
             recipe["permitted"] = lifted
+        if a.ref_first:
+            recipe["refFirst"] = True
     if a.lookbook:
         recipe["lookbook"] = a.lookbook
     with open(out + ".recipe.json", "w") as f:

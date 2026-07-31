@@ -472,15 +472,22 @@ class Work:
         return dict(self.raw.get("bind", {}) or {})
 
     def validate(self) -> list[str]:
+        """Structural checks only.
+
+        This used to REQUIRE a pinned `form@version` and non-empty `slots`, which is the
+        SPEC §4.8/§4.9 encoding retired in v0.17. The prose retired everywhere (SPEC, the
+        linter's 136-line form section, README, ARCHITECTURE) and this enforcement was
+        left behind, so the engine went on demanding a contract the standard no longer
+        makes. A work authored against the current, deliberately-unwritten model failed
+        validation for not filling slots that no longer exist.
+
+        A form is still a real idea and a work may still declare one. It is simply no
+        longer mandatory, and there is nothing to pin it to while the replacement is
+        unwritten: `forms/event-flyer/` carries no version because it carries no schema.
+        """
         p: list[str] = []
         if not self.id:
             p.append("work missing 'id'")
-        if not self.form:
-            p.append(f"{self.id}: no 'form' (a work is canon given SOME form)")
-        elif "@" not in self.form:
-            p.append(f"{self.id}: form '{self.form}' is unpinned; use 'id@version'")
-        if not self.slots:
-            p.append(f"{self.id}: fills no slots")
         return p
 
 

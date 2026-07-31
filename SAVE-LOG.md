@@ -784,3 +784,51 @@ the deleted codes as live checks. It is hand-authored, so no gate caught it. Fix
 A PRE-EXISTING crash was found and deliberately NOT fixed: `lint.py`'s `rec.get("inputs", [])` returns
 `None` on an explicit `"inputs": null`, killing the linter on a real universe. It predates this work
 and wants its own commit.
+
+## 2026-07-31 (cont) — the first work after the demolition, and what it cost to make
+
+CORRECTION TO THE ENTRY ABOVE. That entry says no `work.json` ever existed. That was
+checked only inside THIS repo and stated as though it covered everything.
+`christofuturism-universe/works/fellowship-terrace/work.json` exists, binds
+`scrolling-diorama@1.0.0`, and has real assets beside it. What holds is the narrower and
+more damning claim: **`compose.py` never ran.** No `recipes/`, no `.state`, and every
+asset's recipe carries a `stylePack` key, which only `on-brand-image/generate.py` writes.
+Someone wanted a work in that form, wrote the contract, and then made the whole thing
+through a different tool. That is stronger evidence for scrapping the executor than
+"nobody tried", but the sentence was wrong and the scope of the check did not match it.
+
+`on-brand-image` had **293 works and zero tests**; the composer deleted this morning had
+91 tests and zero works. That inversion is now closed: 99 tests, no network, no API key,
+validated by five deliberate mutations. They immediately found two bugs in `--permit`,
+written hours earlier the same day, and both were the exact silent no-op its loud refusal
+existed to prevent: a permit with no `--style-pack` fell through the branch entirely, and
+`--permit ""` counted as matching every pole while lifting none, because the lift loop
+guarded `t and t in r.lower()` and the unmatched check did not.
+
+Four things shipped on the render path. `--permit` un-rejects one pole for one render,
+re-homing the capability `compose.py` had as slot `permits`. `--ref-first` gives an
+explicit ref the standing entity refs already had. Renders now OPEN in Preview by default;
+`generate.py` had appended `--no-open` unconditionally, so looking at the image, which IS
+the gate, required going to find the file. And `Work.validate()` stopped requiring a
+pinned `form@version` and non-empty `slots` — the retired §4.8/§4.9 encoding, which the
+prose retired everywhere while the engine went on enforcing it.
+
+FOUND BY MAKING SOMETHING, not by review. A trademark passed as ONE padded square
+reference rendered as an equilateral star; three edge-to-edge views rendered a true cross.
+An accurate invariant reading "the bottom point is DRAMATICALLY longer" warped the mark,
+while the same invariant written plainly did not: emphasis over-steers. And an entity's
+`prose.rules` is INJECTED INTO THE PROMPT, so a note warning against the word
+"dramatically" put that word into every prompt resolving the entity.
+
+The mark is now a `motif` entity with three adopted sheets. Adopted, not shot: it is
+deterministic generator output with a USPTO drawing set, and `add-entity` had scaffolded a
+TODO telling the next agent to prompt an image model to draw a filed trademark. That file
+is now a refusal.
+
+    RESUME: the two-tier ref-ordering problem is open and real. Identity refs (who the
+    picture is OF) should outrank fidelity refs (a mark that must be exact) which outrank
+    style refs. Today there is one rule and `--ref-first` is a blunt substitute; making the
+    mark an entity fixed the mark and pushed the subject's photos to positions 9 and 10,
+    weakening the likeness. Also open: SPEC 3a never got the `workRoot` rule written into
+    it (the four universes declare it in data, the standard does not describe it), and the
+    pre-existing `lint.py` crash on an explicit `"inputs": null` is still unfixed by design.

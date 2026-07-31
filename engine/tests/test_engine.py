@@ -693,9 +693,18 @@ class WorkTests(unittest.TestCase):
         c = dict(self.COMP, form="storybook@9.9.9")
         self.assertTrue(any("not found" in p for p in self._store(comp=c).validate_canon()))
 
-    def test_unpinned_form_reference_is_a_problem(self):
+    def test_an_unpinned_form_reference_is_ALLOWED(self):
+        """Pinning `form@version` stopped being required in v0.17.
+
+        It was part of the SPEC 4.8/4.9 slot encoding, retired that day. The prose
+        retired everywhere and this enforcement was left behind, so the engine went on
+        demanding a contract the standard no longer makes: a work authored against the
+        current, deliberately-unwritten model failed for not filling slots that do not
+        exist. There is also nothing to pin to while the replacement is unwritten, since
+        a form like `forms/event-flyer/` carries no version because it carries no schema.
+        """
         c = dict(self.COMP, form="scrolling-diorama")
-        self.assertTrue(any("unpinned" in p for p in self._store(comp=c).validate_canon()))
+        self.assertFalse(any("unpinned" in p for p in self._store(comp=c).validate_canon()))
 
     def test_filling_a_slot_the_form_does_not_declare(self):
         c = dict(self.COMP, slots={"spread": [{"z": 0, "speed": 0.3}]})
