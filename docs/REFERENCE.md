@@ -45,6 +45,7 @@ or a set of page heroes without ever declaring canon.
 | `land-work` | Merge a finished work branch home instead of leaving it parked, in ANY git repo (a universe, a platform repo, a site, anything). |  |
 | `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, entities, goldens, provenance, craft canon, provider quirks) with no generation, no API calls, and no cost. | yes |
 | `make-a-book` | The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. |  |
+| `make-a-work` | Make ONE work in a form a universe already declares — a flyer, a card, a poster, a scene, whatever forms/ holds. | yes |
 | `on-brand-image` | Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a portable folder of style references plus a read-back gate — with NO universe required. | yes |
 | `onboard` | Install Agentic Brand Universe for someone, as a conversation rather than a list of commands they have to run. |  |
 | `pave-the-path` | The retrospective sweep at the END of a chain run. |  |
