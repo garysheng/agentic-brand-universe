@@ -180,6 +180,10 @@ def main():
     ap.add_argument("--quality", default="high")
     ap.add_argument("--spec-version", default="0.6")
     ap.add_argument("--style-pack", default="")
+    ap.add_argument("--permit", action="append", default=[], metavar="POLE",
+                    help="Un-reject one of the style pack's rejectedPoles for THIS render "
+                         "(case-insensitive substring, repeatable). Recorded in the recipe. "
+                         "Refuses if it matches no pole, so a typo cannot silently do nothing.")
     ap.add_argument("--lookbook", default="")
     # RESOLVE CANON HERE, NOT IN THE CALLER'S HEAD.
     #
@@ -247,6 +251,36 @@ def main():
 
         style_line = (pack.get("styleLine") or "").strip()
         rejected = [str(r) for r in pack.get("rejectedPoles", []) if r]
+
+        # --permit un-rejects a named pole for THIS render only. A pack's poles are
+        # its standing law, but a single work sometimes needs one lifted: a flyer
+        # wants text in the field that a page hero must never have. Without this the
+        # only ways through are editing the pack (changing the law for every future
+        # render) or bypassing the pack (losing the style line, the anchor-first ref
+        # order and the recipe). Both are worse than an explicit, recorded exception.
+        #
+        # Matching is case-insensitive substring, because a caller should be able to
+        # say `--permit text` without quoting "any text" exactly. It is recorded in
+        # the recipe: a render made under a permit must not be indistinguishable from
+        # one that never needed it.
+        permitted, lifted = [str(x).strip().lower() for x in (a.permit or [])], []
+        if permitted:
+            keep = []
+            for r in rejected:
+                if any(t and t in r.lower() for t in permitted):
+                    lifted.append(r)
+                else:
+                    keep.append(r)
+            unmatched = [t for t in permitted
+                         if not any(t in r.lower() for r in rejected)]
+            if unmatched:
+                # Fail loudly. A permit that silently matches nothing reads as
+                # "text is allowed now" while the negative is still in the prompt.
+                sys.exit("generate.py: --permit matched no rejected pole in this pack: "
+                         + ", ".join(unmatched)
+                         + "\n  the pack's poles are: " + ", ".join(rejected))
+            rejected = keep
+
         parts = [prompt.strip()]
         if style_line:
             parts.append(style_line)
@@ -334,6 +368,8 @@ def main():
         recipe["entities"] = recipe_entities
     if a.style_pack:
         recipe["stylePack"] = a.style_pack
+        if lifted:
+            recipe["permitted"] = lifted
     if a.lookbook:
         recipe["lookbook"] = a.lookbook
     with open(out + ".recipe.json", "w") as f:
