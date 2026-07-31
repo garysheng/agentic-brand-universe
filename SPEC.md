@@ -712,6 +712,87 @@ the retired executor implemented and none of which are form-specific: durable pe
 resumability, recipes and drift-checking, provider adapters, and plan-time feasibility refusal
 (which is not form machinery at all, but simply the first incremental eval).
 
+### 4.11 Deterministic Generator (the asset that is CODE)
+
+A **Deterministic Generator** is a program in the universe that DRAWS an asset instead of prompting
+for one. It is the typed home for the rule the framework already asserts everywhere else and never
+gave a place to live: *deterministic graphics render in code, not an image model.* Marks, favicon
+sets, starfields, clouds, grids, scale rules, diagram furniture, colour-chip sheets — anything whose
+correctness is a NUMBER rather than a judgement — belongs here.
+
+Before this section, such code existed as loose scripts beside the assets they wrote, with ad-hoc
+paths, hand-written provenance, hand-written install copying, and no discoverability. That is
+framework-shaped work, so the framework owns it.
+
+```
+<universe>/generators/<id>/
+  generator.json     # the manifest (below)
+  generate.py        # the entrypoint; writes into out/
+  out/               # generated artifacts + their .recipe.json sidecars
+  proof/             # optional: contact sheets a human approved (see "the gate", below)
+```
+
+```jsonc
+{
+  "id": "north-star-cross-favicons",
+  "name": "North Star Cross favicon set",
+  "kind": "generator",
+  "entrypoint": "generate.py",
+  "determinism": "seeded",                  // "pure" (no randomness) | "seeded"
+  "seed": 20260727,                          // REQUIRED when determinism is "seeded"
+  "params": {                                // every knob, as DATA (see below)
+    "markSpan": 0.71,
+    "ground": "#0A0B10"
+  },
+  "inputs": ["reference/north-star-cross/mark-3d-gold-transparent.png"],
+  "outputs": [
+    { "path": "out/favicon.ico", "description": "multi-resolution .ico, 16 + 32 + 48" }
+  ],
+  "install": {                               // where an output lands in a consuming repo
+    "out/favicon.ico": ["public/favicon.ico", "src/app/favicon.ico"]
+  },
+  "proof": {                                 // how a human checks it; see "the gate"
+    "sheet": "proof/contact-sheet.png",
+    "assertions": ["the mark reads at 16px on BOTH a light and a dark ground"]
+  }
+}
+```
+
+- **Every parameter is DATA, never a buried constant.** This is the load-bearing rule, and it is not
+  tidiness. A generator's constants are its contract with the artifact, and two of them silently
+  meaning different things is the characteristic bug of this primitive: a favicon generator carried
+  `MARK_SPAN` as "fraction of the tile the mark fills" while the SVG it also emitted used the same
+  number as an SVG `scale()`, which multiplies the whole coordinate system. The two disagreed by
+  30%, and the descender was sheared off the bottom edge of every raster. Params in `generator.json`
+  are what let a reviewer see the knobs without reading the code, and what force a derived value to
+  be *derived* rather than retyped.
+- **The gate is a PROOF, not a read-back.** §3.5 gives a render read-back because a model is
+  stochastic and each output must be re-checked. A generator is reproducible, so re-checking every
+  run is waste; what it needs instead is a **proof sheet a human approved once**, rendering the output
+  at the sizes and on the grounds where it will actually be seen. Proof at real size, never at
+  convenient size: the same favicon set looked correct at 512px and was clipping its descender at 16.
+  A generator whose output is only ever viewed zoomed-in is untested.
+- **Assumptions in a generator are testable, so test them.** Because it is cheap and repeatable, the
+  cost of checking a design belief is one re-run. A ruling that "the 3D bevel turns to mush below
+  48px, so small sizes use the flat vector" survived only until it was proofed side by side; the
+  bevel read *better* small, because the lit/shadow split preserved the mark's long descender where
+  the flat silhouette collapsed. State the assumption in a comment, then disprove it.
+- **Provenance is the same contract, different fields.** A generated artifact still carries a
+  `.recipe.json` sidecar (§3.2), but it records `generator` + `params` + `seed` + input hashes rather
+  than `provider` + `prompt` + `refs`. The invariant is unchanged: no asset without its recipe.
+- **`install` makes the universe the source of truth for derived assets.** A favicon set copied by
+  hand into three sites is three sites that will drift, and they did: one shipped a mark from a
+  rebrand fourteen months stale while another shipped an incomplete set. The manifest declares where
+  each output belongs; installing is idempotent and reports only what changed.
+- **Determinism is declared and enforced.** `pure` means byte-identical output for identical inputs.
+  `seeded` means byte-identical *given the seed*, which must therefore be in the manifest and never
+  in the code. Wall-clock, `random()` without a seed, and dict iteration order are defects.
+
+Generators are the counterpart to Style Packs (§4.7): a pack governs what a MODEL should produce,
+a generator replaces the model entirely where the answer is computable. When an asset can be
+expressed either way, prefer the generator, because it is reproducible, reviewable, and free.
+
+
 ## 5. Evolution & versioning
 
 - **Every canon change is a commit** in the canon repo. The diff *is* the changelog.
