@@ -268,30 +268,38 @@ class TestPermit(GenerateCase):
         r = self.run_main(*self.base("--style-pack", pack, "--permit", "text"))
         self.assertEqual(r.prompt, "a lighthouse at dusk\n\nImpasto oil.")
 
-    # --- KNOWN DEFECTS, pinned rather than fixed -------------------------
-    def test_permit_without_a_pack_is_a_silent_noop_KNOWN_DEFECT(self):
-        """DEFECT (reported, not fixed): --permit with no --style-pack is swallowed.
+    # --- the two silent no-ops these tests exposed, now fixed ------------
+    # Both were found by this suite on the day --permit shipped, and both were the
+    # exact failure the flag's own refusal was written to prevent: a permit that
+    # neither lifts anything nor complains, leaving the caller believing a pole was
+    # lifted while the negative sat in the prompt unchanged.
+    def test_permit_without_a_pack_REFUSES(self):
+        """A permit lifts a pole from a pack. With no pack there are no poles.
 
-        Every permit code path lives inside `if a.style_pack:`, so a permit passed
-        without a pack neither lifts anything nor refuses — the exact silent no-op
-        the loud refusal above exists to prevent. Pinned so a fix is a deliberate,
-        visible change to this assertion rather than an accident.
+        Previously swallowed: every permit code path lives inside `if a.style_pack:`,
+        so a permit passed without a pack fell through the branch entirely.
         """
-        r = self.run_main(*self.base("--permit", "any text"))
-        self.assertNotIn("permitted", r.recipe)
-        self.assertEqual(r.prompt, "a lighthouse at dusk")
+        msg = self.expect_exit(*self.base("--permit", "any text"))
+        self.assertIn("--permit needs --style-pack", msg)
 
-    def test_an_empty_permit_is_a_silent_noop_KNOWN_DEFECT(self):
-        """DEFECT (reported, not fixed): `--permit ""` lifts nothing and refuses nothing.
+    def test_an_empty_permit_REFUSES(self):
+        """`--permit ""` must refuse rather than pass silently.
 
-        The lift loop guards `t and t in r.lower()`, but the unmatched check does not,
-        and "" is a substring of every pole — so an empty permit always "matches" and
-        never lifts. Same silent-no-op class as above, reached by a different door.
+        The lift loop guards `t and t in r.lower()`, but the unmatched check did not,
+        and "" is a substring of every pole. So an empty permit counted as matching
+        everything, lifted nothing, and never tripped the refusal.
         """
         pack = make_pack(self.tmp, rejected=["photorealism"])
-        r = self.run_main(*self.base("--style-pack", pack, "--permit", ""))
-        self.assertIn("photorealism", r.prompt)
-        self.assertNotIn("permitted", r.recipe)
+        msg = self.expect_exit(*self.base("--style-pack", pack, "--permit", ""))
+        self.assertIn("empty value", msg)
+
+    def test_a_real_permit_still_works_after_both_fixes(self):
+        """The refusals must not have made the happy path stricter than intended."""
+        pack = make_pack(self.tmp, rejected=["photorealism", "neon"])
+        r = self.run_main(*self.base("--style-pack", pack, "--permit", "photoreal"))
+        self.assertNotIn("photorealism", r.prompt)
+        self.assertIn("neon", r.prompt)
+        self.assertEqual(r.recipe.get("permitted"), ["photorealism"])
 
 
 # =====================================================================

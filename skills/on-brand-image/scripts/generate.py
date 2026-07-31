@@ -239,6 +239,14 @@ def main():
     # landscape came back from a neo-expressionist pack, failing its own gate
     # on two assertions.
     # ------------------------------------------------------------------
+    # --permit only has meaning against a pack's rejectedPoles. Passed without one it
+    # used to be swallowed entirely, because every permit code path lives inside the
+    # branch below. That is the same silent no-op the permit's own refusal exists to
+    # prevent, so it refuses here instead.
+    if a.permit and not a.style_pack:
+        sys.exit("generate.py: --permit needs --style-pack. Permits lift a pole from a "
+                 "pack's rejectedPoles, and with no pack there are no poles to lift.")
+
     if a.style_pack:
         pack_dir = os.path.expanduser(a.style_pack)
         pack_file = (pack_dir if pack_dir.endswith(".json")
@@ -264,6 +272,11 @@ def main():
         # the recipe: a render made under a permit must not be indistinguishable from
         # one that never needed it.
         permitted, lifted = [str(x).strip().lower() for x in (a.permit or [])], []
+        if any(not t for t in permitted):
+            # An empty permit is a substring of every pole, so the unmatched check
+            # below would consider it matched and stay silent while lifting nothing.
+            sys.exit("generate.py: --permit was given an empty value. A permit must name "
+                     "the pole it lifts; an empty one silently lifts nothing.")
         if permitted:
             keep = []
             for r in rejected:
