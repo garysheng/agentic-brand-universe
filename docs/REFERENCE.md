@@ -33,7 +33,6 @@ or a set of page heroes without ever declaring canon.
 | `add-story` | Add ONE story to an Agentic Brand Universe as a typed StorySpec (a medium-neutral work over canon, NOT an `add-entity` kind). |  |
 | `add-visual-metaphor` | Add ONE visual metaphor (a spine-object a whole property argues through, not merely a location) to an Agentic Brand Universe (interview the object and the states it argues across, reuse-first via casting sweep, then scaffold a typed `visual-metaphor` entity with SPEC §12's setting-style contract: a locked master plus per-state plates, and map/blocking/dressing descriptor prose). |  |
 | `book-doctor` | Grade a RENDERED book on local disk against what its render-spec declares, BEFORE it is delivered anywhere. | yes |
-| `brand-card` | Emit a two-panel brand card (share card, thank-you card, simple flyer) deterministically: a code-laid text panel beside a pre-generated art panel. |  |
 | `canon-resolve` | Before writing ANY render prompt in an Agentic Brand Universe, resolve every named character, setting, and motif to its canon entity: output the locked sheet paths (requiredForRender), the invariants to enforce, and the entity's prose rules, then run the load-bearing gate (assert.sh spread\|story). |  |
 | `casting-sweep` | Before naming any NEW character, setting, or motif in a story, sweep the universe's canon for an existing entity that fits the role natively, and emit a casting table (each role: reuse an entity id, or NEW plus a one-line justification). |  |
 | `compose-spec` | Scaffold and RE-SYNC a book's render-spec from its StorySpec, filling everything canon determines, enumerating every legal choice canon constrains, and never overwriting authored scene text. | yes |
@@ -44,7 +43,7 @@ or a set of page heroes without ever declaring canon.
 | `evolve-abu` | Evolve the Agentic Brand Universe framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. |  |
 | `judge-slot` | Judge one generated slot against an entity's locked golden, item by item over its declared invariants, in a context that has NOT been told how the slot was made. |  |
 | `land-work` | Merge a finished work branch home instead of leaving it parked, in ANY git repo (a universe, a platform repo, a site, anything). |  |
-| `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, forms, slots, emitters, generators, goldens, invariants, provider quirks) with no generation, no API calls, and no cost. | yes |
+| `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, entities, goldens, provenance, craft canon, provider quirks) with no generation, no API calls, and no cost. | yes |
 | `make-a-book` | The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. |  |
 | `on-brand-image` | Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a portable folder of style references plus a read-back gate — with NO universe required. |  |
 | `onboard` | Install Agentic Brand Universe for someone, as a conversation rather than a list of commands they have to run. |  |

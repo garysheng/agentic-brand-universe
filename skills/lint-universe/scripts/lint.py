@@ -2,10 +2,9 @@
 """
 Brand universe linter.
 
-Static checks over a universe and everything it declares: packs, projections,
-goldens, emitters, quirks. No generation, no API, no cost. Catches the classes of
-failure that were previously only discovered by running a composition, sometimes an
-hour into one.
+Static checks over a universe and everything it declares: packs, entities, goldens,
+provenance, quirks. No generation, no API, no cost. Catches the classes of failure
+that were previously only discovered by rendering, sometimes an hour into one.
 
     python3 lint.py <universe-dir>
 
@@ -42,8 +41,6 @@ def lint(root):
     grandfathered_hit = set()
 
     SKILLS = pathlib.Path(__file__).resolve().parents[2]
-    EMITTERS = {"brand-card": SKILLS/"brand-card/scripts/card.py",
-                "explanatory-plate": SKILLS/"explanatory-plate/scripts/plate.py"}
 
     u = jload(root/"universe.json")
     if not u: return
@@ -580,141 +577,6 @@ def lint(root):
              f"`lock-shot --recipe` and delete the entry to shrink this list."
              + (f" {len(stale)} entry(ies) no longer match a declared golden and can be deleted."
                 if stale else ""))
-
-    # ---- projections
-    # forms/ is what `add-form` scaffolds since SPEC v0.14; projections/ is the legacy
-    # flat layout. Checking only the old one told a universe built by the current
-    # scaffolder that it "declares no projections" while its forms sat right there.
-    fdir = root/"forms"
-    pdir = pdir_legacy = root/"projections"
-    if fdir.exists():
-        pdir = fdir
-    def form_files():
-        """Every form file, in either layout: forms/<id>/form.json (current) or
-        projections/<id>.json (legacy flat). Globbing only the flat pattern found
-        NOTHING in a forms/ universe while reporting no problems, which is worse
-        than the missing-directory warning it replaced."""
-        out = list(fdir.glob("*/form.json")) if fdir.exists() else []
-        out += list(pdir_legacy.glob("*.json")) if pdir_legacy.exists() else []
-        return out
-
-    def form_file(name):
-        for c in (fdir/name/"form.json", pdir_legacy/(name + ".json")):
-            if c.exists():
-                return c
-        return None
-
-    if not pdir.exists():
-        warn("NO-FORMS", "universe declares no forms; it can only make storybooks by hand")
-        # CAUTION: this RETURNS, so every check written below runs only for universes that
-        # declare projections. nation-of-fire declares none, so a new rule added past this
-        # point silently never runs for the universe doing the most rendering. A summary
-        # added here in 2026-07 was swallowed exactly this way. Put new entity/asset checks
-        # ABOVE this line; only projection-specific checks belong below it.
-        return
-    def resolve(pj, seen=()):
-        """Merge the `extends` chain before checking anything, exactly as the composer
-        does. Checking the child's RAW fields makes every fork that INHERITS a
-        generator, an emitter, or a surface false-fail: the field is absent from the
-        file and present at run time. The one prior fork happened to override every
-        field it used, which is why this went unseen until a fork that inherits.
-        Returns (merged, error_or_None)."""
-        p = jload(pj)
-        if not p: return None, None
-        ref = p.get("extends")
-        if not ref: return p, None
-        name = ref.split("@")[0]
-        if name in seen:
-            return p, f"{p.get('id', pj.stem)}: extends cycle through '{name}'"
-        base_f = form_file(name)
-        if base_f is None:
-            return p, f"{p.get('id', pj.stem)}: extends {ref} not found"
-        base, e = resolve(base_f, seen + (name,))
-        if base is None: return p, e
-        merged = {**base, **{k: v for k, v in p.items() if v is not None}}
-        return merged, e
-
-    for pj in sorted(form_files()):
-        raw = jload(pj)
-        if not raw: continue
-        p, chain_err = resolve(pj)
-        pid = raw.get("id", pj.stem)
-        if chain_err:
-            err("EXTENDS-UNRESOLVED", chain_err)
-            continue          # every downstream check would be noise against a broken chain
-        gens = {g.get("for"): g for g in p.get("generators", [])}
-        for s in p.get("slots", []):
-            sid = s.get("id")
-            if s.get("type") == "deterministic":
-                em = (s.get("emitter") or "").split(":")[-1]
-                if not em:
-                    err("SLOT-NO-EMITTER", f"{pid}.{sid}: deterministic with no emitter; nothing can produce it")
-                elif em not in EMITTERS:
-                    err("EMITTER-UNKNOWN", f"{pid}.{sid}: unknown emitter '{em}'")
-                elif not EMITTERS[em].exists():
-                    err("EMITTER-MISSING", f"{pid}.{sid}: emitter script missing at {EMITTERS[em]}")
-            elif s.get("type") == "generated":
-                g = gens.get(sid)
-                if not g:
-                    err("SLOT-NO-GENERATOR", f"{pid}.{sid}: generated but no generator declares for='{sid}'")
-                    continue
-                # Aspect ratio is a VISUAL property. Demanding one from a text or
-                # audio slot is a false positive, and false positives are how a
-                # linter teaches people to ignore it. Found by the first
-                # text-dominant projection; every prior one was image-dominant.
-                if g.get("capability") not in ("image", "video"):
-                    continue
-                geo, asp = s.get("geometry"), g.get("producibleAspects")
-                if geo and asp:
-                    want = geo["w"]/geo["h"]; tol = g.get("tolerance", 0.25)
-                    if not any(abs(want-a)/want <= tol for a in asp):
-                        err("SURFACE-INFEASIBLE",
-                            f"{pid}.{sid}: needs aspect {want:.3f}, provider makes {asp}. Undeliverable.")
-                elif not asp:
-                    warn("NO-PRODUCIBLE-ASPECTS", f"{pid}.{sid}: no producibleAspects; feasibility uncheckable")
-                pin = g.get("pin")
-                if pin and pin not in providers:
-                    warn("PIN-UNKNOWN-PROVIDER", f"{pid}.{sid}: pinned to '{pin}', absent from the quirk registry")
-        inv = p.get("invariants", {})
-        for scope in ("perSlot","crossSlot"):
-            for i in inv.get(scope, []):
-                if i.get("check") not in ("computed","judged"):
-                    err("INVARIANT-UNTYPED", f"{pid}: invariant '{i.get('id')}' is not computed or judged")
-        if not inv.get("perSlot") and not inv.get("crossSlot"):
-            warn("NO-INVARIANTS", f"{pid}: declares no invariants; nothing can fail, so nothing is checked")
-
-        # A contract can be internally coherent and, in practice, undeliverable. Feasibility
-        # already catches that for GEOMETRY: an aspect no generator can produce. It could not
-        # catch it for BEHAVIOUR: an invariant the pinned provider is known to break.
-        #
-        # Earned 2026-07-23. A projection declared "hands: four fingers plus a thumb" and
-        # pinned a provider whose registry entry says it loses a digit on stylized hands.
-        # Six artifacts went to independent judges and six failed on that one item, twice
-        # each, prompt counter included. Nothing was wrong with the projection in isolation
-        # and nothing was wrong with the registry in isolation; the contradiction lived
-        # BETWEEN them, which is the same shape as the infeasible-surface class.
-        #
-        # This is a WARNING, not an error. A brand is allowed to demand something hard, and a
-        # known quirk is a re-roll cost rather than an impossibility. What it must not be is a
-        # surprise discovered after paying for generation.
-        quirk_terms = {}
-        for g in p.get("generators", []):
-            prov = g.get("pin")
-            if not prov: continue
-            for q in providers.get(prov, {}).get("quirks", []):
-                for w in re.findall(r"[a-z]{4,}", q["id"].lower()):
-                    quirk_terms.setdefault(w, []).append((prov, q["id"]))
-        for scope in ("perSlot", "crossSlot"):
-            for i in inv.get(scope, []):
-                words = set(re.findall(r"[a-z]{4,}", str(i.get("id", "")).lower()))
-                hits = {(prov, qid) for w in words for prov, qid in quirk_terms.get(w, [])}
-                for prov, qid in sorted(hits):
-                    if qid == i.get("id"): continue          # the quirk itself, already handled
-                    warn("INVARIANT-VS-QUIRK",
-                         f"{pid}: invariant '{i.get('id')}' overlaps a known quirk of its pinned "
-                         f"provider {prov} ('{qid}'). Expect re-rolls; budget for them or relax "
-                         f"the rule, but do not discover this after paying for generation.")
-
 
 
 def main():

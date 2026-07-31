@@ -1,6 +1,6 @@
 ---
 name: lint-universe
-description: Lint a brand universe. Static checks over the universe and everything it declares (style packs, forms, slots, emitters, generators, goldens, invariants, provider quirks) with no generation, no API calls, and no cost. Catches the failure classes that were previously only discovered by running a work, sometimes an hour into one. Run it before composing anything.
+description: Lint a brand universe. Static checks over the universe and everything it declares (style packs, entities, goldens, provenance, craft canon, provider quirks) with no generation, no API calls, and no cost. Catches the failure classes that were previously only discovered by rendering, sometimes an hour into one. Run it before rendering anything.
 ---
 
 # Brand Universe Linter
@@ -11,12 +11,14 @@ Exit **0** clean, **1** warnings only, **2** errors.
 
 ## Why this exists
 
-Every check here corresponds to a failure that actually shipped and was only caught by executing a
-work. A contract can be internally valid, reviewed by two people, and undeliverable. The linter
-moves those discoveries to the cheapest possible moment.
+Every check here corresponds to a failure that actually shipped and was only caught by rendering.
+Canon can be internally valid, reviewed by two people, and still impossible to put in a picture. The
+linter moves those discoveries to the cheapest possible moment.
 
-On its first run against the reference universe it found a generated slot with **no generator declared
-for it**, which had been silently parking every cover as a defect for an entire session.
+An entity can be fully locked, fully art-approved, pass `validate` AND pass `assert-story`, and still
+be uncastable, because the render compiler reads `structured.render` while every other gate reads
+sheets and files. It surfaced as a hard `KeyError` at cast time, after the story was written. That
+class is now static and free.
 
 ## What it checks
 
@@ -44,15 +46,6 @@ error, so a universe mid-normalization still validates and composes.
 **Style packs.** `pack.json` parses; the anchor and every ref resolve on disk; a `gate` exists, because
 a pack without one is a mood board; `styleLine` exists. Warns under three refs.
 
-**Projections.**
-- A `deterministic` slot names an `emitter`, that emitter is known, and its script exists on disk.
-- A `generated` slot has a generator that declares `for` it.
-- `surface` is FEASIBLE: the slot's required aspect is within tolerance of the provider's
-  `producibleAspects`. This is the 0.333 class, where the contract is coherent and no model can make it.
-- `extends` resolves to a form that exists.
-- Every invariant is typed `computed` or `judged`. A form with no invariants is flagged: nothing
-  can fail, so nothing is checked.
-
 **Goldens.** Every sheet named in an entity's `requiredForRender` resolves to a file
 (`GOLDEN-UNDECLARED`, `GOLDEN-MISSING`). And every LOCKED sheet, required or not, carries a
 `<golden>.recipe.json` provenance sidecar:
@@ -72,5 +65,5 @@ flagged, because it will silently inherit no quirks.
 
 ## Where it belongs
 
-Before `compose`, always. It is free, it is instant, and the alternative is finding the same problem
+Before any render, always. It is free, it is instant, and the alternative is finding the same problem
 after paying for generation.
