@@ -378,11 +378,11 @@ def lint(root):
         d = pj.parent; packs[str(d.relative_to(root))] = p
         if not p.get("anchor"): err("PACK-NO-ANCHOR", f"{pj}: no anchor")
         elif not (d/p["anchor"]).exists(): err("PACK-ANCHOR-MISSING", f"{pj}: anchor {p['anchor']} missing")
-        for r in p.get("refs", []):
+        for r in (p.get("refs") or []):
             if not (d/r).exists(): err("PACK-REF-MISSING", f"{pj}: ref {r} missing")
         if not p.get("gate"): err("PACK-NO-GATE", f"{pj}: no gate; a pack without one is a mood board")
         if not p.get("styleLine"): err("PACK-NO-STYLELINE", f"{pj}: no styleLine")
-        n = len(p.get("refs", []))
+        n = len(p.get("refs") or [])
         if n < 3: warn("PACK-THIN", f"{pj}: {n} ref(s); the spec expects 3 to 8")
 
     # ---- sheet hygiene: aliases, and workflow state stored as visual invariants
@@ -406,7 +406,7 @@ def lint(root):
             seen.setdefault(v, []).append(k)
         for path, keys in seen.items():
             if len(keys) > 1:
-                req = [k for k in st.get("requiredForRender", []) if k in keys]
+                req = [k for k in (st.get("requiredForRender") or []) if k in keys]
                 sev = err if len(req) > 1 else warn
                 sev("SHEET-DUPLICATE-ALIAS",
                     f"{ej.name}: sheet keys {sorted(keys)} all point at '{path}'"
@@ -425,7 +425,7 @@ def lint(root):
                     f"{au.get('lockedBy')!r}. A golden with no recorded approver cannot be "
                     f"attributed, and approval is the whole point of locking.")
 
-        for inv in st.get("invariants", []) or []:
+        for inv in (st.get("invariants") or []):
             low = str(inv).lower()
             # A PROHIBITION is a real visual rule even when it contains a trigger word:
             # "no-barcode-no-publisher-mark-no-subtitle-no-review-quote" is a checkable fact
@@ -475,7 +475,7 @@ def lint(root):
                     f"{ej.name}: pose '{pname}' is a {type(pose).__name__}, not an object. A pose is "
                     f"{{'sheets': [...], 'bake': '...'}}; a bare string is silently unusable.")
                 continue
-            for key in pose.get("sheets", []):
+            for key in (pose.get("sheets") or []):
                 if key not in sheets:
                     err("CAST-POSE-SHEET-MISSING",
                         f"{ej.name}: pose '{pname}' names sheet key '{key}' which is not in "
@@ -500,7 +500,7 @@ def lint(root):
 
         # Render-correctness: every REQUIRED sheet resolves. Scoped to requiredForRender
         # because that is what the render gate depends on.
-        for name in st.get("requiredForRender", []):
+        for name in (st.get("requiredForRender") or []):
             pth = sheets.get(name)
             if not pth: err("GOLDEN-UNDECLARED", f"{ej.name}: requires '{name}' but no sheet path")
             elif not (root/pth).exists(): err("GOLDEN-MISSING", f"{ej.name}: {name} -> {pth} missing")
@@ -536,7 +536,11 @@ def lint(root):
             # blessed against something that no longer exists. The approval may not hold,
             # and no human is looking. This is the free half of the divergence loop:
             # detected statically, at zero cost, over the whole approved corpus.
-            for inp in rec.get("inputs", []):
+            # `or []` and not just a default: an explicit `"inputs": null` in a recipe
+            # returns None from .get, and iterating that kills the whole linter on a real
+            # universe. This is the SECOND crash from this one line (see the note below on
+            # bare-string inputs), which is why the guard is now belt and braces.
+            for inp in (rec.get("inputs") or []):
                 # A recipe's inputs may be bare path strings (older lock-shot) or
                 # {path,digest} dicts (with provenance). Only the dict form carries a
                 # digest to compare; a bare string has nothing to check, and calling
