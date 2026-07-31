@@ -1,11 +1,20 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.16 — 2026-07-29.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.17 — 2026-07-31.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.17 changelog — the slot-model composer is RETIRED, having never run.** `skills/compose/`
+> (896 lines, 91 tests, zero works) is deleted, and with it `add-form`, `add-work`, `brand-card`
+> and `forms/scrolling-diorama`, which existed only to author or emit documents that only that
+> composer consumed. §4.8 and §4.9 now retire the ENCODING while keeping the concept; §4.10
+> corrects "THE Composer" to a per-form composer over one shared compiler
+> (`compose-spread/assemble_prompt.py`); §14's Managed Agents argument is marked ASPIRATIONAL,
+> because nothing in this framework runs on it. No universe pins v0.17 yet, and none needs to
+> migrate: this bump only removes a schema no universe ever used.
+>
 > **v0.16 changelog — an entity has a LIFECYCLE, so canon can be RETIRED without rewriting history.**
 > Additive and backward-compatible: an entity with no `lifecycle` is `active`, so no universe has to
 > migrate. A universe accumulates canon faster than it retires it, and until now the only ways to stop
@@ -933,6 +942,17 @@ broken, just not matrix-complete. The load-bearing gate (`assert_story` / `asser
 unchanged: a missing REQUIRED sheet is still a hard error. A renderer MAY require `locked`.
 
 ## 14. Why this runtime is Managed Agents (v0.6)
+
+> **STATUS, v0.17: ASPIRATIONAL, NOT DESCRIPTIVE.** Nothing in this framework runs on Managed
+> Agents. The composer this section argues for was deleted in v0.17 having never run, and the
+> pipeline that does the work (`make-a-book`) runs locally. The argument below about the SHAPE of
+> the workload is still believed to be correct, and hosted execution remains the intended
+> direction. It is recorded here as a claim about where this is going, not a description of how it
+> works today. A reader deciding what to build on should treat local execution as the only reality.
+>
+> The one real body of Managed Agents work lives outside this repo, in `garysheng-books/scripts/`
+> (`ma_session.py`, `ma_render_helper.py`, `render-narration-on-ma.py`), and is book-shaped rather
+> than framework-shaped. Bringing it in is a live option, not a done thing.
 
 This section is normative about the *shape* of the workload, not about a vendor. It exists because
 "use a hosted agent runtime" is the kind of claim that sounds like a preference, and it is not one:

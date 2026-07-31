@@ -51,8 +51,8 @@ v0.14. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 <!-- BEGIN GENERATED: status -->
 |  | Value | Source |
 |---|---|---|
-| Spec | v0.16 | `SPEC.md`, dated 2026-07-29 |
-| Engine conforms to | v0.16 | `engine/agenticstory/__init__.py` |
+| Spec | v0.17 | `SPEC.md`, dated 2026-07-31 |
+| Engine conforms to | v0.17 | `engine/agenticstory/__init__.py` |
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 32 | `skills/*/SKILL.md` |
 | CLI verbs | 21 | `abu --help` |
