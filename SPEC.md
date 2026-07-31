@@ -608,393 +608,82 @@ not subject content. Improvising a bare folder of "clothing refs" is the drift i
 - **The gate is load-bearing, and it checks VARIETY.** A lookbook without a variety gate is a mood board
   that drifts back to a uniform on the first render.
 
-### 4.8 Form (what makes a work the KIND of thing it is)
+### 4.8 Form (RETIRED ENCODING, v0.17)
 
-**Canon is the matter. A form is what shapes it. A work (§4.9) is canon given form.**
+**Canon is the matter. A form is what shapes it. A work (§4.9) is canon given form.** That much
+holds and is not in question.
 
-A **Form** is a typed contract for a kind of work. It is the layer the standard was missing:
-`Story Spec` (§4.3) conflated *what kind of thing this is* with *this particular one*, and baked a
-story's required fields into the generic primitive, so only stories were expressible.
+**What is retired is the ENCODING, not the concept.** From v0.6 to v0.16 this section specified a
+form as `surface` / `requires` / `slots` / `generators` / `invariants` / `emits`, executed by a
+single universal composer (§4.10). That model was authored from one imagined example and never ran:
+across the whole framework's life it produced **zero works**. No `work.json` was ever written, no
+`work/` or `recipes/` directory ever existed, and the one form in the registry
+(`scrolling-diorama`) was never worked. It shipped 91 unit tests and nothing made.
 
-A form is a **distributable artifact**, not a config block: it carries an id, a semantic version, an
-author, and may `extend` another form rather than copying it. The framework ships a starter set; it
-is explicitly **not a closed set**. The intended shape is a registry others publish into.
+Meanwhile the pipeline that has produced more than a hundred illustrated books
+(`make-a-book` → `render-book` → `compose-spread`) was never described by this section at all, and
+was not even called a composer. The naming had the authority backwards: the proven thing was
+unnamed and the unnamed thing was proven.
 
-**Name the treatment, not the medium.** If a form's `id` equals its `surface.medium`, it has taken
-the name of a whole category for one specific way of working in it, and every sibling treatment is
-left with nowhere to live. `scrolling-diorama`, not `parallax-scene` — mouse-driven, horizontal and
-dolly scenes are all parallax scenes, and none of them fit a contract that hardcodes vertical scroll,
-edge-pinned bands and sink-behind occlusion. The MEDIUM stays a string in `surface`; it earns being
-a primitive when a SECOND form targets it and the two must agree on something, not before.
+**The diagnosis, stated plainly so it is not repeated.** A slot schema caps a work at the
+imagination of whoever authored the form, frozen at the worst possible moment. The failure was not
+in the details of the encoding; it was in specifying a SHAPE where the standard should specify a
+STANDARD.
 
-```jsonc
-{
-  "id": "storybook", "version": "2.1.0",
-  "extends": null,                       // "storybook@2.0.0" to fork without copying
-  "author": "agenticbranduniverse.com/registry",
+**The replacement is deliberately not written here yet.** A second composer is being built for real
+(`garysheng-art-series`, in the `gary-sheng-art` universe). When it is finished and judged good,
+the shared surface between it and the book composer becomes this section. Writing the replacement
+now, from one instance, is precisely the mistake that produced the retired model. Abstract from the
+second instance, not the first.
 
-  "surface": { "medium": "picture-book", "geometry": { "spreads": 24, "aspect": "2:3" } },
+Until then, a form is whatever a proven composer needs it to be, and no universe is asked to
+conform to a schema this section cannot yet justify.
 
-  // BY KIND, never by id. A marketplace form cannot know your canon.
-  "requires": [ { "kind": "character", "min": 1 }, { "kind": "setting", "min": 1 },
-                { "kind": "style-pack", "min": 1 } ],
+### 4.9 Work (RETIRED ENCODING, v0.17)
 
-  "slots": [ { "id": "spread", "repeat": "$.spreads", "type": "generated",
-               "schema": { "beat": "string", "characters": "entity[]", "location": "entity" } },
-             { "id": "cover", "type": "generated" } ],
+A **work** is one instance of a form, and that idea survives. Retired with §4.8 is its encoding: a
+`work.json` binding ids to a form's required kinds and filling its declared slots.
 
-  // capability, not provider. `pin` only where the model IS the look (see below).
-  "generators": [ { "for": "spread", "capability": "image", "accepts": "reference-images",
-                    "pin": null },
-                  { "for": "spread", "capability": "text" },
-                  { "for": "spread", "capability": "audio", "optional": true } ],
+Nothing was lost by deleting it, because nothing was ever expressed in it.
 
-  "invariants": {
-    "perSlot":   [ { "id": "no-text-in-art", "check": "judged" },
-                   { "id": "palette-only",   "check": "computed" } ],
-    "crossSlot": [ { "id": "character-identity", "check": "judged",
-                     "scope": "all slots binding the same character entity" } ]
-  },
+**One consequence worth stating.** The v0.6 changelog claimed the narrative fields (`logline`,
+`spine`, `refrain`, `beats`) had moved out of `Story Spec` "into the storybook form's slot schema,
+where they always belonged," with `Story Spec` retained only as a back-compat alias. That migration
+was recorded as done and never happened: no storybook form was ever authored, so `Story Spec`
+remained the live primitive that every book actually uses. It is not an alias and never became one.
+Treat §4.3 as canonical for stories.
 
-  "emits": [ "book-manifest.json", "spreads/*.webp", "narration/*.mp3" ]
-}
-```
+### 4.10 The Composer, the Compiler, and the Gate (v0.17)
 
-**`requires` names kinds; the work binds ids.** This is the whole mechanism that lets a form ship to
-a brand it has never seen. The form says "I need at least one character"; the work says "the
-character is `jerry-man`".
-
-**A computed invariant carries an evaluable `rule`, not just an id.** A generic engine cannot run a
-check it knows only by NAME. Three ops cover the cases so far, and each is about a RELATIONSHIP
-between slot entries, which is what a crossSlot invariant IS: `monotonic` (a field ordered by
-another field), `count` (how many entries match a predicate), `extreme` (a matching entry sits at an
-end). An invariant marked `computed` with no `rule` is reported as a problem rather than silently
-passing. Be honest in the other direction too: if a form's own flagship work legitimately violates a
-rule, that rule is `judged` with a stated exemption. A computed rule your own work fails is a lie
-with a green checkmark.
-
-**Per-slot vs cross-slot invariants, and why it matters.** A per-slot invariant is checkable against
-one output in isolation ("this image contains no text"). A **cross-slot** invariant is only checkable
-across several ("the character on spread 19 is the same person as on spread 3"), and it is the
-expensive, hard class: it is what forces locked goldens, it is what the reference matrix (§12) exists
-to serve, and it cannot be satisfied by making each slot individually good.
-
-This makes "simple deliverable" versus "complex deliverable" a **property of the ontology rather than
-a matter of taste**: a meme has zero cross-slot invariants, a share card has zero, a flyer has one
-(brand consistency), a storybook has the hardest one there is. Complexity is cross-slot invariant
-count, and a projection declares its own.
-
-**A cross-slot invariant is ITEMIZED and checked against the golden, never pairwise.** Two failures,
-both found 2026-07-23 by generating three spreads of a locked character and inspecting them:
-
-- *Itemized.* A projection that declares one invariant reading "character identity holds across every
-  spread" throws away all its resolution. The entity carried twelve specific invariants; ten held and
-  one (`translucent-holographic-digital-being`) failed in every spread, rendering as opaque felt
-  instead of a hologram. A judge asked "is this the same character?" says yes and ships it. A judge
-  asked about each declared invariant catches it. **The cross-slot rule therefore names the entity's
-  invariant list as its checklist and is evaluated per item per slot**, rather than as one holistic
-  question.
-- *Against the golden, never pairwise.* All three spreads drifted the SAME way, because each
-  inherited the same drift in the master-to-generation step. A spread-to-spread consistency check
-  finds them perfectly consistent with one another and uniformly wrong. **Consistency is not
-  fidelity.** Every slot is judged against the locked golden.
-
-**Slots are heterogeneous.** A slot is `deterministic` (emitted by code, e.g. an SVG layout) or
-`generated` (a model produces it). A share card is one projection containing both: a deterministic
-text panel beside a generated art panel. The pre-v0.6 "renderer" concept could not express this at
-all, which is why composite deliverables kept being hand-assembled.
-
-**Provider quirks are first-class, and they belong to the generator, not the style.** A style pack's
-`rejectedPoles` say what is off-brand. A **quirk** says what a specific model gets reliably wrong
-regardless of brand, and it is therefore a property of the *capability binding*, not of the look. It
-survives a change of brand and dies with a change of provider, which is the opposite of a rejected
-pole.
-
-```jsonc
-"generators": [ { "for": "spread", "capability": "image", "pin": "gpt-image-2",
-    "quirks": [
-      { "id": "artwork-within-artwork-renders-inverted",
-        "seen": "When a person is depicted drawing or holding a picture, the depicted picture is rendered upside down relative to the viewer.",
-        "counter": "Any picture, page, book, or artwork shown inside the scene must be RIGHT SIDE UP and correctly oriented to the viewer. Never inverted, never rotated.",
-        "check": "judged" } ] } ]
-```
-
-Three rules make this useful rather than a notes file:
-
-- **The `counter` is appended to every compiled prompt for that slot**, automatically. A quirk you have
-  to remember is a quirk you will ship.
-- **The `check` becomes a gate item**, so countering it in the prompt is never assumed to have worked.
-  Prompts do not reliably beat a model's priors; that is why the gate exists at all.
-- **Quirks travel with the pin.** Removing the pin removes the quirks, because they were never true of
-  the capability, only of that model.
-
-This is where hard-won provider knowledge accumulates instead of being re-learned per project. It is
-the same discipline as the rest of the standard: the thing that must not be forgotten becomes data
-that is passed, rather than prose someone is supposed to recall.
-
-**Registers bind PER SLOT, and a composition may weave several.** A book is not written in one
-visual language: narrative spreads carry a painterly storybook register while the diagram woven
-between them is a flat characterless plate. Binding one style pack per composition makes that
-inexpressible and quietly forces every artifact into a single voice. `bind.style-pack` therefore takes
-either a single pack or a map of slot id to pack, with a `default`. Goldens bind the same way.
-
-**A register that rejects the cast must never be handed the cast.** The plate register in the
-reference universe lists the storybook characters among its `rejectedPoles`, because a plate is a
-diagrammatic gesture and not a scene. Passing a character's locked master into that slot is a
-contradiction between two parts of canon, and it must be **refused by the compiler**, not left for the
-model to resist while holding a reference image that argues the opposite. Verified 2026-07-23: one
-composition produced three narrative spreads carrying the character golden and one plate carrying
-none, in two registers, from a single contract.
-
-**Feasibility must cover the SCENE against canon, not only geometry.** Plan-time checking currently
-catches an undeliverable surface and stops. It does not catch a composition whose *content*
-contradicts a declared invariant. Earned the same day: a book brief about serving churches was planned
-against a character whose canon states `no-religious-iconography-anywhere-in-this-universe`, and the
-render duly produced steeples. Nothing was broken except the plan, and the plan was never checked. A
-composition that asks for what canon forbids should be refused before generation, exactly like a bad
-aspect ratio.
-
-**A `deterministic` slot MUST name its emitter.** A slot typed `deterministic` with no `emitter`
-field is not deterministic, it is unspecified: nothing can produce it and the type is decoration.
-Earned 2026-07-23 by trying to execute a contract whose text panel declared `{recipient, body,
-signoff}` and could not be laid out, because field NAMES are not a layout. `explanatory-plate` was
-runnable only because it happened to name one. Normative: `type: "deterministic"` requires `emitter`.
-
-**A projection's `surface` must be FEASIBLE against its own generators.** A contract can be
-internally coherent and still describe an artifact nobody can make. Earned the same day: a card
-declared a 1200x1200 surface with a two-thirds text split, which makes its art panel 400x1200, an
-aspect of 0.333. No image generator produces 0.333; the tallest commonly available is 0.667. The
-contract was valid, reviewed, and undeliverable.
-
-So a projection carries the producible aspects of the capability it depends on, and **feasibility is
-checked before the run, not discovered inside it**:
-
-```jsonc
-"generators": [ { "for": "art-panel", "capability": "image",
-                  "producibleAspects": [1.0, 0.667, 1.5],   // what the capability can actually emit
-                  "tolerance": 0.25 } ]
-```
-
-The composer resolves each generated slot's geometry from `surface`, compares it to
-`producibleAspects`, and refuses to start if no aspect is within tolerance. This is a **`computed`**
-invariant and it belongs at plan time: the alternative is discovering it an hour into a composition,
-or worse, silently cropping to fit and losing exactly the edges the composition needed.
-
-**When a producible aspect does not match the surface, CONFORM by self-bleed, never by flat bars
-and never by cropping load-bearing content (§cover-conform, earned 2026-07-25).** The common case is
-a cover: image models emit the tallest producible portrait at 2:3 (0.667), while the reader page is
-3:4 (0.75). The gap is bridged by `conform_cover.py` (in the `cover` skill), whose default `--mode
-pad` widens the render with **blurred self-bleed side panels**: the art's own colors, scaled and
-blurred, fill the panels so the padding reads as an intentional soft matte and vanishes into the
-composition. Two things are NORMATIVE and were both learned by shipping the wrong one: (1) the fill is
-a self-bleed, **never a flat color** — a flat bar seams visibly against the art's textured, vignetted
-background, and passing the aspect check does not make it look intentional; (2) `--mode crop` (equal
-top/bottom trim) is licensed ONLY when the render carried a safe-margin block, because cropping a
-cover's height eats its title. The default cover fill is self-bleed with no keyline; a keyline is a
-per-universe stylistic opt-in, not the default. Producing the conform by hand (a universe-local pad
-script, a flat-fill one-liner) is the hand-roll this convention exists to retire: call the tool.
-
-**Generators declare a capability, with an optional pin.** Faithful reproduction does not come from
-pinning a provider, because generative output is stochastic regardless (§4.6, determinism ceiling). It
-comes from three other places: the **goldens** (pass the same locked reference, get the same
-character), the **gate** (verify and re-roll, which is what converts stochastic output into reliably
-correct output), and recorded **provenance**. So a slot declares what it needs and the runtime binds a
-provider, EXCEPT where the model itself is the aesthetic. Where a locked golden carries the look, any
-competent provider works. Where there is no golden and the model's own hand is the register (a fresh
-ink-line illustration), the provider is part of the brand and must be pinned. Every render records
-provider, model version, params, and the exact refs passed, so drift is always diagnosable.
-
-### 4.9 Work (canon given form)
-
-```jsonc
-{
-  "id": "not-every-fire-is-holy",
-  "form": "storybook@2.1.0",
-  "bind": { "character": ["jerry-man", "brenda-gentry"], "setting": ["the-yard"],
-            "style-pack": "warm-oil-curdles-cold" },
-  "slots": { "spread": [ { "beat": "…", "characters": ["jerry-man"], "location": "the-yard" } ] },
-  "writesBack": [ { "kind": "character", "id": "anjali-sambalu", "locked": true } ],
-  "gates": { "wordsBlessed": "2026-07-15", "subjectApproval": "gated:brenda-gentry" }
-}
-```
-
-A work is **not** an "instance". A book's identity is not derived from being an instance of a
-book-shaped thing. A work carries AUTHORSHIP that exists in neither the canon nor the form: `beats`
-and `spine` are new facts about the world, and `writesBack` lets a work add to canon outright.
-
-That is also why **projection** names the *relationship* here and never a primitive. A projection is
-determined by (object, map); a work is not determined by (canon, form), and a shadow does not change
-the object it falls from. The fit varies by form, and the slot schema is the measure of it: a form
-whose slots are derivable is near a true projection, and one with a rich authored schema is far from
-it.
-
-`logline`, `spine`, `refrain`, and `beats` are **not** universal fields. They belong to the storybook
-form's slot schema and craft-canon (§13), which is where they were always story-specific. A flyer
-work has none of them and is now expressible.
-
-**Back-compatible, twice over:** `StorySpec` is retained as an alias for a work whose form resolves
-to `storybook`; a universe with existing `stories/*.json` and no form declared validates unchanged
-and is treated as `storybook@1`. And a work keyed with the pre-0.14 `projection` field still loads,
-because a rename that silently orphans the things it renamed is the failure mode renames are famous
-for.
-
-### 4.10 The Composer, the Compiler, and the Gate
-
-The render step is three parts with genuinely different natures. Collapsing them is what produces
-either a rigid template engine (no composer) or an unaccountable one (no gate).
+The three-part split still holds and is the most durable thing this section ever said:
 
 | Part | Nature | Answers |
 |---|---|---|
-| **Composer** | agentic, generative | *What should exist?* Plans slots and their order, decides which goldens each slot needs, sequences modalities, handles composite slots. |
-| **Compiler** (§4.6) | deterministic | *What exactly do I send?* One planned slot → exact prompt + ref list + QA checklist, compiled from canon so nothing load-bearing is retyped. |
-| **Gate** | adjudicating | *Does this artifact satisfy this stated invariant?* Returns PASS or DEFECT with evidence; a defect re-rolls THAT SLOT, never the artifact. |
+| **Composer** | agentic, generative | *What should exist?* |
+| **Compiler** | deterministic | *What exact prompt does this one slot become?* |
+| **Gate** | verifying | *Is what came back actually right?* |
 
-**The gate is agentic wherever the invariant is perceptual.** The meaningful split is not
-agentic-versus-not, it is **generative versus adjudicating**. Every invariant is therefore typed:
+**What changed in v0.17 is the article.** This section said "THE Composer", singular, and a
+universal executor was built to be it. The correction: **a composer is per-form.** Each kind of work
+plans differently, and a storybook, a diptych series and a deck have genuinely different plans. What
+they share is not the plan; it is everything underneath it.
 
-- **`computed`** — checkable by pure code against the artifact (palette-only, content fits the
-  viewBox, a column header fits its column, required metadata present). Free, and it runs every time.
-- **`judged`** — requires a model to look (no text anywhere in the image, hands non-anatomical, the
-  digit count, character identity across spreads).
+**The compiler is shared and there is exactly one.** It is
+`skills/compose-spread/scripts/assemble_prompt.py`, which carries every §4.6 normative guard
+(uncast-character refusal, anchor-style guard, single-image guard, `registerAnchor` auto, altLooks,
+dropSheets, auto-disambiguation, `guardedNegatives`). The retired composer forked it rather than
+calling it, and the fork's 30-line `compile_slot` had none of those guards. That is the second time
+this framework has grown two disjoint compilers, and the first time cost real books. There is one
+compiler. Do not write a second.
 
-**A `judged` check is a ROLE, not a service, and inside the composer it is free.** The load-bearing
-property is that the judge has not seen the plan, which is a fact about context rather than about
-transport. In the runtime the composer already has model access, so a verification step scoped to
-golden plus slot plus checklist is simply another turn. Treating the judge as an external service to
-call is a modelling error: it invents a dependency the runtime does not have, and it makes
-verification look like something bolted on rather than something an agent does by default.
+**The gate is a role, not a service** (see `judge-slot`), and it fails closed: a slot whose judged
+invariants could not be checked is UNJUDGED, never PASS.
 
-A projection's token cost is approximately its count of `judged` invariants times its slots, which is
-a useful thing to be able to read off a contract before running it.
-
-**The judge must not be the maker (normative).** A `judged` invariant is evaluated in fresh context,
-given the artifact and the invariant ONLY, never the plan that produced it. An agent shown its own
-reasoning defends it rather than inspecting the pixels. Earned 2026-07-23: a three-element graphic
-shipped with one element deliberately missing its defining feature, because the maker "knew" the
-omission was intentional variety and read its own intent instead of the output; an observer with no
-access to the plan caught it instantly.
-
-**A subagent is the default judge (normative).** Independence is a property of *context*, not of
-vendor, process, or billing account. A fresh subagent dispatched inside the runtime that is already
-composing satisfies the rule completely: it never sees the plan, and that is the only thing the rule
-asks for. It also costs no second credential and no second provider.
-
-An implementation MUST therefore be able to fill the judge role without an API key. The composer
-itself MUST NOT judge; it emits, per slot, a **judging brief** naming exactly what a judge is shown:
-
-```jsonc
-{ "artifact": "<path>", "reference": "<path>", "mode": "identity" | "style",
-  "checklist": ["<invariant id>", "..."],
-  "withheld": "the plan, the beats, the compiled prompt, and the intent" }
-```
-
-The brief is what enforces the separation. Asking an agent to disregard what it already knows is not
-a control; handing a different agent a bounded brief is.
-
-- **`mode: identity`** judges against a character golden: *is this the same subject?*
-- **`mode: style`** judges against a style-pack anchor, whose SUBJECT is explicitly irrelevant: *is
-  this the same visual voice?* Asking the identity question of a characterless plate is nonsense, and
-  asking only the style question of a character lets a stranger through with matching linework.
-
-**The checklist comes from the contract, not from a bound entity.** It is this projection's `judged`
-invariants plus the resolved provider's quirk checks, unioned with a bound entity's itemized
-invariants only where one is actually bound. Sourcing it from an entity alone means a projection with
-no cast has no checkable rules, so its declared invariants are computed and then discarded. Found
-2026-07-23 by the first characterless *book*; every earlier characterless deliverable was a single
-plate with nothing to judge across.
-
-**An absent verdict is not a pass, and neither is an unreadable one.** A slot awaiting judgment is
-`NEEDS-JUDGMENT`, which is distinct from both PASS and DEFECT: the artifact exists and is sound, and
-one check has not run. Re-running MUST NOT regenerate it, because re-rolling something nobody has
-judged pays twice and discards the very artifact the judge was about to look at.
-
-**Failure model: park the slot, finish the composition, report.** When a slot exhausts its re-rolls,
-it is marked DEFECT, the remaining slots continue, and the artifact emits as incomplete with a precise
-per-slot report. A human then repairs one slot rather than re-running a book. This requires **durable
-per-slot state across a long unattended run**, which is a load-bearing requirement on the runtime and
-the subject of §14.
-
-
-### 4.11 Deterministic Generator (the asset that is CODE)
-
-A **Deterministic Generator** is a program in the universe that DRAWS an asset instead of prompting
-for one. It is the typed home for the rule the framework already asserts everywhere else and never
-gave a place to live: *deterministic graphics render in code, not an image model.* Marks, favicon
-sets, starfields, clouds, grids, scale rules, diagram furniture, colour-chip sheets — anything whose
-correctness is a NUMBER rather than a judgement — belongs here.
-
-Before this section, such code existed as loose scripts beside the assets they wrote, with ad-hoc
-paths, hand-written provenance, hand-written install copying, and no discoverability. That is
-framework-shaped work, so the framework owns it.
-
-```
-<universe>/generators/<id>/
-  generator.json     # the manifest (below)
-  generate.py        # the entrypoint; writes into out/
-  out/               # generated artifacts + their .recipe.json sidecars
-  proof/             # optional: contact sheets a human approved (see "the gate", below)
-```
-
-```jsonc
-{
-  "id": "north-star-cross-favicons",
-  "name": "North Star Cross favicon set",
-  "kind": "generator",
-  "entrypoint": "generate.py",
-  "determinism": "seeded",                  // "pure" (no randomness) | "seeded"
-  "seed": 20260727,                          // REQUIRED when determinism is "seeded"
-  "params": {                                // every knob, as DATA (see below)
-    "markSpan": 0.71,
-    "ground": "#0A0B10"
-  },
-  "inputs": ["reference/north-star-cross/mark-3d-gold-transparent.png"],
-  "outputs": [
-    { "path": "out/favicon.ico", "description": "multi-resolution .ico, 16 + 32 + 48" }
-  ],
-  "install": {                               // where an output lands in a consuming repo
-    "out/favicon.ico": ["public/favicon.ico", "src/app/favicon.ico"]
-  },
-  "proof": {                                 // how a human checks it; see "the gate"
-    "sheet": "proof/contact-sheet.png",
-    "assertions": ["the mark reads at 16px on BOTH a light and a dark ground"]
-  }
-}
-```
-
-- **Every parameter is DATA, never a buried constant.** This is the load-bearing rule, and it is not
-  tidiness. A generator's constants are its contract with the artifact, and two of them silently
-  meaning different things is the characteristic bug of this primitive: a favicon generator carried
-  `MARK_SPAN` as "fraction of the tile the mark fills" while the SVG it also emitted used the same
-  number as an SVG `scale()`, which multiplies the whole coordinate system. The two disagreed by
-  30%, and the descender was sheared off the bottom edge of every raster. Params in `generator.json`
-  are what let a reviewer see the knobs without reading the code, and what force a derived value to
-  be *derived* rather than retyped.
-- **The gate is a PROOF, not a read-back.** §3.5 gives a render read-back because a model is
-  stochastic and each output must be re-checked. A generator is reproducible, so re-checking every
-  run is waste; what it needs instead is a **proof sheet a human approved once**, rendering the output
-  at the sizes and on the grounds where it will actually be seen. Proof at real size, never at
-  convenient size: the same favicon set looked correct at 512px and was clipping its descender at 16.
-  A generator whose output is only ever viewed zoomed-in is untested.
-- **Assumptions in a generator are testable, so test them.** Because it is cheap and repeatable, the
-  cost of checking a design belief is one re-run. A ruling that "the 3D bevel turns to mush below
-  48px, so small sizes use the flat vector" survived only until it was proofed side by side; the
-  bevel read *better* small, because the lit/shadow split preserved the mark's long descender where
-  the flat silhouette collapsed. State the assumption in a comment, then disprove it.
-- **Provenance is the same contract, different fields.** A generated artifact still carries a
-  `.recipe.json` sidecar (§3.2), but it records `generator` + `params` + `seed` + input hashes rather
-  than `provider` + `prompt` + `refs`. The invariant is unchanged: no asset without its recipe.
-- **`install` makes the universe the source of truth for derived assets.** A favicon set copied by
-  hand into three sites is three sites that will drift, and they did: one shipped a mark from a
-  rebrand fourteen months stale while another shipped an incomplete set. The manifest declares where
-  each output belongs; installing is idempotent and reports only what changed.
-- **Determinism is declared and enforced.** `pure` means byte-identical output for identical inputs.
-  `seeded` means byte-identical *given the seed*, which must therefore be in the manifest and never
-  in the code. Wall-clock, `random()` without a seed, and dict iteration order are defects.
-
-Generators are the counterpart to Style Packs (§4.7): a pack governs what a MODEL should produce,
-a generator replaces the model entirely where the answer is computable. When an asset can be
-expressed either way, prefer the generator, because it is reproducible, reviewable, and free.
-
+**What belongs under a composer rather than inside one** is still being drawn, and is the open
+question this section will answer once two composers exist to compare. The candidates, all of which
+the retired executor implemented and none of which are form-specific: durable per-slot state,
+resumability, recipes and drift-checking, provider adapters, and plan-time feasibility refusal
+(which is not form machinery at all, but simply the first incremental eval).
 
 ## 5. Evolution & versioning
 
