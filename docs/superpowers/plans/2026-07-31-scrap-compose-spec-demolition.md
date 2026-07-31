@@ -10,9 +10,11 @@
 
 ## Global Constraints
 
-- **Repo:** `~/Documents/github-repos/agentic-brand-universe` (plugin `0.65.0`, `SPEC_VERSION = "0.16"`). This is the canonical checkout, and the one `gary-sheng-art-universe/assert.sh` points at. There is a second, stale checkout at `~/.claude/plugins/marketplaces/agentic-brand-universe` (plugin `0.57.0`) — **do not edit it**; Task 4 addresses it.
+- **Repo:** `~/Documents/github-repos/agentic-brand-universe` (plugin `0.65.0`, `SPEC_VERSION = "0.16"`). This is the canonical checkout, and the one `gary-sheng-art-universe/assert.sh` points at. There is a second, stale checkout at `~/.claude/plugins/marketplaces/agentic-brand-universe` (plugin `0.57.0`) — **do not edit it**; Task 5 addresses it.
 - **Do NOT touch `skills/compose-spread/`.** Its `assemble_prompt.py` (949 lines) is the proven compiler carrying every SPEC §4.6 normative guard. Deleting `compose` is what makes it unambiguously the only one.
-- **Do NOT touch `skills/compose-spec/`, `skills/judge-slot/`, `skills/lint-universe/`.** Verified independent: zero references to `compose.py`, `work.json` or `form.json` in their SKILL.md files.
+- **Do NOT touch `skills/compose-spec/` or `skills/judge-slot/`.** Verified independent.
+- **`skills/lint-universe/` IS coupled and IS in scope** (corrected 2026-07-31, mid-execution). An earlier version of this plan called it "verified independent" on the strength of grepping its `SKILL.md` for `compose.py|work.json|form.json`. That was the wrong file and the wrong string: the coupling lives in `scripts/lint.py` and is to the **slot schema**, not to `compose.py` by name. `lint.py:45-46` holds the `EMITTERS` table and `lint.py:584-719` is a 136-line section that lints the retired model (`slots`, `type: deterministic`, `emitter`, `generators`, `for=`). Task 2 removes it. Gary ruled "finish the job" when the gate caught this.
+- **`skills/explanatory-plate/` SURVIVES and must not be deleted.** It is standalone-runnable (`plate.py` has its own `__main__` taking a spec path), it has no `SKILL.md` because it is a library rather than a skill, and `docs/ARCHITECTURE.md:5` states every diagram in that document was emitted by it. It loses only its `EMITTERS` registration, which it does not need.
 - **Never rewrite `SAVE-LOG.md` history.** It is append-only. Add an entry; do not edit prior ones.
 - **`run-tests.sh` discovers test files**, so deleting `skills/compose/tests/` drops its 91 tests automatically. Expect the total to fall by 91 and everything else to stay green.
 - **Blast radius is the whole cluster, not one file.** `add-work` and `add-form` author `work.json` and `form.json` documents, and `compose.py` is the only thing that ever consumed them. Deleting the executor alone would leave two skills that produce artifacts nothing can run, which is worse than either keeping or removing both. The cluster is therefore: `skills/compose/`, `skills/add-form/`, `skills/add-work/`, `skills/brand-card/`, `forms/scrolling-diorama/`.
@@ -26,7 +28,10 @@
 | `skills/compose/` | Delete. 896-line `compose.py`, 91 tests, 84-line SKILL.md, zero works. |
 | `skills/add-form/` | Delete. Authors `form.json` for an executor that no longer exists. |
 | `skills/add-work/` | Delete. Authors `work.json` for the same. |
-| `skills/brand-card/` | Delete. A deterministic emitter for a form's `deterministic` slot. |
+| `skills/brand-card/` | Delete **in Task 2**, with the lint reference that points at it. |
+| `skills/lint-universe/scripts/lint.py` | Task 2: drop the `EMITTERS` table (45-46) and the form section (584-719). |
+| `skills/lint-universe/tests/test_lint.py` | Task 2: drop the tests covering the removed checks. |
+| `skills/explanatory-plate/` | **KEEP.** Standalone-runnable; emitted every diagram in `docs/ARCHITECTURE.md`. |
 | `forms/scrolling-diorama/` | Delete. The one form, never worked. |
 | `SPEC.md` §4.8, §4.9, §4.10 | Rewrite to demolition stubs. |
 | `SPEC.md` §14 | Mark aspirational. |
@@ -39,40 +44,49 @@
 ### Task 1: Delete the compose cluster
 
 **Files:**
-- Delete: `skills/compose/`, `skills/add-form/`, `skills/add-work/`, `skills/brand-card/`, `forms/scrolling-diorama/`
+- Delete: `skills/compose/`, `skills/add-form/`, `skills/add-work/`, `forms/scrolling-diorama/` (NOT `brand-card` — that is Task 2)
 
 **Interfaces:**
 - Consumes: nothing.
 - Produces: a repo where `assemble_prompt.py` is the only prompt compiler.
 
-- [ ] **Step 1: Record the baseline test count**
+- [ ] **Step 1: Confirm the baseline test count**
 
-Run: `./run-tests.sh 2>&1 | tail -3`
-Expected: a line reading `ALL GREEN — <N> tests`. Write N down; call it BASELINE.
+Run: `./run-tests.sh 2>&1 | tail -2`
 
-- [ ] **Step 2: Prove nothing imports what is about to be deleted**
+BASELINE is already measured: **655 tests, ALL GREEN**. The runner prints `16 skill test file(s) discovered, 655 tests total` then `ALL GREEN` — it does NOT print `ALL GREEN — <N> tests`. Confirm you see 655 and green. If not, stop and report.
+
+- [ ] **Step 2: Confirm the only inbound references are the two already known**
 
 Run:
 
 ```bash
 grep -rn "import compose\|from compose\|skills/compose/scripts\|brand_card\|brand-card/scripts" \
   --include="*.py" --include="*.sh" engine/ skills/ forms/ registry/ 2>/dev/null \
-  | grep -v "compose-spread\|compose-spec" || echo "NO IMPORTERS — safe to delete"
+  | grep -v "compose-spread\|compose-spec"
 ```
 
-Expected: `NO IMPORTERS — safe to delete`. If anything prints, stop and report it rather than deleting.
+**Expected: exactly two lines**, both known and both handled:
+
+1. `skills/compose/scripts/compose.py:258` — a self-reference inside the cluster being deleted. Goes away with it.
+2. `skills/lint-universe/scripts/lint.py:45` — the `EMITTERS["brand-card"]` entry. **Task 2 removes it.** Leave it alone in this task.
+
+Any THIRD line is an unknown importer: stop and report rather than deleting. (An earlier run of this task expected zero lines and correctly refused to proceed when it found these two. They are now expected.)
 
 - [ ] **Step 3: Delete the cluster**
 
 ```bash
-git rm -r --quiet skills/compose skills/add-form skills/add-work skills/brand-card forms/scrolling-diorama
+git rm -r --quiet skills/compose skills/add-form skills/add-work forms/scrolling-diorama
 git status --short | head -20
 ```
+
+**`skills/brand-card/` is deliberately NOT deleted here.** `lint.py` still points at `brand-card/scripts/card.py`, so removing it now would leave the repo in a state where a live, protected file references a deleted script, and lint's own tests would go red through no fault of this task. Task 2 deletes `brand-card` and removes that reference in the same commit.
 
 - [ ] **Step 4: Prove the suite is still green and dropped exactly 91 tests**
 
 Run: `./run-tests.sh 2>&1 | tail -3`
-Expected: `ALL GREEN — <BASELINE minus 91> tests`. If any suite fails, the deletion touched something it should not have; restore with `git checkout -- .` and report.
+
+The runner prints two lines, e.g. `16 skill test file(s) discovered, 655 tests total` then `ALL GREEN`. Expected here: **564 tests total** (655 minus compose's 91) and `ALL GREEN`. Any other number, or any failure, means the deletion touched something it should not have: restore with `git checkout -- .` and report rather than continuing.
 
 - [ ] **Step 5: Prove exactly one prompt compiler remains**
 
@@ -85,7 +99,7 @@ Expected: only `skills/compose-spread/scripts/assemble_prompt.py`.
 - [ ] **Step 6: Commit**
 
 ```bash
-git commit -m "Scrap the slot-model composer: 896 lines, 91 tests, zero works
+git commit -m "Scrap the slot-model composer core: 896 lines, 91 tests, zero works
 
 compose.py was the most-tested unrun code in the repo. No work.json ever
 existed, no work/ or recipes/ directory was ever written, and forms/ held one
@@ -95,16 +109,114 @@ framework already diagnosed and fixed once when it retired the Nation of Fire
 compiler, and which compose-spread's own SKILL.md forbids in a section titled
 'never fork this'.
 
-add-form, add-work and brand-card go with it. They author and emit documents
-that only compose.py consumed, so keeping them would leave skills producing
-artifacts nothing can run.
+add-form and add-work go with it. They author documents that only compose.py
+consumed, so keeping them would leave skills producing artifacts nothing can run.
+
+brand-card is deleted in Task 2 instead, together with the lint-universe
+reference that points at it.
 
 assemble_prompt.py is untouched and is now unambiguously the only compiler."
 ```
 
 ---
 
-### Task 2: Rewrite SPEC §4.8, §4.9 and §4.10
+### Task 2: Delete `brand-card` and retire lint-universe's form/slot checks
+
+**Files:**
+- Delete: `skills/brand-card/`
+- Modify: `skills/lint-universe/scripts/lint.py`
+- Modify: `skills/lint-universe/tests/test_lint.py`
+
+**Interfaces:**
+- Consumes: Task 1's deletions.
+- Produces: a linter that no longer checks a retired model, and no dangling emitter reference.
+
+`lint-universe` lints the slot model Task 1 just removed the executor for. This task removes that section. It is a live, proven skill with 69 tests, so the surgery is bounded precisely and the remaining tests must stay green.
+
+**`skills/explanatory-plate/` MUST SURVIVE.** It is the second entry in the `EMITTERS` table, but unlike `brand-card` it is standalone-runnable and `docs/ARCHITECTURE.md:5` says every diagram in that document was emitted by it. Remove its registration, keep the skill.
+
+- [ ] **Step 1: Record the pre-surgery state**
+
+```bash
+./run-tests.sh 2>&1 | tail -2
+grep -c "def test" skills/lint-universe/tests/test_lint.py
+```
+
+Expected: `564 tests total`, `ALL GREEN`, and `69` lint tests.
+
+- [ ] **Step 2: Read the section you are removing, all of it**
+
+Read `skills/lint-universe/scripts/lint.py` lines 580 to 729. The form section opens at line 584 with `# ---- projections` and runs to line 719; `def main()` begins at 720. Line 613 carries a standing instruction that any non-form rule belongs ABOVE that line, which is your guarantee that the section is self-contained.
+
+**Verify that guarantee rather than trusting it.** Before deleting, confirm nothing below line 584 defines or mutates a name used above it. If anything does, report instead of deleting.
+
+- [ ] **Step 3: Remove the `EMITTERS` table**
+
+Delete lines 45-46 of `skills/lint-universe/scripts/lint.py`:
+
+```python
+    EMITTERS = {"brand-card": SKILLS/"brand-card/scripts/card.py",
+                "explanatory-plate": SKILLS/"explanatory-plate/scripts/plate.py"}
+```
+
+Also remove the now-unused `SKILLS = pathlib.Path(__file__).resolve().parents[2]` on line 44 **only if nothing else in the file uses `SKILLS`**. Grep first; if it has another use, leave it.
+
+- [ ] **Step 4: Remove the form/projection section**
+
+Delete `lint.py` lines 584 through 719 inclusive (from `# ---- projections` up to but NOT including `def main()`).
+
+- [ ] **Step 5: Delete `brand-card`**
+
+```bash
+git rm -r --quiet skills/brand-card
+```
+
+- [ ] **Step 6: Remove the tests that covered the deleted checks**
+
+In `skills/lint-universe/tests/test_lint.py`, delete every test whose subject is a removed check. Candidates identified by grep: `TestFormsLayout` (3 tests, entirely form-layout), and the subset of `TestLinter` (22 tests) asserting `SLOT-NO-EMITTER`, `EMITTER-UNKNOWN`, `EMITTER-MISSING`, `SLOT-NO-GENERATOR` or `NO-FORMS`.
+
+**Determine the exact set by reading, not by grep count.** `TestLinter` also covers checks that survive; delete only the tests whose assertions name a removed error code, and keep the rest. `TestGoldenProvenance` and `TestSpecPin` each matched the grep on a single incidental line and are almost certainly NOT form tests: read them and keep them unless their subject really is the removed model.
+
+Report the exact list of deleted test names and the count.
+
+- [ ] **Step 7: Prove the remaining suite is green**
+
+```bash
+./run-tests.sh 2>&1 | tail -2
+grep -c "def test" skills/lint-universe/tests/test_lint.py
+```
+
+Expected: `ALL GREEN`, a total of `564 minus <the number of lint tests you deleted>`, and a lint test count of `69 minus <same>`. The two must agree. If the suite is red, the section was not self-contained: report what broke rather than patching around it.
+
+- [ ] **Step 8: Prove explanatory-plate still works**
+
+```bash
+ls skills/explanatory-plate/scripts/plate.py && echo "SURVIVES"
+python3 -m unittest discover -s skills/explanatory-plate/tests -v 2>&1 | tail -3
+```
+
+Expected: `SURVIVES` and its tests green.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add -A skills/lint-universe skills/brand-card
+git commit -m "Retire lint-universe's form/slot checks, and brand-card with them
+
+lint-universe was called independent of the retired model on the strength of
+grepping its SKILL.md. The coupling was in scripts/lint.py all along, and it was
+to the slot schema rather than to compose.py by name: a 136-line section linting
+slots, deterministic emitters and generators, plus an EMITTERS table pointing at
+brand-card. A linter for a model with no executor is a gate on nothing.
+
+explanatory-plate survives. It was the table's other entry, but it is
+standalone-runnable and every diagram in docs/ARCHITECTURE.md came out of it.
+It loses a registration it never needed."
+```
+
+---
+
+### Task 3: Rewrite SPEC §4.8, §4.9 and §4.10
 
 **Files:**
 - Modify: `SPEC.md` (§4.8 at line ~611 through the end of §4.10 at ~999, i.e. everything up to `## 5. Evolution & versioning`)
@@ -237,7 +349,7 @@ model being retired."
 
 ---
 
-### Task 3: Mark §14 aspirational, bump versions, log
+### Task 4: Mark §14 aspirational, bump versions, log
 
 **Files:**
 - Modify: `SPEC.md` §14 (line ~1246)
@@ -246,7 +358,7 @@ model being retired."
 - Modify: `SAVE-LOG.md` (append)
 
 **Interfaces:**
-- Consumes: Tasks 1 and 2.
+- Consumes: Tasks 1, 2 and 3.
 - Produces: a shippable, honestly-versioned repo.
 
 - [ ] **Step 1: Mark §14 aspirational**
@@ -340,13 +452,13 @@ git push
 
 ---
 
-### Task 4: Resolve the stale second checkout
+### Task 5: Resolve the stale second checkout
 
 **Files:**
 - No repo files. This is an environment fix.
 
 **Interfaces:**
-- Consumes: Task 3's push.
+- Consumes: Task 4's commit.
 - Produces: one source of truth, or a recorded reason there are two.
 
 - [ ] **Step 1: Determine whether anything still points at the stale copy**
