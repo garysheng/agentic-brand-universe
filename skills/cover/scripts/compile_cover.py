@@ -231,6 +231,7 @@ def main() -> int:
                 "refs": refs,
                 "size": RENDER_SIZE,
                 "conform": {"from_aspect": "2:3", "to_aspect": args.platform_aspect, "mode": "safe-margin-crop"},
+                "textLines": text_lines,
                 "qa": qa,
             },
             indent=2,

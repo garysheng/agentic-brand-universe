@@ -708,3 +708,25 @@ resolved, Levantine, explicitly never Anglo, with five poses. Reverted whole.
 The sweep is not "does this entity exist". It is "does this ENTITY OR ANY OF ITS LOOKS
 already cover what I am about to author". An entity with alt-looks is a small canon of its
 own, and the looks are where the specific authorizations live.
+
+## 2026-07-30 — 0.64.0 — render_cover.py: the cover generator now reaches the artifact
+
+`compile_cover.py` emitted a JSON job and NOTHING CONSUMED IT. The skill said "never
+hand-roll a cover render" and then handed the operator a compiled job with no runner, so
+every cover in this framework was in fact hand-rolled. Two Angels and a Forklift shipped a
+cover with no title, no byline and no universe mark, because the hand-written version was
+authored as an ordinary spread and an ordinary spread does not know a cover carries three
+exact strings (Gary: "fix the generator to embed the text on the cover").
+
+A generator that stops one step short of the artifact is a generator nobody uses.
+
+`render_cover.py` runs compile -> generate -> conform -> report, prints the baked strings
+so the read-back has something to check that is not the operator's memory, and refuses to
+call itself done. `compile_cover.py` now exposes `textLines` on the job for the same reason.
+
+KNOWN BUG, found on the first real use and NOT yet fixed: the runner maps the job's
+`safe-margin-crop` to a plain centre `crop`, which removed the bottom 171px of a 1024x1536
+render and took the universe mark with it. `safe-margin-crop` is a distinct mode and needs
+implementing in `conform_cover.py`; until then a cover whose bottom line is the mark will
+lose it. The compiled prompt already reserves the outer 10% as safe margin, so the fix is
+to honour that reservation in the conform rather than to move the text.
