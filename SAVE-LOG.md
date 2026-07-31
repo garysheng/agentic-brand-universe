@@ -832,3 +832,44 @@ is now a refusal.
     weakening the likeness. Also open: SPEC 3a never got the `workRoot` rule written into
     it (the four universes declare it in data, the standard does not describe it), and the
     pre-existing `lint.py` crash on an explicit `"inputs": null` is still unfixed by design.
+
+## 2026-07-31 (cont) — plugin 0.67.0: forms become data, and the render path gets a net
+
+Six commits of capability had shipped at 0.66.0 with no bump, which makes `/plugin update`
+a silent no-op. Gary caught it while wrapping: "did we /evolve-abu yet? to increase version
+number." Bumped to 0.67.0 and `make-a-work` registered in the manifest catalog, which is
+the part that makes a skill discoverable rather than merely present.
+
+NEW SKILL `make-a-work`. The generic front door for any form a universe declares. Born the
+moment the question "is there a skill for making a flyer next time?" got the answer "no",
+and the obvious fix (write `make-a-flyer`) would have been the same hand-rolling one level
+up: a skill per form is not a framework. A form is now a FOLDER at `<universe>/forms/<id>/`
+holding FORM.md and PROMPT.md, where PROMPT.md IS that form's composer. Adding a kind of
+work adds a folder. `forms.py` discovers and RESOLVES, and its real job is refusing: a
+folder without PROMPT.md is not usable, a folder holding only the retired SPEC 4.8
+`form.json` is reported as retired rather than offered, an unknown form names what IS
+declared, and a form's STATUS warning is surfaced up front because a one-instance form is a
+hypothesis an agent would otherwise follow with unearned confidence. 14 tests, all about
+the refusals. Deliberately NO scaffolder for authoring a form: until one exists in more
+than one universe there is nothing proven to scaffold.
+
+`on-brand-image` went from 293 works and ZERO tests to 99, and they found two bugs in
+`--permit` on the day it shipped. Three flags now: `--permit` (un-reject one pole for one
+render), `--ref-first` (give an explicit ref the standing entity refs already had), and
+renders OPEN in Preview by default because looking at the image IS the gate and it should
+not require going to find the file.
+
+`lint-universe` no longer dies on an explicit JSON null. `d.get("k", [])` returns the
+default only when the key is ABSENT; present-and-null returns None and iterating it raises.
+A linter that dies mid-run reports NOTHING, so one null field hid every real finding in the
+universe. The regression test is STRUCTURAL rather than by-example, greps for the bug
+CLASS, and immediately found a seventh site the manual pass had missed.
+
+    RESUME: two-tier ref ordering is the open one, and it is real rather than theoretical.
+    Identity refs (who the picture is OF) should outrank fidelity refs (a mark that must be
+    exact) which outrank style refs. Today there is one rule: making the mark an entity
+    fixed the mark and pushed the subject's photos to positions 9 and 10, weakening the
+    likeness. `--ref-first` is a blunt substitute. This wants a second work in a DIFFERENT
+    universe to test against rather than more theory. Also open: SPEC 3a never got the
+    `workRoot` rule written into it, so four universes declare it in data while the standard
+    stays silent.
