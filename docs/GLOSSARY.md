@@ -59,14 +59,19 @@ tell you it did.
 **Anchor** — the reference passed first, defining the look. Must be **content-neutral** (palette,
 light, finish, no subject), or its content leaks into every render.
 
-**Form** — the typed contract for a KIND of deliverable: surface, required kinds, slots,
-invariants, emitted outputs. Called *Projection* before v0.14.
+**Form** — what makes a work the KIND of thing it is: a storybook, a flyer, a share card. Called
+*Projection* before v0.14. **How a form is written down is an open question**: the v0.6–v0.16 typed
+contract (surface, required kinds, slots, generators, invariants) was retired in v0.17 having
+produced zero works, and SPEC §4.8 now records that retirement instead of specifying a live contract.
 
-**Work** — ONE instance of a form, binding a brand's actual ids into its slots. Called *Composition*
-before v0.14.
+**Work** — ONE made thing: canon given form, carrying authorship present in neither. Called
+*Composition* before v0.14. Its encoding retired with the form's (SPEC §4.9). It never became an
+alias for a story spec, which is still the live primitive every book uses.
 
 **Composer** — the agentic layer that plans, compiles, generates and repairs, answering to a gate.
-Refuses an undeliverable surface at plan time, and parks a defective slot rather than halting.
+**One per form**, not one universal executor: a storybook, a diptych series and a deck plan
+differently. What they share is underneath the plan — one deterministic compiler, and a gate that
+fails closed (SPEC §4.10).
 
 **Generator** — code that **draws** an asset instead of prompting for one, for anything whose
 correctness is a number rather than a judgement: marks, favicons, grids, scale rules, massing

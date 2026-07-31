@@ -25,7 +25,6 @@ or a set of page heroes without ever declaring canon.
 |---|---|---|
 | `abu` | THE FRONT DOOR to Agentic Brand Universe. |  |
 | `add-character` | Add ONE character to an Agentic Brand Universe: interview the source (a real person's story/wardrobe/sensitive-list, or a fictional design brief), reuse-first via casting sweep, then scaffold a typed `character` entity with the SPEC §12 reference-matrix slots (8 shots) and a ready-to-run generation prompt per shot. |  |
-| `add-form` | Add ONE form to the framework, and one work made in it (SPEC §4.8/§4.9) — the typed contract for a KIND of work, plus the specific one you are making. |  |
 | `add-generator` | Add ONE deterministic generator to a universe (SPEC v0.13 §4.11) — code that DRAWS an asset instead of prompting for one. |  |
 | `add-motif` | Add ONE motif (a recurring visual element, gesture, or pattern that must render identically wherever it appears, not a one-off image) to an Agentic Brand Universe (interview what it is and its load-bearing detail, reuse-first via casting sweep, then scaffold a typed `motif` entity with SPEC §12's hero + detail reference slots and ready-to-run generation prompts). |  |
 | `add-prop` | Add ONE prop (a discrete physical object a character holds, wears, or uses, that must render identically wherever it appears) to an Agentic Brand Universe (interview what it is and its load-bearing detail, reuse-first via casting sweep, then scaffold a typed `prop` entity with SPEC §12's hero + detail reference slots and ready-to-run generation prompts). |  |
@@ -33,12 +32,9 @@ or a set of page heroes without ever declaring canon.
 | `add-setting` | Add ONE setting (a location) to an Agentic Brand Universe (interview its fixed geometry, fixed camera angles, and dressing, reuse-first via casting sweep, then scaffold a typed `setting` entity with SPEC §12's contract slots (turnaround, per-angle empty plates, blueprint, plus map/blocking/dressing descriptor prose) and ready-to-run generation prompts). |  |
 | `add-story` | Add ONE story to an Agentic Brand Universe as a typed StorySpec (a medium-neutral work over canon, NOT an `add-entity` kind). |  |
 | `add-visual-metaphor` | Add ONE visual metaphor (a spine-object a whole property argues through, not merely a location) to an Agentic Brand Universe (interview the object and the states it argues across, reuse-first via casting sweep, then scaffold a typed `visual-metaphor` entity with SPEC §12's setting-style contract: a locked master plus per-state plates, and map/blocking/dressing descriptor prose). |  |
-| `add-work` | Make ONE work in a form that already exists (SPEC §4.9) — bind a brand's ids to the form's required kinds, fill its slots, generate the assets, validate against the contract, and install the outputs. |  |
 | `book-doctor` | Grade a RENDERED book on local disk against what its render-spec declares, BEFORE it is delivered anywhere. | yes |
-| `brand-card` | Emit a two-panel brand card (share card, thank-you card, simple flyer) deterministically: a code-laid text panel beside a pre-generated art panel. |  |
 | `canon-resolve` | Before writing ANY render prompt in an Agentic Brand Universe, resolve every named character, setting, and motif to its canon entity: output the locked sheet paths (requiredForRender), the invariants to enforce, and the entity's prose rules, then run the load-bearing gate (assert.sh spread\|story). |  |
 | `casting-sweep` | Before naming any NEW character, setting, or motif in a story, sweep the universe's canon for an existing entity that fits the role natively, and emit a casting table (each role: reuse an entity id, or NEW plus a one-line justification). |  |
-| `compose` | Run the composer (SPEC 4.10) over a work: resolve the form and its extends chain, refuse an undeliverable surface at PLAN time, then execute each slot with durable per-slot state, parking a defective slot and continuing rather than halting. | yes |
 | `compose-spec` | Scaffold and RE-SYNC a book's render-spec from its StorySpec, filling everything canon determines, enumerating every legal choice canon constrains, and never overwriting authored scene text. | yes |
 | `compose-spread` | Render ONE spread of an Agentic Brand Universe book as an atomic unit — resolve canon, deterministically ASSEMBLE the prompt + refs from canon (register-anchor-first, each in-frame entity's block for its SELECTED look including alt-looks, auto-disambiguation, and negatives COMPUTED from the selected looks so a blanket negative can never fight a canon alt-look), generate, then read back. | yes |
 | `cover` | Create a picture-book cover for a story in an Agentic Brand Universe, at the platform's portrait aspect. | yes |
@@ -47,7 +43,7 @@ or a set of page heroes without ever declaring canon.
 | `evolve-abu` | Evolve the Agentic Brand Universe framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. |  |
 | `judge-slot` | Judge one generated slot against an entity's locked golden, item by item over its declared invariants, in a context that has NOT been told how the slot was made. |  |
 | `land-work` | Merge a finished work branch home instead of leaving it parked, in ANY git repo (a universe, a platform repo, a site, anything). |  |
-| `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, forms, slots, emitters, generators, goldens, invariants, provider quirks) with no generation, no API calls, and no cost. | yes |
+| `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, entities, goldens, provenance, craft canon, provider quirks) with no generation, no API calls, and no cost. | yes |
 | `make-a-book` | The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. |  |
 | `on-brand-image` | Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a portable folder of style references plus a read-back gate — with NO universe required. |  |
 | `onboard` | Install Agentic Brand Universe for someone, as a conversation rather than a list of commands they have to run. |  |
@@ -80,7 +76,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `build-docs` | regenerate the framework's own derived docs (README + docs/REFERENCE.md) |
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
-| `init` | scaffold a new universe (conforms to spec v0.16) |
+| `init` | scaffold a new universe (conforms to spec v0.17) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -94,14 +90,16 @@ answers questions about it, and refuses renders whose references do not exist on
 
 ## Forms
 
-A **form** is the typed contract for a KIND of deliverable (surface, required kinds, slots,
-invariants). A **work** is one instance of a form with a brand's ids bound into it. See `add-form`
-and `add-work`.
+A **form** is what makes a work the KIND of thing it is; a **work** is one made thing, canon given
+form. The concepts survive; the v0.6–v0.16 encoding of them (a typed contract of surface, required
+kinds, slots and generators, plus the universal composer that executed it) was **retired in v0.17**
+having produced zero works, and the `add-form` / `add-work` verbs went with it. No replacement schema
+is written until a second composer is proven — see SPEC §4.8, §4.9 and §4.10. The table below lists
+whatever forms this repo still ships, and is empty when it ships none.
 
 <!-- BEGIN GENERATED: forms -->
 | Form | Medium | What it is |
 |---|---|---|
-| `scrolling-diorama` | `parallax-scene` | A scene built as layered flats at fixed depths, driven by vertical page scroll. |
 <!-- END GENERATED: forms -->
 
 ## Providers
@@ -123,6 +121,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.17 | the slot-model composer is RETIRED, having never run. |
 | v0.16 | an entity has a LIFECYCLE, so canon can be RETIRED without rewriting history. |
 | v0.15 | a setting's blueprint is a CODE-BUILT 3D MASSING RENDER. |
 | v0.14 | Projection/Composition become Form/Work. |

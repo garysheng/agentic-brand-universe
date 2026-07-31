@@ -743,3 +743,44 @@ margin in the first place.
 downstream has to guess. The general lesson: when two components speak different
 vocabularies, make them agree. A translation layer in the middle is a place for a default
 to be wrong quietly, and the wrong default here was the destructive one.
+
+## 2026-07-31 — scrapped the slot-model composer (SPEC v0.17, plugin 0.66.0)
+
+Deleted `skills/compose/` (896 lines, 91 tests, ZERO works), and with it `add-form`, `add-work`,
+`brand-card` and `forms/scrolling-diorama`, which authored or emitted documents only it consumed.
+No `work.json` ever existed in the framework's life; no `work/` or `recipes/` directory was ever
+written. It was the most-tested unrun code in the repo, and it had grown its own 30-line
+`compile_slot` instead of calling `compose-spread/assemble_prompt.py` — the same disjoint-compiler
+failure this framework diagnosed and fixed when it retired the Nation of Fire fork, and which
+`compose-spread`'s SKILL.md forbids in a section titled "never fork this". There is now exactly one
+compiler.
+
+SPEC §4.8 and §4.9 retire the ENCODING and keep the concept; §4.10 corrects "THE Composer" to a
+per-form composer over one shared compiler; §14 is marked ASPIRATIONAL, because nothing here runs
+on Managed Agents and the section read as description.
+
+Also found and recorded: the v0.6 changelog claimed the narrative fields had moved into "the
+storybook form's slot schema, where they always belonged," with `Story Spec` kept as a back-compat
+alias. No storybook form was ever authored, so that migration never happened and `Story Spec` is
+still the live primitive every book uses.
+
+DELIBERATELY NOT DONE: the replacement model (golden works + a PROMPT for the console + incremental
+evals + an END eval) is NOT written as normative. It waits on the second composer,
+`garysheng-art-series`, being built now in `gary-sheng-art-universe`. Authoring it from one instance
+is exactly what produced the model just deleted.
+
+Also noted, not fixed: a second checkout at `~/.claude/plugins/marketplaces/agentic-brand-universe`
+is 8 plugin versions behind (0.57.0) and still present, despite commit 2b8d06a recording "One
+source: retire the private marketplace copy and the sync script". An agent read a stale SPEC from it
+for a full session without noticing.
+
+The retired section owned TWELVE lint error codes, not the five the plan predicted (`SLOT-NO-EMITTER`,
+`EMITTER-UNKNOWN`, `EMITTER-MISSING`, `SLOT-NO-GENERATOR`, `NO-FORMS`, `EXTENDS-UNRESOLVED`,
+`SURFACE-INFEASIBLE`, `NO-PRODUCIBLE-ASPECTS`, `PIN-UNKNOWN-PROVIDER`, `INVARIANT-UNTYPED`,
+`NO-INVARIANTS`, `INVARIANT-VS-QUIRK`). 19 tests went with them; lint tests 69 to 50, suite 655 to 545.
+`explanatory-plate` survives: it was the `EMITTERS` table's other entry but is standalone-runnable and
+emitted every diagram in `docs/ARCHITECTURE.md`. `docs/ARCHITECTURE.md` was itself documenting six of
+the deleted codes as live checks. It is hand-authored, so no gate caught it. Fixed in the same branch.
+A PRE-EXISTING crash was found and deliberately NOT fixed: `lint.py`'s `rec.get("inputs", [])` returns
+`None` on an explicit `"inputs": null`, killing the linter on a real universe. It predates this work
+and wants its own commit.

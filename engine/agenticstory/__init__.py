@@ -1,4 +1,4 @@
-"""Agentic Brand Universe engine v0 — a universe is first-class; stories are compositions; refs are load-bearing."""
+"""Agentic Brand Universe engine v0 — a universe is first-class; a story spec is its own primitive (SPEC §4.3); refs are load-bearing."""
 from .model import CraftCanon, Entity, Relation, StorySpec  # noqa: F401
 from .store import CanonStore  # noqa: F401
 from .refs import (assert_story, assert_spread, resolve_entity_assets, resolve_setting,  # noqa: F401
@@ -18,7 +18,7 @@ __version__ = "0.0.1"
 # universe the engine scaffolded claimed conformance to a spec two releases old.
 # `lint-universe` now checks a universe's pin against this value, so the two can no
 # longer disagree quietly.
-SPEC_VERSION = "0.16"
+SPEC_VERSION = "0.17"
 SPEC_WIKI = "https://agenticbranduniverse.com"
 # The spec URL must RESOLVE. agenticstory.wiki was cited as the authority in every
 # universe manifest and served nothing (parked DNS, no HTTP response), and its
