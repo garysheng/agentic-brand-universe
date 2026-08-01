@@ -519,9 +519,22 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         "register": register_id, "look": look, "lookRefs": look_refs,
         "photos": photos,
         "seed": seed, "order": [seed] + rest, "prompts": prompts,
-        # register rejectedPoles FIRST, then the entity's own negatives from
-        # prompts.md. Both reach the model; neither is silently dropped.
-        "negatives": list(dict.fromkeys(poles + parsed["negatives"])),
+        # register rejectedPoles FIRST, then the entity's CANON negatives, then the
+        # ones authored in prompts.md. All three reach the model; none is dropped.
+        #
+        # `structured.negatives` (SPEC v0.23) is the entity's person-scoped negative set,
+        # and `compose-spread` has honoured it since the day it shipped. This shooter did
+        # not, so the same rules had to be written TWICE: once in canon for every scene
+        # that casts the entity, once in prompts.md for the shoot that defines it, with
+        # nothing keeping the two in sync. That is exactly the duplication v0.23 existed
+        # to remove, and it had a real consequence: the plates that DEFINE a character
+        # were shot under a different negative set than every render that later casts
+        # them. Reading it here makes canon the single source and prompts.md the
+        # shoot-specific addition.
+        "negatives": list(dict.fromkeys(
+            poles
+            + list((ent.get("structured") or {}).get("negatives") or [])
+            + parsed["negatives"])),
         # The register's OWN rejected poles, kept separate from the merged
         # negative list so the style line names the medium's opposites and not
         # every prop the entity happens to forbid.
@@ -618,10 +631,13 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     for g in cond:
         cmd += ["--input-image", g]
     # Cross-entity refs: another entity in frame is conditioned on ITS locked
-    # art, never redrawn from prose.
+    # art, never redrawn from prose. Collected rather than only appended, because the
+    # recipe below has to be able to name them (see crossEntityRefs).
+    cross = []
     for other in plan["refs"].get(shot, []):
         for p in entity_ref_images(plan["uroot"], other):
             cmd += ["--input-image", p]
+            cross.append({"entity": other, "path": p, "sha256_16": sha(Path(p))})
     rc = subprocess.run(cmd).returncode
     if rc != 0 or not out.exists():
         print(f"{shot}: FAILED rc={rc}; chain STOPS (a defect must not propagate)", file=sys.stderr)
@@ -633,6 +649,17 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
         "anchor": {"path": plan["anchor"], "sha256_16": sha(Path(anchor_abs))},
         "photoStack": [{"path": p, "sha256_16": sha(Path(p))} for p in plan["photos"]],
         "conditionedOn": [{"path": g, "sha256_16": sha(Path(g))} for g in cond],
+        # CROSS-ENTITY REFS BELONG IN THE RECIPE, not only on the command line.
+        #
+        # This sidecar recorded anchor + photoStack + conditionedOn and silently omitted
+        # every image resolved from a shot's `REFS:` line. On gary's seed that was 3 of
+        # 13 inputs, all three of them the north-star-cross mark plates. It matters
+        # because `lock-shot --recipe` freezes provenance from EXACTLY this file: a
+        # golden locked from it would record an approval against inputs it was never
+        # approved against, and no future divergence check could notice the mark plates
+        # changing underneath it. Under-reporting provenance is the one thing a
+        # provenance writer may not do.
+        "crossEntityRefs": cross,
         "method": ("golden-chain (sequential; each shot conditions on the blessed seed "
                    f"plus the most recent accepted shots, window={args.max_conditioning or 'unbounded'})"),
     }, indent=1))
