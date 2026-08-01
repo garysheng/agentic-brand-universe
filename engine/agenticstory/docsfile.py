@@ -15,9 +15,20 @@ GENERATED between fences; only judgement is hand-written. The generated blocks:
   status         (README.md)        versions + counts, the facts that rot fastest
   skills         (docs/REFERENCE.md) every skills/*/SKILL.md, by frontmatter
   cli            (docs/REFERENCE.md) every verb, by introspecting the real parser
+  agents         (docs/REFERENCE.md) every agents/*.md, by frontmatter
+  commands       (docs/REFERENCE.md) every commands/*.md, by frontmatter
   providers      (docs/REFERENCE.md) registry/providers.json
   forms          (docs/REFERENCE.md) forms/*/form.json
   spec-changelog (docs/REFERENCE.md) the v0.N changelog headlines in SPEC.md
+
+Agents and commands were added on 2026-08-01 for a reason worth recording, because it
+is this module's own thesis turned on itself. The plugin had shipped an `abu-steward`
+subagent since 0.5x that no generated doc mentioned, because this file enumerated
+`skills/` and nothing else. Undocumented is close to unreachable: it was invoked zero
+times across a full book session in which the main agent hand-rolled five shoot
+scripts the framework already owned. The fix was NOT to write a paragraph about the
+steward. A surface the generator cannot see will be forgotten again the moment someone
+adds the next one, so the generator learned to see whole directories instead.
 
 `check()` is the half that matters. Regenerating docs is a convenience; FAILING when
 they are stale is the mechanism, which is why `build-docs --check` runs inside
@@ -119,6 +130,48 @@ def skills(root: Path) -> list[dict]:
     return out
 
 
+def _md_dir(root: Path, name: str) -> list[Path]:
+    """Every documented `*.md` in a plugin surface directory. Leading-underscore files
+    are shared includes rather than surfaces (the convention plugins already use for
+    `_conventions.md`), so they are not rows."""
+    d = root / name
+    if not d.is_dir():
+        return []
+    return [p for p in sorted(d.glob("*.md")) if not p.name.startswith("_")]
+
+
+def agents(root: Path) -> list[dict]:
+    out = []
+    for p in _md_dir(root, "agents"):
+        fm = frontmatter(p)
+        out.append({
+            "id": fm.get("name") or p.stem,
+            "summary": first_sentence(fm.get("description", "")),
+            "tools": " ".join(fm.get("tools", "").split()),
+        })
+    return out
+
+
+def commands(root: Path) -> list[dict]:
+    """Slash commands. `id` is the invocation as typed, which is the plugin name and
+    the file stem, so the table answers "what do I type" rather than "what file is it"."""
+    plugin = plugin_name(root)
+    out = []
+    for p in _md_dir(root, "commands"):
+        fm = frontmatter(p)
+        out.append({
+            "id": f"/{plugin}:{p.stem}" if plugin else f"/{p.stem}",
+            "summary": first_sentence(fm.get("description", "")),
+            "args": fm.get("argument-hint", ""),
+        })
+    return out
+
+
+def plugin_name(root: Path) -> str:
+    p = root / ".claude-plugin" / "plugin.json"
+    return json.loads(p.read_text()).get("name", "") if p.is_file() else ""
+
+
 def cli_verbs() -> list[dict]:
     """The real parser, introspected. Not a hand-kept list, which is how `archived`
     and `land` shipped undocumented."""
@@ -193,6 +246,8 @@ def render_status(root: Path) -> list[str]:
         ["Engine version", f"v{__version__}", "`engine/agenticstory/__init__.py`"],
         ["Skills", str(len(skills(root))), "`skills/*/SKILL.md`"],
         ["CLI verbs", str(len(cli_verbs())), "`abu --help`"],
+        ["Agents", str(len(agents(root))), "`agents/*.md`"],
+        ["Commands", str(len(commands(root))), "`commands/*.md`"],
         ["Tests", str(tc["tests"]), f"across {tc['files']} files; `./run-tests.sh`"],
     ]
     return _table(["", "Value", "Source"], rows)
@@ -205,6 +260,18 @@ def render_skills(root: Path) -> list[str]:
 
 def render_cli(root: Path) -> list[str]:
     return _table(["Verb", "What it does"], [[f"`{v['verb']}`", v["help"]] for v in cli_verbs()])
+
+
+def render_agents(root: Path) -> list[str]:
+    rows = [[f"`{a['id']}`", a["summary"], f"`{a['tools']}`" if a["tools"] else "all"]
+            for a in agents(root)]
+    return _table(["Agent", "What it is for", "Tools"], rows)
+
+
+def render_commands(root: Path) -> list[str]:
+    rows = [[f"`{c['id']}`", f"`{c['args']}`" if c["args"] else "", c["summary"]]
+            for c in commands(root)]
+    return _table(["Command", "Takes", "What it does"], rows)
 
 
 def render_providers(root: Path) -> list[str]:
@@ -266,6 +333,8 @@ BLOCKS = {
     "docs/REFERENCE.md": {
         "skills": render_skills,
         "cli": render_cli,
+        "agents": render_agents,
+        "commands": render_commands,
         "forms": render_forms,
         "providers": render_providers,
         "spec-changelog": render_spec_changelog,

@@ -5,8 +5,14 @@ Every table on this page is **generated** from the thing it describes. Do not ha
 `build-docs --check` (which runs inside `./run-tests.sh`) fails the suite when they drift.
 
 To change a row, change its source. The skill table comes from each `skills/*/SKILL.md` frontmatter,
-the CLI table from the real argument parser, the provider table from `registry/providers.json`, the
-form table from `forms/*/form.json`, and the changelog from `SPEC.md`.
+the CLI table from the real argument parser, the agent and command tables from `agents/*.md` and
+`commands/*.md` frontmatter, the provider table from `registry/providers.json`, the form table from
+`forms/*/form.json`, and the changelog from `SPEC.md`.
+
+The generator enumerates whole DIRECTORIES rather than named surfaces, so adding an agent or a
+command is enough to document it. That is deliberate: the `abu-steward` subagent shipped for two
+months in no generated table, because this page knew only about `skills/`, and a surface no doc
+mentions may as well not exist.
 
 For the narrative introduction see [`../README.md`](../README.md); for the architecture see
 [`ARCHITECTURE.md`](./ARCHITECTURE.md); for the contract itself see [`../SPEC.md`](../SPEC.md).
@@ -89,6 +95,33 @@ answers questions about it, and refuses renders whose references do not exist on
 | `unarchive` | put a retired entity back in service |
 | `validate` | typecheck a universe against the spec schema |
 <!-- END GENERATED: cli -->
+
+## Agents
+
+Subagents the plugin ships. An agent is not a verb you call but a **context you hand work to**, which
+is the point: the main context is carrying a build's momentum and is therefore the worst judge of
+"should I write a quick script here." A fresh context whose only question is "which framework verb is
+this" has no such incentive, and has not spent an hour becoming attached to a plan.
+
+Dispatch one with the Agent tool, `subagent_type: "abu:<agent>"`. `/abu:steward` is the shorthand.
+
+<!-- BEGIN GENERATED: agents -->
+| Agent | What it is for | Tools |
+|---|---|---|
+| `abu-steward` | Framework-aware steward for ANY Agentic Brand Universe work — building or growing a typed, git-versioned, self-contained canon (agenticbranduniverse.com). | `Read, Grep, Glob, Bash, Edit, Write, Skill, TodoWrite` |
+<!-- END GENERATED: agents -->
+
+## Commands
+
+Slash commands. These are thin on purpose: a command is an **entry point**, not a place for logic. It
+resolves what you meant and hands off to the skill or agent that owns the work, so the same behavior
+is reachable whether you typed the command, asked in plain language, or arrived through a chain.
+
+<!-- BEGIN GENERATED: commands -->
+| Command | Takes | What it does |
+|---|---|---|
+| `/abu:steward` | `[the task, e.g. "add the forge setting to nation-of-fire"]` | Hand a framework-shaped task to the abu-steward subagent instead of hand-rolling it |
+<!-- END GENERATED: commands -->
 
 ## Forms
 

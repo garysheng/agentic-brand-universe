@@ -45,6 +45,44 @@ class TestSources(unittest.TestCase):
             if f.is_file():
                 self.assertEqual(docsfile.frontmatter(f).get("name"), d.name)
 
+    def test_every_agent_has_name_and_description(self):
+        """Same rule as skills: frontmatter that cannot be read makes the surface
+        invisible to whoever is choosing what to dispatch."""
+        bad = [a["id"] for a in docsfile.agents(ROOT) if not a["id"] or not a["summary"]]
+        self.assertEqual(bad, [])
+
+    def test_agent_id_matches_filename(self):
+        for p in docsfile._md_dir(ROOT, "agents"):
+            self.assertEqual(docsfile.frontmatter(p).get("name"), p.stem)
+
+    def test_every_command_has_a_description(self):
+        blank = [c["id"] for c in docsfile.commands(ROOT) if not c["summary"]]
+        self.assertEqual(blank, [])
+
+    def test_command_id_is_the_invocation_as_typed(self):
+        """The row answers "what do I type", so it carries the plugin namespace."""
+        for c in docsfile.commands(ROOT):
+            self.assertRegex(c["id"], r"^/[a-z0-9-]+:[a-z0-9-]+$")
+
+    def test_underscore_files_are_includes_not_surfaces(self):
+        """`_conventions.md` is shared prose every command pulls from, not a command."""
+        for name in ("agents", "commands"):
+            for p in docsfile._md_dir(ROOT, name):
+                self.assertFalse(p.name.startswith("_"))
+
+    def test_surface_dirs_enumerate_rather_than_name(self):
+        """The regression this generator was taught to prevent: abu-steward shipped
+        for two months in no generated table because only `skills/` was enumerated.
+        Every *.md dropped in these directories must become a row with no code change,
+        so the count tracks the directory rather than a hand-kept list."""
+        for name, source in (("agents", docsfile.agents), ("commands", docsfile.commands)):
+            self.assertEqual(len(source(ROOT)), len(docsfile._md_dir(ROOT, name)))
+
+    def test_steward_is_documented(self):
+        """It is reachable three ways now; each one is a row somewhere."""
+        self.assertIn("abu-steward", [a["id"] for a in docsfile.agents(ROOT)])
+        self.assertIn("/abu:steward", [c["id"] for c in docsfile.commands(ROOT)])
+
     def test_every_cli_verb_has_help(self):
         """A blank help string renders as a blank documentation row, which is how
         an undocumented verb hides in plain sight."""
