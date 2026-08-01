@@ -217,117 +217,33 @@ def _components(mask: np.ndarray) -> list[np.ndarray]:
     return out
 
 
-def measure_star(img: Image.Image, box: tuple | None = None) -> dict:
-    """The four-point mark's proportions, measured from the centre.
-
-    The spec fixes top == side, so the top arm IS half the width, and the only
-    free measurements are the width at the widest row and the crossing-to-bottom
-    distance. That is what makes this immune to the bail, which is a narrow gold
-    column above the star with no pixel boundary saying where the point begins.
-    """
-    a = np.asarray(img.convert("RGB")).astype(int)
-    if box:
-        x0, y0, x1, y1 = box
-        a = a[y0:y1, x0:x1]
-    comps = _components(_gold_mask(a))
-    if not comps:
-        raise Unmeasurable("no gold pixels found. Is the crop over the pendant?")
-
-    # Pick by STAR-LIKENESS, not raw compactness. Compactness alone picks a
-    # jacket button, which is the most compact gold blob in a chest crop by a
-    # wide margin: measured 0.74 H:W on a plate whose pendant was really 1.5,
-    # and reported PASS. A four-point star with concave edges fills roughly a
-    # third of its bbox; a chain link run fills far less; a button or a buckle
-    # fills far more. So bound the fill, then take the LARGEST survivor.
-    def fill(c):
-        hh = c[:, 0].max() - c[:, 0].min() + 1
-        ww = c[:, 1].max() - c[:, 1].min() + 1
-        return len(c) / float(hh * ww)
-
-    # Pick the MOST COMPACT component. The chain is long and thin so it loses;
-    # a jacket button can win on compactness alone, which is why the caller must
-    # crop to the pendant with --box rather than hand this a whole chest.
-    big = [c for c in comps if len(c) >= 24] or comps
-    star = max(big, key=fill)
-
-    # If the chain hangs INTO the crop it is one connected blob with the pendant,
-    # and the blob is then tall and thin rather than star-shaped. Refuse instead
-    # of reporting the chain's aspect ratio as the mark's: measured 6.11 H:W on a
-    # pendant that was really 1.4.
-    if fill(star) < 0.15:
-        raise Unmeasurable(
-            "the gold blob is long and thin (fill %.2f), which means the chain is "
-            "connected to the pendant inside this crop. Tighten --box to the "
-            "pendant itself, below where the chain meets the bail." % fill(star))
-
-    ys, xs = star[:, 0], star[:, 1]
-    rows = {}
-    for y, x in star:
-        lo, hi = rows.get(y, (x, x))
-        rows[y] = (min(lo, x), max(hi, x))
-    widest_y = max(rows, key=lambda y: rows[y][1] - rows[y][0])
-    width = rows[widest_y][1] - rows[widest_y][0] + 1
-    bottom = int(ys.max())
-
-    side = width / 2.0
-    bottom_arm = bottom - widest_y
-    if side <= 0 or bottom_arm <= 0:
-        raise Unmeasurable("degenerate pendant blob; widen the crop.")
-    height = side + bottom_arm            # top arm == side arm, by spec
-    hw = height / width
-
-    # THE MODULE'S OWN CONTRACT, APPLIED TO ITSELF. No plausible rendering of a
-    # four-point mark whose top and side arms are equal is three times taller
-    # than it is wide: that result means the blob is not the pendant (a bail, a
-    # button, a fold of chain). Refuse. Every wrong number this file has produced
-    # in testing was above this bound, and a refusal the caller can act on beats a
-    # ratio they might believe.
-    if hw < 0.85 or hw > 3.0:
-        raise Unmeasurable(
-            f"measured {hw:.2f} H:W, which no rendering of this mark can be (its "
-            f"top and side arms are equal by spec, so it is always taller than wide). The "
-            f"crop is not isolating the pendant. Tighten --box to the star itself, "
-            f"excluding the chain and the bail, and try again.")
-    return {
-        "schema": SCHEMA,
-        "kind": "star",
-        "widthPx": int(width),
-        "sideArmPx": round(side, 1),
-        "bottomArmPx": int(bottom_arm),
-        "heightPx": round(height, 1),
-        "heightOverWidth": round(hw, 2),
-        "bottomOverSide": round(bottom_arm / side, 2),
-        "crossingPctFromTop": round(100 * side / height, 1),
-        "targets": {
-            "heightOverWidth": STAR_TARGET_HW,
-            "bottomOverSide": STAR_TARGET_BOTTOM_OVER_SIDE,
-            "crossingPctFromTop": 40.0,
-        },
-        "verdict": "DEFECT" if hw > STAR_DEFECT_HW else "PASS",
-        "method": (
-            "warm-gold mask, most-compact connected component (isolates the mark "
-            "from the chain), measured from the centre: width at the widest row, "
-            "bottom arm from that row to the lowest pixel, top arm assumed equal "
-            "to the side arm per the fabrication spec"),
-        "note": (
-            f"H:W {hw:.2f} against a target of {STAR_TARGET_HW}. Above "
-            f"{STAR_DEFECT_HW} the side arms read stubby and the mark reads as a "
-            f"crucifix, which the invariant forbids by name."),
-    }
-
-
-def overlay_star(img: Image.Image, m: dict, box: tuple | None = None) -> Image.Image:
-    im = img.convert("RGB").copy()
-    d = ImageDraw.Draw(im)
-    ox, oy = (box[0], box[1]) if box else (0, 0)
-    d.text((ox + 4, oy + 4),
-           f"H:W {m['heightOverWidth']} (target {STAR_TARGET_HW})  "
-           f"bottom/side {m['bottomOverSide']} (target {STAR_TARGET_BOTTOM_OVER_SIDE})  "
-           f"{m['verdict']}",
-           fill=(255, 0, 0))
-    if box:
-        d.rectangle([box[0], box[1], box[2], box[3]], outline=(0, 200, 255), width=2)
-    return im
+# --------------------------------------------------------------------------- star: WITHDRAWN
+#
+# `measure star` was REMOVED on 2026-08-01, the day it shipped, because it gave
+# FALSE PRECISION: authoritative-looking numbers that were wrong five times out of
+# five on real plates.
+#
+#   0.93   a mask that had selected the warm plaster backdrop, not the pendant
+#   0.74   PASS, having locked onto a jacket button
+#   6.11   the chain, connected to the pendant inside the crop
+#   11.25  a crop that did not isolate the mark
+#   PASS   on an obviously equilateral compass star the operator rejected on sight
+#
+# The last one is the disqualifying one. The function assumed "top arm == side
+# arm, by spec" and therefore never measured the top arm, which is the single most
+# important thing to check: a short top point is exactly what turns this mark from
+# a cross into a compass star. It assumed away the defect it existed to catch, and
+# each failure was patched rather than treated as evidence about the approach.
+#
+# THE LESSON, which is the framework's own thesis and was being worked against:
+# a GOLDEN IS HUMAN JUDGEMENT, FROZEN. The right instrument for "does this mark
+# look right" is a person's eye against a blessed reference plate, and then that
+# blessed plate conditions every render after it. Gary, 2026-08-01: "I'm clearly
+# going to need to just keep rerolling with you until it's good, then you just use
+# those goldens. Reminds me of the importance of the human eye."
+#
+# Do not reintroduce a geometry checker here. Judge the mark against
+# `reference/north-star-cross/turnaround.png` by eye, bless it, and condition on it.
 
 
 # --------------------------------------------------------------------------- cli
@@ -344,10 +260,7 @@ def main(argv=None) -> int:
     f.add_argument("image")
     f.add_argument("--chin", type=int, help="chin-base y in pixels; the one landmark "
                                             "that must not be auto-detected")
-    s = sub.add_parser("star", help="four-point mark proportions, measured from the centre")
-    s.add_argument("image")
-    s.add_argument("--box", help="x0,y0,x1,y1 crop over the pendant")
-    for p in (f, s):
+    for p in (f,):
         p.add_argument("--overlay", help="write a labelled overlay here")
         p.add_argument("--no-record", action="store_true",
                        help="do not write <image>.measure.json")
@@ -358,10 +271,9 @@ def main(argv=None) -> int:
         print(f"measure: no such image: {path}", file=sys.stderr)
         return 2
     img = Image.open(path)
-    box = tuple(int(v) for v in args.box.split(",")) if getattr(args, "box", None) else None
 
     try:
-        m = measure_figure(img, args.chin) if args.cmd == "figure" else measure_star(img, box)
+        m = measure_figure(img, args.chin)
     except Unmeasurable as e:
         # A refusal, not a number. This is the whole point of the module.
         print(f"measure: UNMEASURABLE: {e}", file=sys.stderr)
@@ -372,7 +284,7 @@ def main(argv=None) -> int:
         record_path(path).write_text(json.dumps(m, indent=2) + "\n")
         m["recordedAt"] = str(record_path(path))
     if args.overlay:
-        ov = overlay_figure(img, m) if args.cmd == "figure" else overlay_star(img, m, box)
+        ov = overlay_figure(img, m)
         ov.save(args.overlay)
         m["overlay"] = args.overlay
     print(json.dumps(m, indent=2))

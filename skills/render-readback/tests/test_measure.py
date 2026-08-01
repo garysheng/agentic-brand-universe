@@ -64,33 +64,6 @@ class TestFigure(unittest.TestCase):
         self.assertGreater(m["landmarks"]["crown"], 60)
 
 
-class TestStar(unittest.TestCase):
-    def _star(self, w, bottom):
-        im = Image.new("RGB", (300, 300), (245, 245, 245))
-        d = ImageDraw.Draw(im)
-        cy, cx = 120, 150
-        d.polygon([(cx, cy - w // 2), (cx + w // 2, cy), (cx, cy + bottom), (cx - w // 2, cy)],
-                  fill=(200, 160, 60))
-        return im
-
-    def test_measures_a_star_from_the_centre(self):
-        m = measure.measure_star(self._star(60, 45))
-        self.assertGreater(m["heightOverWidth"], 0)
-        self.assertIn(m["verdict"], ("PASS", "DEFECT"))
-        self.assertIn("targets", m)
-
-    def test_an_impossible_ratio_refuses_rather_than_returning(self):
-        """Every wrong number this module produced in testing was above 3:1.
-
-        A refusal the caller can act on beats a ratio they might believe.
-        """
-        with self.assertRaises(measure.Unmeasurable):
-            measure.measure_star(self._star(12, 400))
-
-    def test_no_gold_refuses(self):
-        with self.assertRaises(measure.Unmeasurable):
-            measure.measure_star(Image.new("RGB", (100, 100), (250, 250, 250)))
-
-
 if __name__ == "__main__":
     unittest.main()
+

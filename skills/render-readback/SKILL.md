@@ -30,7 +30,6 @@ height-to-width ratio. Cropping and zooming answers "does this look right"; it
 cannot answer "is this 1:8 or 1:6.5". `scripts/measure.py` does.
 
     measure.py figure <image> --chin Y [--overlay out.png]
-    measure.py star   <image> --box x0,y0,x1,y1 [--overlay out.png]
 
 **It records HOW it measured, beside the image, as `<image>.measure.json`.** That
 is the point, not a convenience. Three consecutive sessions hand-rolled this
@@ -51,3 +50,32 @@ it. Every detector here validates its own output, and `star` refuses any result
 above 3:1 because no rendering of a four-point mark with equal top and side arms
 can be that narrow. If you get `UNMEASURABLE`, the crop is wrong; tighten it.
 Do not hand-roll a ruler around a refusal.
+
+
+## What NOT to measure: a mark's geometry
+
+`measure star` existed for one afternoon and was WITHDRAWN the same day. It
+answered "is this four-point mark the right shape" with a ratio, and it was wrong
+five times out of five on real plates: it masked a warm backdrop and returned
+0.93, locked onto a jacket button and returned 0.74 PASS, measured a chain
+connected to the pendant at 6.11, returned 11.25 on a crop that isolated nothing,
+and finally passed an obviously equilateral compass star that the operator
+rejected on sight. That last one was disqualifying: the function assumed "top arm
+equals side arm, by spec" and so never measured the top arm, which is precisely
+what turns this mark from a cross into a compass star. It assumed away the defect
+it existed to catch.
+
+**Judge a mark by eye against its blessed plate. Then condition every render on
+that plate.** That is not a workaround, it is the framework's thesis: a golden IS
+human judgement, frozen. Reaching for a computed proxy replaces the one instrument
+that actually works with one that produces false precision, and false precision is
+worse than no number, because it survives review.
+
+Gary, 2026-08-01, after four rerolls: *"I'm clearly going to need to just keep
+rerolling with you until it's good, then you just use those goldens. Reminds me of
+the importance of the human eye."*
+
+`measure figure` remains, because head-to-body is a genuine ratio between two
+unambiguous landmarks, and because it REFUSES rather than guessing when it cannot
+find them. The distinction worth keeping: measure a quantity a human cannot
+eyeball reliably, never a judgement a human makes instantly.
