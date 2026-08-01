@@ -519,9 +519,22 @@ removes that step.
   stays stochastic. A compiled prompt is necessary, not sufficient — the read-back gate (§3.5) is
   still mandatory, and a drift-prone shape is guaranteed by *passing its reference image*, never by
   wording it harder.
-- **Normative guards (v0.8).** Four rules the compiler emits or enforces on every job, because each
-  is a property of *how the compiler works*, not of what a given book contains. A universe that
-  writes these into each book's style text will drop them the one time it forgets.
+- **Normative guards (v0.8, extended v0.19).** Rules the compiler emits or enforces on every job,
+  because each is a property of *how the compiler works*, not of what a given book contains. A
+  universe that writes these into each book's style text will drop them the one time it forgets.
+  Guards divide into two kinds. An **unconditional** guard is emitted on every render (anchor-style,
+  single-image). A **conditional** guard is emitted only when the SCENE TEXT shows the defect is in
+  reach, detected by a `_has_*`/`_in_*` predicate beside it (motion, addressing, bedclothes); this
+  keeps the prompt from filling with rules irrelevant to the beat, at the cost of a detector that
+  must itself be tested against real scenes.
+  **A conditional guard's detector is the part that fails.** Written narrowly it is silent on the
+  very case that earned it: the addressing detector's first version matched the phrase `at a
+  pulpit` and missed a scene reading `at a plain pulpit`, which was the exact spread that prompted
+  the guard. Prefer the bare noun, accept some noise, and PROVE the guard fires on the defective
+  scene before believing it.
+  **The list below is asserted by a test** (`GuardsDocumentedTest`): every `*_GUARD` constant in
+  `assemble_prompt.py` must be named here, because this section already drifted once when
+  `MOTION_GUARD` shipped 2026-07-28 and was never documented.
   - **Anchor-style guard.** Whenever a register anchor is passed, the prompt states that ref[0] is a
     style sample only: match its medium, brushwork, palette and light, take NO subject from it. The
     anchor leads every render, so on a spread that casts no setting and no characters it is one of
@@ -533,6 +546,25 @@ removes that step.
     contact sheet, comic page or panelled study. Canon legitimately supplies multi-panel references
     (a character turnaround, a visual-metaphor's states sheet) and the model copies their layout.
     `allowMultiPanel` (book- or spread-level) opts out.
+  - **Motion guard** (conditional; v0.15). When a scene has someone moving toward something, the
+    destination must be AHEAD of them in frame and they are seen from behind, because a face toward
+    the lens means they are walking away from everything behind them. Earned where a man "stepping
+    toward the door" rendered walking at the camera with the lit doorway behind him, so the picture
+    said the opposite of the beat.
+  - **Addressing guard** (conditional; v0.19). When one person addresses a group, the prompt states
+    the two legal cameras: either the camera is among the audience (backs of heads near, speaker
+    beyond facing us) or at the speaker (his back to us, audience beyond facing us). The audience is
+    never arrayed behind the speaker. Earned three times in one book: a congregation seated facing
+    the back wall of its own church, a vote taken at that back wall, and a preacher at a pulpit with
+    his congregation blurred BEHIND him. This is a COMPOSITION prior rather than a facing prior, so
+    `FACING_TOKENS` cannot neutralise it and naming the camera does not help; the model satisfies the
+    camera and then places the people by cliche.
+  - **Bedclothes guard** (conditional; v0.19). Someone asleep, waking or getting out of bed wears
+    nightclothes, not a suit, with an explicit exception for a scene that states the person is
+    dressed. Earned where three spreads put a man in a business suit and necktie in his own bed,
+    because his canon asserted a default outfit and canon prose outranks whatever a scene leaves
+    unsaid. Fixing the entity was not enough: ANY character with a stated default outfit is put to
+    bed in it, in any universe.
   - **Uncast-character refusal.** Before any spend, the compiler matches every character entity's
     given name against the scene text and REFUSES on any name it does not cast, because the model
     invents a confident stranger for each. An over-the-shoulder single needs both people cast: the

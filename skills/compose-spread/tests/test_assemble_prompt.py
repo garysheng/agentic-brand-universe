@@ -1066,3 +1066,36 @@ class BedclothesGuardTest(unittest.TestCase):
         self.assertIn("NIGHTCLOTHES", BEDCLOTHES_GUARD)
         self.assertIn("business suit", BEDCLOTHES_GUARD)
         self.assertIn("EXCEPTION", BEDCLOTHES_GUARD)
+
+
+# ── SPEC/CODE DRIFT ───────────────────────────────────────────────────────
+class GuardsDocumentedTest(unittest.TestCase):
+    """Every guard in the code must be named in SPEC.md §4.6.
+
+    This section drifted once already: MOTION_GUARD shipped 2026-07-28 and the
+    SPEC still said "four rules" months later, so a reader of the spec could not
+    learn what the compiler actually emits. Writing a paragraph about that hazard
+    would not have stopped it; this assertion does.
+    """
+
+    def test_every_guard_constant_is_documented(self):
+        import re as _re
+        spec = (Path(__file__).resolve().parents[3] / "SPEC.md").read_text().lower()
+        src = ASSEMBLE.read_text()
+        guards = sorted(set(_re.findall(r"^([A-Z_]+_GUARD)\s*=", src, _re.M)))
+        self.assertTrue(guards, "no guard constants found: the regex is wrong, not the code")
+        undocumented = []
+        for g in guards:
+            # ANCHOR_STYLE_GUARD -> "anchor-style guard" / "anchor style guard"
+            # Require a real ENTRY ("bedclothes guard"), not a bare mention of the
+            # word. The first version of this test looked for the word alone and
+            # was satisfied by a passing reference in this very section's own
+            # summary line, so it passed with a guard deliberately undocumented.
+            stem = g[: -len("_GUARD")].replace("_", " ").lower()
+            wanted = {f"{stem} guard", f"{stem.replace(' ', '-')} guard"}
+            if not any(w in spec for w in wanted):
+                undocumented.append(g)
+        self.assertEqual(
+            [], undocumented,
+            f"guards missing from SPEC.md 4.6: {undocumented}. Document them there; "
+            "a guard the spec does not name is one a universe author cannot rely on.")
