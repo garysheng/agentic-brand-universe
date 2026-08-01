@@ -146,6 +146,24 @@ def sha(p: Path) -> str:
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()[:16]
 
 
+
+def _look_negatives(ent: dict, look: str | None) -> list[str]:
+    """The entity's canon negatives for the SELECTED look (SPEC v0.26).
+
+    A look's `supersedes` retires a negative by exact string, the same way it
+    retires an invariant, and `altLooks.<key>.negatives` adds its own. Merging
+    the flat list regardless of look is how a bare-neck look was shot with 32
+    pendant negatives still in the prompt.
+    """
+    st = ent.get("structured") or {}
+    base = list(st.get("negatives") or [])
+    if not look:
+        return base
+    al = (st.get("altLooks") or {}).get(look) or {}
+    dead = set(al.get("supersedes") or [])
+    return [n for n in base if n not in dead] + list(al.get("negatives") or [])
+
+
 def _header_block(text: str, name: str) -> list[str]:
     """Every item under a `**<name> (...):**` header, however many LINES it spans.
 
@@ -614,7 +632,7 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         # shoot-specific addition.
         "negatives": list(dict.fromkeys(
             poles
-            + list((ent.get("structured") or {}).get("negatives") or [])
+            + _look_negatives(ent, look)
             + parsed["negatives"])),
         # The register's OWN rejected poles, kept separate from the merged
         # negative list so the style line names the medium's opposites and not

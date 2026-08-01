@@ -156,6 +156,33 @@ class Entity:
         dead = set(al.get("supersedes") or [])
         return [i for i in base if i not in dead] + list(al.get("invariants") or [])
 
+
+    def look_negatives(self, look: str | None) -> list[str]:
+        """Entity-scoped negatives, minus what the look `supersedes`, plus its own.
+
+        SPEC 12 promised that `supersedes` makes "the QA checklist, the prompt
+        block, AND THE COMPUTED NEGATIVES all agree by construction." For the
+        negatives that was simply false. `structured.negatives` shipped in v0.23
+        as a flat list and nothing was look-aware about it, so both consumers
+        merged the whole list regardless of the selected look.
+
+        It is not theoretical. On christofuturism's `summer-quiet-luxury` look,
+        whose entire purpose is a bare neck, **32 pendant-scoped negatives reached
+        the model**, one of them literally "more than one necklace" -- a negative
+        that AFFIRMS a necklace is expected. The look held only because a human
+        wrote an override sentence into the prompt body by hand.
+
+        `supersedes` matches a negative by exact string, exactly as it matches an
+        invariant, and `altLooks.<key>.negatives` adds look-specific ones.
+        """
+        s = self.structured
+        base = list(s.get("negatives") or [])
+        if not look:
+            return base
+        al = self.alt_look(look) or {}
+        dead = set(al.get("supersedes") or [])
+        return [n for n in base if n not in dead] + list(al.get("negatives") or [])
+
     # ---- LIFECYCLE (SPEC v0.16) -------------------------------------------------
     # `status` is REFERENCE-COMPLETENESS (locked | unlocked): is the art on disk.
     # `lifecycle` is EDITORIAL STANDING (active | archived): may a NEW story cast it.

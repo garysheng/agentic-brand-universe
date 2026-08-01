@@ -1354,7 +1354,18 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # lets a rule be absolute about one person and silent about everyone else.
     for _cid in char_invsets:
         _e = load_entity(uroot, _cid) or {}
-        negs += _as_neg_list(((_e.get("structured") or {}).get("negatives")))
+        _st = _e.get("structured") or {}
+        # LOOK-AWARE (v0.26). A look's `supersedes` retires a negative exactly as it
+        # retires an invariant. Merging the flat list regardless of look put 32
+        # pendant negatives into a bare-neck render, one of them "more than one
+        # necklace", which affirms the very thing the look removes.
+        _look = next((c.get("look") for c in entries if c.get("id") == _cid), None)
+        _neg = list(_st.get("negatives") or [])
+        if _look:
+            _al = (_st.get("altLooks") or {}).get(_look) or {}
+            _dead = set(_al.get("supersedes") or [])
+            _neg = [n for n in _neg if n not in _dead] + list(_al.get("negatives") or [])
+        negs += _as_neg_list(_neg)
 
     # Resolve every ref to an absolute on-disk path (register anchor stays first).
     resolved: list[str] = []

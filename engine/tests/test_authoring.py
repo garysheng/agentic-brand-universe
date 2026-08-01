@@ -324,3 +324,43 @@ class RequiredSetOnLockAcceptsDeclaredKeysTest(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             required_set_for(e, "motif")
         self.assertIn("in-contxet", str(cm.exception))
+
+
+class LookAwareNegativesTest(unittest.TestCase):
+    """SPEC 12 promised supersedes covers the COMPUTED NEGATIVES. It did not.
+
+    `structured.negatives` shipped in v0.23 as a flat list and nothing was
+    look-aware about it, so a look that retires an invariant still shipped every
+    negative that invariant implied. Measured on christofuturism's
+    `summer-quiet-luxury`, a look whose entire point is a bare neck: 32
+    pendant-scoped negatives reached the model, including "more than one
+    necklace" -- a negative that AFFIRMS a necklace is expected.
+    """
+
+    def _ent(self):
+        from agenticstory.model import Entity
+        return Entity(id="gary", kind="character", raw={"structured": {
+            "negatives": ["a crucifix", "more than one necklace", "stubble"],
+            "altLooks": {"bare": {
+                "supersedes": ["a crucifix", "more than one necklace"],
+                "negatives": ["any chain at the neck"]}}}})
+
+    def test_default_look_keeps_every_negative(self):
+        self.assertEqual(self._ent().look_negatives(None),
+                         ["a crucifix", "more than one necklace", "stubble"])
+
+    def test_a_look_retires_the_negatives_it_supersedes(self):
+        got = self._ent().look_negatives("bare")
+        self.assertNotIn("a crucifix", got)
+        self.assertNotIn("more than one necklace", got)
+
+    def test_unrelated_negatives_survive_the_look(self):
+        """Superseding the pendant must not disarm the beard rule."""
+        self.assertIn("stubble", self._ent().look_negatives("bare"))
+
+    def test_a_look_may_add_its_own_negatives(self):
+        self.assertIn("any chain at the neck", self._ent().look_negatives("bare"))
+
+    def test_an_unknown_look_is_inert_rather_than_fatal(self):
+        self.assertEqual(self._ent().look_negatives("nope"),
+                         ["a crucifix", "more than one necklace", "stubble"])

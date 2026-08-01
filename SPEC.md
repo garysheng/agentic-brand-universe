@@ -1,10 +1,24 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.25 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.26 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.26 changelog — `supersedes` now covers the negatives it always claimed to.** §12 has
+> said since v0.10 that `supersedes` exists "so the QA checklist, the prompt block, AND THE
+> COMPUTED NEGATIVES all agree by construction." For the negatives that was false from the moment
+> v0.23 added `structured.negatives`: it shipped as a flat list, nothing was look-aware about it,
+> and both consumers merged the whole list regardless of the selected look. Measured on
+> christofuturism's `summer-quiet-luxury`, a look whose entire purpose is a BARE NECK: **32
+> pendant-scoped negatives reached the model**, one of them literally `more than one necklace`,
+> a negative that AFFIRMS a necklace is expected. The look survived only because a human hand-wrote
+> an override sentence into the prompt body. `supersedes` now retires a negative by exact string
+> exactly as it retires an invariant, via `Entity.look_negatives()`, honoured by both
+> `compose-spread` and `shoot-references`; `altLooks.<key>.negatives` adds look-specific ones.
+> Unrelated negatives survive, so superseding a pendant cannot disarm a beard rule. Fourth in a
+> run of defects with one shape: the spec stated a guarantee and no code could deliver it.
 
 > **v0.25 changelog — a shot can name WHICH of another entity's sheets it needs.**
 > A shot's `REFS:` line took an entity id and nothing more, and the resolver passed that
