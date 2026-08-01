@@ -18,6 +18,7 @@ from pathlib import Path
 from PIL import Image
 
 SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
+RENDER = Path(__file__).resolve().parents[1] / "scripts" / "render_cover.py"
 COMPILE = SCRIPTS / "compile_cover.py"
 CONFORM = SCRIPTS / "conform_cover.py"
 
@@ -345,6 +346,37 @@ class TestPlateSelection(unittest.TestCase):
         r = run_compile(self.root, "--with", "ghost")
         self.assertEqual(r.returncode, 2)
         self.assertIn("not a canon entity", r.stderr)
+
+
+class RenderCoverPassesSceneThrough(unittest.TestCase):
+    """render_cover.py is a thin wrapper over compile_cover.py and silently DROPPED
+    --scene and --anchor-ref, both of which the compiler has always accepted. The cost
+    was a cover that could not state its own composition, so the register anchor's
+    SUBJECT leaked onto the plate with no way to negate it. Earned 2026-08-01."""
+
+    def test_wrapper_forwards_scene_and_anchor_ref(self):
+        src = RENDER.read_text()
+        self.assertIn('"--scene"', src)
+        self.assertIn("anchor_ref", src)
+        # the flags must be forwarded on the SAME cmd the wrapper builds, not merely parsed
+        fwd = src.split("cmd = [")[1]
+        self.assertIn('("--scene", a.scene)', fwd)
+        self.assertIn('("--anchor-ref", a.anchor_ref)', fwd)
+
+    def test_wrapper_exposes_both_flags(self):
+        r = subprocess.run([sys.executable, str(RENDER), "--help"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("--scene", r.stdout)
+        self.assertIn("--anchor-ref", r.stdout)
+
+    def test_scene_text_actually_reaches_the_compiled_prompt(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = build_universe(Path(tmp.name))
+        r = run_compile(root, "--scene", "SENTINEL_COMPOSITION_TOKEN")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("SENTINEL_COMPOSITION_TOKEN", json.loads(r.stdout)["prompt"])
 
 
 if __name__ == "__main__":

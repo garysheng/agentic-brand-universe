@@ -43,11 +43,22 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-mark", action="store_true")
     ap.add_argument("--print-prompt", action="store_true")
+    # compile_cover.py has accepted --scene and --anchor-ref since it was written, and this
+    # wrapper silently dropped both. A cover therefore could not state its own composition,
+    # and the register anchor's SUBJECT (an oil lamp and a clay jar, for nation-of-fire) leaked
+    # onto the plate with no way to negate it short of bypassing this script. Earned 2026-08-01
+    # on The Door She Did Not Open, whose first cover came back with the anchor's lamp and jar
+    # painted onto the table in front of the hero.
+    ap.add_argument("--scene", default=None,
+                    help="the composition ACTION for the cover (identity still comes from canon)")
+    ap.add_argument("--anchor-ref", dest="anchor_ref", default=None,
+                    help="override the register anchor passed first (e.g. a second diegetic register)")
     a = ap.parse_args()
 
     cmd = [sys.executable, str(HERE / "compile_cover.py"), a.universe, a.story,
            "--title", a.title]
-    for flag, val in (("--subtitle", a.subtitle), ("--author", a.author), ("--hero", a.hero)):
+    for flag, val in (("--subtitle", a.subtitle), ("--author", a.author), ("--hero", a.hero),
+                      ("--scene", a.scene), ("--anchor-ref", a.anchor_ref)):
         if val:
             cmd += [flag, val]
     for w in a.with_:
