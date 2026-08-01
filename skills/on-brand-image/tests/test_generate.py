@@ -550,12 +550,88 @@ class TestRecipeIsUnskippable(GenerateCase):
         self.assertIn("generation FAILED", msg)
         self.assertFalse(os.path.exists(self.out + ".recipe.json"))
 
-    def test_the_lookbook_is_recorded_when_one_is_declared(self):
-        r = self.run_main(*self.base("--lookbook", "/packs/wardrobe"))
-        self.assertEqual(r.recipe["lookbook"], "/packs/wardrobe")
+    def _lookbook(self, name="wardrobe", refs=6, **extra):
+        """A real lookbook folder on disk. Until v0.28 these tests could not exist,
+        because --lookbook never opened anything."""
+        d = self.tmp / "books" / name
+        names = [f"r{i}.png" for i in range(refs)]
+        for n in names:
+            png(d / "refs" / n, extra=n.encode())
+        body = {"id": name, "kind": "lookbook", "name": name,
+                "refs": [f"refs/{n}" for n in names],
+                "aesthetic": "quiet luxury, one hero colour",
+                "varietyRule": "dress each person differently, never a uniform",
+                "gate": ["no two people dressed alike"], "minRefs": 3}
+        body.update(extra)
+        (d / "lookbook.json").write_text(json.dumps(body))
+        return str(d)
+
+    # A lookbook that is merely NAMED in the recipe steers nothing. Each of these
+    # asserts one of the three behaviours SPEC 4.7.1 promised from v0.12 and that
+    # nothing implemented until v0.28.
+
+    def test_the_lookbooks_aesthetic_and_variety_rule_reach_the_prompt(self):
+        r = self.run_main(*self.base("--lookbook", self._lookbook()))
+        self.assertIn("quiet luxury, one hero colour", r.prompt)
+        self.assertIn("dress each person differently", r.prompt)
+
+    def test_the_lookbooks_negatives_reach_the_prompt(self):
+        lb = self._lookbook(negatives=["no kaftans", "no beaded devotional strands"])
+        r = self.run_main(*self.base("--lookbook", lb))
+        self.assertIn("no kaftans", r.prompt)
+        self.assertIn("no beaded devotional strands", r.prompt)
+
+    def test_exemplars_are_actually_passed_as_references(self):
+        r = self.run_main(*self.base("--lookbook", self._lookbook()))
+        passed = [c for c in r.cmd if c.endswith(".png") and "/refs/" in c]
+        self.assertEqual(len(passed), 3, r.cmd)
+
+    def test_the_recipe_records_which_exemplars_were_SAMPLED(self):
+        """The name alone does not make a render reproducible; the subset does."""
+        r = self.run_main(*self.base("--lookbook", self._lookbook()))
+        entry = r.recipe["lookbooks"][0]
+        self.assertEqual(entry["id"], "wardrobe")
+        self.assertEqual(len(entry["sampled"]), 3)
+        self.assertEqual(entry["gate"], ["no two people dressed alike"])
+
+    def test_the_sampled_subset_rotates_across_outputs(self):
+        """Asserted over a RUN of outputs, not a single pair.
+
+        Two seeds can legitimately land on the same 3-of-6 subset, and an earlier
+        version of this test asserted that any two differ. It passed once and failed
+        on the next run when the temp path changed. The honest property is that the
+        sampler rotates rather than freezing on one subset; a lookbook that always
+        hands over the same three refs is a Style Pack with extra steps.
+        """
+        lb = self._lookbook()
+        seen = set()
+        for i in range(8):
+            r = self.run_main(*self.base("--lookbook", lb),
+                              out=str(self.tmp / f"o/{i}.png"))
+            seen.add(tuple(sorted(r.recipe["lookbooks"][0]["sampled"])))
+        self.assertGreater(len(seen), 1, "the sampler never varied its subset")
+
+    def test_one_output_path_always_replays_the_same_subset(self):
+        """The other half: a recipe must be reproducible."""
+        lb = self._lookbook()
+        out = str(self.tmp / "o/fixed.png")
+        first = self.run_main(*self.base("--lookbook", lb), out=out).recipe
+        second = self.run_main(*self.base("--lookbook", lb), out=out).recipe
+        self.assertEqual(first["lookbooks"][0]["sampled"],
+                         second["lookbooks"][0]["sampled"])
+
+    def test_two_lookbooks_both_apply(self):
+        r = self.run_main(*self.base("--lookbook", self._lookbook("a"),
+                                     "--lookbook", self._lookbook("b")))
+        self.assertEqual({e["id"] for e in r.recipe["lookbooks"]}, {"a", "b"})
+
+    def test_no_wardrobe_skips_it_entirely(self):
+        r = self.run_main(*self.base("--lookbook", self._lookbook(), "--no-wardrobe"))
+        self.assertNotIn("lookbooks", r.recipe)
+        self.assertNotIn("quiet luxury", r.prompt)
 
     def test_no_lookbook_key_by_default(self):
-        self.assertNotIn("lookbook", self.run_main(*self.base()).recipe)
+        self.assertNotIn("lookbooks", self.run_main(*self.base()).recipe)
 
     def test_no_entities_key_when_no_entity_was_resolved(self):
         self.assertNotIn("entities", self.run_main(*self.base()).recipe)

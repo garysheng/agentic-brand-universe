@@ -191,7 +191,28 @@ def main():
                     help="Un-reject one of the style pack's rejectedPoles for THIS render "
                          "(case-insensitive substring, repeatable). Recorded in the recipe. "
                          "Refuses if it matches no pole, so a typo cannot silently do nothing.")
-    ap.add_argument("--lookbook", default="")
+    # APPLY the lookbook, do not merely record it.
+    #
+    # From v0.12 to v0.27 this flag wrote the lookbook's NAME into the recipe, at the
+    # very end, after the image already existed. It sampled nothing, prepended nothing
+    # and gated nothing, while craft-canon rules in two universes said in so many words
+    # "pass --lookbook X so the renderer samples 2-4 exemplars, applies the varietyRule
+    # and gates the output". Three behaviours described, none implemented, and the
+    # recipe asserted the lookbook was used. Same defect as --style-pack before v0.11
+    # and the same fix.
+    ap.add_argument("--lookbook", action="append", default=[], metavar="ID_OR_PATH",
+                    help="A Lookbook (SPEC 4.7.1) to dress this render from: samples exemplars, "
+                         "prepends its aesthetic + varietyRule, adds its negatives, and carries "
+                         "its variety gate into read-back. Repeatable. Accepts a lookbook id "
+                         "(resolved in the --entity universe) or a path to a lookbook folder.")
+    ap.add_argument("--wardrobe-context", default="",
+                    help="Comma-separated scene tags (children, elders, meal, interior, "
+                         "cold-weather, work) that pull in context-triggered lookbooks.")
+    ap.add_argument("--no-wardrobe", action="store_true",
+                    help="Skip automatic wardrobe resolution from --entity. Use for a render "
+                         "where clothing is genuinely not the subject (a prop, a room, a mark).")
+    ap.add_argument("--lookbook-refs", type=int, default=3,
+                    help="How many exemplars to sample per lookbook (SPEC 4.7.1 says 2-4).")
     # RESOLVE CANON HERE, NOT IN THE CALLER'S HEAD.
     #
     # `canon-resolve` has always been a SKILL: a document instructing whoever is
@@ -358,6 +379,92 @@ def main():
             prompt = prompt.strip() + "\n\n" + "\n\n".join(blocks)
         recipe_entities = resolved_meta
 
+    # ------------------------------------------------------------------
+    # WARDROBE. What the figures are WEARING, resolved from canon rather than
+    # remembered by whoever is driving.
+    #
+    # This runs automatically off --entity, which is the whole point: a fresh session
+    # that says "render Gary and Selah" gets their bound lookbooks, their era, their
+    # garment negatives and the universe baseline WITHOUT anyone knowing those exist.
+    # Before this, every one of those rules reached the model only when an agent
+    # happened to read the craft canon and retype it, which is why the look drifted
+    # between sessions.
+    #
+    # Lookbook refs go AFTER entity refs and after the style-pack anchor: a lookbook is
+    # a varied vocabulary to draw FROM, not a thing to reproduce, so it must never
+    # outrank the subject's own locked plates.
+    lookbook_meta = []
+    wardrobe_gate = []
+    if not a.no_wardrobe and (a.entity or a.lookbook):
+        _engine_on_path()
+        try:
+            from agenticstory import wardrobe as _wr
+            from agenticstory.store import CanonStore
+        except ImportError:
+            _wr = None
+        if _wr is not None:
+            ctx = [t.strip() for t in (a.wardrobe_context or "").split(",") if t.strip()]
+            # Group the cast by universe so each store is built once and each entity's
+            # binding is resolved against its OWN canon.
+            by_uni: dict[str, list[str]] = {}
+            for m in recipe_entities:
+                by_uni.setdefault(m["universe"], []).append(m["id"])
+            named = [l for l in a.lookbook if os.path.sep not in l]
+            paths = [l for l in a.lookbook if os.path.sep in l]
+            if not by_uni and named:
+                sys.exit("generate.py: --lookbook by id needs --entity to say which universe "
+                         "it lives in; pass a path to the lookbook folder instead.")
+            resolved_all = []
+            for upath, eids in (by_uni or {}).items():
+                store = CanonStore(os.path.expanduser(upath))
+                res = _wr.resolve_wardrobe(store, eids, context=ctx, extra=named)
+                books = _wr.lookbooks(store)
+                for lid in res["lookbooks"]:
+                    resolved_all.append((books[lid], res))
+            for p in paths:
+                lb = _wr.Lookbook.load(os.path.expanduser(p))
+                resolved_all.append((lb, None))
+
+            merged = {"aesthetic": [], "varietyRules": [], "gate": [], "negatives": [],
+                      "eras": {}, "alwaysWears": {}}
+            for res in {id(r): r for _, r in resolved_all if r}.values():
+                for k in ("aesthetic", "varietyRules", "gate", "negatives"):
+                    for v in res[k]:
+                        if v not in merged[k]:
+                            merged[k].append(v)
+                merged["eras"].update(res["eras"])
+                merged["alwaysWears"].update(res["alwaysWears"])
+            for lb, res in resolved_all:
+                if res is None:
+                    if lb.aesthetic:
+                        merged["aesthetic"].append(f"[{lb.id}] {lb.aesthetic}")
+                    if lb.variety_rule:
+                        merged["varietyRules"].append(f"[{lb.id}] {lb.variety_rule}")
+                    merged["gate"] += [g for g in lb.gate if g not in merged["gate"]]
+                    merged["negatives"] += [n for n in lb.negatives
+                                            if n not in merged["negatives"]]
+
+            lb_refs = []
+            for lb, _res in resolved_all:
+                # Seed on the OUTPUT PATH so successive renders in one batch draw
+                # different subsets while any single render replays identically.
+                picked = lb.sample(a.lookbook_refs, seed=f"{lb.id}:{os.path.abspath(a.out)}")
+                lb_refs += [str(p) for p in picked]
+                lookbook_meta.append({"id": lb.id, "dir": str(lb.dir),
+                                      "sampled": [str(p) for p in picked],
+                                      "gate": lb.gate})
+            seen_now = {os.path.normpath(os.path.expanduser(r)) for r in a.ref}
+            a.ref = a.ref + [p for p in dict.fromkeys(lb_refs)
+                             if os.path.normpath(p) not in seen_now]
+
+            block = _wr.wardrobe_prompt_block(merged)
+            if block:
+                prompt = prompt.strip() + "\n\n" + block
+            # The gate is checked on the OUTPUT, so it is carried in the recipe for
+            # read-back rather than shouted at the model. It gets its OWN key: a list
+            # whose entries have two different shapes is a shape nobody can iterate.
+            wardrobe_gate = merged["gate"]
+
     for r in a.ref:
         if not os.path.exists(os.path.expanduser(r)):
             sys.exit(f"generate.py: ref not found: {r}  (the look IS the references; a missing one silently degrades the render)")
@@ -410,8 +517,13 @@ def main():
             recipe["permitted"] = lifted
         if a.ref_first:
             recipe["refFirst"] = True
-    if a.lookbook:
-        recipe["lookbook"] = a.lookbook
+    if lookbook_meta:
+        # The SAMPLED exemplars, not just the lookbook's name. Which subset was drawn is
+        # the difference between a reproducible render and a recipe that merely asserts
+        # a vocabulary was consulted.
+        recipe["lookbooks"] = lookbook_meta
+        if wardrobe_gate:
+            recipe["wardrobeGate"] = wardrobe_gate
     with open(out + ".recipe.json", "w") as f:
         json.dump(recipe, f, indent=2)
     print(f"[generate] {os.path.basename(out)} + {os.path.basename(out)}.recipe.json  (provenance written)")

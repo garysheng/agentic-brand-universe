@@ -116,7 +116,18 @@ class CanonStore:
 
     # --- validation ---
     def validate_canon(self) -> list[str]:
+        from .wardrobe import lookbooks as _lookbooks, validate_wardrobe
+
         problems: list[str] = []
+        # Lookbooks and the wardrobe blocks that bind them. Checked here rather than in
+        # a separate verb because a binding to a lookbook that is not on disk reads as a
+        # constraint and is silently nothing, which is the failure mode `validate`
+        # exists to catch.
+        books = _lookbooks(self)
+        for lb in books.values():
+            problems += lb.validate()
+        for e in self.entities.values():
+            problems += validate_wardrobe(e, set(books))
         for e in self.entities.values():
             problems += e.validate(subject_approval=self.subject_approval)
         for c in self.craft.values():

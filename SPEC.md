@@ -1,10 +1,24 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.27 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.28 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.28 changelog — lookbooks became real, and clothes got attached to people.** From v0.12 to
+> v0.27 a Lookbook was a specification with no implementation: `--lookbook` wrote the vocabulary's
+> NAME into the recipe after the image already existed, sampling nothing and gating nothing, and the
+> engine held zero lines about lookbooks. Craft canon in two universes meanwhile instructed renderers
+> to "pass `--lookbook X` so the renderer samples 2-4 exemplars, applies the varietyRule and gates
+> the output" — three behaviours described, none implemented. Fifth instance of the v0.23-v0.26
+> defect class: canon that is correct and unexecutable. v0.28 implements the consumption contract
+> (§4.7.1), adds `always` / `appliesWhen` / `negatives` so a vocabulary can say WHEN it applies,
+> validates lookbooks for real, and introduces `structured.wardrobe` (§4.7.2) so a CHARACTER binds
+> their own clothes. Renders resolve wardrobe automatically off `--entity`; `abu wardrobe` answers
+> the same question outside a render. Earned when two fully-locked characters turned out to have no
+> wardrobe binding of any kind, and the one prose instruction that gestured at one pointed at a
+> field that was `null`.
 
 > **v0.27 changelog — a standard for when a REAL PERSON is reproducible.** `lock-level` answers
 > "are the files on disk." It never answered the question a brand actually needs: is there enough
@@ -959,15 +973,80 @@ not subject content. Improvising a bare folder of "clothing refs" is the drift i
 }
 ```
 
-- **Consumed** by a renderer (`on-brand-image --lookbook`): sample 2-4 refs (varying the subset), prepend
-  `varietyRule`, add the `gate` to the read-back, re-roll a uniform result from scratch. It rides
-  ALONGSIDE a Style Pack (pack = medium, lookbook = varied subject).
-- **Bound to a universe** through a **craft-canon register-rule** (§13) whose `rules` name the lookbook,
-  so uniformity can never silently return. (First use: rule `godly-aligned-dress` → lookbook
+Optional fields, all added in v0.28 so a lookbook can say WHEN it applies and what it forbids:
+
+```jsonc
+{
+  "always": true,                        // the universe BASELINE: governs every clothed figure
+  "appliesWhen": ["children", "meal"],   // context tags that pull it in without anyone naming it
+  "negatives": ["no kaftans", "..."]     // goes INTO the prompt; `gate` is checked on the OUTPUT
+}
+```
+
+- **Consumed** by a renderer (`on-brand-image --lookbook`, repeatable): sample 2-4 refs (varying the
+  SUBSET, not merely the order), prepend `aesthetic` + `varietyRule`, add `negatives` to the prompt,
+  carry the `gate` into read-back, re-roll a uniform result from scratch. It rides ALONGSIDE a Style
+  Pack (pack = medium, lookbook = varied subject). Lookbook refs are ordered AFTER entity refs and
+  after the pack anchor: a lookbook is a range to draw FROM, never a thing to reproduce, so it must
+  not outrank the subject's own locked plates.
+- **Sampling must vary MEMBERSHIP.** A renderer that always hands the model `refs[:n]` has quietly
+  turned the lookbook into a Style Pack with extra steps; the range on disk stops being range the
+  moment the renderer stops rotating through it. Sampling is seeded (normally on the output path) so
+  it varies across a batch while any single render replays identically from its recipe.
+- **Bound to a universe** through a **craft-canon register-rule** (§13) whose `lookbook`/`alsoBinds`
+  name it, so uniformity can never silently return. (First use: rule `godly-aligned-dress` → lookbook
   `christofuturist-fashion`, because a Christofuturist community that dresses in one beige linen reads as
   a commune, not a flourishing Kingdom.)
+- **A craft binding does NOT make a lookbook fire.** It says "this vocabulary is canon here"; `always`,
+  `appliesWhen` or an entity binding say "this render obeys it". Conflating the two means resolving two
+  people standing together drags in the MEAL vocabulary and the ROOM-DRESSING vocabulary, which is
+  exactly what the v0.28 implementation did on its first pass. Bound-but-untriggered lookbooks are
+  reported as *available*, so nobody concludes the universe lacks one.
 - **The gate is load-bearing, and it checks VARIETY.** A lookbook without a variety gate is a mood board
-  that drifts back to a uniform on the first render.
+  that drifts back to a uniform on the first render. `validate` now REFUSES a lookbook with an empty
+  `gate`, with refs declared but missing on disk, or with fewer live refs than its own `minRefs`.
+
+**WHY v0.28 EXISTS.** From v0.12 to v0.27 every bullet above except the last two was FICTION.
+`--lookbook` wrote the lookbook's name into the recipe, after the image already existed, and did
+nothing else: it sampled nothing, prepended nothing and gated nothing, while the engine held zero
+lines about lookbooks. Craft canon in two universes instructed renderers to "pass `--lookbook X` so
+the renderer samples 2-4 exemplars, applies the varietyRule and gates the output" — three behaviours
+described, none implemented, and the recipe asserted the vocabulary had been used. This is the same
+defect class as v0.23 through v0.26: **canon that is correct and unexecutable.** The observable cost
+was that a universe's clothing rules reached the model only when an agent happened to read the craft
+canon and retype it by hand, so the look drifted between sessions for reasons nobody could see.
+
+### 4.7.2 Wardrobe (v0.28) — binding clothes to a PERSON
+
+`structured.wardrobe` on an entity answers "what does *this one* wear", which no primitive could
+express before. A lookbook is a universe's vocabulary; a wardrobe is one character's claim on it.
+
+```jsonc
+"wardrobe": {
+  "lookbooks": ["christofuturist-fashion", "christofuturist-mens-fashion"],
+  "era": "the house line, favoring The Texas as his everyday fit",   // prose, steers the look
+  "alwaysWears": ["the north-star-cross pendant at the sternum"],    // per-render non-negotiables
+  "negatives": ["no beaded devotional strands", "..."],              // garment-level, additive
+  "note": "why this binding exists"
+}
+```
+
+Resolution merges, in order of increasing specificity: the universe **baseline** (`always`) →
+**context** triggers (`appliesWhen` vs the render's tags) → each entity's **binding** → anything named
+**explicitly**. Later layers only ADD. Nothing removes, because a wardrobe rule that a more specific
+layer could silently switch off is the v0.24 lock-gate demotion bug wearing a different hat; an entity
+that must not wear something says so in its own additive `negatives`.
+
+`validate` refuses a `wardrobe` with an unknown key, a scalar where a list belongs, or a binding to a
+lookbook that is not on disk — the same failure class as a `requiredForRender` naming a sheet with no
+path: it reads as a constraint and is silently nothing.
+
+**The point is automatic resolution.** `on-brand-image --entity <universe>:gary` now brings Gary's
+bound lookbooks, era, always-worn props and garment negatives with it, without the caller knowing any
+of those exist. `abu wardrobe <universe> <entity...> [--context tags]` answers the same question
+outside a render. The defect that earned it, 2026-08-01: two fully-locked characters with nine blessed
+plates between them had NO wardrobe binding of any kind, and the one prose instruction that gestured
+at one pointed at a field that was `null`.
 
 ### 4.8 Form (RETIRED ENCODING, v0.17)
 

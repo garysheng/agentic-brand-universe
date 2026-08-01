@@ -68,6 +68,17 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--characters", default=""); sp.add_argument("--location", default="")
     ll = sub.add_parser("lock-level", help="report how locked an entity is (which matrix slots are filled)")
     ll.add_argument("universe"); ll.add_argument("entity")
+    wd = sub.add_parser("wardrobe",
+                        help="resolve what named characters are WEARING: which lookbooks apply, "
+                             "their aesthetic, variety rules, negatives and gate")
+    wd.add_argument("universe")
+    wd.add_argument("entities", nargs="*", help="entity ids appearing in the render")
+    wd.add_argument("--context", default="",
+                    help="comma-separated scene tags (children, elders, meal, feet-visible, "
+                         "cold-weather, work, worship) that pull in context-triggered lookbooks")
+    wd.add_argument("--lookbook", action="append", default=[],
+                    help="name an extra lookbook explicitly; repeatable")
+    wd.add_argument("--json", action="store_true")
     ar = sub.add_parser("archive", help="retire an entity from NEW casting (history keeps rendering)")
     ar.add_argument("universe"); ar.add_argument("eid")
     ar.add_argument("--reason", required=True,
@@ -509,6 +520,36 @@ def main(argv: list[str] | None = None) -> int:
                                refs.assert_spread(store, chars, args.location or None))
     if args.cmd == "lock-level":
         print(refs.lock_level(store, args.entity))
+        return 0
+    if args.cmd == "wardrobe":
+        from . import wardrobe as wr
+        ctx = [t.strip() for t in (args.context or "").split(",") if t.strip()]
+        res = wr.resolve_wardrobe(store, args.entities, context=ctx, extra=args.lookbook)
+        if args.json:
+            print(json.dumps(res, indent=2))
+            return 0
+        if not res["lookbooks"]:
+            print("wardrobe: NO lookbook applies. Nothing in this universe says what "
+                  "these figures wear, so the model will invent it.")
+        for lid in res["lookbooks"]:
+            print(f"  {lid}  <- {res['why'][lid]}")
+        block = wr.wardrobe_prompt_block(res)
+        if block:
+            print("\n" + block)
+        if res["gate"]:
+            print("\nREAD-BACK GATE:")
+            for g in res["gate"]:
+                print(f"  - {g}")
+        # Two advisories. Neither fails the command: an unbound lookbook may be
+        # deliberately dormant, and a wardrobe-less entity may be a prop or a setting.
+        if res["entitiesWithNoWardrobe"]:
+            print(f"\nNO WARDROBE BINDING: {', '.join(res['entitiesWithNoWardrobe'])} "
+                  f"(their clothes come from the baseline only; bind lookbooks in "
+                  f"structured.wardrobe to give them their own)")
+        if res["available"]:
+            print("\nCANON VOCABULARIES THAT DID NOT FIRE:")
+            for a in res["available"]:
+                print(f"  {a['id']}: {a['how']}")
         return 0
     if args.cmd in ("archive", "unarchive"):
         uni = Path(args.universe)
