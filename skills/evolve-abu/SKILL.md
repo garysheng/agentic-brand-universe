@@ -56,6 +56,29 @@ run it, so a change is not live until he does.
    - *A skill is missing or wrong* → add/edit `agenticstory/skills/<name>/SKILL.md` (+ `scripts/`). New skill: match the frontmatter shape (`name` + a dense `description` with trigger phrases), keep it universe-agnostic (takes a target universe/pack; hardcodes nothing).
    - *The engine is missing a capability* → `agenticstory/engine/agenticstory/` (+ a test in `engine/tests/`). Run `./run-tests.sh`; stay green.
    - *A contract/invariant changed* → `SPEC.md` (this is what forces a **spec** version bump and updates `conformsTo` strings).
+
+   **WRITE THE SPEC TEXT IN THE SAME PASS, ALWAYS (Gary, 2026-08-01: "make sure
+   /evolve-abu also makes sure to update the spec text").** Any change a universe
+   author could OBSERVE — a new guard, a new refusal, a new field, a new selector,
+   a changed default — must be described in `SPEC.md` before you commit, not
+   "later". Not a changelog line: the actual section a reader would look in.
+   State what it does, WHEN it fires or applies, and the defect that earned it, so
+   the next person can tell whether it covers their case.
+
+   This is a rule because it has already failed twice. `MOTION_GUARD` shipped
+   2026-07-28 and 4.6 still read "four rules" months later, so the spec was
+   describing a compiler that no longer existed. Two more guards landed the same
+   way on 2026-08-01 and were only caught because a test now enforces it. The
+   pattern is always the same: the code change is the interesting part, the spec
+   text feels like paperwork, and the paperwork is the only thing a user of the
+   framework can actually read.
+
+   **`GuardsDocumentedTest` enforces exactly one instance of this** (every
+   `*_GUARD` constant must be named in 4.6). Treat that as the floor, not the
+   ceiling — nothing yet forces you to document a new field or refusal, so that
+   part is on you. If you add an observable thing in a category the tests do not
+   cover, consider extending the test in the same commit rather than trusting the
+   next author to remember.
    - *A new scaffolder/template is missing* (e.g. `create-style-pack`) → it is a skill; author it so it emits the same shape the consumers expect (read `on-brand-image`'s `pack.json` fields; read `shoot-references`'s `recipe.json`).
 3. **Register the skill** in the plugin manifest `description` catalog (`.claude-plugin/plugin.json`) if you added one, so it is discoverable.
 
@@ -99,6 +122,7 @@ When invoked because Gary is frustrated we are hand-rolling, first **take stock 
 ## Definition of done
 
 - The gap is a real framework artifact (skill/engine/spec/template), universe-agnostic, tested where applicable.
+- **Every observable change is written into `SPEC.md` in the same commit as the code**, in the section a reader would look in, with what it does, when it applies, and the defect that earned it.
 - Versions bumped; committed and pushed, `.claude-plugin/plugin.json` version bumped, Gary prompted to `/plugin update`.
 - `SAVE-LOG.md` has the entry; if the process changed, this skill was updated too.
 - `./run-tests.sh` is green INCLUDING its `docs` line, so the generated reference describes the framework as it now is rather than as it was.
