@@ -1033,3 +1033,36 @@ class AddressingGuardTest(unittest.TestCase):
         self.assertIn("BEHIND OR AMONG THE AUDIENCE", ADDRESSING_GUARD)
         self.assertIn("AT THE SPEAKER", ADDRESSING_GUARD)
         self.assertIn("NEVER ARRAYED BEHIND THE SPEAKER", ADDRESSING_GUARD)
+
+
+# ── BEDCLOTHES GUARD ──────────────────────────────────────────────────────
+# Earned 2026-08-01 on The Power of Obeying: three spreads put a man in a
+# business suit and necktie in his own bed, because his canon asserted a default
+# outfit and the scene never said "pyjamas". Fixed on that entity; guarded here
+# because ANY character with a stated default outfit will be put to bed in it.
+_in_bed, BEDCLOTHES_GUARD = _ap._in_bed, _ap.BEDCLOTHES_GUARD
+
+
+class BedclothesGuardTest(unittest.TestCase):
+    def test_fires_on_waking_and_sleeping(self):
+        self.assertTrue(_in_bed(
+            "He has sat bolt upright in bed as though touched on the shoulder."))
+        self.assertTrue(_in_bed(
+            "The old man lies asleep under the quilt at half past one in the morning."))
+        self.assertTrue(_in_bed(
+            "He swung both legs off the bedstead and put his feet on the floorboards."))
+
+    def test_silent_when_nobody_is_sleeping(self):
+        # Someone who lies down on a bed still dressed, having just walked in,
+        # must NOT be forced into pyjamas: that is a real beat, not a defect.
+        self.assertFalse(_in_bed(
+            "He sets the case down and stands at the foot of the bed, hand on his chest."))
+        self.assertFalse(_in_bed(
+            "A man kneels alone on bare floorboards in an empty room at night."))
+
+    def test_guard_names_the_dressed_exception(self):
+        # A guard that cannot be overridden by the scene would break the beats
+        # where the character genuinely is dressed on a bed.
+        self.assertIn("NIGHTCLOTHES", BEDCLOTHES_GUARD)
+        self.assertIn("business suit", BEDCLOTHES_GUARD)
+        self.assertIn("EXCEPTION", BEDCLOTHES_GUARD)

@@ -163,6 +163,51 @@ def _has_audience(scene: str) -> bool:
             and any(v in low for v in ADDRESSING_VERBS))
 
 
+BEDCLOTHES_GUARD = (
+    "WHAT A PERSON WEARS IN BED. Someone who has been asleep, is waking, is sitting up in "
+    "bed or is getting out of bed is wearing NIGHTCLOTHES appropriate to their period and "
+    "station: a nightshirt, a plain pyjama suit, a nightgown, a plain undershirt. They are "
+    "NOT wearing a business suit, a jacket, a waistcoat, a necktie, a buttoned dress shirt, "
+    "a belt, dress shoes, or outdoor clothing of any kind, because nobody sleeps in those. "
+    "Their hair is SLEEP-DISORDERED rather than combed or styled, and the bedclothes are "
+    "rumpled around them. THE ONE EXCEPTION is when the scene explicitly says they are "
+    "dressed (they have just come in from outside, or lain down in their clothes without "
+    "sleeping); in that case obey the scene and dress them as it says."
+)
+
+BED_NOUNS = (
+    "in bed", "on the bed", "into bed", "out of bed", "bedstead", "bedclothes", "bedspread",
+    "the covers", "the blankets", "pillow", "quilt", "mattress", "nightstand",
+)
+SLEEP_TOKENS = (
+    "asleep", "sleeping", "slept", "wakes", "woke", "waking", "awoken", "awake",
+    "sat up", "sits up", "sat bolt upright", "bolt upright", "upright in bed",
+    "swung his legs", "swung her legs", "swung both legs", "nightclothes", "nightshirt",
+    "pyjama", "pajama", "nightgown", "half past one in the morning", "in the small hours",
+    "at first light", "before dawn", "5:45", "at dawn",
+)
+
+
+def _in_bed(scene: str) -> bool:
+    """True when a person in this scene has been sleeping or is waking in a bed.
+
+    Earned 2026-08-01 on The Power of Obeying, where THREE spreads (37, 43, 62) put a
+    man in a full business suit and necktie in his own bed at night and at dawn. The
+    character entity asserted "he wears a plain suit" unconditionally, and canon prose
+    outranks anything a scene leaves unsaid, so a beat that never said "pyjamas" got a
+    suit. That was fixed on that one entity; this guard exists because the failure is
+    not about that entity. ANY character whose canon states a default outfit will be put
+    to bed in it, in any universe, and no author reliably remembers to say otherwise.
+
+    Deliberately requires BOTH a bed noun and a sleep signal, so a scene where someone
+    lies down on a bed still dressed (having just walked in) does not trip it, and the
+    guard carries an explicit exception for scenes that state the person is dressed.
+    """
+    low = (scene or "").lower()
+    return (any(n in low for n in BED_NOUNS)
+            and any(t in low for t in SLEEP_TOKENS))
+
+
 SINGLE_IMAGE_GUARD = (
     "ONE SINGLE CONTINUOUS FULL-BLEED PAINTING that fills the entire canvas edge to edge. This is "
     "NEVER a grid, NEVER a multi-panel layout, NEVER a comic page, NEVER a contact sheet, NEVER a "
@@ -1182,6 +1227,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
             MOTION_GUARD if _has_motion(scene) else "",
             ADDRESSING_GUARD if _has_audience(scene) else "",
+            BEDCLOTHES_GUARD if _in_bed(scene) else "",
         ]
         if x
     )
