@@ -22,3 +22,32 @@ The quality gate that catches a defective render before it ships or locks. A ren
 ## Not this skill
 - Generating the image (that is the caller, e.g. `shoot-references` or a renderer).
 - Locking the passed shot into canon (that is `shoot-references` / the renderer).
+
+## Measuring a numeric invariant
+
+Some invariants are NUMBERS: a character's head-to-body proportion, a mark's
+height-to-width ratio. Cropping and zooming answers "does this look right"; it
+cannot answer "is this 1:8 or 1:6.5". `scripts/measure.py` does.
+
+    measure.py figure <image> --chin Y [--overlay out.png]
+    measure.py star   <image> --box x0,y0,x1,y1 [--overlay out.png]
+
+**It records HOW it measured, beside the image, as `<image>.measure.json`.** That
+is the point, not a convenience. Three consecutive sessions hand-rolled this
+ruler and reported 1:6.5 -> 1:7.6, then "both plates 1:7.2", then 1:7.04 ->
+1:7.26 for overlapping plates, because none of them recorded their landmarks.
+Nobody could tell whether a plate had improved or the method had changed. A bare
+number is not a measurement.
+
+**The chin is not auto-detected, deliberately.** A luminance-minimum detector
+locks onto the shadow under the lower lip rather than the chin base and returns a
+confident 1:8.8-1:9.2 on a figure that is really about 1:7.2. Pass `--chin Y`, or
+render `--overlay` and read it off the ruler. The record says which you did, and
+reports how much a 5px error would move the result.
+
+**It refuses rather than guessing.** A predecessor scanner returned crown=0,
+sole=1534 on a 1536px plate: the whole frame, silently, as if the figure filled
+it. Every detector here validates its own output, and `star` refuses any result
+above 3:1 because no rendering of a four-point mark with equal top and side arms
+can be that narrow. If you get `UNMEASURABLE`, the crop is wrong; tighten it.
+Do not hand-roll a ruler around a refusal.
