@@ -1,10 +1,34 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.22 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.23 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.23 changelog — a reference slot can say what it CONTRIBUTES, a negative can name one
+> person, and a multi-line header stops being half-read.** §12 slots accept `{"path", "role"}`
+> alongside the bare path they have always accepted, with roles `identity | geometry | garment |
+> medium | scale`. A slot was previously `shot -> path` and nothing more, so nothing could declare
+> "this plate supplies the cut of a garment, never its medium and never a face." That silence was
+> not academic: a pair of watercolour-and-ink costume plates, whose own sidecars read "garment
+> design ONLY; the render stays hyperreal", looked perfectly admissible as matrix slots on a
+> HYPERREAL character and would have baked an illustrated medium into a photographic canon. The
+> prose said the right thing and no gate could read it. The compiler now emits a per-ref
+> `REFERENCE ROLES` instruction so a ref cannot contribute more than it should. Untyped slots emit
+> nothing and are gated exactly as before, so no universe migrates. ALSO: `structured.negatives`
+> on an entity, emitted ONLY when that entity is in frame. Six of nineteen banned-visual entries
+> migrated out of a legacy brand OS name ONE person (no glasses on Gary, no black leather jacket,
+> no stubble, no tattoos) while the same source explicitly PERMITS glasses on other people, so as
+> flat pack `rejectedPoles` they would have forbidden those universe-wide and quietly overruled a
+> decision the author had made the other way. AND a parser fix that cost a real render:
+> `chain_matrix`'s `**Negatives (every shot):**` and `**Refs (every shot):**` headers were read
+> with a single-line regex, so a header authored across four lines contributed only its first line
+> and the rest was dropped in silence. On gary's first seed 5 of 18 negatives reached the model and
+> `a crucifix` was among the thirteen discarded, so the pendant rendered as exactly the crucifix
+> his invariant forbids by name. Both headers now read the whole block, splitting on commas or
+> newlines and tolerating list markers. Same class as the header-implies-a-guarantee defects
+> already fixed twice in that file.
 
 > **v0.22 changelog — a character must be able to prove its own height, and so must an object.**
 > §12 adds a `scale-plate` shot to the character and prop matrices (both `optional`), a `scale`
@@ -1257,6 +1281,20 @@ Default measured reference, when a universe declares no `identity.scaleReference
     `lint-universe` warns `CHARACTER-NO-SCALE-PLATE`, `CHARACTER-HEIGHT-UNDEPICTED` (a height is
     declared but nothing on disk depicts it, the precise v0.9 failure) and
     `CHARACTER-SCALE-PLATE-MISSING`.
+  - **A slot may declare its ROLE (v0.23).** `"sheets": {"denim-front": {"path": "...", "role":
+    "garment"}}`. Roles are `identity` (face and likeness), `geometry` (shape and proportion),
+    `garment` (the CUT of clothing, never its medium), `medium` (the paint language itself) and
+    `scale` (see `scale-plate`). The bare-path form is unchanged and still correct; a slot that
+    declares no role behaves exactly as it always did, which is why this migrates nothing. What
+    the role buys is a per-ref instruction in the prompt — `REFERENCE ROLES, obey exactly:` —
+    so the model is told what each reference is for instead of weighing them all equally. Earned
+    on two watercolour costume plates that were admissible as matrix slots on a hyperreal
+    character because their sidecars said "garment design only" in prose no gate could read.
+  - **`structured.negatives` (v0.23) — a negative that names ONE person.** Emitted only on
+    spreads where that entity is in frame. Some rules are absolute about an individual and must
+    be silent about everyone else: a universe may forbid glasses on one character while
+    explicitly permitting them on others, and a flat pack `rejectedPoles` entry cannot express
+    that without overruling the second decision.
   - **`structured.altLooks` (documented in v0.10; load-bearing in the compiler well before it).**
     A named look that REPLACES part of the entity's identity for the spreads that select it:
     `{ "anchorPhoto", "sheets", "supersedes": [], "invariants": [], "dropSheets": [],

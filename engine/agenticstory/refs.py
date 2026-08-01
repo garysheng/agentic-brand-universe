@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .store import CanonStore
-from .model import Entity, SETTING_CONTRACT_FIELDS
+from .model import Entity, SETTING_CONTRACT_FIELDS, sheet_parts
 from .matrix import matrix_for
 
 
@@ -269,8 +269,11 @@ def lock_level(store: CanonStore, eid: str) -> str:
         return "stub"
 
     def on_disk(key: str) -> bool:
-        v = sheets.get(key)
-        return isinstance(v, str) and (root / v).exists()
+        # A slot is a bare path or {path, role} (SPEC v0.23); normalise before testing,
+        # or every typed slot would silently report as unfilled and drop the entity's
+        # lock level.
+        p = sheet_parts(sheets.get(key))[0]
+        return isinstance(p, str) and (root / p).exists()
 
     req = e.required_sheet_keys()
     req_ok = bool(req) and all(on_disk(k) for k in req)

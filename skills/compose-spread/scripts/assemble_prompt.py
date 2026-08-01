@@ -757,6 +757,54 @@ def setting_variants(ent: dict) -> dict:
     return out
 
 
+def _sheet_path(v):
+    """A sheet slot is a bare path or {path, role} (SPEC v0.23). Give me the path.
+
+    Mirrors `model.sheet_parts`; kept local because this compiler is deliberately
+    importable without the engine. Every read of a slot goes through here, or a typed
+    slot resolves to a dict, gets appended as a "path", and the render dies far from
+    the cause.
+    """
+    if isinstance(v, dict):
+        return v.get("path")
+    return v if isinstance(v, str) else None
+
+
+# What a typed slot is TOLD to contribute, emitted per-ref into the reference block.
+#
+# The plate that earned this was a watercolour-and-ink costume study whose own sidecar
+# read "garment design ONLY; the render stays hyperreal". A human reading the sidecar
+# understood it. Nothing in the pipeline could, so the plate was simply another ref and
+# its MEDIUM was as loud as its cut. Saying it per-ref, in the prompt, is the whole fix.
+ROLE_INSTRUCTION = {
+    "identity": "supplies IDENTITY ONLY: the face and likeness. Ignore its clothing, "
+                "background, lighting and medium.",
+    "geometry": "supplies SHAPE AND PROPORTION ONLY. Ignore its surface, colour and medium.",
+    "garment": "supplies GARMENT CUT AND CONSTRUCTION ONLY. Ignore its medium, its "
+               "colour treatment, and any face or body shown wearing it.",
+    "medium": "supplies the MEDIUM: the paint language, mark-making and surface. Ignore "
+              "its subject.",
+    "scale": "supplies SCALE: how big the subject is against its measured reference. "
+             "Ignore its styling.",
+}
+
+
+def role_lines(ent: dict, look: str | None = None) -> list[str]:
+    """One instruction per TYPED slot, so a ref cannot contribute more than it should.
+
+    Untyped slots emit nothing, which is why adding roles broke no existing universe.
+    """
+    sheets = (ent.get("structured") or {}).get("sheets") or {}
+    out = []
+    for key, v in sheets.items():
+        if not isinstance(v, dict):
+            continue
+        role, path = v.get("role"), v.get("path")
+        if role in ROLE_INSTRUCTION and path:
+            out.append(f"- {path} ({key}) {ROLE_INSTRUCTION[role]}")
+    return out
+
+
 def resolve_character(ent: dict, look: str | None, uroot=None):
     """Return (ref_paths, invariants) for a character in the selected look.
 
@@ -779,8 +827,9 @@ def resolve_character(ent: dict, look: str | None, uroot=None):
         if al.get("anchorPhoto"):
             refs.append(al["anchorPhoto"])
         for v in (al.get("sheets") or {}).values():
-            if v:
-                refs.append(v)
+            pth = _sheet_path(v)
+            if pth:
+                refs.append(pth)
         # keep the base BODY sheets (pose/proportion/wardrobe); drop the base FACE
         # sheets, which show the default look and would fight the alt anchor photo.
         # EXCEPT what the look explicitly KEEPS. The auto-drop assumes the alt look
@@ -804,7 +853,7 @@ def resolve_character(ent: dict, look: str | None, uroot=None):
                 continue
             if key in FACE_SHEET_KEYS and key not in kept:
                 continue
-            p = sheets.get(key)
+            p = _sheet_path(sheets.get(key))
             if p and p not in refs:
                 refs.append(p)
         if al.get("keepPhotos"):
@@ -831,7 +880,7 @@ def resolve_character(ent: dict, look: str | None, uroot=None):
         inv = [i for i in base_inv if i not in supers] + list(al.get("invariants", []))
     else:
         for key in st.get("requiredForRender", []):
-            p = sheets.get(key)
+            p = _sheet_path(sheets.get(key))
             if not p:
                 raise Refuse(f"{ent['id']}.{key} is required but unlocked")
             refs.append(p)
@@ -906,7 +955,7 @@ def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     if not plate:
         return []
     sheets = (ent.get("structured") or {}).get("sheets") or {}
-    p = sheets.get(plate)
+    p = _sheet_path(sheets.get(plate))
     if p:
         return [p]
     return [f"reference/{ent['id']}/{plate}.png"]
@@ -1178,6 +1227,12 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         block = entity_block(c["id"], derived, c.get("bake"))
         if block:
             ent_blocks.append(block)
+        # A TYPED slot says what it contributes, so the model is told per-ref rather than
+        # left to weigh every reference equally. Untyped slots emit nothing, which is why
+        # this could not disturb an existing universe. SPEC v0.23.
+        rl = role_lines(ent, c.get("look"))
+        if rl:
+            ent_blocks.append("REFERENCE ROLES, obey exactly: " + " ".join(rl))
         qa += [f"{c['id']}: {i}" for i in inv]
         char_invsets[c["id"]] = inv
         char_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}
@@ -1287,6 +1342,19 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         )
         if not satisfied:
             negs.append(g["text"])
+
+    # ENTITY-SCOPED NEGATIVES (SPEC v0.23): emitted ONLY when that entity is in frame.
+    #
+    # Some negatives name one person and are wrong as universe-wide poles. Six of the
+    # nineteen banned-visual entries migrated out of the Sheng Family brand OS are of
+    # this kind ("no glasses on Gary", no black leather jacket, no stubble, no tattoos),
+    # and the same source EXPLICITLY permits glasses on other people. As flat pack
+    # `rejectedPoles` they would have forbidden those universe-wide, quietly overruling
+    # a decision the author had made the other way. Scoping them to the entity is what
+    # lets a rule be absolute about one person and silent about everyone else.
+    for _cid in char_invsets:
+        _e = load_entity(uroot, _cid) or {}
+        negs += _as_neg_list(((_e.get("structured") or {}).get("negatives")))
 
     # Resolve every ref to an absolute on-disk path (register anchor stays first).
     resolved: list[str] = []

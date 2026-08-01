@@ -31,6 +31,37 @@ SETTING_CONTRACT_FIELDS = ("turnaround", "emptyPlates", "blueprint", "scalePlate
 # substance loses the face and the renderer invents a new person.
 _IDENTITY_SHEETS = {"face-neutral", "face-neutral-color", "face-3q", "expressions"}
 
+# SPEC v0.23: what a reference slot CONTRIBUTES to a render.
+#
+# A slot used to be `shot -> path` and nothing more, so nothing could say "this plate
+# supplies the cut of a garment, never its medium and never a face." That silence is
+# not academic: a pair of watercolour-and-ink costume plates, whose own sidecars read
+# "garment design ONLY; the render stays hyperreal", looked perfectly admissible as
+# matrix slots on a HYPERREAL character, and would have baked an illustrated medium
+# into a photographic canon. The prose said the right thing and no gate could read it.
+SHEET_ROLES = {
+    "identity",  # who this is: face, likeness, the thing that must not drift
+    "geometry",  # the shape of a body or object, independent of surface
+    "garment",   # the CUT and construction of clothing, never its medium
+    "medium",    # the paint language itself: how the image is made
+    "scale",     # how big the subject is (see `scale-plate`)
+}
+
+
+def sheet_parts(v) -> tuple[str | None, str | None]:
+    """Normalise one sheet slot to `(path, role)`.
+
+    A slot is either a bare path (the original form, still valid and still the common
+    case) or `{"path": ..., "role": ...}`. Every reader goes through here so the two
+    forms cannot diverge, and so adding the role could not break a single existing
+    universe: an untyped slot simply reports `role=None` and is gated exactly as before.
+    """
+    if isinstance(v, dict):
+        return v.get("path"), v.get("role")
+    if isinstance(v, str):
+        return v, None
+    return None, None
+
 
 @dataclass
 class Entity:
@@ -56,7 +87,11 @@ class Entity:
         return list(s.get("requiredForRender", list((s.get("sheets") or {}).keys())))
 
     def sheet_path(self, key: str) -> str | None:
-        return (self.structured.get("sheets") or {}).get(key)
+        return sheet_parts((self.structured.get("sheets") or {}).get(key))[0]
+
+    def sheet_role(self, key: str) -> str | None:
+        """What this slot CONTRIBUTES, or None if the slot does not say (SPEC v0.23)."""
+        return sheet_parts((self.structured.get("sheets") or {}).get(key))[1]
 
     def alt_look(self, look: str) -> dict[str, Any] | None:
         return ((self.structured.get("altLooks") or {}) or {}).get(look)
@@ -101,8 +136,9 @@ class Entity:
         for k in (al.get("dropSheets") or []):
             out.pop(k, None)
         for k, v in (al.get("sheets") or {}).items():
-            if v:
-                out[k] = v
+            p = sheet_parts(v)[0]
+            if p:
+                out[k] = p
         return out
 
     def look_invariants(self, look: str | None) -> list[str]:
@@ -200,6 +236,18 @@ class Entity:
             for k in self.required_sheet_keys():
                 if not self.sheet_path(k):
                     p.append(f"{self.id}: requiredForRender '{k}' has no path in sheets")
+        # A typed slot must use a role the compiler actually knows, or the gate it was
+        # added for silently does nothing. A typo here is worse than no role at all,
+        # because the author believes a constraint is in force.
+        for k, v in (self.structured.get("sheets") or {}).items():
+            if not isinstance(v, dict):
+                continue
+            if not v.get("path"):
+                p.append(f"{self.id}: sheets['{k}'] is an object with no 'path'")
+            role = v.get("role")
+            if role is not None and role not in SHEET_ROLES:
+                p.append(f"{self.id}: sheets['{k}'].role '{role}' is not a known role "
+                         f"(allowed: {sorted(SHEET_ROLES)})")
         # structured.render is PROMPT-CRAFT and it is what actually steers the model, so a
         # malformed one is worse than a missing one: nothing here refused it before, and the
         # first thing that read it was the spread assembler, at render time, with an

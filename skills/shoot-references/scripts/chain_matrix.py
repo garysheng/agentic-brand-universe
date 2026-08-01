@@ -146,6 +146,37 @@ def sha(p: Path) -> str:
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()[:16]
 
 
+def _header_block(text: str, name: str) -> list[str]:
+    """Every item under a `**<name> (...):**` header, however many LINES it spans.
+
+    The bug this replaces: both the Negatives and the Refs headers were read with
+    `^\\*\\*Name[^:]*:\\*\\*\\s*(.+)$` under `re.M`, where `.` does not cross a newline and
+    `$` stops at the first line ending. A header authored across four lines therefore
+    contributed ONLY its first line and the rest was dropped in silence.
+
+    That is not cosmetic. On gary's first seed, 5 of 18 negatives reached the model and
+    `a crucifix` was among the thirteen discarded, so the pendant rendered as a plain
+    Latin crucifix, which the entity's own invariant forbids by name. A render was spent
+    proving a parser bug. It is the same class as the header-implies-a-guarantee defects
+    already fixed twice in this file: the file states a constraint, the author believes
+    it is in force, and nothing carries it to the model.
+
+    The block ends at the next `**bold header:**`, the next `##` shot heading, or EOF.
+    Items separate on commas OR newlines, and a leading list marker is stripped, so all
+    three shapes an author might reasonably write are read identically.
+    """
+    m = re.search(rf"^\*\*{re.escape(name)}[^:]*:\*\*[ \t]*(.*?)(?=^\s*\*\*[^*]+:\*\*|^\s*##\s|\Z)",
+                  text, flags=re.M | re.S)
+    if not m:
+        return []
+    items = []
+    for chunk in re.split(r"[,\n]", m.group(1)):
+        chunk = re.sub(r"^\s*[-*•]\s*", "", chunk).strip()
+        if chunk:
+            items.append(chunk)
+    return items
+
+
 def _split_ids(s: str) -> list[str]:
     return [x.strip().strip("`") for x in re.split(r"[,\s]+", s) if x.strip().strip("`")]
 
@@ -196,15 +227,8 @@ def parse_prompts_full(md: Path) -> dict:
             "the session ends."
         )
 
-    negatives: list[str] = []
-    m = re.search(r"^\*\*Negatives[^:]*:\*\*\s*(.+)$", text, flags=re.M)
-    if m:
-        negatives = [n.strip().rstrip(".") for n in m.group(1).split(",") if n.strip()]
-
-    header_refs: list[str] = []
-    m = re.search(r"^\*\*Refs[^:]*:\*\*\s*(.+)$", text, flags=re.M)
-    if m:
-        header_refs = _split_ids(m.group(1))
+    negatives = [n.rstrip(".") for n in _header_block(text, "Negatives")]
+    header_refs = _split_ids(", ".join(_header_block(text, "Refs")))
 
     out, refs, sizes, cur, buf, cur_refs = {}, {}, {}, None, [], []
     for line in text.splitlines():

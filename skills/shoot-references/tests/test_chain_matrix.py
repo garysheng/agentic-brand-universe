@@ -479,5 +479,55 @@ class TestRegisterOverride(unittest.TestCase):
         self.assertIn("not on disk", r.stderr)
 
 
+class TestMultiLineHeaders(unittest.TestCase):
+    """A header that spans lines must contribute ALL of it.
+
+    Both the Negatives and Refs headers were read with a single-line regex, so a
+    four-line negatives block sent only its first line and the rest vanished in
+    silence. On gary's first seed that meant 5 of 18 negatives reached the model and
+    `a crucifix` was among the thirteen dropped, so the pendant rendered as exactly
+    the crucifix his invariant forbids. A render was spent proving a parser bug.
+    """
+
+    def _mod(self):
+        import importlib.util
+        here = Path(__file__).resolve().parent.parent / "scripts" / "chain_matrix.py"
+        spec = importlib.util.spec_from_file_location("cm_hdr", here)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    MD = """# prompts
+
+**Negatives (every shot):** a crucifix, a Latin cross,
+an equal-armed star, stubble,
+- a beard
+- glasses
+
+**Refs (every shot):** north-star-cross,
+selah
+
+## face-neutral -> reference/gary/face-neutral.png
+Body text.
+"""
+
+    def test_every_negative_survives_the_line_breaks(self):
+        got = self._mod()._header_block(self.MD, "Negatives")
+        self.assertEqual(got, ["a crucifix", "a Latin cross", "an equal-armed star",
+                               "stubble", "a beard", "glasses"])
+        self.assertIn("a crucifix", got)
+
+    def test_refs_span_lines_too(self):
+        self.assertEqual(self._mod()._header_block(self.MD, "Refs"),
+                         ["north-star-cross", "selah"])
+
+    def test_single_line_still_works(self):
+        md = "**Negatives (every shot):** a, b, c\n\n## x\nbody\n"
+        self.assertEqual(self._mod()._header_block(md, "Negatives"), ["a", "b", "c"])
+
+    def test_absent_header_is_empty_not_an_error(self):
+        self.assertEqual(self._mod()._header_block("## x\nbody\n", "Negatives"), [])
+
+
 if __name__ == "__main__":
     unittest.main()
