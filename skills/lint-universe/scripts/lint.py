@@ -302,6 +302,27 @@ def lint(root):
                      f"circular hall about 80 feet across, dome 45 feet at the crown\"); it is "
                      f"passed in every prompt like `dressing`, and prose survives a re-render.")
 
+        # ---- a PROP must be able to prove its own size too (SPEC v0.21)
+        #
+        # A prop had no size record of ANY kind: no descriptor, no plate. So a pendant, a
+        # chair and a door were each whatever size the model felt like, and a prop that
+        # renders at the wrong size next to a person is the same defect as a room that
+        # renders too small. This is the other half of Gary's 2026-08-01 ask: how tall
+        # different people AND DIFFERENT THINGS are.
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("kind") != "prop":
+                continue
+            eid = e.get("id", ef.stem)
+            st = e.get("structured") or {}
+            sc = st.get("scale") or {}
+            if not (sc.get("size") or sc.get("height") or "").strip():
+                warn("PROP-NO-SCALE",
+                     f"{eid}: no structured.scale size descriptor, so nothing states how big "
+                     f"this object is and it will render at whatever size the model assumes "
+                     f"next to a figure. State it in human terms (\"about 40 mm across, worn "
+                     f"at the collarbone\").")
+
     # ---- a character must be able to prove its own SCALE and its FUTURE (SPEC v0.10, §12)
     #
     # Two blind spots with one shape: a dimension nothing depicts cannot be judged.
@@ -344,6 +365,32 @@ def lint(root):
                          f"{eid}: declares a height relation to '{other}', but '{other}' declares "
                          f"none back. Record the inverse on '{other}' so the two cannot drift "
                          f"apart and contradict each other.")
+
+            # ---- ABSOLUTE HEIGHT (SPEC v0.21)
+            #
+            # `relativeTo` above answers "is he taller than her". It cannot answer "how
+            # tall is he", and neither can `scale.height`, which is prose that no plate
+            # depicts. A solo forward-fullbody on a blank ground carries no unit of
+            # comparison, so the model picks a stature and every render inherits it.
+            # This is v0.9's setting lesson (a plate cannot be judged on a dimension it
+            # does not depict) finally applied to people.
+            sc = st.get("scale") or {}
+            declared_h = (sc.get("height") or "").strip()
+            plate = (st.get("sheets") or {}).get("scale-plate")
+            if plate and not (root/plate).exists():
+                warn("CHARACTER-SCALE-PLATE-MISSING",
+                     f"{eid}: sheets['scale-plate'] -> {plate} (NOT ON DISK)")
+            elif declared_h and not plate:
+                warn("CHARACTER-HEIGHT-UNDEPICTED",
+                     f"{eid}: declares scale.height '{declared_h}' but has no 'scale-plate' "
+                     f"sheet, so nothing on disk depicts the dimension the record asserts. "
+                     f"Shoot a solo head-to-toe plate against a measured reference.")
+            elif not declared_h and not plate:
+                warn("CHARACTER-NO-SCALE-PLATE",
+                     f"{eid}: no scale.height and no 'scale-plate' sheet, so nothing states or "
+                     f"proves how tall this character is and every render silently inherits the "
+                     f"model's guess. Declare structured.scale.height and shoot a scale-plate.")
+
             for lid, al in (st.get("altLooks") or {}).items():
                 al = al or {}
                 kept = set(al.get("keepSheets") or [])

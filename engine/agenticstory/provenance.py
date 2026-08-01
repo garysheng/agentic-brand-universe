@@ -55,9 +55,28 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def images(universe: Path) -> list[Path]:
+# Every raster extension a universe actually stores art in. `.png` alone was the rule
+# until v0.21 and it silently under-reported: `reference/gary/photos/gary-rome-colosseum.jpg`
+# and a `.webp` style-pack ref were both invisible to the whole provenance sweep, so they
+# could never be counted as missing, never be backfilled, and never enter a divergence
+# check. A blind spot in the one module whose docstrings are about not under-reporting.
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
+
+
+def images(universe: Path, entity: str | None = None) -> list[Path]:
+    """Every stored image under `reference/`, optionally scoped to ONE entity.
+
+    `entity` scopes the sweep to `reference/<entity>/`, which is what makes
+    `backfill-provenance --entity` possible. Without it a caller wanting to stamp one
+    character's plates had to run the whole universe and then hand-prune the 35 unrelated
+    images it wanted to touch, which is how a backfill turns into a diff nobody can review.
+    """
     ref = Path(universe) / "reference"
-    return sorted(ref.rglob("*.png")) if ref.is_dir() else []
+    if entity:
+        ref = ref / entity
+    if not ref.is_dir():
+        return []
+    return sorted(p for p in ref.rglob("*") if p.suffix.lower() in IMAGE_EXTS)
 
 
 def has_recipe(png: Path) -> bool:
@@ -110,7 +129,39 @@ def prompts_for(png: Path) -> str | None:
     return None
 
 
-def is_source(png: Path) -> bool:
+def declared_sources(universe: Path) -> set[str]:
+    """Resolved paths a universe has EXPLICITLY declared as source material.
+
+    Reads every entity's `realPerson.photoStack`, which may name a file or a directory
+    (a directory expands to the images directly inside it). Self-contained on purpose:
+    this is a read of canon, and a provenance sweep must not fail because a refs-layer
+    resolver changed shape.
+    """
+    out: set[str] = set()
+    ents = Path(universe) / "canon" / "entities"
+    if not ents.is_dir():
+        return out
+    for ef in sorted(ents.glob("*.json")):
+        try:
+            e = json.loads(ef.read_text())
+        except Exception:
+            continue
+        stack = ((e.get("structured") or {}).get("realPerson") or {}).get("photoStack") or []
+        for p in stack:
+            cand = Path(p)
+            for t in ([cand] if cand.is_absolute() else [universe / p, universe.parent / p]):
+                if not t.exists():
+                    continue
+                if t.is_dir():
+                    out.update(str(f.resolve()) for f in t.iterdir()
+                               if f.suffix.lower() in IMAGE_EXTS)
+                else:
+                    out.add(str(t.resolve()))
+                break
+    return out
+
+
+def is_source(png: Path, declared: set[str] | None = None) -> bool:
     """A photo-stack input, not generated output.
 
     A real person's reference photographs sit in the same tree as rendered art. They
@@ -118,12 +169,23 @@ def is_source(png: Path) -> bool:
     about them, and counting them as missing provenance both overstates the gap and
     would stamp 57 photographs in Nation of Fire with a note about a render that
     never happened.
+
+    `declared` (v0.21) is the set of resolved paths a universe has EXPLICITLY named as
+    source material, chiefly `realPerson.photoStack` members. It is checked first,
+    because the path heuristic below is only a guess and guesses the wrong way on a real
+    case: a matrix slot legitimately filled by a PHOTOGRAPH — `reference/<id>/face-neutral.png`
+    for a real person — matches neither `photo-N` nor a `photos/` parent, so it fell
+    through to `attested`, which asserts a render that never happened. An assertion about
+    history is the one thing this module may not get wrong, so an explicit declaration
+    outranks the filename every time.
     """
+    if declared and str(png.resolve()) in declared:
+        return True
     return bool(re.match(r"photo[-_ ]?\d*$", png.stem, re.I)) or "photos" in png.parts
 
 
-def classify(png: Path, prompt: str | None) -> str:
-    if is_source(png):
+def classify(png: Path, prompt: str | None, declared: set[str] | None = None) -> str:
+    if is_source(png, declared):
         return "source"
     if prompt:
         return "reconstructed"
@@ -132,9 +194,10 @@ def classify(png: Path, prompt: str | None) -> str:
     return "attested"
 
 
-def build_record(png: Path, universe: Path, git: dict, spec_version: str) -> dict:
+def build_record(png: Path, universe: Path, git: dict, spec_version: str,
+                 declared: set[str] | None = None) -> dict:
     prompt = prompts_for(png)
-    kind = classify(png, prompt)
+    kind = classify(png, prompt, declared)
     rel = str(png.relative_to(universe))
     g = git.get(rel, {})
     rec = {
@@ -171,18 +234,26 @@ def build_record(png: Path, universe: Path, git: dict, spec_version: str) -> dic
     return rec
 
 
-def plan(universe: Path, spec_version: str = "0") -> dict:
-    """What a backfill would do. Writes nothing."""
+def plan(universe: Path, spec_version: str = "0", entity: str | None = None) -> dict:
+    """What a backfill would do. Writes nothing.
+
+    `entity` scopes the sweep to one entity's `reference/<id>/` subtree. Unscoped is
+    still the default and still correct; the scope exists because a run that wants to
+    stamp one character's plates otherwise proposes touching every unprovenanced image
+    in the universe, and a diff nobody can review is a diff nobody checks.
+    """
     universe = Path(universe).expanduser().resolve()
-    all_png = images(universe)
+    all_png = images(universe, entity)
     missing = [p for p in all_png if not has_recipe(p)]
     git = git_index(universe) if missing else {}
-    records = [(p, build_record(p, universe, git, spec_version)) for p in missing]
+    declared = declared_sources(universe) if missing else set()
+    records = [(p, build_record(p, universe, git, spec_version, declared)) for p in missing]
     counts: dict[str, int] = {}
     for _p, r in records:
         counts[r["provenance"]] = counts.get(r["provenance"], 0) + 1
     return {
         "universe": str(universe),
+        "entity": entity,
         "total_images": len(all_png),
         "already_have_recipe": len(all_png) - len(missing),
         "to_backfill": len(missing),
@@ -192,9 +263,9 @@ def plan(universe: Path, spec_version: str = "0") -> dict:
     }
 
 
-def apply(universe: Path, spec_version: str = "0") -> dict:
+def apply(universe: Path, spec_version: str = "0", entity: str | None = None) -> dict:
     """Write the backfilled recipes. Never overwrites an existing recipe."""
-    p = plan(universe, spec_version)
+    p = plan(universe, spec_version, entity)
     written = 0
     for png, rec in p["records"]:
         dst = png.parent / (png.name + RECIPE_SUFFIX)

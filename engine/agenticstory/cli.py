@@ -135,6 +135,10 @@ def build_parser() -> argparse.ArgumentParser:
     bp.add_argument("universe")
     bp.add_argument("--apply", action="store_true",
                     help="write the recipes; without this it reports the plan and changes nothing")
+    bp.add_argument("--entity",
+                    help="scope the sweep to one entity's reference/<id>/ subtree, so a "
+                         "one-character backfill is a reviewable diff instead of a "
+                         "whole-universe rewrite (backfill-prompts already had this)")
     ia = sub.add_parser("import-asset",
                         help="bring an asset made OUTSIDE this universe INTO it, writing its "
                              "provenance chain as a side effect of the copy")
@@ -326,8 +330,11 @@ def main(argv: list[str] | None = None) -> int:
         from pathlib import Path as _P
         from . import provenance
         u = _P(args.universe)
-        r = (provenance.apply if args.apply else provenance.plan)(u, SPEC_VERSION)
-        print(f"backfill-provenance [{u.name}]: {r['already_have_recipe']}/{r['total_images']} "
+        ent = getattr(args, "entity", None)
+        r = (provenance.apply if args.apply else provenance.plan)(u, SPEC_VERSION, ent)
+        scope = f" [{ent} only]" if ent else ""
+        print(f"backfill-provenance [{u.name}]{scope}: "
+              f"{r['already_have_recipe']}/{r['total_images']} "
               f"already had a recipe; {r['to_backfill']} to backfill")
         for kind, n in sorted(r["by_kind"].items(), key=lambda kv: -kv[1]):
             print(f"  {n:5} {kind}")
@@ -461,6 +468,12 @@ def main(argv: list[str] | None = None) -> int:
                 tags.append("REAL:" + (e.real_person.get("approval", {}).get("state", "?")))
             if e.kind in ("setting", "visual-metaphor"):
                 tags.append("locked" if e.is_locked_setting() else "UNLOCKED")
+            # Lifecycle is the FIRST thing a reader needs and was the one thing this
+            # listing hid: an archived entity printed identically to an active one, so
+            # `list` invited a casting decision it had already been retired from.
+            if e.is_archived:
+                sup = e.superseded_by
+                tags.append("ARCHIVED" + (f" -> {sup}" if sup else ""))
             print(f"  {e.id:24s} [{', '.join(tags)}]")
         print("stories:")
         for s in store.stories.values():

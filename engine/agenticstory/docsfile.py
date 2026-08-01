@@ -339,9 +339,34 @@ def render_guards(root: Path) -> list[str]:
     return out
 
 
+def render_scale_plate_contract(root: Path) -> list[str]:
+    """The scale-plate geometry, read off the matrix module itself.
+
+    Same split as `render_guards`: the LIST is enumerable and lives in one place
+    (`matrix.SCALE_PLATE_CONTRACT`), so the spec projects it instead of restating it
+    and cannot drift. The judgement beneath it stays hand-written: why the measured
+    reference defaults to something architectural rather than clinical, why the shot
+    is `optional` rather than in `shots`, and the v0.9 setting lineage it inherits.
+    """
+    src = (root / "engine/agenticstory/matrix.py").read_text()
+    m = re.search(r"SCALE_PLATE_CONTRACT:\s*list\[str\]\s*=\s*\[(.*?)\]", src, re.S)
+    items = re.findall(r'"([^"]+)"', m.group(1)) if m else []
+    d = re.search(r"SCALE_REFERENCE_DEFAULT\s*=\s*\((.*?)\)\n", src, re.S)
+    # The constant is a parenthesised multi-line string literal, so naive joining leaves
+    # double spaces at every line break. Collapse to single spaces before emitting.
+    default = re.sub(r"\s+", " ",
+                     "".join(re.findall(r'"([^"]*)"', d.group(1)))).strip() if d else ""
+    out = [f"- {i}" for i in items]
+    if default:
+        out += ["", f"Default measured reference, when a universe declares no "
+                    f"`identity.scaleReference`: {default}"]
+    return out
+
+
 BLOCKS = {
     "README.md": {"status": render_status},
-    "SPEC.md": {"guards": render_guards},
+    "SPEC.md": {"guards": render_guards,
+                "scale-plate-contract": render_scale_plate_contract},
     "docs/REFERENCE.md": {
         "skills": render_skills,
         "cli": render_cli,

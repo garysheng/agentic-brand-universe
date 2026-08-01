@@ -90,6 +90,55 @@ class TestClassification(Base):
     def test_plain_render_is_attested(self):
         self.assertEqual(pv.classify(self.art("s/hero.png"), None), "attested")
 
+    def test_declared_source_outranks_the_path_heuristic(self):
+        """A real person's plate that IS a photograph must not be called a render.
+
+        The heuristic keys on `photo-N` or a `photos/` parent. A photograph legitimately
+        filling a matrix slot at `reference/<id>/face-neutral.png` matches neither, so it
+        fell through to `attested` and asserted a render that never happened.
+        """
+        p = self.art("gary/face-neutral.png")
+        self.assertEqual(pv.classify(p, None), "attested")
+        declared = {str(p.resolve())}
+        self.assertEqual(pv.classify(p, None, declared), "source")
+
+    def test_declared_sources_reads_photostack(self):
+        """`realPerson.photoStack` names the truth; a directory expands to its images."""
+        self.art("gary/photos/a.png")
+        self.art("gary/photos/b.jpg")
+        loose = self.art("gary/face-neutral.png")
+        ents = self.u / "canon" / "entities"
+        ents.mkdir(parents=True, exist_ok=True)
+        (ents / "gary.json").write_text(json.dumps({
+            "id": "gary", "kind": "character",
+            "structured": {"realPerson": {"photoStack": [
+                "reference/gary/photos", "reference/gary/face-neutral.png"]}},
+        }))
+        got = pv.declared_sources(self.u)
+        self.assertEqual(len(got), 3)
+        self.assertIn(str(loose.resolve()), got)
+
+
+class TestImageSweep(Base):
+    def test_sweep_sees_every_stored_extension(self):
+        """Globbing `*.png` alone silently under-reported jpg/jpeg/webp.
+
+        Anything invisible to this sweep can never be counted as missing, never be
+        backfilled, and never enter a divergence check.
+        """
+        for name in ("a.png", "b.jpg", "c.jpeg", "d.webp"):
+            self.art(f"gary/{name}")
+        self.art("gary/notes.txt")
+        got = {p.name for p in pv.images(self.u)}
+        self.assertEqual(got, {"a.png", "b.jpg", "c.jpeg", "d.webp"})
+
+    def test_entity_scope(self):
+        """`--entity` exists so a one-character backfill is a reviewable diff."""
+        self.art("gary/face-neutral.png")
+        self.art("selah/face-neutral.png")
+        self.assertEqual([p.name for p in pv.images(self.u, "gary")], ["face-neutral.png"])
+        self.assertEqual(pv.images(self.u, "nobody"), [])
+
 
 class TestRecords(Base):
     def test_attested_admits_it(self):

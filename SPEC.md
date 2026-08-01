@@ -1,10 +1,38 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.21 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.22 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.22 changelog — a character must be able to prove its own height, and so must an object.**
+> §12 adds a `scale-plate` shot to the character and prop matrices (both `optional`), a `scale`
+> descriptor for props, and a universe-level `identity.scaleReference`. v0.9 gave settings this and
+> stated the reason in one line: *a plate cannot be judged on a dimension it does not depict.* That
+> reasoning was never applied to people. `structured.scale` (v0.10) looks like it closes the gap and
+> does not: its `height` is prose nothing depicts, and its `scalePlate` is explicitly a two-up of a
+> PAIR at true relative height, so between them they answer "is he taller than her" and never "how
+> tall is he." A `scale-plate` is a SOLO head-to-toe plate against a MEASURED reference whose real
+> size is recorded, which makes the declared height checkable and gives the model an absolute unit
+> for people and objects alike. The geometry is fixed by the framework and PROJECTED into §12 from
+> `matrix.SCALE_PLATE_CONTRACT`, so it cannot drift; the treatment is the universe's, via
+> `identity.scaleReference`, because "something tasteful" is register-local. `optional` rather than
+> in `shots`, for the same reason `face-neutral-color` is: promoting it would demote every
+> already-locked character in every universe. Advisory: `lint-universe` warns
+> `CHARACTER-NO-SCALE-PLATE`, `CHARACTER-HEIGHT-UNDEPICTED`, `CHARACTER-SCALE-PLATE-MISSING`,
+> `PROP-NO-SCALE`. Also in this release, three provenance defects found while migrating a legacy
+> brand OS into a universe: `provenance.images()` swept `*.png` ONLY, so a `.jpg` photograph and a
+> `.webp` pack ref were invisible to the sweep and could never be counted as missing, backfilled, or
+> divergence-checked (it now sweeps `.png`, `.jpg`, `.jpeg`, `.webp`); `backfill-provenance` gains
+> `--entity`, which `backfill-prompts` already had, so a one-character backfill is a reviewable diff
+> instead of a whole-universe rewrite; and source classification now honours an EXPLICIT
+> `realPerson.photoStack` declaration before the filename heuristic, because a photograph
+> legitimately filling a matrix slot at `reference/<id>/face-neutral.png` matched neither `photo-N`
+> nor a `photos/` parent and was stamped `attested`, asserting a render that never happened. Finally
+> `abu list` shows lifecycle: an archived entity printed identically to an active one, so the listing
+> invited a casting decision the entity had already been retired from. Earned 2026-08-01 on Gary's
+> own entity, whose declared 6 ft existed only as prose.
 
 > **v0.21 changelog — an asset from OUTSIDE arrives with its chain (`abu import-asset`), and the
 > photo-stack rule stops existing twice.** Both additive: no universe migrates, and an asset already
@@ -1192,6 +1220,43 @@ under-referenced entities the way the gate reports missing files.
     still locks and still renders; `lint-universe` warns `CHARACTER-SCALE-ONE-SIDED` when one
     character declares a relation its counterpart does not mirror, because two half-records drift
     apart and then contradict each other.
+  - **`scale-plate` (v0.22) — the plate that makes a declared height CHECKABLE.** The `scale`
+    record above is RELATIVE. It fixes two people against each other and cannot fix either
+    against the world, and its `height` is prose that nothing depicts. Between them they answer
+    "is he taller than her" and never "how tall is he", so a solo `forward-fullbody` on a blank
+    ground still carries no unit of comparison: the model picks a stature and every render
+    inherits the guess. That is v0.9's own sentence about rooms, unpaid for people — *a plate
+    cannot be judged on a dimension it does not depict.*
+
+    A `scale-plate` is a **solo, head-to-toe plate against a measured reference**, listed in
+    `structured.sheets` like any other shot. The framework fixes the GEOMETRY, because that is
+    what makes the plate readable at all:
+
+    <!-- BEGIN GENERATED: scale-plate-contract -->
+- solo subject, no second figure in frame
+- full head-to-toe, feet visible and flat on even ground, nothing cropped
+- camera at mid-torso height, square to the subject, no low or high angle
+- no perspective foreshortening; the figure reads at true proportion
+- a MEASURED reference in frame whose real size is stated in the recipe
+- the subject's declared `structured.scale.height` is legible against that reference
+
+Default measured reference, when a universe declares no `identity.scaleReference`: a discreet graduated vertical batten marked at each foot, or an architectural element of stated height (a door, a standard step riser, a counter) with its real dimension recorded in the plate's recipe
+<!-- END GENERATED: scale-plate-contract -->
+
+    The universe supplies the TREATMENT, via `identity.scaleReference`. The default is
+    deliberately architectural rather than clinical: a graduated batten or a door of stated
+    height reads as part of a built world in nearly every register, where a medical stadiometer
+    reads as a prop and a symbolic or painterly universe would refuse it outright. Gary's ask
+    (2026-08-01) was for "a measuring stick or something TASTEFUL", and taste here is
+    register-local, which is exactly why the framework declines to fix it.
+
+    It is a SEPARATE file from `forward-fullbody` and never a replacement: renders still cast
+    the fullbody, and the scale plate is what a human and a linter read the height from.
+    `optional`, not in `shots`, for the same reason `face-neutral-color` is — promoting it would
+    demote every already-locked character in every universe to `partial`. Advisory:
+    `lint-universe` warns `CHARACTER-NO-SCALE-PLATE`, `CHARACTER-HEIGHT-UNDEPICTED` (a height is
+    declared but nothing on disk depicts it, the precise v0.9 failure) and
+    `CHARACTER-SCALE-PLATE-MISSING`.
   - **`structured.altLooks` (documented in v0.10; load-bearing in the compiler well before it).**
     A named look that REPLACES part of the entity's identity for the spreads that select it:
     `{ "anchorPhoto", "sheets", "supersedes": [], "invariants": [], "dropSheets": [],
@@ -1303,6 +1368,15 @@ under-referenced entities the way the gate reports missing files.
     RHEMA, whose whole argument is that the ground is the same.
 - **visual-metaphor** — a locked master plus `state` plates (the object across its argued states).
 - **prop / motif** — `hero` plus `detail` crops.
+  - **`prop.structured.scale` and an optional `prop` `scale-plate` (v0.22).** A prop had no size
+    record of ANY kind, neither descriptor nor plate, which is the character defect one level
+    down: an object that renders at the wrong size beside a figure is as wrong as a room that
+    renders too small, and a pendant, a chair and a door were each whatever size the model
+    assumed. This is the other half of Gary's 2026-08-01 ask — how tall different people **and
+    different things** are. State the size in human terms (`"about 40 mm across, worn at the
+    collarbone"`) and shoot a `scale-plate` when the object's size is load-bearing. Advisory:
+    `lint-universe` warns `PROP-NO-SCALE`. A motif is a graphic signature rather than a physical
+    object, so it takes neither.
 
 **`lock_level(entity) -> stub | partial | locked`** (engine) reports completeness against the kind's
 matrix. It is **advisory** in v0.4 and back-compatible: an entity that predates the matrix, or uses
