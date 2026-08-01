@@ -208,6 +208,91 @@ def _in_bed(scene: str) -> bool:
             and any(t in low for t in SLEEP_TOKENS))
 
 
+BED_LENGTH_GUARD = (
+    "A BED IS LONG ENOUGH FOR THE WHOLE BODY IN IT. If a person is lying or reclining on a "
+    "bed in this scene, draw the bed at TRUE ADULT LENGTH: head on the pillow at one end and "
+    "the feet reaching most of the way to the other end, with the whole torso AND the whole "
+    "length of the legs fitting inside the frame of the bed. A lying adult is roughly THREE "
+    "AND A HALF TIMES their own shoulder width from crown to heel, so the mattress must be "
+    "far longer than the person's torso alone. THE FOOTBOARD OR FOOT OF THE BED IS NEVER AT "
+    "THE HIPS, THE THIGHS OR THE KNEES: it sits beyond the feet. Do NOT crop the bed short, "
+    "do NOT let the covers end at the waist with the mattress ending just past it, and do NOT "
+    "draw a child-sized or half-length bed under a grown adult. If the camera cannot fit the "
+    "whole bed, let the foot of it run out of frame rather than shortening it."
+)
+
+LYING_TOKENS = (
+    "lies", "lying", "lay ", "laid", "reclin", "propped", "in bed", "on the bed",
+    "under the covers", "under the quilt", "bedridden", "bedfast", "asleep", "sleeping",
+)
+
+
+def _person_lying_on_bed(scene: str) -> bool:
+    """True when a person is lying on a bed in this scene.
+
+    Earned 2026-08-01 on The Power of Obeying spread 62 (Gary: "add a bed guard that
+    checks if the bed is way too short for legs to be in it"). The render put an old
+    man in a bed whose footboard reached his hips: his torso filled the whole
+    mattress and there was nowhere for his legs to be. Image models compose a
+    reclining figure to fill the frame and then fit the furniture around the part
+    they drew, so the bed gets truncated to whatever the visible body needed. It
+    reads instantly as wrong and no existing guard covered it, because the defect is
+    FURNITURE PROPORTION rather than anatomy, register or facing.
+
+    Distinct from the bedclothes guard on purpose: that one fires on bed + a SLEEP
+    signal and governs what the person WEARS. This one fires on bed + a LYING signal
+    and governs how long the BED IS, so a beat where someone lies down fully dressed
+    still gets the length rule.
+    """
+    low = (scene or "").lower()
+    return (any(n in low for n in BED_NOUNS)
+            and any(t in low for t in LYING_TOKENS))
+
+
+CROWD_MEMBER_GUARD = (
+    "A NAMED CHARACTER SITTING IN A CROWD IS STILL PART OF THAT CROWD. When someone the "
+    "story cares about is among an audience, congregation, class or crowd, they FACE THE SAME "
+    "WAY EVERYONE ELSE FACES and hold the same posture as the people around them. They are "
+    "NOT turned out toward the camera while the rest of the room faces the speaker, NOT "
+    "swivelled in their seat, NOT leaning into the aisle, NOT lit differently, NOT haloed, and "
+    "NOT given more space around them than their neighbours. A figure facing a different "
+    "direction from everyone around them reads as detached from the room, or as though they "
+    "are looking at something nobody else can see. IF THE SCENE NEEDS THEIR FACE, MOVE THE "
+    "CAMERA, NOT THE PERSON: shoot the crowd from in front or from the side so their face is "
+    "naturally visible while they still face what everyone else faces. Make them findable by "
+    "PLACEMENT and by what they wear, never by breaking the room's shared orientation."
+)
+
+# Only phrases that place an INDIVIDUAL inside the group. Bare "seated in" / "sits in"
+# were dropped: they describe the crowd itself ("the congregation sits in two blocks")
+# and fired this guard on speaker-addressing scenes it has nothing to say about.
+CROWD_MEMBERSHIP_TOKENS = (
+    "among the", "among them", "in the audience", "in the congregation", "in the crowd",
+    "in an aisle seat", "sits among", "sitting among", "seated among",
+    "one of the seated", "among the seated", "in the rows", "in the pews",
+)
+
+
+def _cast_inside_crowd(scene: str) -> bool:
+    """True when a named character is seated INSIDE an audience rather than addressing it.
+
+    Earned 2026-08-01 on The Power of Obeying spread 61 (Gary: "why are you having
+    him not face the speaker... just because the star is in the audience doesn't
+    mean that they should be standing out in a weird way"). Every other listener
+    faced the woman teaching; the book's subject was rotated three-quarters toward
+    the lens, so he alone looked away from the person speaking.
+
+    This is the mirror image of the addressing guard and needs its own rule. That
+    one governs the geometry BETWEEN a speaker and a crowd. This one governs a
+    character INSIDE the crowd, where the model's pull is not composition cliche but
+    its preference for showing a protagonist's face, which it satisfies by turning
+    the body rather than by moving the camera.
+    """
+    low = (scene or "").lower()
+    return (any(n in low for n in AUDIENCE_NOUNS)
+            and any(t in low for t in CROWD_MEMBERSHIP_TOKENS))
+
+
 SINGLE_IMAGE_GUARD = (
     "ONE SINGLE CONTINUOUS FULL-BLEED PAINTING that fills the entire canvas edge to edge. This is "
     "NEVER a grid, NEVER a multi-panel layout, NEVER a comic page, NEVER a contact sheet, NEVER a "
@@ -1244,6 +1329,8 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             MOTION_GUARD if _has_motion(scene) else "",
             ADDRESSING_GUARD if _has_audience(scene) else "",
             BEDCLOTHES_GUARD if _in_bed(scene) else "",
+            BED_LENGTH_GUARD if _person_lying_on_bed(scene) else "",
+            CROWD_MEMBER_GUARD if _cast_inside_crowd(scene) else "",
         ]
         if x
     )

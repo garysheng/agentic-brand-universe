@@ -1099,3 +1099,50 @@ class GuardsDocumentedTest(unittest.TestCase):
             [], undocumented,
             f"guards missing from SPEC.md 4.6: {undocumented}. Document them there; "
             "a guard the spec does not name is one a universe author cannot rely on.")
+
+
+# ── BED-LENGTH AND CROWD-MEMBER GUARDS ────────────────────────────────────
+# Both earned 2026-08-01 on The Power of Obeying, both reported by Gary.
+_person_lying_on_bed = _ap._person_lying_on_bed
+_cast_inside_crowd = _ap._cast_inside_crowd
+BED_LENGTH_GUARD = _ap.BED_LENGTH_GUARD
+CROWD_MEMBER_GUARD = _ap.CROWD_MEMBER_GUARD
+
+
+class BedLengthGuardTest(unittest.TestCase):
+    def test_fires_when_someone_is_lying_on_a_bed(self):
+        self.assertTrue(_person_lying_on_bed(
+            "The old man lies back against the pillows, the covers to his chest."))
+        self.assertTrue(_person_lying_on_bed(
+            "A gaunt boy propped against two flat pillows on a dark iron bedstead."))
+
+    def test_silent_with_no_bed_or_nobody_on_it(self):
+        self.assertFalse(_person_lying_on_bed(
+            "He kneels alone on bare floorboards in an empty room."))
+        self.assertFalse(_person_lying_on_bed(
+            "An empty bedroom, the quilt smooth and the pillow undented."))
+
+    def test_guard_forbids_the_specific_defect(self):
+        # The footboard at the hips is the thing that actually went wrong.
+        self.assertIn("NEVER AT THE HIPS", BED_LENGTH_GUARD)
+        self.assertIn("run out of frame rather than shortening it", BED_LENGTH_GUARD)
+
+
+class CrowdMemberGuardTest(unittest.TestCase):
+    def test_fires_when_a_character_sits_inside_an_audience(self):
+        self.assertTrue(_cast_inside_crowd(
+            "Among the seated attendees the white-haired man sits in an aisle seat."))
+        self.assertTrue(_cast_inside_crowd(
+            "He is in the congregation, three rows back."))
+
+    def test_silent_when_the_character_is_addressing_the_crowd(self):
+        # The bare phrase "sits in" describes the CROWD, not a member of it, and
+        # firing here confused a speaker scene the guard has nothing to say about.
+        self.assertFalse(_cast_inside_crowd(
+            "The congregation sits in two distinct blocks either side of the aisle."))
+        self.assertFalse(_cast_inside_crowd(
+            "The preacher stands at the pulpit facing the congregation."))
+
+    def test_guard_moves_the_camera_not_the_person(self):
+        self.assertIn("MOVE THE CAMERA, NOT THE PERSON", CROWD_MEMBER_GUARD)
+        self.assertIn("FACE THE SAME WAY EVERYONE ELSE FACES", CROWD_MEMBER_GUARD)

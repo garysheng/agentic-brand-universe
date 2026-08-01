@@ -579,6 +579,24 @@ removes that step.
     because his canon asserted a default outfit and canon prose outranks whatever a scene leaves
     unsaid. Fixing the entity was not enough: ANY character with a stated default outfit is put to
     bed in it, in any universe.
+  - **Bed-length guard** (conditional; v0.20). When a person is lying on a bed, the bed is drawn
+    at true adult length, head at the pillow and feet reaching most of the way down, with the
+    footboard beyond the feet rather than at the hips or knees. Earned where an old man lay in a
+    bed whose foot reached his waist, leaving nowhere for his legs. The model composes the
+    reclining figure to fill the frame and then fits the furniture around the part it drew, so
+    the bed gets truncated to whatever the visible body needed. Distinct from the bedclothes
+    guard, which fires on bed + a SLEEP signal and governs what the person WEARS; this fires on
+    bed + a LYING signal and governs how long the BED is.
+  - **Crowd-member guard** (conditional; v0.20). A named character seated inside an audience
+    faces the same way everyone around them faces and holds the same posture; if the scene needs
+    their face, the CAMERA moves rather than the person. Earned where a book's subject sat in a
+    seminar audience and was rotated three-quarters to the lens while every other listener faced
+    the speaker, so he alone appeared to be looking away from her. This is the mirror of the
+    addressing guard: that one governs geometry BETWEEN a speaker and a crowd, this one governs a
+    character INSIDE one, where the pull is not composition cliche but the model's preference for
+    showing a protagonist's face, which it satisfies by turning the body instead of the camera.
+    Its detector deliberately excludes bare "seated in" / "sits in", which describe the crowd
+    itself and fired it on speaker scenes it has nothing to say about.
   - **Uncast-character refusal.** Before any spend, the compiler matches every character entity's
     given name against the scene text and REFUSES on any name it does not cast, because the model
     invents a confident stranger for each. An over-the-shoulder single needs both people cast: the
