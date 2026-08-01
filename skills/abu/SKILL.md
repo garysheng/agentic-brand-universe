@@ -92,6 +92,28 @@ Offer at most three options. A menu of eight is another wall.
 Announce the outcome, not the routing. "I'll lock the divine yoke's reference sheets
 first, since three books are waiting on it" beats "invoking shoot-references."
 
+**6. Dispatch the steward for anything that touches canon or art.**
+
+`abu-steward` is a subagent that ships with this plugin. Its whole job is to reach for
+the right framework verb instead of hand-rolling, and to FLAG a gap rather than quietly
+working around it. It is reachable three ways: this step, the `/abu:steward` command, and
+`make-a-book`'s chain. Historically it was reachable by none of them from the front door,
+and it was invoked **zero times** across a full book session in which the main agent
+hand-rolled five shoot scripts, a photo-stack extraction, and prompt assembly the
+framework already owned. A countermeasure nobody can reach is not installed.
+
+So once step 5 has picked a verb, if that verb scaffolds an entity, shoots or locks
+references, composes a spread, renders a book or a cover, or writes provenance, hand the
+step to `abu-steward` via the Agent tool (`subagent_type: "abu:abu-steward"`) rather than
+running it inline. Give it the universe path, the step as an outcome, the entities by id,
+and anything already hand-rolled this session. Expect back the verb it used, or a
+FLAGGED GAP, which is a finding and not a failure; route a gap to `evolve-abu`.
+
+Do the light stuff yourself. `status`, `lint-universe`, `validate`, `universe-doctor` and
+reading a `universe.json` are reads, and dispatching a subagent to run a read is ceremony.
+
+This is invisible to the user, like every other routing decision. They hear the outcome.
+
 ## Getting to 100
 
 The score is `universe-doctor`'s rubric and this skill does not invent its own. Treat
