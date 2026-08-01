@@ -214,6 +214,44 @@ def _split_ids(s: str) -> list[str]:
     return [x.strip().strip("`") for x in re.split(r"[,\s]+", s) if x.strip().strip("`")]
 
 
+def parse_ref_token(tok: str) -> tuple[str, list[str]]:
+    """`north-star-cross` -> ('north-star-cross', []);
+    `north-star-cross@turnaround+worn-pendant` -> (id, ['turnaround', 'worn-pendant']).
+
+    The `@sheet+sheet` selector (SPEC v0.25) names WHICH of the referenced entity's
+    sheets this shot needs. Bare ids are unchanged, so no prompts.md migrates.
+    """
+    eid, sep, sel = tok.partition("@")
+    eid = eid.strip()
+    if not sep:
+        return eid, []
+    sheets = [s.strip() for s in sel.split("+") if s.strip()]
+    if not sheets:
+        raise Refuse(f"REFS '{tok}' has an empty sheet selector after '@'")
+    return eid, sheets
+
+
+def merge_ref_tokens(tokens) -> list[str]:
+    """Collapse REFS tokens by ENTITY, unioning their sheet selections in order.
+
+    Deduping the raw strings is not enough: a header `Refs (every shot): mark` and a
+    per-shot `REFS: mark@turnaround` are two different tokens naming ONE entity, and
+    passing both resolves that entity's plates twice. Order of first appearance is
+    kept, because the order refs are passed is load-bearing.
+    """
+    order: list[str] = []
+    sel: dict[str, list[str]] = {}
+    for tok in tokens:
+        eid, sheets = parse_ref_token(tok)
+        if eid not in sel:
+            order.append(eid)
+            sel[eid] = []
+        for s in sheets:
+            if s not in sel[eid]:
+                sel[eid].append(s)
+    return [f"{e}@{'+'.join(sel[e])}" if sel[e] else e for e in order]
+
+
 def parse_prompts(md: Path) -> dict:
     """reference/<id>/prompts.md -> {shot: prompt}. A shot is an '## <name>' or
     '## <label> -> `reference/<id>/<name>.png`' heading; its body is the prompt."""
@@ -232,9 +270,13 @@ def parse_prompts_full(md: Path) -> dict:
 
       **Refs (every shot):** other-entity-id, ...     (header, applies to all shots)
       REFS: other-entity-id, ...                      (inside a shot body, that shot only)
+      REFS: other-entity-id@sheet+sheet, ...          (v0.25: name the sheets)
           CROSS-ENTITY references. A spread or plate that shows another canon
           entity must be conditioned on THAT entity's locked art, never redrawn
           from prose. REFS lines are stripped out of the prompt text.
+          A bare id passes that entity's `requiredForRender` set. `@sheet+sheet`
+          ADDS named sheets ahead of it; it can never subtract (see
+          entity_ref_images).
     """
     if not md.exists():
         raise Refuse(f"no prompts.md at {md}")
@@ -291,7 +333,7 @@ def parse_prompts_full(md: Path) -> dict:
                 buf.append(line.strip())
     if cur:
         out[cur] = " ".join(buf).strip()
-        refs[cur] = list(dict.fromkeys(header_refs + cur_refs))
+        refs[cur] = merge_ref_tokens(header_refs + cur_refs)
 
     prompts = {k: v for k, v in out.items() if v}
     return {"prompts": prompts,
@@ -300,33 +342,72 @@ def parse_prompts_full(md: Path) -> dict:
             "refs": {k: refs.get(k, []) for k in prompts}}
 
 
-def entity_ref_images(uroot: Path, eid: str) -> list[str]:
-    """Absolute paths of another entity's LOCKED reference art, for cross-entity conditioning.
+def entity_ref_images(uroot: Path, token: str) -> list[dict]:
+    """Another entity's LOCKED reference art, for cross-entity conditioning.
+
+    Returns `[{"sheet": name, "path": abs}]` in the order the images must be passed.
 
     Refuses on an unlocked/missing entity: passing prose instead of real art is the
     exact failure this exists to prevent (a mark rendered without its mark).
+
+    A SELECTOR MAY RAISE THE REF SET AND MUST NEVER LOWER IT (SPEC v0.25). `token`
+    is `<id>` or `<id>@<sheet>[+<sheet>...]`. The named sheets are passed FIRST and
+    the entity's `requiredForRender` set still follows, so `@` is additive by
+    construction and a shot cannot use it to skip a plate the entity's own gate
+    demands. This is the v0.24 lock rule applied one layer out: the mechanism that
+    lets an author say more must not become a mechanism for saying less.
+
+    The gap it closes: an entity's EXTRA sheets were unreachable from a shoot. Only
+    `requiredForRender` (or a hero fallback) ever resolved, so a multi-angle
+    `turnaround`, a worn/in-situ plate, or a material variant could be registered,
+    carry full provenance, and be named by the entity's OWN `render.always` and
+    still never reach the model. Earned 2026-08-01 on christofuturism's
+    `north-star-cross`, whose fabrication spec warns that a single flat front view
+    gets flattened back into an equilateral star: three flat plates were all the
+    resolver could pass, and the pendant rendered at 1.79:1 height-to-width against
+    a spec of 1.24:1, reading as the crucifix the wearer's invariant forbids by name.
     """
+    _engine_on_path()
+    from agenticstory.model import sheet_parts
+
+    eid, selected = parse_ref_token(token)
     ent_path = uroot / "canon" / "entities" / f"{eid}.json"
     if not ent_path.exists():
         raise Refuse(f"REFS names '{eid}', which is not a canon entity")
     ent = load(ent_path)
     st = ent.get("structured") or {}
     sheets = st.get("sheets") or {}
-    wanted = [s for s in (st.get("requiredForRender") or []) if sheets.get(s)]
-    if not wanted:
+
+    def _path_of(name):
+        # Typed slots (SPEC v0.23) are `{"path", "role"}`; bare paths still work.
+        return sheet_parts(sheets.get(name))[0]
+
+    # A typo in a selector is a REFUSAL, not a shrug. Silently ignoring an unknown
+    # sheet name would send the render off with exactly the plates the author was
+    # trying to add to, which is the failure mode that is hardest to see afterwards.
+    for s in selected:
+        if s not in sheets:
+            known = ", ".join(sorted(sheets)) or "(none)"
+            raise Refuse(f"REFS '{token}': '{eid}' declares no sheet '{s}'. Known: {known}")
+        if not _path_of(s):
+            raise Refuse(f"REFS '{token}': '{eid}.{s}' is declared but has no art yet")
+
+    required = [s for s in (st.get("requiredForRender") or []) if _path_of(s)]
+    if not required and not selected:
         for k in ("master", "hero", "forward-fullbody", "sheet", "turnaround"):
-            if sheets.get(k):
-                wanted = [k]
+            if _path_of(k):
+                required = [k]
                 break
+    wanted = selected + [s for s in required if s not in selected]
     if not wanted:
         raise Refuse(f"REFS names '{eid}', which has no locked reference art to pass")
-    paths = []
+    out = []
     for s in wanted:
-        p = (uroot / sheets[s]).resolve()
+        p = (uroot / _path_of(s)).resolve()
         if not p.exists():
             raise Refuse(f"REFS '{eid}.{s}' -> {p} (NOT ON DISK)")
-        paths.append(str(p))
-    return paths
+        out.append({"sheet": s, "path": str(p)})
+    return out
 
 
 def pick_seed(kind: str, shots: list[str], override: str | None) -> str:
@@ -635,9 +716,15 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     # recipe below has to be able to name them (see crossEntityRefs).
     cross = []
     for other in plan["refs"].get(shot, []):
-        for p in entity_ref_images(plan["uroot"], other):
-            cmd += ["--input-image", p]
-            cross.append({"entity": other, "path": p, "sha256_16": sha(Path(p))})
+        eid, _sel = parse_ref_token(other)
+        for r in entity_ref_images(plan["uroot"], other):
+            cmd += ["--input-image", r["path"]]
+            # The SHEET NAME is recorded, not just the entity. A selector (v0.25)
+            # means two shots can legitimately reference one entity with different
+            # plates, so "entity + path" no longer identifies what was passed in a
+            # way a later divergence check can read.
+            cross.append({"entity": eid, "sheet": r["sheet"], "path": r["path"],
+                          "sha256_16": sha(Path(r["path"]))})
     rc = subprocess.run(cmd).returncode
     if rc != 0 or not out.exists():
         print(f"{shot}: FAILED rc={rc}; chain STOPS (a defect must not propagate)", file=sys.stderr)
@@ -668,6 +755,21 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
 
 
 def main() -> int:
+    """Refusals are MESSAGES, never tracebacks, wherever they are raised.
+
+    `build_plan` was wrapped and the shooting half was not, so a Refuse from
+    `entity_ref_images` (an unknown entity, an off-disk plate, and now a mistyped
+    `@sheet` selector) surfaced as a stack trace. A refusal that looks like a crash
+    gets read as a broken tool rather than as the guard doing its job.
+    """
+    try:
+        return _main()
+    except Refuse as e:
+        print(f"REFUSE: {e}", file=sys.stderr)
+        return 2
+
+
+def _main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("universe")
     ap.add_argument("entity")
@@ -731,6 +833,7 @@ def main() -> int:
         return 0
 
     if args.print_plan or args.dry_run:
+      try:
         print(f"entity={plan['entity']} kind={plan['kind']} "
               f"register={plan['register'] or '(universe default)'}")
         print(f"seed (hero) = {seed}")
@@ -742,9 +845,20 @@ def main() -> int:
                 prior = [prior[0], "..."] + prior[-(args.max_conditioning - 1):]
             cond = "HUMAN-BLESSED SEED" if i == 0 else \
                    "anchor + " + ", ".join(prior)
+            # CROSS-ENTITY REFS RIDE ON THE SEED TOO. This was gated on `i > 0`, so
+            # the plan for shot 1 silently omitted them -- and the seed is both the
+            # shot most worth checking before spending money and the one every later
+            # shot inherits from. They are also RESOLVED here, not merely echoed, so
+            # a typo in a `@sheet` selector refuses during --print-plan (free) rather
+            # than mid-render (not free).
             xrefs = plan["refs"].get(s) or []
-            if xrefs and i > 0:
-                cond += " + refs(" + ", ".join(xrefs) + ")"
+            if xrefs:
+                shown = []
+                for tok in xrefs:
+                    eid, _ = parse_ref_token(tok)
+                    shown.append(eid + "(" + ", ".join(
+                        r["sheet"] for r in entity_ref_images(plan["uroot"], tok)) + ")")
+                cond += " + refs: " + ", ".join(shown)
             sz = plan["sizes"].get(s, args.size)
             print(f"  {i+1}. {s:<18} [{sz}] conditioned on: {cond}")
         if plan["negatives"]:
@@ -760,6 +874,9 @@ def main() -> int:
         blessed = marker(refdir, seed).exists()
         print(f"seed blessed: {blessed}" + ("" if blessed else "  <-- chain will REFUSE"))
         return 0
+      except Refuse as e:
+        print(f"REFUSE: {e}", file=sys.stderr)
+        return 2
 
     neg = ("NEGATIVES: " + ", ".join(plan["negatives"]) + ".") if plan["negatives"] else ""
     anchor_abs = str((uroot / plan["anchor"]).resolve())

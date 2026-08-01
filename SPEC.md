@@ -1,10 +1,30 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.24 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.25 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.25 changelog — a shot can name WHICH of another entity's sheets it needs.**
+> A shot's `REFS:` line took an entity id and nothing more, and the resolver passed that
+> entity's `requiredForRender` set alone. So an entity's EXTRA sheets were unreachable from
+> a shoot: a multi-angle `turnaround`, a worn/in-situ plate, a material variant could each be
+> registered, carry full provenance, and be named by the entity's OWN `structured.render.always`
+> instruction, and still no shot could ask for them. Proven on christofuturism's
+> `north-star-cross`, whose fabrication spec warns in as many words that a single flat front
+> view gets flattened back into an equilateral four-point star and that a multi-angle
+> turnaround should be preferred. Three flat front plates were all the resolver could pass,
+> and the pendant came back at 1.79:1 height-to-width against a spec of 1.24:1, reading as the
+> crucifix the wearer's own invariant forbids by name. Now `REFS: <id>@<sheet>+<sheet>` names
+> the sheets, they are passed FIRST, and `requiredForRender` still follows: **a selector may
+> raise the ref set and must never lower it**, which is v0.24's lock rule one layer out. A
+> selector naming a sheet the entity does not declare, or declares with no art, REFUSES.
+> `--print-plan` now RESOLVES cross-entity refs instead of echoing them, and no longer hides
+> them on the seed shot, so a typo costs nothing instead of costing a render. Two adjacent
+> defects fixed in the same pass: a typed slot (`{"path","role"}`, v0.23) used as a cross-entity
+> ref crashed the resolver, and a `Refuse` raised while shooting surfaced as a traceback rather
+> than a message.
 
 > **v0.24 changelog — a lock may raise a gate and must never lower one.** `lock-shot`
 > recomputed `requiredForRender` from the KIND minimum alone, so any entity that legitimately
@@ -1235,6 +1255,37 @@ encoded) is paid for once and reused by every future property and universe.
 "Locked" must mean something checkable per kind. The reference matrix is the canonical set of
 reference shots an entity needs before it is fully renderable, so tooling can report
 under-referenced entities the way the gate reports missing files.
+
+**Cross-entity refs in a shoot, and the `@sheet` selector (v0.25).** A shot in
+`reference/<id>/prompts.md` declares the OTHER canon entities it shows, so they are
+conditioned on their locked art rather than redrawn from prose:
+
+    **Refs (every shot):** <entity-id>, ...          (header, applies to every shot)
+    REFS: <entity-id>, ...                           (in a shot body, that shot only)
+    REFS: <entity-id>@<sheet>+<sheet>, ...           (v0.25: name the sheets)
+
+A **bare id** passes that entity's `requiredForRender` set, which is unchanged and is the
+common case. An **`@sheet+sheet` selector** names additional sheets, which are passed FIRST,
+with `requiredForRender` still following. **A selector may raise the ref set and must never
+lower it** — v0.24's lock rule one layer out, and for the same reason: the mechanism that
+lets an author say MORE must not quietly become a mechanism for saying less. A selector
+naming a sheet the entity does not declare, or declares with no art on disk, is a REFUSAL
+rather than a shrug, because silently ignoring a mistyped selector sends the render off with
+exactly the plate set the author was trying to add to.
+
+Tokens are merged by ENTITY, not by string, so a header `Refs` and a per-shot `REFS` naming
+one entity resolve it once. Each ref is recorded in the shot's `.recipe.json` under
+`crossEntityRefs` with its `sheet` name as well as its path and hash: once two shots can
+reference one entity with different plates, "entity + path" no longer identifies what was
+approved in a form a later divergence check can read.
+
+The defect that earned it: an entity's extra sheets were unreachable from a shoot. A
+multi-angle `turnaround`, a worn/in-situ plate, or a material variant could be registered and
+provenanced and named by the entity's own `structured.render.always`, and no shot could ask
+for it. On christofuturism's `north-star-cross` the fabrication spec explicitly prefers the
+turnaround because a single flat front view flattens back into an equilateral star; three
+flat plates were all the resolver could pass, and the rendered pendant measured 1.79:1
+height-to-width against a spec of 1.24:1.
 
 - **character** — the anti-uncanny-valley set: `face-neutral`, `face-3q`, `expressions`,
   `forward-fullbody`, `profile-left`, `profile-right`, `back`, `signature-pose`. Minimum

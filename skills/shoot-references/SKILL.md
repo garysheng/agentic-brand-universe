@@ -94,6 +94,37 @@ next run cannot reproduce the shot and the entity's own art has no recorded inte
 So: write the shot bodies into `prompts.md` first, then shoot with `chain_matrix.py`. If a
 shot needs something the file cannot express, fix the file format, not the workflow.
 
+## Cross-entity refs: name the SHEETS when the required set is not the right set
+
+A shot body declares the other canon entities it shows, so they are conditioned on their
+locked art instead of redrawn from prose:
+
+```
+**Refs (every shot):** north-star-cross          # header, every shot
+REFS: north-star-cross                           # in a shot body, that shot only
+REFS: north-star-cross@turnaround+worn-pendant   # v0.25: name the sheets
+```
+
+A bare id passes that entity's `requiredForRender` set. `@sheet+sheet` passes the named
+sheets FIRST and `requiredForRender` still follows, so **a selector can only ADD**. That is
+deliberate: the field that lets you say more must not become a way to skip a plate the
+entity's own gate demands.
+
+Reach for the selector when the required set is not the set THIS shot needs. Typical cases:
+an in-situ or worn plate that is only correct in some renders, a material variant, or a
+multi-angle turnaround. Read the referenced entity's `structured.render.always` first, which
+is where an author records "pass X first, and Y when it is worn."
+
+A selector naming a sheet the entity does not declare refuses. `--print-plan` resolves the
+refs and prints the sheet names it will pass, on the seed shot too, so a typo is caught for
+free instead of mid-render.
+
+Earned 2026-08-01 on christofuturism's `north-star-cross`, whose fabrication spec says in as
+many words to prefer the multi-angle turnaround because a single flat front view gets
+flattened back into an equilateral star. The turnaround was registered, provenanced and named
+by the entity's own render rule, and no shot could reach it; three flat plates were all that
+resolved, and the pendant rendered at 1.79:1 against a spec of 1.24:1.
+
 ## A multi-state object: the blueprint holds the OBJECT, not the FRAMING
 
 Seeding every state off one code-drawn blueprint is the right rule and it is not enough.

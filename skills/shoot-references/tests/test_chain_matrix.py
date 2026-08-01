@@ -185,7 +185,7 @@ class TestNegativesAndCrossRefs(unittest.TestCase):
             "## c2-work -> `reference/room/c2-work.png`\nWork view.\nREFS: the-door\n")
         r = run(self.root, "--print-plan")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("refs(the-door)", r.stdout)
+        self.assertIn("refs: the-door(master)", r.stdout)
         # the REFS line must not leak into the prompt text
         from importlib import util
         spec = util.spec_from_file_location("cm", CHAIN)
@@ -227,7 +227,112 @@ class TestNegativesAndCrossRefs(unittest.TestCase):
         cm = util.module_from_spec(spec); spec.loader.exec_module(cm)
         paths = cm.entity_ref_images(self.root, "the-door")
         self.assertEqual(len(paths), 1)
-        self.assertTrue(Path(paths[0]).exists())
+        self.assertEqual(paths[0]["sheet"], "master")
+        self.assertTrue(Path(paths[0]["path"]).exists())
+
+
+class TestRefSheetSelector(unittest.TestCase):
+    """`REFS: <id>@<sheet>+<sheet>` (SPEC v0.25).
+
+    THE GAP: only `requiredForRender` ever resolved, so an entity's EXTRA sheets
+    were unreachable from a shoot. On christofuturism's `north-star-cross` the
+    canonical multi-angle `turnaround` and the `worn-pendant` plate were both
+    registered, both carried provenance, and were both named by that entity's own
+    `render.always` -- and no shot could ask for them. Three flat front plates
+    were all the resolver could pass, and the pendant rendered at 1.79:1
+    height-to-width against a fabrication spec of 1.24:1.
+
+    THE RULE: a selector may RAISE the ref set and must never LOWER it, which is
+    the v0.24 lock rule one layer out.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = build(Path(self.tmp.name))
+        for s in ("hero", "turnaround", "worn"):
+            png(self.root / "reference" / "mark" / f"{s}.png")
+        (self.root / "canon" / "entities" / "mark.json").write_text(json.dumps({
+            "id": "mark", "kind": "motif",
+            "structured": {
+                "sheets": {"hero": "reference/mark/hero.png",
+                           "turnaround": "reference/mark/turnaround.png",
+                           # a TYPED slot (SPEC v0.23) must resolve here too; the
+                           # resolver used to concatenate the dict onto a Path
+                           "worn": {"path": "reference/mark/worn.png",
+                                    "role": "geometry"}},
+                "requiredForRender": ["hero"]},
+        }))
+        self.cm = self._mod()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _mod(self):
+        from importlib import util
+        spec = util.spec_from_file_location("cm", CHAIN)
+        m = util.module_from_spec(spec); spec.loader.exec_module(m)
+        return m
+
+    def test_a_bare_id_is_unchanged(self):
+        got = self.cm.entity_ref_images(self.root, "mark")
+        self.assertEqual([r["sheet"] for r in got], ["hero"])
+
+    def test_selected_sheets_come_first_and_required_still_follows(self):
+        got = self.cm.entity_ref_images(self.root, "mark@turnaround+worn")
+        # ADDITIVE, and in the author's order: `hero` is the entity's gate and
+        # cannot be dropped by naming other plates.
+        self.assertEqual([r["sheet"] for r in got], ["turnaround", "worn", "hero"])
+
+    def test_a_selector_cannot_drop_a_required_sheet(self):
+        got = self.cm.entity_ref_images(self.root, "mark@turnaround")
+        self.assertIn("hero", [r["sheet"] for r in got])
+
+    def test_a_typed_slot_resolves(self):
+        got = self.cm.entity_ref_images(self.root, "mark@worn")
+        self.assertTrue(Path(got[0]["path"]).exists())
+
+    def test_an_unknown_sheet_name_refuses_rather_than_being_ignored(self):
+        with self.assertRaises(self.cm.Refuse) as e:
+            self.cm.entity_ref_images(self.root, "mark@turnround")
+        self.assertIn("declares no sheet", str(e.exception))
+
+    def test_a_declared_but_unshot_sheet_refuses(self):
+        ent = self.root / "canon" / "entities" / "mark.json"
+        d = json.loads(ent.read_text())
+        d["structured"]["sheets"]["ghost"] = None
+        ent.write_text(json.dumps(d))
+        with self.assertRaises(self.cm.Refuse):
+            self.cm.entity_ref_images(self.root, "mark@ghost")
+
+    def test_header_and_per_shot_tokens_merge_by_entity_not_by_string(self):
+        (self.root / "reference" / "room" / "prompts.md").write_text(
+            "# room\n\n**Refs (every shot):** mark\n\n"
+            "## c1-wide -> `reference/room/c1-wide.png`\nWide.\n"
+            "REFS: mark@turnaround\n")
+        parsed = self.cm.parse_prompts_full(
+            self.root / "reference" / "room" / "prompts.md")
+        # One token, not two: resolving both would pass `hero` twice.
+        self.assertEqual(parsed["refs"]["c1-wide"], ["mark@turnaround"])
+
+    def test_the_plan_resolves_refs_on_the_seed_too(self):
+        # Gated on `i > 0` before, so shot 1's refs were invisible in --print-plan
+        # -- the seed being both the most expensive thing to get wrong and the
+        # shot every later one inherits from.
+        (self.root / "reference" / "room" / "prompts.md").write_text(
+            "# room\n\n"
+            "## c1-wide -> `reference/room/c1-wide.png`\nWide.\nREFS: mark@turnaround\n")
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("mark(turnaround, hero)", r.stdout)
+
+    def test_a_mistyped_selector_refuses_during_print_plan_not_mid_render(self):
+        (self.root / "reference" / "room" / "prompts.md").write_text(
+            "# room\n\n"
+            "## c1-wide -> `reference/room/c1-wide.png`\nWide.\nREFS: mark@nope\n")
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("REFUSE", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
 
 
 class TestRealPersonPhotoStack(unittest.TestCase):

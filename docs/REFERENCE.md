@@ -84,7 +84,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.24) |
+| `init` | scaffold a new universe (conforms to spec v0.25) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -158,6 +158,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.25 | a shot can name WHICH of another entity's sheets it needs. |
 | v0.24 | a lock may raise a gate and must never lower one. |
 | v0.23 | a reference slot can say what it CONTRIBUTES, a negative can name one > person, and a multi-line header stops being half-read. |
 | v0.22 | a character must be able to prove its own height, and so must an object. |
