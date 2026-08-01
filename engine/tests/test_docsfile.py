@@ -83,6 +83,47 @@ class TestSources(unittest.TestCase):
         self.assertIn("abu-steward", [a["id"] for a in docsfile.agents(ROOT)])
         self.assertIn("/abu:steward", [c["id"] for c in docsfile.commands(ROOT)])
 
+    def test_marketplace_entry_is_projected_from_the_plugin_manifest(self):
+        """The drift this projection was built to end: the marketplace copy was a
+        whole paragraph behind plugin.json (the `make-a-work` entry)."""
+        import json
+        plugin = json.loads((ROOT / docsfile.PLUGIN).read_text())
+        market = json.loads((ROOT / docsfile.MANIFEST).read_text())
+        entry = next(p for p in market["plugins"] if p["name"] == plugin["name"])
+        self.assertEqual(entry["description"], plugin["description"])
+
+    def test_projection_leaves_the_marketplace_own_description_alone(self):
+        """The top-level one is a browsing blurb, hand-written on purpose, and is not
+        the skill catalog."""
+        import json
+        market = json.loads((ROOT / docsfile.MANIFEST).read_text())
+        plugin = json.loads((ROOT / docsfile.PLUGIN).read_text())
+        self.assertNotEqual(market["description"], plugin["description"])
+        self.assertLess(len(market["description"]), 500)
+
+    def test_projection_preserves_every_other_field(self):
+        import json
+        before = json.loads((ROOT / docsfile.MANIFEST).read_text())
+        after = json.loads(docsfile.project_manifest(ROOT))
+        self.assertEqual(set(before), set(after))
+        self.assertEqual(before["owner"], after["owner"])
+        self.assertEqual([p["source"] for p in before["plugins"]],
+                         [p["source"] for p in after["plugins"]])
+
+    def test_check_catches_manifest_drift(self):
+        import json, shutil, tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo"
+            shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(
+                ".git", "__pycache__", "*.png", "*.jpg", "*.webp", "*.mp3"))
+            p = root / docsfile.MANIFEST
+            d = json.loads(p.read_text())
+            d["plugins"][0]["description"] = "stale copy"
+            p.write_text(json.dumps(d, indent=2) + "\n")
+            self.assertTrue(any("has drifted" in x for x in docsfile.check(root)))
+            docsfile.build(root)
+            self.assertFalse(any("has drifted" in x for x in docsfile.check(root)))
+
     def test_every_cli_verb_has_help(self):
         """A blank help string renders as a blank documentation row, which is how
         an undocumented verb hides in plain sight."""

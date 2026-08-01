@@ -21,6 +21,9 @@ GENERATED between fences; only judgement is hand-written. The generated blocks:
   forms          (docs/REFERENCE.md) forms/*/form.json
   spec-changelog (docs/REFERENCE.md) the v0.N changelog headlines in SPEC.md
 
+and one derived file that carries no fences, `.claude-plugin/marketplace.json`, whose
+entry description is projected wholesale from `.claude-plugin/plugin.json`.
+
 Agents and commands were added on 2026-08-01 for a reason worth recording, because it
 is this module's own thesis turned on itself. The plugin had shipped an `abu-steward`
 subagent since 0.5x that no generated doc mentioned, because this file enumerated
@@ -49,6 +52,15 @@ from pathlib import Path
 from . import SPEC_VERSION, __version__
 
 MARK = "<!-- {} GENERATED: {} -->"
+
+# The one derived artifact that is not a markdown fence. `.claude-plugin/plugin.json`
+# is the catalog of record; the marketplace entry for the same plugin is a COPY of its
+# description, and on 2026-08-01 the copy was already behind by a whole paragraph (the
+# `make-a-work` entry, shipped in plugin.json, absent from the marketplace). Two hand-kept
+# copies of a four-thousand-character string is the disease this module treats, so the
+# marketplace entry is projected from the plugin manifest instead of pasted into it.
+MANIFEST = ".claude-plugin/marketplace.json"
+PLUGIN = ".claude-plugin/plugin.json"
 
 
 def begin(name: str) -> str:
@@ -359,6 +371,25 @@ def build_file(root: Path, rel: str) -> str:
     return text
 
 
+def project_manifest(root: Path) -> str | None:
+    """The regenerated text of `MANIFEST`, or None when there is nothing to project.
+
+    Only the description of the entry whose `name` matches the plugin manifest is
+    projected. The marketplace's OWN top-level description is a different thing (one
+    short sentence aimed at someone browsing, not the skill catalog) and is hand-written
+    on purpose, so it is left alone.
+    """
+    pj, mj = root / PLUGIN, root / MANIFEST
+    if not pj.is_file() or not mj.is_file():
+        return None
+    plugin = json.loads(pj.read_text())
+    market = json.loads(mj.read_text())
+    for entry in market.get("plugins", []):
+        if entry.get("name") == plugin.get("name"):
+            entry["description"] = plugin.get("description", "")
+    return json.dumps(market, indent=2) + "\n"
+
+
 def build(root: Path | None = None, write: bool = True) -> list[str]:
     """Regenerate every generated block. Returns the files that changed."""
     root = root or repo_root()
@@ -372,6 +403,12 @@ def build(root: Path | None = None, write: bool = True) -> list[str]:
             changed.append(rel)
             if write:
                 path.write_text(new)
+
+    projected = project_manifest(root)
+    if projected is not None and projected != (root / MANIFEST).read_text():
+        changed.append(MANIFEST)
+        if write:
+            (root / MANIFEST).write_text(projected)
     return changed
 
 
@@ -411,4 +448,11 @@ def check(root: Path | None = None) -> list[str]:
                 problems.append(f"{rel} is stale: run `abu build-docs`")
         except ValueError as exc:
             problems.append(f"{rel}: {exc}")
+
+    projected = project_manifest(root)
+    if projected is not None and projected != (root / MANIFEST).read_text():
+        problems.append(
+            f"{MANIFEST} has drifted from {PLUGIN}: run `abu build-docs`. The plugin "
+            f"manifest is the catalog of record; the marketplace entry is projected "
+            f"from it.")
     return problems
