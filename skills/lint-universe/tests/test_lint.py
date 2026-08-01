@@ -607,5 +607,84 @@ class TestCharacterScaleAndFutureLooks(unittest.TestCase):
 
 
 
+
+
+class TestValidityWindows(unittest.TestCase):
+    """SPEC v0.18 variant validity windows.
+
+    compose-spread refuses a WRONG-era selection at render time. What only the
+    linter can see is the shape of the whole variant SET, and that is where the
+    dangerous case lives: a PARTIALLY windowed set has a hole at exactly the
+    point where the author believed the gate was closed.
+    """
+
+    def lint_entity(self, ent):
+        with tempfile.TemporaryDirectory() as t:
+            return run(build(t, entity=ent))
+
+    def character(self, **structured):
+        return {"id": "e", "kind": "character", "status": "locked",
+                "structured": structured}
+
+    def test_a_set_with_no_windows_is_silent(self):
+        errs, warns = self.lint_entity(self.character(
+            altLooks={"elder": {"anchorPhoto": "a.png"},
+                      "young": {"anchorPhoto": "b.png"}}))
+        self.assertNotIn("VALIDFOR-PARTIAL", warns)
+        self.assertEqual({e for e in errs if e.startswith("VALIDFOR")}, set())
+
+    def test_a_fully_windowed_set_is_silent(self):
+        _, warns = self.lint_entity(self.character(
+            validFor={"from": 1935, "to": 1973},
+            altLooks={"bedfast": {"anchorPhoto": "a.png",
+                                  "validFor": {"from": 1933, "to": 1934}},
+                      "elder": {"anchorPhoto": "b.png", "validFor": {"from": 1974}}}))
+        self.assertNotIn("VALIDFOR-PARTIAL", warns)
+
+    def test_a_partially_windowed_set_warns(self):
+        """The hole: an undeclared variant stays legal at EVERY date."""
+        _, warns = self.lint_entity(self.character(
+            validFor={"from": 1935, "to": 1973},
+            altLooks={"bedfast": {"anchorPhoto": "a.png",
+                                  "validFor": {"from": 1933, "to": 1934}},
+                      "elder": {"anchorPhoto": "b.png"}}))
+        self.assertIn("VALIDFOR-PARTIAL", warns)
+
+    def test_an_inverted_window_is_an_error(self):
+        errs, _ = self.lint_entity(self.character(
+            altLooks={"elder": {"anchorPhoto": "b.png",
+                                "validFor": {"from": 2000, "to": 1900}}}))
+        self.assertIn("VALIDFOR-INVERTED", errs)
+
+    def test_a_string_year_is_an_error(self):
+        """A window is compared numerically, so "1974" would silently never match."""
+        errs, _ = self.lint_entity(self.character(
+            altLooks={"elder": {"anchorPhoto": "b.png", "validFor": {"from": "1974"}}}))
+        self.assertIn("VALIDFOR-MALFORMED", errs)
+
+    def test_an_empty_window_is_an_error(self):
+        errs, _ = self.lint_entity(self.character(
+            altLooks={"elder": {"anchorPhoto": "b.png", "validFor": {}}}))
+        self.assertIn("VALIDFOR-MALFORMED", errs)
+
+    def test_a_setting_carries_its_window_on_the_PLATE(self):
+        """Two eras of one place stay ONE entity: the plates are the era axis."""
+        _, warns = self.lint_entity({
+            "id": "e", "kind": "setting", "status": "locked",
+            "contract": {"emptyPlates": ["reference/e/era-farm.png",
+                                         "reference/e/era-1976.png"],
+                         "plates": {"era-farm": {"validFor": {"to": 1930}}}}})
+        self.assertIn("VALIDFOR-PARTIAL", warns)
+
+    def test_a_fully_windowed_setting_is_silent(self):
+        _, warns = self.lint_entity({
+            "id": "e", "kind": "setting", "status": "locked",
+            "contract": {"emptyPlates": ["reference/e/era-farm.png",
+                                         "reference/e/era-1976.png"],
+                         "plates": {"era-farm": {"validFor": {"to": 1930}},
+                                    "era-1976": {"validFor": {"from": 1970}}}}})
+        self.assertNotIn("VALIDFOR-PARTIAL", warns)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

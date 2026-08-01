@@ -25,6 +25,54 @@ def _sha16(path):
     except Exception:
         return None
 
+def _lint_windows(eid, kind_word, variants: dict):
+    """Static checks on a variant set's `validFor` windows (SPEC v0.18).
+
+    compose-spread refuses a WRONG-era selection at render time. Only lint can see
+    the shape of the whole SET, and the hazard lives there: a set where SOME
+    variants declare a window and others do not has a hole at exactly the point
+    where the author believed the gate was closed, because an undeclared variant
+    is legal at every date. A set with NO windows at all is the default and is
+    silent.
+    """
+    windowed, bare = [], []
+    for key, decl in variants.items():
+        name = "the default look" if key is None else f"'{key}'"
+        vf = (decl or {}).get("validFor")
+        if vf is None:
+            bare.append(name)
+            continue
+        if not isinstance(vf, dict):
+            err("VALIDFOR-MALFORMED",
+                f"{eid}: {kind_word} {name} has validFor {vf!r}; it must be an object "
+                f"like {{\"from\": 1974, \"to\": 2003}} with either bound optional.")
+            continue
+        lo, hi = vf.get("from"), vf.get("to")
+        if lo is None and hi is None:
+            err("VALIDFOR-MALFORMED",
+                f"{eid}: {kind_word} {name} declares an EMPTY validFor, which constrains "
+                f"nothing. Give it a `from`, a `to`, or remove it.")
+            continue
+        bad = [b for b in (lo, hi) if b is not None and not isinstance(b, (int, float))]
+        if bad:
+            err("VALIDFOR-MALFORMED",
+                f"{eid}: {kind_word} {name} has non-numeric validFor bound(s) {bad!r}. "
+                f"A window is compared numerically, so a year is 1974 and never \"1974\".")
+            continue
+        if lo is not None and hi is not None and lo > hi:
+            err("VALIDFOR-INVERTED",
+                f"{eid}: {kind_word} {name} is valid from {lo} to {hi}, which is empty. "
+                f"No spread can ever legally select it.")
+            continue
+        windowed.append(name)
+    if windowed and bare:
+        warn("VALIDFOR-PARTIAL",
+             f"{eid}: {', '.join(windowed)} declare a validFor window but "
+             f"{', '.join(bare)} do not, so the undeclared one(s) stay legal at EVERY "
+             f"date and the era gate has a hole precisely where it looks closed. "
+             f"Give every {kind_word} in the set a window, or none of them.")
+
+
 def jload(p):
     try: return json.loads(pathlib.Path(p).read_text())
     except Exception as ex: err("PARSE", f"{p}: {ex}"); return None
@@ -309,6 +357,33 @@ def lint(root):
                          f"sheets would reach the model. Set keepSheets (a base face sheet) "
                          f"and/or keepPhotos if this is a declared-future or prophetic look "
                          f"whose face is continuous; otherwise give it an anchorPhoto.")
+
+            # ---- VARIANT VALIDITY WINDOWS (SPEC v0.18)
+            #
+            # A `validFor` window lets compose-spread refuse a wrong-era selection
+            # BEFORE it spends. What lint can see that the compiler cannot is the
+            # shape of the whole variant SET, and the dangerous shape is a PARTIAL
+            # one: if the default look and two of three alt looks declare a window
+            # and one does not, the undeclared one is legal at every date, so the
+            # gate silently has a hole exactly where someone thought they had closed
+            # it. A set with no windows at all is fine and is the default.
+            variants = {None: {"validFor": st.get("validFor")}}
+            variants.update({k: (v or {}) for k, v in (st.get("altLooks") or {}).items()})
+            _lint_windows(eid, "look", variants)
+
+    # a setting's era axis is its PLATES, which carry the window in contract.plates
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("kind") not in ("setting", "visual-metaphor"):
+                continue
+            con = e.get("contract") or (e.get("structured") or {}).get("contract") or {}
+            plates = {k: (v or {}) for k, v in (con.get("plates") or {}).items()}
+            for p in con.get("emptyPlates") or []:
+                if isinstance(p, str):
+                    plates.setdefault(pathlib.Path(p).stem, {})
+            if plates:
+                _lint_windows(e.get("id") or ef.stem, "plate", plates)
 
     # ---- an entity that is NOT the default avatar must not be cast casually
     #

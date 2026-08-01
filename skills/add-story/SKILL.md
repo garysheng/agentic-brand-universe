@@ -66,6 +66,22 @@ So when a story declares a future:
 
 When in doubt, ask the author how far forward the story goes and how much of the book lives there. That is a story-shaping decision and it is theirs, not yours.
 
+## The manuscript-to-story converter is DECLINED, deliberately
+
+Every book so far has written a script that walks a blessed `manuscript.md`, pulls the
+numbered beats into `beats[].text`, and carries a per-beat cast + provenance table the
+manuscript does not encode. It looks like an obvious thing to promote, and `pave-the-path`
+considered it on 2026-07-31 and declined it.
+
+The mechanical half is about ten lines. The valuable half, the cast and the provenance, is
+authored content that varies per book AND per source. Promoting it would mean **inventing a
+manuscript-format contract** rather than paving a path anyone has walked: the framework does
+not own the manuscript format today, and a converter would quietly make one up, so the next
+book would be writing its manuscript to please a parser.
+
+If a beat records `when` (a year or an index), put it in the story: `compose-spec` carries it
+onto the spread and the era gate uses it. That much IS a contract.
+
 ## Gates honored
 - **Reuse-first casting sweep** (step 3): never invent an entity a story's beats could cast from existing canon.
 - **Provenance**: every beat in a `full` story cites a real source; unsourced vivid detail is flagged before it ships.

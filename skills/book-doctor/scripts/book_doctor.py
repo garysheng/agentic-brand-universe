@@ -38,6 +38,18 @@ from pathlib import Path
 COVER_ASPECT = 0.75  # 3:4 portrait: front cover AND closing plate (both are endcaps)
 TOLERANCE = 0.02
 
+# An ENDCAP MAY BE DECLARED IN `spreads`, and it is not an interior.
+#
+# `compose-spec` emits the endcaps as ordinary members of the `spreads` array,
+# with the ids below. Until 2026-07-31 this file derived its interior list from
+# `spreads` verbatim, so every declared endcap was graded TWICE: once correctly
+# as an endcap (portrait) and then again as an interior (landscape), and the
+# second grade can never pass. That failed every book compose-spec has ever
+# produced, on both endcaps, and a doctor that always fails teaches its operator
+# to ignore it. Caught by the-power-of-obeying-book, which was correct.
+COVER_IDS = ("cover", "cover-0", "spread-00-cover", "spread-00")
+CLOSING_IDS = ("closing-plate", "plate-0", "closing", "back-cover")
+
 
 def _load_json(p: Path):
     try:
@@ -75,6 +87,17 @@ def _find(book: Path, stem: str):
     return None
 
 
+def _numeric_suffix(sid) -> int | None:
+    """The interior number in `spread-07`, or None for `cover` / `closing-plate`.
+
+    A non-numeric id used to raise ValueError out of the `max(...)` that derives
+    the closing plate's number, and the `except` fell back to `len(declared)`,
+    which counted the endcaps in. On a 69-spread book that demanded `spread-72`.
+    """
+    tail = str(sid).rsplit("-", 1)[-1]
+    return int(tail) if tail.isdigit() else None
+
+
 def _recipe_for(asset: Path):
     for c in (asset.with_suffix(asset.suffix + ".recipe.json"),
               asset.with_suffix(".recipe.json")):
@@ -100,6 +123,14 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
         interior_aspect = float(cfg.get("interiorAspect", 1.5))
 
     declared = [s["id"] for s in spec.get("spreads", []) if "id" in s]
+
+    # Resolve the ENDCAPS out of `declared` BEFORE anything grades an interior,
+    # so no asset is graded against two contradictory aspect rules.
+    declared_cover = next((d for d in declared if d in COVER_IDS), None)
+    declared_closing = next((d for d in declared if d in CLOSING_IDS), None)
+    endcap_ids = {x for x in (declared_cover, declared_closing) if x}
+    interiors = [d for d in declared if d not in endcap_ids]
+
     rows: list[dict] = []
 
     def row(role, path, ok, note=""):
@@ -123,7 +154,9 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
     # 3:4 only once the name says the conform has already happened.
     cover, cover_staged = _find(book, "spread-00-cover"), True
     if cover is None:
-        cover, cover_staged = _find(book, "cover-0") or _find(book, "cover"), False
+        cover, cover_staged = (
+            _find(book, "cover-0") or _find(book, "cover")
+            or (_find(book, declared_cover) if declared_cover else None)), False
     if cover is None:
         row("front cover", None, False,
             "missing (looked for spread-00-cover, cover-0, cover)")
@@ -136,8 +169,9 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
         row("front cover", cover, ok,
             "" if ok else f"aspect {round(s[0]/s[1], 2) if s else '?'} ({want})")
 
-    # 2. every declared interior exists, at interior aspect
-    for sid in declared:
+    # 2. every declared interior exists, at interior aspect.
+    #    `interiors` excludes the endcaps, which checks 1 and 3 own.
+    for sid in interiors:
         p = _find(book, sid)
         if p is None:
             row(sid, None, False, "missing")
@@ -147,19 +181,27 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
         row(sid, p, ok, "" if ok
             else f"aspect {round(s[0]/s[1], 2) if s else '?'} (want {interior_aspect})")
 
-    # 3. closing plate at N+1 is a BACK COVER: portrait, not an interior
+    # 3. the closing plate is a BACK COVER: portrait, not an interior.
+    #
+    # Two ways it is named, and BOTH are legitimate:
+    #   DECLARED     the spec names it `closing-plate` (what compose-spec emits,
+    #                and what stage-book-assets.py accepts). Composer name, so
+    #                the PORTRAIT rule applies and staging conforms it to 3:4.
+    #   POSITIONAL   it is not in the spec at all and sits at interior N+1.
     if declared:
-        try:
-            last = max(int(str(x).rsplit("-", 1)[-1]) for x in declared)
-        except ValueError:
-            last = len(declared)
-        plate_id = f"spread-{last + 1:02d}"
-        plate, plate_staged = _find(book, plate_id), True
+        nums = [n for n in (_numeric_suffix(x) for x in interiors) if n is not None]
+        last = max(nums) if nums else len(interiors)
+        plate_id = declared_closing or f"spread-{last + 1:02d}"
+        if declared_closing:
+            plate, plate_staged = _find(book, declared_closing), False
+        else:
+            plate, plate_staged = _find(book, plate_id), True
         if plate is None:
-            plate, plate_staged = _find(book, "plate-0"), False
+            plate, plate_staged = (
+                _find(book, "closing-plate") or _find(book, "plate-0")), False
         if plate is None:
             row("closing plate (back cover)", None, False,
-                f"missing {plate_id} (or plate-0)")
+                f"missing {plate_id} (or closing-plate, plate-0)")
         else:
             s = _size(plate)
             if plate_staged:
@@ -200,13 +242,29 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
     if universe:
         ents = Path(universe) / "canon" / "entities"
         cast: set[str] = set()
+
+        def _add(v):
+            """`cast` entries are `{"id": ...}` or a bare id string; the legacy
+            `characters`/`extras` entries are `{"entity": ...}`."""
+            if isinstance(v, str) and v:
+                cast.add(v)
+            elif isinstance(v, dict):
+                for k in ("id", "entity"):
+                    if v.get(k):
+                        cast.add(v[k])
+                        break
+
         for sp in spec.get("spreads", []):
+            # `cast` is the live dialect: what compose_spec.py EMITS and what
+            # assemble_prompt.py READS. This check read only `characters`/
+            # `extras`, which nothing in the chain emits, so it was a silent
+            # no-op on every real book from the day it shipped.
+            for c in sp.get("cast", []) or []:
+                _add(c)
             for c in sp.get("characters", []) or []:
-                if isinstance(c, dict) and c.get("entity"):
-                    cast.add(c["entity"])
+                _add(c)
             for e in sp.get("extras", []) or []:
-                if isinstance(e, dict) and e.get("entity"):
-                    cast.add(e["entity"])
+                _add(e)
             st = sp.get("setting")
             if isinstance(st, dict) and st.get("entity"):
                 cast.add(st["entity"])

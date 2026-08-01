@@ -105,6 +105,109 @@ def box_quads(lo: Sequence[float], hi: Sequence[float],
     return [f[k] for k in keys if k in f]
 
 
+# --------------------------------------------------------------------------
+# AUTHORING a massing spec
+#
+# The renderer took a FINISHED spec and nothing helped anyone write one, so every
+# setting that needed a blueprint grew the same throwaway file beside it, opening
+# with the same three definitions: a `quad`, a `box`, and a `room` that is a floor
+# plus three walls with the near wall left open so a camera can see in. Four rooms
+# in one run (the-power-of-obeying, 2026-07-31) and the same helpers before that.
+#
+# The geometry of a rectangular room is not a judgement call, so it belongs here.
+# What each room CONTAINS still belongs to the author, which is why `scaffold_room`
+# emits a starter spec to edit rather than trying to guess the furniture.
+# --------------------------------------------------------------------------
+
+# The palette these sheets are drawn in. Crude on purpose: a blueprint is
+# scaffolding to build a shot on, never art to copy.
+WALL = [214, 206, 192]
+FLOOR = [186, 163, 132]
+WOOD = [150, 116, 80]
+DARK = [70, 74, 86]
+GLASS = [120, 150, 175]
+METAL = [150, 152, 155]
+
+
+def quad(pts: Sequence[Sequence[float]], color: Sequence[int] = WALL,
+         edges: bool = True) -> Dict[str, Any]:
+    """One flat polygon: a window pane, a door, a floor patch, a ground plane."""
+    return {"type": "quad", "pts": [list(p) for p in pts], "color": list(color),
+            "edges": edges}
+
+
+def box(lo: Sequence[float], hi: Sequence[float], color: Sequence[int] = WOOD,
+        faces: Sequence[str] | None = None, edges: bool = True) -> Dict[str, Any]:
+    """One axis-aligned block: a bed, a table, a pew, a building mass."""
+    s: Dict[str, Any] = {"type": "box", "min": list(lo), "max": list(hi),
+                         "color": list(color), "edges": edges}
+    if faces:
+        s["faces"] = list(faces)
+    return s
+
+
+def room(w: float, d: float, h: float, *, floor=FLOOR, wall=WALL) -> List[Dict[str, Any]]:
+    """A rectangular room as floor + far wall + left wall + right wall.
+
+    THE NEAR WALL IS DELIBERATELY LEFT OPEN, because every camera in the room
+    stands against it looking in; drawing it would put an opaque quad between the
+    camera and everything it is there to see.
+
+    Z is up, the origin is the near-left floor corner, so the room occupies
+    x in [0, w], y in [0, d] (y increasing AWAY from the camera), z in [0, h].
+    Metres by convention, though the renderer is unit-agnostic.
+    """
+    return [
+        quad([[0, 0, 0], [w, 0, 0], [w, d, 0], [0, d, 0]], floor),   # floor
+        quad([[0, d, 0], [w, d, 0], [w, d, h], [0, d, h]], wall),    # far wall
+        quad([[0, 0, 0], [0, d, 0], [0, d, h], [0, 0, h]], wall),    # left wall
+        quad([[w, 0, 0], [w, d, 0], [w, d, h], [w, 0, h]], wall),    # right wall
+    ]
+
+
+def scaffold_room(title: str, w: float, d: float, h: float,
+                  cameras: Sequence[str] = ("c1-master", "c2-reverse"),
+                  eye_height: float = 1.55) -> Dict[str, Any]:
+    """A starter massing spec for a rectangular room: shell, cameras, notes stub.
+
+    The cameras are the part worth scaffolding. A room's whole purpose here is to
+    fix HANDEDNESS, and handedness is a property of the camera rather than of the
+    room, so a spec with one camera cannot state it. Two opposed cameras are
+    emitted by default, and the notes stub asks for the one fact a blueprint
+    exists to pin: what never moves.
+
+    The furniture is left empty ON PURPOSE. What a room contains is authorship,
+    and a scaffolder that guessed it would be guessing the story.
+    """
+    z = eye_height
+    presets = {
+        # id-fragment -> (eye, target, caption)
+        "master":  ([w / 2, 0.35, z], [w / 2, d, z * 0.85], "- from the near wall, looking in"),
+        "reverse": ([w / 2, d - 0.35, z], [w / 2, 0, z * 0.85], "- from the far wall, looking back"),
+        "left":    ([0.4, d / 2, z], [w, d / 2, z * 0.85], "- from the LEFT wall, looking across"),
+        "right":   ([w - 0.4, d / 2, z], [0, d / 2, z * 0.85], "- from the RIGHT wall, looking across"),
+    }
+    cams = []
+    for cid in cameras:
+        key = next((k for k in presets if k in cid), "master")
+        eye, target, caption = presets[key]
+        cams.append({"id": cid, "caption": f"{cid.upper()} {caption}",
+                     "eye": list(eye), "target": list(target), "fov": 62, "ambient": 0.42})
+    return {
+        "title": title.upper(),
+        "subtitle": f"3D MASSING SEED / {w} x {d} x {h} / GEOMETRY LOCK",
+        "solids": room(w, d, h),
+        "cameras": cams,
+        "notes": [
+            {"text": f"ROOM {w} x {d}, ceiling {h}.", "tone": "info"},
+            {"text": "TODO(author): name what NEVER MOVES, and which wall it is against.",
+             "tone": "rule"},
+            {"text": "TODO(author): name the DOOR wall and the WINDOW wall, so handedness is fixed.",
+             "tone": "rule"},
+        ],
+    }
+
+
 def _solids_to_quads(solids: Sequence[Dict[str, Any]]) -> List[Tuple[List[Vec], Tuple[int, int, int], bool]]:
     """Flatten the declarative solid list into (quad, colour, draw_edges)."""
     out: List[Tuple[List[Vec], Tuple[int, int, int], bool]] = []

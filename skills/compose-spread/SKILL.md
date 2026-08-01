@@ -167,10 +167,67 @@ A per-universe `compile_render.py` / `gen-spread.py` is the failure this skill e
 
 3. **Generate.** Pass the assembled `prompt` + `refs` (anchor first) + `size` to the image model. `scripts/render_spread.py <universe> <render-spec.json> <spread-id> --out <path>` does assemble+generate in one call (3 retries); use `--print-prompt` to inspect.
 
+   **A whole book goes through the SAME script, in batch.** Do not write a driver.
+
+   ```bash
+   render_spread.py <universe> <render-spec.json> --all --out-dir spreads/ --jobs 4 --skip-existing
+   render_spread.py <universe> <render-spec.json> spread-07 spread-12 --out-dir spreads/
+   ```
+
+   `--jobs` defaults to 1, so single-spread behaviour is unchanged. A per-spread failure never
+   aborts the batch, because a 69-spread render is expensive and a driver that stops at the
+   first refusal throws away every spread that would have landed after it; the run exits
+   nonzero and names what failed. Pair `--all` with `--dry-run` as a FREE pre-flight over the
+   whole book: refusals are pure text checks, so every uncast character, wrong-era look, bad
+   plate key and missing ref is caught before a cent is spent.
+
+   Added 2026-07-31 because every book had been writing the same ThreadPoolExecutor wrapper
+   around this script, twice after `pave-the-path` first flagged it.
+
 4. **Read back.** Invoke `render-readback` on the output: crop-zoom every invariant in the returned `qa` list. Any DEFECT regenerates FROM SCRATCH (re-run render_spread.py; the model is stochastic), never an edit pass. Loop until all invariants PASS.
+
+## Wrong-era selection is refused PRE-SPEND (SPEC v0.18)
+
+A variant is a body a thing wears for part of its life: a character's `altLook`, a setting's
+era plate. Nothing used to gate which one a spread could select, so every variant was legal on
+every spread. On a book spanning three ages of one man, nothing stopped a 1933 beat picking
+the `elder` look, and nothing stopped a 1990 beat silently falling through to the default
+young face. **Both are silent**: the render succeeds, it passes read-back (the wrong era's
+invariants all hold), it is beautiful and internally consistent, and it is of the wrong person.
+
+Declare the window in canon and the date on the spread:
+
+```jsonc
+// canon/entities/kenneth-hagin.json
+"structured": {
+  "validFor": {"from": 1935, "to": 1973},              // the DEFAULT look
+  "altLooks": {
+    "bedfast": {"validFor": {"from": 1933, "to": 1934}, ...},
+    "elder":   {"validFor": {"from": 1974}, ...}       // open-ended
+  }
+}
+// canon/entities/the-broken-arrow-ground.json — a setting's era axis is its PLATES
+"contract": {"plates": {"era-farm-empty-pasture": {"validFor": {"to": 1930}}}}
+// render-spec.json
+{"id": "spread-01", "when": 1933, "cast": [{"id": "kenneth-hagin", "look": "bedfast"}]}
+```
+
+The refusal NAMES the variant that is legal at that date, which is where the saving is: a gate
+that only says no still sends you to read canon. `when` is a plain number, so a universe may
+count in years or in beat indices. Both ends are opt-in: no `when`, or no declared windows, and
+the spread compiles exactly as before.
+
+**Window the WHOLE set or none of it.** An undeclared variant stays legal at every date, so a
+partially windowed set has a hole precisely where it looks closed. `lint-universe` warns
+`VALIDFOR-PARTIAL` for this and errors on `VALIDFOR-INVERTED` / `VALIDFOR-MALFORMED`.
 
 ## Gates honored
 - **Canon-resolve before the prompt:** no render except from a resolved, asserted record.
+- **Era gate:** a look or plate selected outside its declared `validFor` window is refused
+  before any spend, naming the variant that is legal at the spread's `when`.
+- **Unregistered cast:** an id canon has never heard of REFUSES by name, rather than raising a
+  FileNotFoundError that names a path instead of the spread and, in a batch, took every
+  remaining spread down with it.
 - **Register-anchor-first:** every render leads with the register anchor.
 - **Canon is the single source:** character/setting identity and look come from canon; the per-book file cannot contradict it, because the block, its refs, and the guarded negatives are computed from the SAME look.
 - **Read-back after every render:** any DEFECT regenerates from scratch.

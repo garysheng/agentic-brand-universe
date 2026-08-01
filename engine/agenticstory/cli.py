@@ -96,6 +96,23 @@ def build_parser() -> argparse.ArgumentParser:
     ms.add_argument("--entity", default=None, help="entity id, recorded in the provenance recipe")
     ms.add_argument("--no-recipe", action="store_true", help="skip writing <out>.recipe.json")
 
+    msc = sub.add_parser("massing-scaffold",
+                         help="write a STARTER massing spec for a rectangular room (shell + "
+                              "opposed cameras + notes stub) to edit, so authoring a blueprint "
+                              "does not start from a blank file")
+    msc.add_argument("title", help="the room's name, e.g. \"Hagin's sickroom\"")
+    msc.add_argument("--size", required=True, metavar="WxDxH",
+                     help="room size as width x depth x height, e.g. 3.6x3.6x2.4. "
+                          "Z is up and the origin is the near-left floor corner.")
+    msc.add_argument("--out", required=True, help="output massing spec JSON path")
+    msc.add_argument("--cameras", default="c1-master,c2-reverse",
+                     help="comma-separated camera ids. A fragment of master/reverse/left/right "
+                          "picks that preset placement (default: c1-master,c2-reverse). Two "
+                          "OPPOSED cameras by default, because handedness is a property of the "
+                          "camera and one camera cannot state it.")
+    msc.add_argument("--eye-height", type=float, default=1.55)
+    msc.add_argument("--force", action="store_true", help="overwrite an existing spec")
+
     el = sub.add_parser("elevation", help="render an OBJECT's blueprint as a code-built 2D elevation sheet "
                                          "from a declarative spec (deterministic, no model, no cost)")
     el.add_argument("spec", help="path to the elevation spec JSON (parts + scale + laws)")
@@ -154,6 +171,31 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
+
+    if args.cmd == "massing-scaffold":
+        from . import massing as _massing
+        try:
+            w, d, h = (float(x) for x in str(args.size).lower().split("x"))
+        except ValueError:
+            print(f"massing-scaffold: --size must be WxDxH, got {args.size!r}", file=sys.stderr)
+            return 2
+        outp = Path(args.out)
+        if outp.exists() and not args.force:
+            print(f"massing-scaffold: {args.out} exists (pass --force to overwrite). "
+                  f"A scaffold that silently overwrote an authored spec would lose the "
+                  f"furniture, which is the only part a human wrote.", file=sys.stderr)
+            return 2
+        spec = _massing.scaffold_room(
+            args.title, w, d, h,
+            cameras=[c.strip() for c in args.cameras.split(",") if c.strip()],
+            eye_height=args.eye_height)
+        outp.parent.mkdir(parents=True, exist_ok=True)
+        outp.write_text(json.dumps(spec, indent=2) + "\n")
+        print(f"wrote {args.out}: an empty {w} x {d} x {h} shell with "
+              f"{len(spec['cameras'])} camera(s).")
+        print("  Next: add the furniture as boxes (agenticstory.massing.box / quad), answer the")
+        print("  TODO notes, then render it: abu massing " + args.out + " --out <blueprint>.png")
+        return 0
 
     # massing does not load a store: it draws a blueprint from a standalone spec file
     # and never reads canon, so it stays usable before a universe exists.

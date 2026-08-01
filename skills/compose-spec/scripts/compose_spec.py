@@ -106,6 +106,14 @@ def main() -> int:
             notes.append(f"{sid}: setting '{chosen_setting}' has no plate chosen "
                          f"(available: {plates_for(ent) or 'NONE - shoot a shot list'})")
 
+        # WHEN this spread happens (SPEC v0.18). DERIVED when the beat records it,
+        # CHOSEN otherwise, and never invented: a wrong `when` is worse than none,
+        # because it would refuse the correct look.
+        if b.get("when") is not None:
+            sp["when"] = b["when"]
+        elif "when" in old:
+            sp["when"] = old["when"]
+
         old_cast = {c.get("id"): c for c in (old.get("cast") or []) if isinstance(c, dict)}
         cast = []
         for cid in (b.get("characters") or []):
@@ -115,6 +123,23 @@ def main() -> int:
             for k in CHOSEN:
                 if k in prev:
                     entry[k] = prev[k]
+            # A character with ERA-WINDOWED looks and a dated spread should have its
+            # look chosen deliberately. Say which look the date makes legal, rather
+            # than choosing it: compose-spec never chooses.
+            looks = ((cent.get("structured") or {}).get("altLooks") or {})
+            if sp.get("when") is not None and not entry.get("look"):
+                windows = {k: (v or {}).get("validFor") for k, v in looks.items()}
+                if any(isinstance(w, dict) for w in windows.values()):
+                    legal = [k for k, w in windows.items()
+                             if isinstance(w, dict)
+                             and (w.get("from") is None or sp["when"] >= w["from"])
+                             and (w.get("to") is None or sp["when"] <= w["to"])]
+                    notes.append(
+                        f"{sid}: '{cid}' has era-windowed looks and this spread is set at "
+                        f"when={sp['when']}; no look is selected, so the DEFAULT look renders. "
+                        + (f"Legal at that date: {', '.join(legal)}." if legal
+                           else "No alt look is legal at that date, so the default must be."))
+
             avail = poses_for(cent)
             if avail and not entry.get("pose") and not entry.get("look"):
                 entry["pose"] = None

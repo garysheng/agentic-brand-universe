@@ -1,10 +1,41 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.17 — 2026-07-31.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.18 — 2026-07-31.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.18 changelog — a VARIANT may declare WHICH ERA it is legal in.** Additive, opt-in at both
+> ends, and backward-compatible: a spread with no `when`, or an entity whose variants declare no
+> `validFor`, compiles byte-identically to v0.17, so no universe has to migrate.
+>
+> A variant is a body a thing wears for part of its life: a character's `altLook`, a setting's era
+> plate. Nothing gated which one a spread could select, so every variant was equally legal on every
+> spread. On a book spanning three ages of one man, nothing stopped a 1933 beat picking the `elder`
+> look, and nothing stopped a 1990 beat silently falling through to the default young face. **Both
+> failures are silent**: the render succeeds, it passes read-back (the wrong era's invariants all
+> hold), it is beautiful and internally consistent, and it is of the wrong person.
+>
+> §12 adds `validFor: {from, to}` on `structured.validFor` (the DEFAULT look), on
+> `structured.altLooks.<key>`, and on `contract.plates.<plate>`, plus `when` on a spread. Both are
+> plain numbers, so a universe may count in years or in beat indices. `compose-spread` refuses
+> PRE-SPEND and names the variant that IS legal at that date; `lint-universe` sees what the compiler
+> cannot, which is the shape of the whole variant SET, and warns `VALIDFOR-PARTIAL` when some
+> variants are windowed and others are not, because an undeclared variant stays legal at every date
+> and the gate then has a hole exactly where it looks closed.
+>
+> §12 also settles the setting question this raised: **two eras of one place stay ONE entity**, and
+> the era axis is its PLATES rather than a new `eras[]` array. When a place appears in two periods
+> the reason it is in the story is usually that it is the SAME GROUND, and splitting it into two
+> entities destroys the only claim it exists to make. One `map`, one code-built massing `blueprint`
+> both eras are seeded on, one `emptyPlates` list, a named MATCH POINT required visible in every
+> plate of both eras. And `keepSheets` / `keepPhotos` are documented as TEMPORAL-DIRECTION-AGNOSTIC:
+> they serve any era the photo stack does not cover, past as well as declared-future, which decides
+> the shooting ORDER (shoot the era that has photographs first, chain the rest off it).
+>
+> Earned 2026-07-31 on `the-power-of-obeying` (69 spreads, 1917 to 2003, three eras of one man plus
+> one piece of ground in two), where the look was named by hand on all 71 spreads.
 
 > **v0.17 changelog — the slot-model composer is RETIRED, having never run.** `skills/compose/`
 > (896 lines, 91 tests, zero works) is deleted, and with it `add-form`, `add-work`, `brand-card`
@@ -1003,12 +1034,54 @@ under-referenced entities the way the gate reports missing files.
     one step earlier still. Each era gets its own key (`era-2028`, `era-2030`) and its own
     invariants, so a read-back checks the future body against what was declared rather than
     against today's.
+  - **A DOCUMENTED PAST uses the same two fields, and this is not obvious from their name.**
+    `keepSheets` / `keepPhotos` were introduced for a declared FUTURE, but the mechanism is
+    TEMPORAL-DIRECTION-AGNOSTIC: it serves **any era the photo stack does not cover**, forward or
+    back. A historical subject has exactly the same shape as a prophetic one. There is no
+    photograph of Kenneth E. Hagin bedfast at fifteen in 1933; the only photographs that exist are
+    of him in his eighties, so the two eras with no ground truth are both in the PAST.
+  - **Where the photographs land decides the SHOOTING ORDER, and the order is load-bearing.**
+    The default assumption is that the default look is shot from the photo stack and every era
+    chains off it. When the photographs cover a NON-default era, **shoot the era that has ground
+    truth FIRST and chain the others off it**, so the whole chain converges on one face. On
+    `kenneth-hagin` that runs fully inverted: `elder` is shot from the two public photographs, the
+    default young look is chained off `elder`, and `bedfast` is chained off the young look. Shooting
+    the three eras in parallel from prose returns three different men who merely share a
+    description, which is the failure the golden chain exists to prevent. A look whose photographs
+    ARE the ground truth declares its own `anchorPhoto` / `photoStack`, which outranks the base face
+    sheets by design.
   - **Locking an alt-look's art:** `lock-shot <universe> <id> <shot> <path> --look <key>` writes
     into `structured.altLooks[key].sheets` instead of the default matrix. It deliberately never
     touches `requiredForRender`, which is the DEFAULT look's gate: an era plate must not be able
     to satisfy it, or a character with no present-day body sheet would read as gate-real off a
     future one. An unknown look key is REFUSED rather than created, because a typo would
     otherwise mint a look nothing selects and no read-back ever checks.
+  - **`validFor`: WHICH ERA A VARIANT IS LEGAL IN (v0.18).** A variant is a body a thing wears for
+    part of its life, and until v0.18 nothing gated which one a spread could select: every altLook
+    was equally legal on every spread. On a book spanning three ages of one man, nothing stopped a
+    1933 beat picking the `elder` look, and nothing stopped a 1990 beat silently falling through to
+    the default young face. **Both failures are silent.** The render succeeds, it is internally
+    consistent and beautiful, and it is simply of the wrong person, so it survives read-back (which
+    checks invariants, and the wrong era's invariants all pass) and is caught only by a human who
+    happens to look at the date.
+    - A variant may declare `"validFor": { "from": <n>, "to": <n> }`, either bound optional, so an
+      open-ended era ("from 1974 onward") is expressible. A spread declares `"when": <n>`. Both are
+      plain NUMBERS and the framework only ever compares them, so a universe may count in years or
+      in beat indices without the framework knowing which.
+    - **The DEFAULT look carries its window at `structured.validFor`**, not only the alt looks. The
+      dangerous case is not merely picking the wrong alt look; it is FORGETTING to name one, and a
+      gate that cannot see the default cannot catch that.
+    - `compose-spread` REFUSES pre-spend and **names the variant that is legal at that date**, which
+      is where the saving is: a gate that only says no still sends the operator to read canon.
+    - **Opt-in at both ends, so nothing migrates.** A spread with no `when`, or an entity whose
+      variants declare no window, compiles exactly as before. The gate fires only when both facts
+      are stated and they contradict each other.
+    - `lint-universe` sees what the compiler cannot: the shape of the whole variant SET.
+      `VALIDFOR-PARTIAL` warns when some variants declare a window and others do not, because an
+      undeclared variant stays legal at every date and the gate then has a hole precisely where the
+      author believed it was closed. `VALIDFOR-INVERTED` and `VALIDFOR-MALFORMED` are errors.
+    - Earned 2026-07-31 on `the-power-of-obeying` (69 spreads, 1917 to 2003), where the look had to
+      be named by hand on all 71 spreads because nothing could check it.
 - **setting** — the existing `contract`: `turnaround`, `emptyPlates[]`, `blueprint` (files) plus
   `map`, `blocking`, `dressing` (descriptors), **and `scalePlate` + the `scale` descriptor (v0.9)**.
   - **`scalePlate` (file) and `scale` (descriptor) exist because AN EMPTY PLATE CANNOT PROVE SIZE.**
@@ -1031,6 +1104,23 @@ under-referenced entities the way the gate reports missing files.
     still renders. `lint-universe` warns (`SETTING-NO-SCALE-PLATE`) so the gap is visible before it
     is expensive. Earned 2026-07-25 on `christofuturist-home`, whose hearth room rendered small and
     cramped through a whole book because nothing in its contract said how big it was.
+  - **TWO ERAS OF ONE PLACE STAY ONE ENTITY, and its ERA AXIS IS ITS PLATES (v0.18).** A setting
+    deliberately does NOT get an `eras[]` array parallel to a character's `altLooks`. When a place
+    must appear in two periods, the reason it is in the story at all is usually that **it is the
+    same ground**, and splitting it into two entities destroys the only claim it exists to make.
+    So both eras live in one `contract`: one `map` for the geometry that never changes, one
+    `blueprint` (the code-built massing render of §12/v0.15) that BOTH eras are seeded on, and one
+    `emptyPlates` list holding each era's plates. `blocking` and `dressing` name what each era adds
+    and removes.
+  - **A plate declares its own era window** under the existing per-plate config map,
+    `contract.plates.<plate>.validFor` (see `validFor` above), so a dated spread cannot select the
+    wrong period's plate. `contract.plates` already existed to scope what a close-up is told, so
+    the era window needed no new schema shape.
+  - **Compose both eras so one image can be laid over the other.** Name the MATCH POINT (a ridge, a
+    roofline, a doorway) in `blocking` and require it visible in every plate of every era, or the
+    two eras become two places that merely share an entity id. Earned 2026-07-31 on
+    `the-broken-arrow-ground`, one Oklahoma parcel as a 1900s farm and as the 1976 site bought for
+    RHEMA, whose whole argument is that the ground is the same.
 - **visual-metaphor** — a locked master plus `state` plates (the object across its argued states).
 - **prop / motif** — `hero` plus `detail` crops.
 

@@ -34,6 +34,33 @@ python3 $ABU/skills/book-doctor/scripts/book_doctor.py \
 
 Per-book overrides live in the spec under `"doctor": {"coverAspect": 0.75, "interiorAspect": 1.5}`; the defaults are the contract and you should need them rarely.
 
+### An ENDCAP MAY BE DECLARED IN `spreads`, and it is not an interior
+
+`compose-spec` emits the endcaps as ordinary members of the `spreads` array, with the ids
+`cover` and `closing-plate`. Until 2026-07-31 the interior list was taken from `spreads`
+verbatim, so a declared endcap was graded TWICE: once correctly as an endcap (portrait), then
+again as an interior (landscape), and **the second grade can never pass.** The report read
+`aspect 0.75 (want 1.5)` on a cover that was exactly right.
+
+Two more defects compounded it. `max(int(id.rsplit("-")[-1]))` raised on the non-numeric id
+`cover`, and the fallback counted the endcaps in, so a 69-spread book was told its closing
+plate was `missing spread-72`. And check 6 read `characters`/`extras`, a dialect nothing in
+the chain emits, while `compose_spec.py` writes and `assemble_prompt.py` reads `cast`, so the
+cast-registered-and-locked check had been a silent no-op on every real book since it shipped.
+
+The net effect was that **this tool failed every book, on both endcaps, while agreeing with
+the platform's staging script about what the right answer was.** That is worse than having no
+doctor: it teaches its operator that the doctor is wrong, so the run it finally catches
+something real is the run nobody reads. Caught by the-power-of-obeying-book, 69 spreads, which
+was correct and graded as three FAILs.
+
+Accepted endcap names, in either naming convention:
+
+| role | composer names (pre-conform, PORTRAIT enforced) | staged names (post-conform, exact 3:4) |
+|---|---|---|
+| front cover | `cover`, `cover-0` | `spread-00-cover` |
+| closing plate | `closing-plate`, `plate-0` | `spread-<N+1>` |
+
 ## The boundary (read this before extending it)
 
 **This tool is local and delivery-agnostic on purpose.** A delivery platform that stores assets in a bucket has its own health check, coupled to that bucket's SDK, its registry, and its reader URLs, and sharing that platform's frozen-tested aspect helper is what makes it correct. Pulling that logic in here would fork a tested check into an untested copy, which is the exact bug those platforms tend to have already had once.

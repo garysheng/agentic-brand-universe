@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render ONE spread: assemble the job from canon, then generate the image.
+"""Render one spread, or a whole book: assemble each job from canon, then generate.
 
 Thin wrapper over assemble_prompt.py (the deterministic, tested core) + the
 chatgpt-images generate_image.py. The assemble step is pure software; only this
@@ -8,9 +8,25 @@ render-readback, and on a DEFECT call again (the model is stochastic).
 
 Usage:
   render_spread.py <universe> <render-spec.json> <spread-id> --out <path>
-      [--skip-existing] [--quality high] [--print-prompt]
+      [--skip-existing] [--quality high] [--print-prompt] [--dry-run]
+
+  render_spread.py <universe> <render-spec.json> --all --out-dir spreads/ --jobs 4
+  render_spread.py <universe> <render-spec.json> spread-01 spread-02 --out-dir spreads/
+
+BATCH MODE (added 2026-07-31). This script took exactly one spread id, so EVERY
+book grew its own parallel driver: a dozen lines of ThreadPoolExecutor over this
+same subprocess, plus a skip-if-exists the script already implements. `pave-the-path`
+flagged "the renderer's own batch mode" after she-had-everything-but-peace and it
+was not built; the-power-of-obeying wrote the identical driver again. Two runs is
+the bar, so it lives here now.
+
+`--jobs` defaults to 1, so single-spread behaviour is unchanged: same stdout, same
+exit codes. A per-spread failure never aborts the batch (the expensive spreads that
+DID land must survive one that did not), and the batch exits nonzero if any spread
+failed or refused.
 """
 import argparse
+import concurrent.futures as cf
 import hashlib
 import json
 import os
@@ -106,12 +122,87 @@ def write_recipe(out: Path, universe: Path, spec: dict, spread_id: str,
     return path
 
 
+def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
+    """Render ONE spread. Returns 0 ok/skip, 1 generation failure, 2 refusal.
+
+    `echo` collects output so a parallel batch prints each spread's lines
+    together instead of interleaving them into noise.
+    """
+    if args.skip_existing and out.exists():
+        echo(f"{sid}: exists, skip")
+        return 0
+
+    try:
+        job = build(Path(args.universe), spec, sid)
+    except Refuse as e:
+        echo(f"REFUSE {sid}: {e}", err=True)
+        return 2
+    except Exception as e:
+        # NOTHING one spread does may kill the batch. An unexpected error here
+        # used to escape as a traceback, and in a 69-spread run that discarded
+        # every spread queued behind it. Name the spread, keep going.
+        echo(f"REFUSE {sid}: {type(e).__name__}: {e}", err=True)
+        return 2
+
+    if args.print_prompt:
+        echo("PROMPT:\n" + job["prompt"] + "\n")
+        echo("REFS (" + str(len(job["refs"])) + "):")
+        for r in job["refs"]:
+            echo("  " + r)
+
+    if args.dry_run:
+        echo(f"{sid}: DRY RUN ok ({len(job['refs'])} refs, "
+             f"{len(job['qa'])} qa invariants, size {job['size']}) — nothing generated")
+        return 0
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "uv", "run", _provider_script(),
+        "--prompt", job["prompt"],
+        "--filename", str(out),
+        "--size", job["size"],
+        "--quality", args.quality,
+        "--no-open",
+    ]
+    for r in job["refs"]:
+        cmd += ["--input-image", r]
+
+    # Serial keeps the provider's own output inline (the operator is watching one
+    # render). Parallel captures it, or N models write over each other.
+    capture = args.jobs > 1
+    for attempt in (1, 2, 3):
+        p = subprocess.run(cmd, capture_output=capture, text=True)
+        if p.returncode == 0 and out.exists():
+            recipe = write_recipe(out, Path(args.universe), spec, sid, job, args.quality)
+            echo(f"{sid}: OK -> {out} (+ {recipe.name})")
+            return 0
+        tail = ""
+        if capture:
+            lines = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()
+            tail = ": " + lines[-1][:300] if lines else ""
+        echo(f"{sid}: attempt {attempt} failed rc={p.returncode}{tail}", err=True)
+        if attempt < 3:
+            time.sleep(10 * attempt)
+    return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("universe")
     ap.add_argument("render_spec")
-    ap.add_argument("spread")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("spread", nargs="*",
+                    help="one or more spread ids. Omit and pass --all for every "
+                         "spread in the render-spec.")
+    ap.add_argument("--all", action="store_true",
+                    help="render every spread the render-spec declares")
+    ap.add_argument("--out", help="output path. Single spread only.")
+    ap.add_argument("--out-dir",
+                    help="output directory; each spread is written as <id>.png. "
+                         "Required for more than one spread, because --out cannot "
+                         "name N files.")
+    ap.add_argument("--jobs", type=int, default=1, metavar="N",
+                    help="render N spreads concurrently (default 1). Provider output "
+                         "is captured when N > 1.")
     ap.add_argument("--skip-existing", action="store_true")
     ap.add_argument("--quality", default="high")
     ap.add_argument("--print-prompt", action="store_true",
@@ -129,52 +220,58 @@ def main() -> int:
                          "Exits 0 if the spread would render, 2 on any refusal.")
     args = ap.parse_args()
 
-    out = Path(args.out)
-    if args.skip_existing and out.exists():
-        print(f"{args.spread}: exists, skip")
-        return 0
-
     try:
         spec = load(Path(args.render_spec))
-        job = build(Path(args.universe), spec, args.spread)
     except Refuse as e:
         print(f"REFUSE: {e}", file=sys.stderr)
         return 2
 
-    if args.print_prompt:
-        print("PROMPT:\n" + job["prompt"] + "\n")
-        print("REFS (" + str(len(job["refs"])) + "):")
-        for r in job["refs"]:
-            print("  " + r)
+    ids = list(args.spread)
+    if args.all:
+        declared = [s["id"] for s in spec.get("spreads", []) if s.get("id")]
+        ids = ids + [d for d in declared if d not in ids]
+    if not ids:
+        ap.error("name at least one spread id, or pass --all")
 
-    if args.dry_run:
-        print(f"{args.spread}: DRY RUN ok ({len(job['refs'])} refs, "
-              f"{len(job['qa'])} qa invariants, size {job['size']}) — nothing generated")
-        return 0
+    if len(ids) > 1 or args.out_dir:
+        if not args.out_dir:
+            ap.error("--out cannot name %d files; use --out-dir" % len(ids))
+        if args.out:
+            ap.error("--out and --out-dir are mutually exclusive")
+        outs = {sid: Path(args.out_dir) / f"{sid}.png" for sid in ids}
+    else:
+        if not args.out:
+            ap.error("--out is required for a single spread (or use --out-dir)")
+        outs = {ids[0]: Path(args.out)}
 
-    out.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        "uv", "run", _provider_script(),
-        "--prompt", job["prompt"],
-        "--filename", str(out),
-        "--size", job["size"],
-        "--quality", args.quality,
-        "--no-open",
-    ]
-    for r in job["refs"]:
-        cmd += ["--input-image", r]
+    # ONE spread, serial: print straight through, so behaviour is byte-identical
+    # to before batch mode existed.
+    if len(ids) == 1 and args.jobs <= 1:
+        def echo(msg, err=False):
+            print(msg, file=sys.stderr if err else sys.stdout)
+        return render_one(args, spec, ids[0], outs[ids[0]], echo)
 
-    for attempt in (1, 2, 3):
-        rc = subprocess.run(cmd).returncode
-        if rc == 0 and out.exists():
-            recipe = write_recipe(
-                out, Path(args.universe), spec, args.spread, job, args.quality
-            )
-            print(f"{args.spread}: OK -> {out} (+ {recipe.name})")
-            return 0
-        print(f"{args.spread}: attempt {attempt} failed rc={rc}", file=sys.stderr)
-        time.sleep(10 * attempt)
-    return 1
+    def work(sid):
+        buf: list[tuple[str, bool]] = []
+        code = render_one(args, spec, sid, outs[sid], lambda m, err=False: buf.append((m, err)))
+        return sid, code, buf
+
+    results: dict[str, int] = {}
+    jobs = max(1, args.jobs)
+    with cf.ThreadPoolExecutor(max_workers=jobs) as ex:
+        for sid, code, buf in ex.map(work, ids):
+            for msg, err in buf:
+                print(msg, file=sys.stderr if err else sys.stdout, flush=True)
+            results[sid] = code
+
+    failed = [s for s, c in results.items() if c == 1]
+    refused = [s for s, c in results.items() if c == 2]
+    print(f"\nbatch: {len(results) - len(failed) - len(refused)}/{len(results)} ok"
+          + (f", {len(failed)} failed ({', '.join(failed)})" if failed else "")
+          + (f", {len(refused)} REFUSED ({', '.join(refused)})" if refused else ""))
+    if refused:
+        return 2
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

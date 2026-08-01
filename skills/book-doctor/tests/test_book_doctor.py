@@ -74,6 +74,46 @@ def build(tmp: Path, n_spreads=3, plate_size=PORTRAIT, cover_size=PORTRAIT,
     return book
 
 
+def build_composer(tmp: Path, n_spreads=3, plate_size=PORTRAIT, cover_size=PORTRAIT,
+                   cast=None):
+    """A book in the COMPOSER dialect, which is what `compose-spec` actually emits.
+
+    Two things differ from `build()` above and BOTH of them hid a real bug for the
+    whole life of this tool:
+
+      1. The endcaps are DECLARED IN `spreads`, with the ids `cover` and
+         `closing-plate`. The old fixture left them out of the spec entirely, so
+         the interior loop never saw them and never mis-graded them.
+      2. Cast is `cast: [{"id": ...}]`, which is what `compose_spec.py` writes and
+         `assemble_prompt.py` reads. The old fixture used `characters`/`extras`,
+         a dialect nothing in the chain emits.
+
+    Reproduces the-power-of-obeying-book (69 spreads, shipped 2026-07-31), which a
+    correct book graded as three FAILs.
+    """
+    book = tmp / "composed-book"
+    spreads = [{"id": "cover", "scene": "s"}]
+    for i in range(1, n_spreads + 1):
+        sp = {"id": f"spread-{i:02d}", "scene": "s"}
+        if cast and i == 1:
+            sp["cast"] = cast
+        spreads.append(sp)
+    spreads.append({"id": "closing-plate", "scene": "s"})
+    book.mkdir(parents=True, exist_ok=True)
+    (book / "render-spec.json").write_text(
+        json.dumps({"book": "composed-book", "size": "1536x1024", "spreads": spreads}))
+
+    img(book / "spreads" / "cover.png", cover_size)
+    recipe(book / "spreads" / "cover.png")
+    img(book / "spreads" / "closing-plate.png", plate_size)
+    recipe(book / "spreads" / "closing-plate.png")
+    for i in range(1, n_spreads + 1):
+        p = book / "spreads" / f"spread-{i:02d}.png"
+        img(p, LANDSCAPE)
+        recipe(p)
+    return book
+
+
 def run(book: Path, *extra):
     r = subprocess.run([sys.executable, str(SCRIPT), str(book), *extra],
                        capture_output=True, text=True)
@@ -167,6 +207,84 @@ class TestBookDoctor(unittest.TestCase):
             code, out = run(book, "--universe", str(tmp / "u"))
             self.assertEqual(code, 1, out)
             self.assertIn("ghost-room", out)
+
+    # ── the composer dialect: endcaps DECLARED in `spreads` ──────────────────
+    #
+    # Earned 2026-07-31 by the-power-of-obeying-book, a 69-spread book that was
+    # CORRECT and that this tool failed on all three of its endcap checks. As
+    # written the doctor failed every book whose spec declares its endcaps, which
+    # is every book compose-spec has ever produced, and a doctor that always fails
+    # trains its operator to ignore it.
+
+    def test_declared_endcaps_are_not_graded_as_interiors(self):
+        """The bug: an endcap declared in `spreads` was graded TWICE, once
+        correctly as an endcap and then again at interior aspect, and the second
+        grade can never pass. `aspect 0.75 (want 1.5)` on a portrait cover."""
+        with tempfile.TemporaryDirectory() as t:
+            book = build_composer(Path(t))
+            code, out = run(book)
+            self.assertEqual(code, 0, out)
+            self.assertIn("healthy", out)
+
+    def test_declared_endcaps_do_not_invent_a_plate_number(self):
+        """`max(int(id.rsplit('-')[-1]))` raised ValueError on the id `cover`, and
+        the fallback `last = len(declared)` counted the endcaps in, so a 69-spread
+        book was told its closing plate was `missing spread-72`."""
+        with tempfile.TemporaryDirectory() as t:
+            book = build_composer(Path(t), n_spreads=3)
+            code, out = run(book)
+            self.assertNotIn("spread-05", out)
+            self.assertNotIn("spread-06", out)
+            self.assertEqual(code, 0, out)
+
+    def test_composer_dialect_still_catches_a_landscape_closing_plate(self):
+        """The fix must not buy a green light by loosening the real check."""
+        with tempfile.TemporaryDirectory() as t:
+            book = build_composer(Path(t), plate_size=LANDSCAPE)
+            code, out = run(book)
+            self.assertEqual(code, 1, out)
+            self.assertIn("closing plate", out)
+
+    def test_composer_dialect_still_catches_a_landscape_cover(self):
+        with tempfile.TemporaryDirectory() as t:
+            book = build_composer(Path(t), cover_size=LANDSCAPE)
+            code, out = run(book)
+            self.assertEqual(code, 1, out)
+            self.assertIn("front cover", out)
+
+    def test_cast_dialect_is_actually_checked(self):
+        """Check 6 read `characters`/`extras`, a dialect nothing emits, so the
+        cast-registered-and-locked check was a silent no-op on every real book."""
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = build_composer(tmp, cast=[{"id": "someone"}])
+            ents = tmp / "u" / "canon" / "entities"
+            ents.mkdir(parents=True)
+            (ents / "someone.json").write_text(
+                json.dumps({"id": "someone", "status": "unlocked"}))
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 1, out)
+            self.assertIn("someone", out)
+
+    def test_cast_dialect_catches_an_unregistered_entity(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = build_composer(tmp, cast=["ghost"])
+            (tmp / "u" / "canon" / "entities").mkdir(parents=True)
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 1, out)
+            self.assertIn("ghost", out)
+
+    def test_cast_dialect_passes_on_a_locked_entity(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = build_composer(tmp, cast=[{"id": "someone"}])
+            ents = tmp / "u" / "canon" / "entities"
+            ents.mkdir(parents=True)
+            (ents / "someone.json").write_text(
+                json.dumps({"id": "someone", "status": "locked"}))
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 0, out)
 
     def test_json_output_is_machine_readable(self):
         with tempfile.TemporaryDirectory() as t:

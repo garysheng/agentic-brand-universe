@@ -48,7 +48,7 @@ or a set of page heroes without ever declaring canon.
 | `make-a-work` | Make ONE work in a form a universe already declares — a flyer, a card, a poster, a scene, whatever forms/ holds. | yes |
 | `on-brand-image` | Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a portable folder of style references plus a read-back gate — with NO universe required. | yes |
 | `onboard` | Install Agentic Brand Universe for someone, as a conversation rather than a list of commands they have to run. |  |
-| `pave-the-path` | The retrospective sweep at the END of a chain run. |  |
+| `pave-the-path` | The retrospective sweep at the END of a chain run. | yes |
 | `render-book` | Render a story from an Agentic Brand Universe into a picture book. |  |
 | `render-readback` | After EVERY render in an Agentic Brand Universe, read the image back and crop-zoom each of the in-frame entity's invariants, returning a per-invariant PASS or DEFECT verdict. | yes |
 | `shoot-references` | SHOOT an entity's reference matrix in an Agentic Brand Universe: make the art that gives a scaffolded entity a body. | yes |
@@ -77,13 +77,14 @@ answers questions about it, and refuses renders whose references do not exist on
 | `build-docs` | regenerate the framework's own derived docs (README + docs/REFERENCE.md) |
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
-| `init` | scaffold a new universe (conforms to spec v0.17) |
+| `init` | scaffold a new universe (conforms to spec v0.18) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
 | `lock-level` | report how locked an entity is (which matrix slots are filled) |
 | `lock-shot` | lock a generated reference shot into an entity |
 | `massing` | render a setting's blueprint as a code-built 3D massing sheet from a declarative spec (deterministic, no model, no cost) |
+| `massing-scaffold` | write a STARTER massing spec for a rectangular room (shell + opposed cameras + notes stub) to edit, so authoring a blueprint does not start from a blank file |
 | `relations` | list an entity's typed relations |
 | `unarchive` | put a retired entity back in service |
 | `validate` | typecheck a universe against the spec schema |
@@ -122,6 +123,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.18 | a VARIANT may declare WHICH ERA it is legal in. |
 | v0.17 | the slot-model composer is RETIRED, having never run. |
 | v0.16 | an entity has a LIFECYCLE, so canon can be RETIRED without rewriting history. |
 | v0.15 | a setting's blueprint is a CODE-BUILT 3D MASSING RENDER. |

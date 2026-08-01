@@ -125,6 +125,52 @@ refuses a partial one, so a short sheet cannot read as "everything I rendered".
 The tell that this is being skipped: a session that generated a dozen images and whose
 transcript contains no delivery, only `Read` calls the agent made to itself.
 
+## The photographs decide the SHOOTING ORDER, and the order is load-bearing
+
+`keepSheets` / `keepPhotos` are documented above for a DECLARED FUTURE, and the section
+heading has misled people, so state it plainly: **the mechanism is temporal-direction-agnostic.**
+It serves any era the photo stack does not cover, past as readily as future. There is no
+photograph of Kenneth E. Hagin bedfast at fifteen in 1933, and the only photographs that
+exist are of him in his eighties, so on that entity BOTH un-photographed eras are in the past.
+
+The default assumption is that the default look is shot from the photo stack and every era
+chains off it. When the photographs cover a NON-default era, **shoot the era that has ground
+truth FIRST and chain the others off it.** On `kenneth-hagin` that runs fully inverted:
+`elder` from the two public photographs, the default young look chained off `elder`, and
+`bedfast` chained off the young look. Shooting the three in parallel from prose returns three
+different men who merely share a description, which is exactly the failure the golden chain
+exists to prevent. A look whose photographs ARE its ground truth declares its own
+`anchorPhoto` / `photoStack`, which outranks the base face sheets by design.
+
+## Repairing an entity whose prompts.md was never filled
+
+`chain_matrix.py` refuses to shoot while a body says `TODO(author)`, which is right. For art
+that already got made some other way that refusal is PERMANENT: nobody can add one more angle
+without re-authoring every prompt, and the prompts are sitting in each plate's `.recipe.json`.
+
+```bash
+python3 scripts/backfill_prompts.py <universe> [entity-id ...] [--dry-run] [--strip REGEX]
+```
+
+It fills a TODO body from the plate's recipe, ADOPTS a locked plate that has no section at
+all (an entity's real matrix drifts from its scaffold), and strips what the shooter re-adds so
+the next run does not double it. Three things it will not do, and each was earned:
+
+- **Never overwrite an authored body.** A human's words always win.
+- **Never invent.** A plausible reconstruction would look like provenance while being fiction,
+  which is worse than an admitted gap.
+- **Never accept a prompt that is itself a `TODO` stub.** `abu backfill-provenance` recovers a
+  recipe by reading prompts.md, so where that file was a stub it faithfully recorded the stub.
+  Writing it back would satisfy every checker and launder the gap into something that looks
+  like provenance. The two recovery tools would otherwise chase each other in a circle.
+
+It never touches a code-built blueprint: a massing render carries `"prompt": null` by design,
+because its provenance is a declarative spec plus deterministic code, which is better than a
+prompt.
+
+Applied to nation-of-fire 2026-07-31: 74 detector findings to 5, and the five that remain are
+honestly unrecoverable and say so.
+
 ## Gates honored
 - **Register-first:** every generation leads with the universe style anchor; no anchor means stop.
   The register is ALSO named positively, in words, at the head of every shot's prompt (`style_line`),

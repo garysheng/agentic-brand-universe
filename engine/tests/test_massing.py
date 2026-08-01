@@ -193,5 +193,107 @@ class TestNearPlaneClipping(unittest.TestCase):
         self.assertLess(len(massing._clip_near(cam)), 3)
 
 
+class TestAuthoring(unittest.TestCase):
+    """Authoring helpers + the scaffolder (2026-07-31).
+
+    The renderer took a FINISHED spec and nothing helped anyone write one, so
+    every setting that needed a blueprint grew the same throwaway file beside it,
+    redefining `quad`, `box`, and a `room` that is a floor plus three walls. Four
+    rooms in one run before this was promoted.
+    """
+
+    def test_room_leaves_the_near_wall_open(self):
+        """Every camera stands against the near wall looking in. Drawing that wall
+        would put an opaque quad between the camera and the whole room."""
+        solids = massing.room(4, 5, 2.5)
+        self.assertEqual(len(solids), 4)          # floor + far + left + right
+        ys = [min(p[1] for p in s["pts"]) for s in solids]
+        # no solid is a full plane at y=0 spanning the room's width and height
+        near = [s for s in solids
+                if all(p[1] == 0 for p in s["pts"]) and any(p[2] > 0 for p in s["pts"])]
+        self.assertEqual(near, [], "the near wall must not be drawn")
+        self.assertEqual(min(ys), 0)
+
+    def test_room_uses_the_declared_dimensions(self):
+        solids = massing.room(4, 5, 2.5)
+        xs = [p[0] for s in solids for p in s["pts"]]
+        zs = [p[2] for s in solids for p in s["pts"]]
+        self.assertEqual((max(xs), max(zs)), (4, 2.5))
+
+    def test_room_renders_without_further_editing(self):
+        spec = {"title": "T", "solids": massing.room(3, 3, 2.4),
+                "cameras": [{"id": "c1", "eye": [1.5, 0.3, 1.5], "target": [1.5, 3, 1.2]}]}
+        with tempfile.TemporaryDirectory() as t:
+            out = massing.render_sheet(spec, os.path.join(t, "b.png"))
+            self.assertTrue(os.path.exists(out))
+
+    def test_box_and_quad_emit_renderable_solids(self):
+        solids = massing.room(3, 3, 2.4) + [
+            massing.box([0.9, 1.5, 0], [1.9, 3.4, 0.62], massing.DARK),
+            massing.quad([[0.02, 2.2, 0.9], [0.02, 3.2, 0.9],
+                          [0.02, 3.2, 2.0], [0.02, 2.2, 2.0]], massing.GLASS)]
+        quads = massing._solids_to_quads(solids)
+        self.assertGreater(len(quads), len(solids))   # the box expands to faces
+
+    def test_scaffold_emits_two_OPPOSED_cameras_by_default(self):
+        """Handedness is a property of the CAMERA, so one camera cannot state it."""
+        spec = massing.scaffold_room("the long room", 4, 6, 2.6)
+        self.assertEqual(len(spec["cameras"]), 2)
+        a, b = spec["cameras"]
+        self.assertLess(a["eye"][1], b["eye"][1])
+        self.assertGreater(a["target"][1], b["target"][1])
+
+    def test_scaffold_leaves_the_furniture_to_the_author(self):
+        """What a room CONTAINS is authorship. A scaffolder that guessed it would
+        be guessing the story."""
+        spec = massing.scaffold_room("t", 4, 6, 2.6)
+        self.assertEqual(len(spec["solids"]), 4)
+        self.assertTrue(any("TODO(author)" in n["text"] for n in spec["notes"]))
+
+    def test_scaffold_records_the_size_in_the_subtitle(self):
+        spec = massing.scaffold_room("t", 4, 6, 2.6)
+        self.assertIn("4 x 6 x 2.6", spec["subtitle"])
+
+    def test_scaffold_output_renders(self):
+        spec = massing.scaffold_room("t", 4, 6, 2.6)
+        with tempfile.TemporaryDirectory() as t:
+            self.assertTrue(os.path.exists(massing.render_sheet(spec, os.path.join(t, "b.png"))))
+
+    def test_cli_scaffold_then_render(self):
+        eng = str(Path(__file__).resolve().parents[1])
+        with tempfile.TemporaryDirectory() as t:
+            js, png = os.path.join(t, "s.json"), os.path.join(t, "s.png")
+            r = subprocess.run([sys.executable, "-m", "agenticstory.cli", "massing-scaffold",
+                                "Sickroom", "--size", "3.6x3.6x2.4", "--out", js],
+                               cwd=eng, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            r = subprocess.run([sys.executable, "-m", "agenticstory.cli", "massing", js,
+                                "--out", png, "--no-recipe"],
+                               cwd=eng, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertTrue(os.path.exists(png))
+
+    def test_cli_scaffold_refuses_to_clobber_an_authored_spec(self):
+        """Overwriting would lose the furniture, the only part a human wrote."""
+        eng = str(Path(__file__).resolve().parents[1])
+        with tempfile.TemporaryDirectory() as t:
+            js = os.path.join(t, "s.json")
+            open(js, "w").write("{}")
+            r = subprocess.run([sys.executable, "-m", "agenticstory.cli", "massing-scaffold",
+                                "T", "--size", "3x3x2.4", "--out", js],
+                               cwd=eng, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2)
+            self.assertIn("--force", r.stdout + r.stderr)
+
+    def test_cli_scaffold_rejects_a_bad_size(self):
+        eng = str(Path(__file__).resolve().parents[1])
+        with tempfile.TemporaryDirectory() as t:
+            r = subprocess.run([sys.executable, "-m", "agenticstory.cli", "massing-scaffold",
+                                "T", "--size", "big", "--out", os.path.join(t, "s.json")],
+                               cwd=eng, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2)
+            self.assertIn("WxDxH", r.stdout + r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -206,6 +206,24 @@ def load(p: Path):
         return json.load(f)
 
 
+def load_entity(uroot: Path, eid: str) -> dict:
+    """An entity by id, REFUSING cleanly when canon has no such file.
+
+    `load()` raised a bare FileNotFoundError, which is a traceback rather than a
+    refusal: it names a tempdir path instead of the spread and the cast id that
+    are actually wrong, and in a batch render it escapes the per-spread handler
+    and takes down every remaining spread with it. An id the universe has never
+    heard of is precisely what the pre-spend gate exists to name.
+    """
+    p = uroot / "canon" / "entities" / f"{eid}.json"
+    if not p.exists():
+        raise Refuse(
+            f"'{eid}' is cast but is not registered in canon (no {p.name}). "
+            f"Add it with abu:add-character / add-setting / add-prop / add-motif / "
+            f"add-visual-metaphor, or fix the id.")
+    return load(p)
+
+
 def deslug(inv: str) -> str:
     # invariants are kebab slugs (they double as render-readback keys); render
     # them as plain words in the prompt while keeping the slug for QA.
@@ -432,6 +450,125 @@ def _photo_refs(ent: dict, uroot=None) -> list[str]:
     limit = rp.get("photoLimit", PHOTO_LIMIT_DEFAULT)
     if isinstance(limit, int) and limit >= 0:
         out = out[:limit]
+    return out
+
+
+# ── VARIANT VALIDITY WINDOWS (SPEC v0.18) ────────────────────────────────────
+#
+# A variant is a body a thing wears for part of its life: a character's altLook,
+# a setting's era plate. Until now NOTHING gated WHICH variant a spread could
+# select, so on a book spanning three ages of one man there was no reason a 1933
+# beat could not pick the `elder` look, and no reason a 1990 beat could not
+# silently fall through to the default young face. Both are silent: the render
+# succeeds, it is simply of the wrong person, and it costs a full spread to find
+# out.
+#
+# So a variant may DECLARE the window it is legal in, and a spread may declare
+# WHEN it happens. The gate then runs pre-spend, in the assembler, with the rest
+# of the refusals.
+#
+#   entity.structured.validFor                  the DEFAULT look's window
+#   entity.structured.altLooks.<key>.validFor   an alt look's window
+#   entity.contract.plates.<plate>.validFor     a setting plate's era window
+#   spread.when                                 a number: a year, or a beat index
+#
+# `validFor` is `{"from": <n>, "to": <n>}` with either bound optional, so an
+# open-ended era ("from 1974 onward") is expressible.
+#
+# DELIBERATELY OPT-IN AT BOTH ENDS. A spread with no `when`, or an entity whose
+# variants declare no window, is unconstrained and compiles exactly as before, so
+# no universe has to migrate and nothing already shipped changes shape. The gate
+# only fires when someone has stated BOTH facts and they contradict each other.
+#
+# Earned 2026-07-31 on the-power-of-obeying (69 spreads, 1917 to 2003, three eras
+# of one man plus one setting that must be the SAME GROUND in two eras). The look
+# was named by hand on all 71 spreads because nothing could check it.
+
+
+def _window(vf):
+    """`{"from": a, "to": b}` as a (lo, hi) pair, either bound possibly None."""
+    if not isinstance(vf, dict):
+        return None
+    lo, hi = vf.get("from"), vf.get("to")
+    if lo is None and hi is None:
+        return None
+    for b in (lo, hi):
+        if b is not None and not isinstance(b, (int, float)):
+            raise Refuse(f"validFor bounds must be numbers, got {b!r}")
+    if lo is not None and hi is not None and lo > hi:
+        raise Refuse(f"validFor is inverted: from {lo} is after to {hi}")
+    return (lo, hi)
+
+
+def _covers(vf, when) -> bool:
+    w = _window(vf)
+    if w is None:
+        return True          # no declared window: legal everywhere
+    lo, hi = w
+    return (lo is None or when >= lo) and (hi is None or when <= hi)
+
+
+def _describe(vf) -> str:
+    w = _window(vf)
+    if w is None:
+        return "any time"
+    lo, hi = w
+    if lo is not None and hi is not None:
+        return f"{lo} to {hi}"
+    return f"from {lo} onward" if lo is not None else f"up to {hi}"
+
+
+def gate_variant(eid, kind_word, selected, variants, when, spread_id):
+    """Refuse a variant selected outside its declared window, NAMING the legal one.
+
+    `variants` maps a key (None for the default look) to its declaring dict.
+    Fails closed and pre-spend: a wrong era costs a whole spread to discover by
+    looking at it, and the operator usually does not look, because the render is
+    beautiful and internally consistent and simply of somebody else.
+    """
+    if when is None:
+        return
+    declared = {k: (v or {}).get("validFor") for k, v in variants.items()}
+    if not any(_window(vf) for vf in declared.values()):
+        return                                   # nothing declares a window
+    if _covers(declared.get(selected), when):
+        return
+    legal = [k for k, vf in declared.items() if _covers(vf, when)]
+    names = ", ".join(
+        ("the default look" if k is None else repr(k)) + f" ({_describe(declared[k])})"
+        for k in legal) or "NONE"
+    picked = "the default look" if selected is None else repr(selected)
+    raise Refuse(
+        f"WRONG ERA ({spread_id}): {eid} selects {picked}, valid "
+        f"{_describe(declared.get(selected))}, but the spread is set at when={when}. "
+        f"Legal here: {names}. Change the {kind_word}, correct the spread's `when`, "
+        f"or widen the variant's validFor in canon.")
+
+
+def character_variants(ent: dict) -> dict:
+    st = ent.get("structured") or {}
+    out = {None: {"validFor": st.get("validFor")}}
+    for k, v in (st.get("altLooks") or {}).items():
+        out[k] = v or {}
+    return out
+
+
+def setting_variants(ent: dict) -> dict:
+    """A setting's era axis is its PLATES, which already carry a per-plate config
+    map (`contract.plates`), so an era window needs no new schema shape.
+
+    This is why a setting does not get its own `eras[]`: two eras of one place are
+    ONE entity on ONE massing blueprint (splitting them destroys the only claim
+    such a setting exists to make, that it is the same ground), and the plates are
+    already the per-era artifacts.
+    """
+    con = ent.get("contract") or (ent.get("structured") or {}).get("contract") or {}
+    plates = con.get("plates") or {}
+    out = {k: (v or {}) for k, v in plates.items()}
+    for p in con.get("emptyPlates") or []:
+        key = Path(str(p)).stem if isinstance(p, str) else None
+        if key and key not in out:
+            out[key] = {}
     return out
 
 
@@ -731,7 +868,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     if not eff.get("allowArchived"):
         retired = []
         for c in entries:
-            ent0 = load(uroot / "canon" / "entities" / f"{c['id']}.json")
+            ent0 = load_entity(uroot, c["id"])
             if ent0.get("lifecycle") == "archived":
                 a = ent0.get("archived") or {}
                 note = f"'{c['id']}' is ARCHIVED"
@@ -750,10 +887,25 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                   "deliberately re-rendering a book that shipped before the archive."
             )
 
+    # WHEN this spread happens: a year, or a beat index. Whatever scale the
+    # universe uses, the gate only ever compares numbers.
+    when = sp.get("when")
+    if when is not None and not isinstance(when, (int, float)):
+        raise Refuse(f"{spread_id}: `when` must be a number (a year or a beat "
+                     f"index), got {when!r}")
+
     for c in entries:
-        ent = load(uroot / "canon" / "entities" / f"{c['id']}.json")
+        ent = load_entity(uroot, c["id"])
         kind = ent.get("kind")
         _selector_bake_guard(c, ent, spread_id)
+        # PRE-SPEND ERA GATE. Runs before any ref is resolved, so a wrong-era
+        # selection costs nothing instead of costing a whole spread.
+        if kind == "character":
+            gate_variant(c["id"], "look", c.get("look"),
+                         character_variants(ent), when, spread_id)
+        elif kind in ("setting", "visual-metaphor") and c.get("plate"):
+            gate_variant(c["id"], "plate", c.get("plate"),
+                         setting_variants(ent), when, spread_id)
         # Scale is collected for EVERY kind, not only characters: a recurring PROP
         # drifting size across a book is the commonest form of this defect.
         entity_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}
