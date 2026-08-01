@@ -240,6 +240,48 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
 
     # 6. optional: every cast entity resolves in canon and is locked
     if universe:
+        # STALE CAPTIONS ARE A DEFECT, AND AN INVISIBLE ONE.
+        #
+        # A render-spec's `_caption` is copied from the story's beat text when the
+        # spec is scaffolded, and NOTHING re-syncs it afterwards. Edit a beat later
+        # and the art follows the new text while the caption keeps the old, so the
+        # book ships a picture of one thing under the words for another.
+        #
+        # Earned 2026-08-01 on will-there-be-ice-cream: beats 1 and 2 were rewritten
+        # from an ice cream counter to a park bench AFTER the spec was scaffolded,
+        # and the manifest generator, which correctly reads `_caption` so captions
+        # are never hand-typed, faithfully emitted "a small creamery on a warm
+        # evening" to sit under a painting of a park bench. It was caught by hand.
+        # Nothing in the chain would have caught it.
+        story_id = spec.get("story")
+        sp_dir = Path(universe) / "stories"
+        story_path = sp_dir / f"{story_id}.json" if story_id else None
+        if story_path and story_path.exists():
+            story = _load_json(story_path) or {}
+            beats = {b.get("n"): b.get("text") for b in story.get("beats", []) or []}
+            by_id = {s.get("id"): s for s in spec.get("spreads", []) or []}
+            stale = []
+            for n, text in beats.items():
+                if n is None:
+                    continue
+                sp = by_id.get(f"spread-{n:02d}") or by_id.get(f"spread-{n}")
+                if sp is None:
+                    continue
+                cap = sp.get("_caption")
+                if cap is not None and cap != text:
+                    stale.append(n)
+            if stale:
+                shown = ", ".join(str(n) for n in stale[:8])
+                more = f" (+{len(stale) - 8} more)" if len(stale) > 8 else ""
+                row("captions", str(story_path), False,
+                    f"{len(stale)} caption(s) disagree with the blessed manuscript: "
+                    f"beat(s) {shown}{more}. The art followed the new beat text and the "
+                    f"caption kept the old, so the book would ship the wrong words under "
+                    f"the right picture. Re-sync _caption from the story before delivering.")
+            else:
+                row("captions", str(story_path), True,
+                    f"all {len(beats)} match the blessed manuscript verbatim")
+
         ents = Path(universe) / "canon" / "entities"
         cast: set[str] = set()
 

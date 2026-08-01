@@ -60,7 +60,7 @@ retired and why, and [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the layer
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 33 | `skills/*/SKILL.md` |
 | CLI verbs | 22 | `abu --help` |
-| Tests | 769 | across 37 files; `./run-tests.sh` |
+| Tests | 772 | across 38 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,

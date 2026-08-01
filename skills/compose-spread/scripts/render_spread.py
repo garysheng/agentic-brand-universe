@@ -128,6 +128,16 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
     `echo` collects output so a parallel batch prints each spread's lines
     together instead of interleaving them into noise.
     """
+    # `--out` IS A FILE PATH, NEVER A DIRECTORY. Handed a directory, `out.exists()`
+    # is true for every spread, so `--skip-existing` reported "exists, skip" 72 times
+    # and the batch rendered NOTHING while exiting 0. Earned 2026-08-01 on
+    # will-there-be-ice-cream. Silent, total, and indistinguishable from success.
+    if out.is_dir():
+        echo(f"REFUSE {sid}: --out is a FILE path, not a directory ({out}). "
+             f"Pass --out {out}/{sid}.png. Handed a directory, --skip-existing sees it "
+             f"already exists and skips every spread while still exiting 0.", err=True)
+        return 2
+
     if args.skip_existing and out.exists():
         echo(f"{sid}: exists, skip")
         return 0
