@@ -27,6 +27,29 @@
           "provider": "gpt-image-2",
           "observedBy": "independent judges, 4 of 4 plates",
           "observedOn": "2026-07-23"
+        },
+        {
+          "id": "swimwear-on-a-woman-blocks-at-input-moderation",
+          "seen": "Requests depicting a woman in swimwear are hard-blocked at INPUT moderation, before generation: BadRequestError 400, moderation_blocked, safety_violations=[sexual]. The trigger is lexical and broad. Even a modest one-piece worn UNDER a cover-up trips it: an embroidered kaftan and a crochet maxi both blocked purely because the prompt mentioned a swimsuit under-layer, and both generated cleanly once the under-layer was removed and the garment was described as a dress on its own terms.",
+          "counter": "Describe resort and beach garments as complete garments in their own right (a linen maxi, a wrap dress, a crochet cover-up) without naming an under-layer.",
+          "check": "hard-fail",
+          "ethics": "Do NOT reword a prompt to slip past input moderation. If a shot genuinely requires swimwear, this provider cannot produce it, and the correct move is to source the image outside the model and file it with provenance. Filing a human-supplied, non-explicit image is fine; engineering around a safety filter is not. This distinction is part of the quirk and travels with it.",
+          "observedBy": "gary",
+          "observedOn": "2026-07-08",
+          "recoveredFrom": "sheng-family-brand-os/SAVE-LOG.md, before that repo was deleted"
+        }
+      ]
+    },
+    "midjourney": {
+      "quirks": [
+        {
+          "id": "outputs-are-two-panel-diptychs",
+          "seen": "Outputs arrive as 2-panel diptychs at roughly 1232x928 rather than a single frame. Any consumer that center-crops to a viewport (a bg-cover swipe deck, a share card) slices the diptych down the seam and shows half of each panel.",
+          "counter": "Crop to the single strongest panel before handing the image to any cover-cropping surface. Keep the full diptych as the reference plate, since it carries both angles.",
+          "check": "judged",
+          "observedBy": "gary",
+          "observedOn": "2026-07-08",
+          "recoveredFrom": "sheng-family-brand-os/SAVE-LOG.md, before that repo was deleted"
         }
       ]
     }

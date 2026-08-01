@@ -147,7 +147,8 @@ something.
 <!-- BEGIN GENERATED: providers -->
 | Provider | Recorded quirks |
 |---|---|
-| `gpt-image-2` | 3 |
+| `gpt-image-2` | 4 |
+| `midjourney` | 1 |
 <!-- END GENERATED: providers -->
 
 ## Spec changelog
