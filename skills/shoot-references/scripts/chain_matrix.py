@@ -161,19 +161,52 @@ def _header_block(text: str, name: str) -> list[str]:
     already fixed twice in this file: the file states a constraint, the author believes
     it is in force, and nothing carries it to the model.
 
-    The block ends at the next `**bold header:**`, the next `##` shot heading, or EOF.
-    Items separate on commas OR newlines, and a leading list marker is stripped, so all
-    three shapes an author might reasonably write are read identically.
+    THE SECOND BUG, introduced by the first fix and caught one render later. Ending the
+    block only at the next header or EOF means a BLANK LINE does not end it, so ordinary
+    prose written underneath the list was parsed as negatives: one run sent 15 junk items
+    to the model, including raw markdown fragments like the sentence describing this very
+    parser. Making multi-line headers safe made trailing prose unsafe, and the fix for a
+    silent-drop must not become a silent-absorb.
+
+    So the block now ends at whichever comes first: the next `**bold header:**`, ANY `#`
+    heading, a `>` blockquote, or a blank line that is not followed by another list item.
+    That last clause is what lets an author write the list, leave a gap, and then explain
+    themselves in prose without the explanation becoming canon.
+
+    Items separate on commas OR newlines, and a leading list marker is stripped, so every
+    shape an author might reasonably write is read identically. Anything that still looks
+    like markdown rather than a constraint is dropped with a warning rather than sent: a
+    negative the author never wrote is as wrong as one they wrote and never got.
     """
-    m = re.search(rf"^\*\*{re.escape(name)}[^:]*:\*\*[ \t]*(.*?)(?=^\s*\*\*[^*]+:\*\*|^\s*##\s|\Z)",
+    m = re.search(rf"^\*\*{re.escape(name)}[^:]*:\*\*[ \t]*(.*?)(?=^\s*\*\*[^*]+:\*\*|^\s*#|^\s*>|\Z)",
                   text, flags=re.M | re.S)
     if not m:
         return []
+
+    # Stop at the first blank line whose next non-empty line is not another list item.
+    lines, kept = m.group(1).split("\n"), []
+    for i, line in enumerate(lines):
+        if line.strip():
+            kept.append(line)
+            continue
+        nxt = next((l for l in lines[i + 1:] if l.strip()), "")
+        if not re.match(r"^\s*[-*•]\s+", nxt):
+            break
+        kept.append(line)
+
     items = []
-    for chunk in re.split(r"[,\n]", m.group(1)):
+    for chunk in re.split(r"[,\n]", "\n".join(kept)):
         chunk = re.sub(r"^\s*[-*•]\s*", "", chunk).strip()
-        if chunk:
-            items.append(chunk)
+        if not chunk:
+            continue
+        # A constraint is short and prose-free. Anything carrying markdown syntax or
+        # running long is a paragraph that leaked in, not something an author meant the
+        # model to obey. Warn rather than swallow, so the author can see and fix it.
+        if len(chunk) > 120 or re.search(r"(\*\*|`|^>|\]\(|^#)", chunk):
+            print(f"  WARNING: ignoring a suspicious '{name}' item, which reads like prose "
+                  f"rather than a constraint: {chunk[:70]!r}", file=sys.stderr)
+            continue
+        items.append(chunk)
     return items
 
 

@@ -521,6 +521,41 @@ Body text.
         self.assertEqual(self._mod()._header_block(self.MD, "Refs"),
                          ["north-star-cross", "selah"])
 
+    def test_trailing_prose_is_not_absorbed_as_negatives(self):
+        """The SECOND bug: making multi-line safe made trailing prose unsafe.
+
+        Ending the block only at the next header or EOF meant a blank line did not end
+        it, so ordinary prose written under the list parsed as negatives. One run sent 15
+        junk items to the model including raw markdown. A fix for a silent-drop must not
+        become a silent-absorb.
+        """
+        md = (
+            "**Negatives (every shot):** a crucifix, a Latin cross,\n"
+            "- stubble\n"
+            "- a thick rope chain\n"
+            "\n"
+            "> NOTE: a blockquote explaining the file must never become a negative.\n"
+            "\n"
+            "Trailing prose that explains the file and **must never** be a negative.\n"
+            "\n"
+            "## face-neutral\nbody\n"
+        )
+        got = self._mod()._header_block(md, "Negatives")
+        self.assertEqual(got, ["a crucifix", "a Latin cross", "stubble",
+                               "a thick rope chain"])
+
+    def test_a_blank_line_between_list_items_does_not_end_the_block(self):
+        """A gap inside the list is formatting, not a terminator."""
+        md = "**Negatives (every shot):** a\n- b\n\n- c\n\nprose here.\n\n## x\nbody\n"
+        self.assertEqual(self._mod()._header_block(md, "Negatives"), ["a", "b", "c"])
+
+    def test_markdown_fragments_are_dropped_not_sent(self):
+        """A negative the author never wrote is as wrong as one they never got."""
+        md = ("**Negatives (every shot):** a crucifix\n"
+              "- this one carries `backticks` and **bold** and is really a sentence\n"
+              "\n## x\nbody\n")
+        self.assertEqual(self._mod()._header_block(md, "Negatives"), ["a crucifix"])
+
     def test_single_line_still_works(self):
         md = "**Negatives (every shot):** a, b, c\n\n## x\nbody\n"
         self.assertEqual(self._mod()._header_block(md, "Negatives"), ["a", "b", "c"])
