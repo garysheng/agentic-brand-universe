@@ -73,12 +73,24 @@ run it, so a change is not live until he does.
    text feels like paperwork, and the paperwork is the only thing a user of the
    framework can actually read.
 
-   **`GuardsDocumentedTest` enforces exactly one instance of this** (every
-   `*_GUARD` constant must be named in 4.6). Treat that as the floor, not the
-   ceiling — nothing yet forces you to document a new field or refusal, so that
-   part is on you. If you add an observable thing in a category the tests do not
-   cover, consider extending the test in the same commit rather than trusting the
-   next author to remember.
+   **PREFER GENERATING THE FACTUAL HALF OVER ASSERTING IT.** `docsfile.py` already
+   projects derived facts into `README.md`, `docs/REFERENCE.md` and now `SPEC.md`
+   between `<!-- BEGIN GENERATED: name -->` fences, and `build-docs --check` runs
+   inside `run-tests.sh`, so a stale block FAILS THE SUITE. SPEC 4.6's guard table
+   is generated this way, read straight off the compiler's `*_GUARD` constants and
+   their predicates.
+
+   So when your change adds something ENUMERABLE (a guard, a verb, a provider, a
+   form, a field), the first question is whether a block should project it rather
+   than whether you should remember to type it. Gary, 2026-08-01, on being told
+   the spec rule was prose: *"isn't the spec partially generated anyway?"* It is,
+   and a generated list cannot drift while a remembered one always does.
+
+   What stays hand-written is the JUDGEMENT: what the thing means, the defect that
+   earned it, when to reach past it. Generate the list, write the reasoning.
+   `GuardsDocumentedTest` covers the reasoning half for guards (each must also be
+   described in prose, not merely appear in the table); extend that pattern rather
+   than trusting the next author to remember.
    - *A new scaffolder/template is missing* (e.g. `create-style-pack`) → it is a skill; author it so it emits the same shape the consumers expect (read `on-brand-image`'s `pack.json` fields; read `shoot-references`'s `recipe.json`).
 3. **Register the skill** in the plugin manifest `description` catalog (`.claude-plugin/plugin.json`) if you added one, so it is discoverable.
 

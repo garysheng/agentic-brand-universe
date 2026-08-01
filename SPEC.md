@@ -533,6 +533,18 @@ removes that step.
   stays stochastic. A compiled prompt is necessary, not sufficient — the read-back gate (§3.5) is
   still mandatory, and a drift-prone shape is guaranteed by *passing its reference image*, never by
   wording it harder.
+  <!-- BEGIN GENERATED: guards -->
+| Guard                | Fires        | Predicate                |
+|----------------------|--------------|--------------------------|
+| `ADDRESSING_GUARD`   | conditional  | `_has_audience()`        |
+| `ANCHOR_STYLE_GUARD` | every render | unconditional            |
+| `BEDCLOTHES_GUARD`   | conditional  | `_in_bed()`              |
+| `BED_LENGTH_GUARD`   | conditional  | `_person_lying_on_bed()` |
+| `CROWD_MEMBER_GUARD` | conditional  | `_cast_inside_crowd()`   |
+| `MOTION_GUARD`       | conditional  | `_has_motion()`          |
+| `SINGLE_IMAGE_GUARD` | every render | unconditional            |
+<!-- END GENERATED: guards -->
+
 - **Normative guards (v0.8, extended v0.19).** Rules the compiler emits or enforces on every job,
   because each is a property of *how the compiler works*, not of what a given book contains. A
   universe that writes these into each book's style text will drop them the one time it forgets.
