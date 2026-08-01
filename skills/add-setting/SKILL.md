@@ -75,6 +75,36 @@ So every setting gets ONE extra plate whose only job is size:
 
 `lint-universe` warns `SETTING-NO-SCALE-PLATE` / `SETTING-NO-SCALE-DESCRIPTOR`. Both are advisory: a setting with no scale plate still locks and still renders.
 
+## The blocking plate: the seating chart as a PICTURE (SPEC v0.19)
+
+`blocking` is prose and `structured.seating` is one sentence. A model paraphrases both
+and then decides the geometry itself, so a setting where the same people talk again and
+again still drifts: they swap sides, and they end up seated where the furniture cannot
+actually hold what the scene needs.
+
+Earned on `the-creamery-counter` (Will There Be Ice Cream, 2026-08-01). Two people, one
+counter, twenty-six spreads. Six of them silently swapped viewer-left and viewer-right,
+and the stools rendered directly in front of a glass display case, so neither person had
+any counter surface to set a bowl down on, in a book whose subject is eating.
+
+So a setting that recurs with people in it declares `contract.blockingPlate`: the room,
+in register, with **featureless artist's mannequins in the legal seat positions at correct
+relative size**, and the objects the scene needs sitting where they would actually sit.
+
+- **No faces, no hair, no clothing.** It fixes placement, never identity, and a face here
+  would leak into every spread it rides along on.
+- **Relative size is half the point.** An adult lay figure beside a child lay figure states
+  the height difference once, instead of each spread guessing it.
+- **Put the props in it.** The bowls in front of each seat is the detail that catches
+  "these stools face a glass case".
+- **It rides along on EVERY camera of that setting**, wide or close, because placement is
+  continuity rather than composition. The compiler appends it automatically.
+
+It is ADVISORY: absent the field nothing changes, and no already-locked setting un-locks.
+Lock it with `abu lock-shot <u> <id> blocking reference/<id>/blocking.png --recipe ...`.
+
+Skip it for a setting nobody sits in, or one that appears once.
+
 ## Gates honored
 - **Reuse-first** (step 1): never invent a second version of a location an existing entity already covers.
 - **Unlocked-until-plated**: a `null` contract field (or a missing descriptor) is a hard refusal from `resolve_setting`/`assert_story`. Never hand-edit `status` to `"locked"` without the real plates behind it; that refusal is the load-bearing feature, not a bug to route around.

@@ -131,6 +131,13 @@ def scaffold_entity(
             # same room with anonymous scale figures; scale states the size in human terms and
             # is passed in every prompt like dressing (prose survives a re-render, a plate does not).
             "scalePlate": None,
+            # SPEC v0.19: blockingPlate is the SEATING CHART AS A PICTURE. `blocking` is
+            # prose the model may paraphrase and `structured.seating` is a sentence, but
+            # neither shows the model a geometry it can copy. This plate does: the room
+            # with featureless mannequins in the LEGAL seat positions at correct relative
+            # size. Advisory, so no existing setting un-locks; passed automatically by
+            # compose-spread whenever the setting is cast.
+            "blockingPlate": None,
             "map": "", "blocking": "", "dressing": "", "scale": "",
         }
         ent["prose"] = {"rules": ""}
@@ -236,8 +243,9 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # encounter-school, 2026-07-25), and sheets-only was the original bug.
         st = entity.setdefault("structured", {})
         st.setdefault("sheets", {})[shot] = path
-        slot = {"scale-plate": "scalePlate"}.get(shot, shot)
-        if slot in ("turnaround", "blueprint", "scalePlate"):
+        slot = {"scale-plate": "scalePlate", "blocking-plate": "blockingPlate",
+                "blocking": "blockingPlate"}.get(shot, shot)
+        if slot in ("turnaround", "blueprint", "scalePlate", "blockingPlate"):
             c[slot] = path
         else:
             plates = c.setdefault("emptyPlates", [])

@@ -854,6 +854,22 @@ def resolve_setting(ent: dict, plate: str | None):
     refs = resolve_plate(ent, plate)
     con = ent.get("contract", {})
 
+    # THE SEATING CHART AS A PICTURE (SPEC v0.19). `blocking` is prose and
+    # `structured.seating` is one sentence; a model paraphrases both and then decides
+    # the geometry itself. Earned on the-creamery-counter (will-there-be-ice-cream,
+    # 2026-08-01): a two-hander whose two people swapped viewer-left and viewer-right
+    # across six of twenty-six spreads, and whose stools rendered in front of a glass
+    # display case where neither person could set a bowl down. Both are placement
+    # facts, and neither prose field could show them.
+    #
+    # contract.blockingPlate is the room with featureless mannequins in the LEGAL seat
+    # positions at correct relative size. It rides along on every render of the setting,
+    # regardless of which camera plate is selected, because placement is continuity
+    # rather than composition. Advisory: absent the field, behaviour is unchanged.
+    bp = con.get("blockingPlate")
+    if bp and bp not in refs:
+        refs = list(refs) + [bp]
+
     # A CLOSE-UP DOES NOT CONTAIN THE SAME ELEMENTS AS A WIDE SHOT.
     #
     # This used to inject the WHOLE contract on every render regardless of camera.
@@ -960,7 +976,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             out = f"{out} {rule}" if out else rule
         return out
 
-    # ARCHIVED ENTITIES ARE REFUSED AT THE POINT OF NEW CASTING (SPEC v0.16).
+    # ARCHIVED ENTITIES ARE REFUSED AT THE POINT OF NEW CASTING (SPEC v0.19).
     # Not at the pre-render gate: archiving must never retroactively break a book that
     # already shipped. So an old book re-renders only after someone consciously sets
     # allowArchived on the spread, which leaves an auditable trace of the decision,

@@ -315,7 +315,7 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(
             set(st["contract"].keys()),
             {"turnaround", "emptyPlates", "blueprint", "scalePlate",
-             "map", "blocking", "dressing", "scale"},
+             "blockingPlate", "map", "blocking", "dressing", "scale"},
         )
         self.assertIn("scalePlate", SETTING_CONTRACT_FIELDS)
         self.assertIn("scale", SETTING_CONTRACT_FIELDS)

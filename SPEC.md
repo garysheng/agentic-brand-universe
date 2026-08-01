@@ -1,6 +1,6 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.18 — 2026-07-31.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.19 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
@@ -46,7 +46,7 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 > because nothing in this framework runs on it. No universe pins v0.17 yet, and none needs to
 > migrate: this bump only removes a schema no universe ever used.
 >
-> **v0.16 changelog — an entity has a LIFECYCLE, so canon can be RETIRED without rewriting history.**
+> **v0.19 changelog — an entity has a LIFECYCLE, so canon can be RETIRED without rewriting history.**
 > Additive and backward-compatible: an entity with no `lifecycle` is `active`, so no universe has to
 > migrate. A universe accumulates canon faster than it retires it, and until now the only ways to stop
 > casting something were deletion (which breaks every book that already shipped and falsifies its
@@ -63,6 +63,20 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 > deliberate re-render of a pre-archive book opts out per spread with `allowArchived`, which leaves an
 > auditable trace of that decision. An archive with no recorded `reason` fails validation, because an
 > archive nobody can audit is worse than none. CLI: `archive`, `unarchive`, `archived`.
+
+> **v0.19 changelog — a setting may declare a BLOCKING PLATE.** Additive and advisory: no
+> existing universe migrates, and a setting without one validates and renders exactly as
+> before. §12 adds `contract.blockingPlate` (file) to the setting contract: the room with
+> featureless artist's mannequins in the LEGAL seat positions at correct relative size,
+> plus the props the scene needs. `blocking` states the camera law in prose and
+> `structured.seating` states handedness in one sentence; neither shows the model a
+> geometry it can copy, so placement was re-decided every render. `compose-spread` appends
+> the plate to the refs on EVERY camera of that setting, wide or close, because placement
+> is continuity rather than composition. Deliberately NOT added to the required contract,
+> so no already-locked setting drops back to unlocked. Earned on the-creamery-counter
+> (nation-of-fire, will-there-be-ice-cream, 2026-08-01): two people at one counter across
+> twenty-six spreads swapped viewer-left and viewer-right six times, and their stools
+> rendered in front of a glass display case where neither could set a bowl down.
 
 > **v0.15 changelog — a setting's blueprint is a CODE-BUILT 3D MASSING RENDER.** Additive and
 > advisory: no existing universe has to migrate, and a hand-drawn or prompted blueprint still
