@@ -1,6 +1,6 @@
 ---
 name: update-book
-description: Edit or extend an existing picture book in an Agentic Brand Universe: add, insert, revise, or remove a spread, RECAST one canon entity as another across a whole story (recast_story.py), renumber, and regenerate only the touched art + narration. Honors the words-before-art gate (voice-gate on any changed text) and re-resolves canon (canon-resolve) + reads back (render-readback) on every regenerated spread. Generic and universe-parameterized.
+description: Edit or extend an existing picture book in an Agentic Brand Universe: add, insert, revise, or remove a spread (insert_spread.py), RECAST one canon entity as another across a whole story (recast_story.py), renumber, and regenerate only the touched art + narration. Honors the words-before-art gate (voice-gate on any changed text) and re-resolves canon (canon-resolve) + reads back (render-readback) on every regenerated spread. Generic and universe-parameterized.
 ---
 
 # Update Book
@@ -60,6 +60,40 @@ For changing a book that already exists: words blessed, art on disk, usually alr
    source: a run that publishes nothing should prune nothing.
 
 8. **Verify + deliver.** Confirm the beat/spread numbering is contiguous everywhere it's tracked, re-stamp `identity.mark`/`identity.closingOrnament` on the closing plate if the edit touched it, and hand off to whatever delivery step the target renderer/platform uses. If the book ships to a shared platform, verify sibling properties on that platform are unaffected by the edit before calling it done.
+
+## Inserting or removing a beat mid-book: `insert_spread.py`
+
+**Never hand-roll the renumber.** An insert is a THREE-artifact edit with a silent
+ordering trap in it: the story's `beats[]` and their `n`, the render-spec's
+`spreads[]` and their `id`, and the rendered `spread-NN.png` plus each
+`.png.recipe.json` beside it. Renaming the art ASCENDING overwrites, because
+`spread-05 -> spread-06` lands on a `spread-06` that has not moved yet. You end up
+with the right file count and the wrong pages, and nothing errors.
+
+```bash
+python3 skills/update-book/scripts/insert_spread.py <universe> <story> \
+  --book <book-folder> --at 4 \
+  --text "the new caption, verbatim" \
+  --characters jerry-man,kenzie --location some-setting \
+  --provenance "where this came from"        # dry run
+# ... then --apply
+```
+
+- **Dry run by default.** It prints how many art files shift and what it will delete.
+- **It moves the art DESCENDING**, which is the whole point.
+- **Endcaps never shift.** `cover.png` and `closing-plate.png` are not indexed by beat.
+- **It refuses when the story and the spec are already out of sync**, rather than
+  shifting a mismatch into a worse mismatch.
+- **It reports beat-number citations it cannot fix.** `aimDiscipline`, `spineNote` and
+  provenance lines that say "beat 12" are invalidated by a shift, and no tool can know
+  whether that sentence meant the old 12 or the new one. Same discipline as
+  `recast_story.py`: swap what you can prove, report what you cannot.
+- **It does NOT render.** The new spread lands with an empty `scene`, which the
+  compiler refuses, so the hole cannot be shipped by accident. Author it, then render
+  ONLY that spread. Everything else on disk is still valid: the renumber moved the
+  art, it did not invalidate it.
+
+`--remove --at N` deletes the beat, its spec entry and its art, and closes the gap.
 
 ## Recasting: swapping one canon entity for another
 
