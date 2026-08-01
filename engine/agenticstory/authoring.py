@@ -265,8 +265,26 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         sheets[shot] = path
         m = matrix_for(kind)
         if m:
+            # NEVER LET A LOCK LOWER AN ENTITY'S OWN GATE (v0.24).
+            #
+            # This recomputed the gate from the KIND minimum alone, so any entity that
+            # legitimately required MORE than its kind demanded was silently demoted on
+            # its next lock. Proven on christofuturism's `north-star-cross`, a motif whose
+            # required set was ["hero","detail","in-context"] because that entity's own
+            # authority note records that one view of the mark reads as an equilateral
+            # star and only three views prove it is a cross. Locking any new material
+            # plate rewrote it to ["hero"], and the field that exists to rescue exactly
+            # this case, `requiredForRenderOnLock`, REFUSED `in-context` because it is not
+            # a matrix shot name. So the escape hatch was closed against the case it was
+            # built for, and the entity guarding a filed trademark would have quietly
+            # stopped guarding it.
+            #
+            # A lock is an act of ADDING art. It may raise a gate and must never lower
+            # one, so anything the entity already required and still resolves is kept.
             required = required_set_for(entity, kind)
-            st["requiredForRender"] = [k for k in required if sheets.get(k)]
+            prior = list(st.get("requiredForRender") or [])
+            keys = list(dict.fromkeys(required + prior))
+            st["requiredForRender"] = [k for k in keys if sheets.get(k)]
     if recipe is not None:
         abspath = str(pathlib.Path(root) / path) if root and not pathlib.Path(path).is_absolute() else path
         recipe_sidecar_path(abspath).write_text(
@@ -344,10 +362,19 @@ def required_set_for(entity: dict, kind: str | None = None) -> list[str]:
     # the completeness list; a legitimate extra plate (character `face-neutral-color`)
     # must be nameable here without being forced into completeness, or the framework
     # has no way to express "this entity needs one more plate than its peers".
-    known = known_shots_for(kind)
+    # Validate against the kind's known shots PLUS the keys this entity actually
+    # declares (v0.24). The typo check is the point of this validation and it stays, but
+    # keying it on the kind matrix alone closed the hatch against its own use case: a
+    # motif requiring an `in-context` plate it has genuinely locked was refused, because
+    # `in-context` is not a motif matrix shot. A key with real art behind it is not a
+    # typo, and refusing it forced hand-editing the entity JSON, which is precisely the
+    # hand-rolling this module exists to remove.
+    known = list(dict.fromkeys(
+        known_shots_for(kind) + list(((entity.get("structured") or {}).get("sheets") or {}))))
     unknown = [s for s in override if known and s not in known]
     if unknown:
         raise ValueError(
-            f"{entity.get('id')}: requiredForRenderOnLock names shot(s) not known for "
-            f"kind {kind}: {unknown}. Known: {known}")
+            f"{entity.get('id')}: requiredForRenderOnLock names shot(s) that are neither "
+            f"known for kind {kind} nor declared in this entity's sheets: {unknown}. "
+            f"Known: {known}")
     return list(dict.fromkeys(list(override) + base))  # override first, kind minimum always kept

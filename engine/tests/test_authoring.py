@@ -132,6 +132,34 @@ class TestLockShotMatrixedKinds(unittest.TestCase):
         self.assertEqual(sorted(e["structured"]["requiredForRender"]),
                          ["face-neutral", "forward-fullbody"])
 
+    def test_a_lock_never_lowers_an_entitys_own_gate(self):
+        """A lock ADDS art. It may raise a gate and must never lower one.
+
+        This recomputed requiredForRender from the KIND minimum alone, so an entity
+        that legitimately required MORE than its kind demanded was silently demoted on
+        its next lock. Proven on christofuturism's north-star-cross, a motif requiring
+        ["hero","detail","in-context"] because one view of the mark reads as an
+        equilateral star and only three views prove it is a cross. Locking a new
+        material plate rewrote it to ["hero"], so the entity guarding a filed trademark
+        would have quietly stopped guarding it.
+        """
+        e = {"id": "north-star-cross", "kind": "motif", "structured": {
+            "sheets": {"hero": "reference/nsc/hero.png",
+                       "detail": "reference/nsc/detail.png",
+                       "in-context": "reference/nsc/in-context.png"},
+            "requiredForRender": ["hero", "detail", "in-context"]}}
+        lock_shot(e, "brass", "reference/nsc/brass.png")
+        self.assertEqual(e["structured"]["requiredForRender"],
+                         ["hero", "detail", "in-context"])
+
+    def test_a_required_key_whose_art_is_gone_does_drop(self):
+        """Preserving a stricter gate must not resurrect a key with no art behind it."""
+        e = {"id": "m", "kind": "motif", "structured": {
+            "sheets": {"hero": "reference/m/hero.png"},
+            "requiredForRender": ["hero", "detail"]}}
+        lock_shot(e, "hero", "reference/m/hero.png")
+        self.assertEqual(e["structured"]["requiredForRender"], ["hero"])
+
 
 class TestLockShotIntoAnAltLook(unittest.TestCase):
     """SPEC v0.10 declared-future eras needed art, and there was no verb for it:
@@ -266,3 +294,33 @@ class RequiredSetOverrideTest(unittest.TestCase):
             lock_shot(ent, shot, f"reference/c/{shot}.png")
         self.assertEqual(set(ent["structured"]["requiredForRender"]),
                          {"face-neutral", "face-3q", "forward-fullbody"})
+
+
+class RequiredSetOnLockAcceptsDeclaredKeysTest(unittest.TestCase):
+    """The rescue field must not refuse the case it was built for.
+
+    `requiredForRenderOnLock` exists so an entity can demand a stricter gate than its
+    kind's minimum. It validated names against the kind matrix ALONE, so a motif that
+    genuinely required an `in-context` plate it had already locked was refused, because
+    `in-context` is not a motif matrix shot. The escape hatch was closed against its own
+    use case, and the only way out was hand-editing the entity JSON.
+
+    The typo check is the point of the validation and stays: a key with no art and no
+    matrix membership is still refused.
+    """
+
+    def test_a_declared_key_with_real_art_is_accepted(self):
+        from agenticstory.authoring import required_set_for
+        e = {"id": "nsc", "kind": "motif", "structured": {
+            "sheets": {"hero": "a.png", "detail": "b.png", "in-context": "c.png"},
+            "requiredForRenderOnLock": ["in-context"]}}
+        self.assertEqual(required_set_for(e, "motif"), ["in-context", "hero"])
+
+    def test_a_typo_is_still_refused(self):
+        from agenticstory.authoring import required_set_for
+        e = {"id": "nsc", "kind": "motif", "structured": {
+            "sheets": {"hero": "a.png"},
+            "requiredForRenderOnLock": ["in-contxet"]}}
+        with self.assertRaises(ValueError) as cm:
+            required_set_for(e, "motif")
+        self.assertIn("in-contxet", str(cm.exception))

@@ -1,10 +1,28 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.23 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.24 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.24 changelog — a lock may raise a gate and must never lower one.** `lock-shot`
+> recomputed `requiredForRender` from the KIND minimum alone, so any entity that legitimately
+> required MORE than its kind demanded was silently demoted on its next lock. Proven on
+> christofuturism's `north-star-cross`, a motif whose required set was `["hero","detail",
+> "in-context"]` because that entity's own authority note records that ONE view of the mark
+> reads as an equilateral star and only three views prove it is a cross: locking a new material
+> plate rewrote it to `["hero"]`, so the entity guarding a filed trademark would have quietly
+> stopped guarding it. Worse, the field that exists to rescue exactly this case,
+> `requiredForRenderOnLock` (v0.11), REFUSED the key, because it validated names against the
+> kind matrix alone and `in-context` is not a motif matrix shot. The escape hatch was closed
+> against its own use case and the only way out was hand-editing the entity JSON, which is the
+> hand-rolling the authoring module exists to remove. Now: a lock preserves any key the entity
+> already required that still resolves on disk, and `requiredForRenderOnLock` accepts the kind's
+> known shots PLUS the keys the entity actually declares. The typo check stays, so a key with
+> neither art nor matrix membership is still refused, and a required key whose art is gone still
+> drops. Found by a steward migrating a legacy brand OS, who worked around it by hand and flagged
+> it rather than leaving it silent.
 
 > **v0.23 changelog — a reference slot can say what it CONTRIBUTES, a negative can name one
 > person, and a multi-line header stops being half-read.** §12 slots accept `{"path", "role"}`
