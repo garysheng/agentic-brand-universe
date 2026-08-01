@@ -179,8 +179,19 @@ def overlay_figure(img: Image.Image, m: dict, step: int = 10) -> Image.Image:
 
 
 def _gold_mask(a: np.ndarray) -> np.ndarray:
+    """Saturated warm metal, NOT merely a warm pixel.
+
+    The first cut was `r>120 and g>90 and b < r-35`, which a warm plaster or
+    limewash backdrop passes easily. On a pendant shot against exactly that, the
+    mask selected the ENTIRE FRAME (x 0-1023) and the measurement came back 0.93,
+    a plausible-looking number derived from the background. Gold on a warm ground
+    is separated by SATURATION and by channel ordering, not by warmth alone.
+    """
     r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
-    return (r > 120) & (g > 90) & (b < r - 35)
+    mx = np.maximum(np.maximum(r, g), b)
+    mn = np.minimum(np.minimum(r, g), b)
+    sat = (mx - mn) / np.maximum(mx, 1)
+    return (r > 110) & (r > g + 12) & (g > b + 18) & (sat > 0.30)
 
 
 def _components(mask: np.ndarray) -> list[np.ndarray]:
@@ -271,9 +282,10 @@ def measure_star(img: Image.Image, box: tuple | None = None) -> dict:
     # button, a fold of chain). Refuse. Every wrong number this file has produced
     # in testing was above this bound, and a refusal the caller can act on beats a
     # ratio they might believe.
-    if hw > 3.0:
+    if hw < 0.85 or hw > 3.0:
         raise Unmeasurable(
-            f"measured {hw:.2f} H:W, which no rendering of this mark can be. The "
+            f"measured {hw:.2f} H:W, which no rendering of this mark can be (its "
+            f"top and side arms are equal by spec, so it is always taller than wide). The "
             f"crop is not isolating the pendant. Tighten --box to the star itself, "
             f"excluding the chain and the bail, and try again.")
     return {
