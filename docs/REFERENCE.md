@@ -77,7 +77,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `build-docs` | regenerate the framework's own derived docs (README + docs/REFERENCE.md) |
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
-| `init` | scaffold a new universe (conforms to spec v0.19) |
+| `init` | scaffold a new universe (conforms to spec v0.20) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |

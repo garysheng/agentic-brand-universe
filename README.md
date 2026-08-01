@@ -55,8 +55,8 @@ retired and why, and [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the layer
 <!-- BEGIN GENERATED: status -->
 |  | Value | Source |
 |---|---|---|
-| Spec | v0.19 | `SPEC.md`, dated 2026-08-01 |
-| Engine conforms to | v0.19 | `engine/agenticstory/__init__.py` |
+| Spec | v0.20 | `SPEC.md`, dated 2026-08-01 |
+| Engine conforms to | v0.20 | `engine/agenticstory/__init__.py` |
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 33 | `skills/*/SKILL.md` |
 | CLI verbs | 22 | `abu --help` |

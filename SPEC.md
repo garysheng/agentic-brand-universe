@@ -1,6 +1,6 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.19 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.20 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
@@ -369,6 +369,19 @@ Three wired mechanisms, applied at defined points:
 - **Provenance** — every beat cites a source (testimony, research, the author's own words). Unsourced
   vivid detail is flagged before it ships (the cross-person-contamination guard).
 
+**Two delivery-side refusals (v0.20), both earned because they exited 0 and looked like success:**
+- **`--out` is a file path, never a directory.** Handed a directory, the renderer's existence check
+  is true for every spread, so `--skip-existing` reports "exists, skip" for the whole batch and
+  renders nothing while still exiting 0. It now refuses and names the exact fix, and the check runs
+  **before** the skip, or the skip still swallows the batch.
+- **Captions must match the blessed manuscript verbatim.** A render-spec's `_caption` is copied from
+  the beat text when the spec is scaffolded and nothing re-syncs it, so editing a beat afterwards
+  leaves the art following the new words and the caption keeping the old. The book doctor compares
+  every caption against the story and fails on any drift. **Its limit is stated deliberately:** it
+  compares two artifacts, so it cannot see prose that is stale in BOTH, which is exactly what an
+  entity recast produces (§4.3). Earned 2026-08-01, where it correctly passed all 73 captions of a
+  book whose story still described the room it had left.
+
 ## 4. Primitives (the schemas)
 
 > These are the v0.2 shapes. They will tighten as the engine implements them; treat field names as
@@ -493,6 +506,28 @@ features/beats/provenance requirements apply only to a `full` story. (Mirrors a 
 anchored to a real artist's own body of work (*Painted in His Image* → Tadeo's canvases). It is
 locked via register experiments (Gary points), then passed as a content-neutral **style anchor** on
 every render — never left implicit inside the renderer.
+
+**Recasting (v0.20):** replacing one canon entity with another across a whole story is a
+distinct operation from editing a spread, and it is a **manuscript event rather than a data
+edit**. `recast-story` swaps every structural reference it can prove (beats' `location` and
+`characters`, `features`, `writesBack`, and the render-spec's `setting` and `cast[].id`), and
+**refuses an unregistered entity**, because a recast must land on real canon. It **flags any
+`plate` the new entity does not declare** and never substitutes one: plate keys are per-entity
+(`master`/`empty` versus `wide`/`close-jerry`), so a swapped setting silently keeps a camera that
+no longer exists, and the compiler then refuses much later with no hint why. **A swap must never
+guess a camera.**
+
+It deliberately does NOT decide which prose went stale. It emits a review packet (both entities'
+self-descriptions plus every beat) for a reader, per §3.5's taste-gate principle and the
+role-not-a-service pattern of slot judging. Two word-list heuristics were built and discarded:
+sweeping the old entity's contract buried the true hits under character names and under negations
+the entity states about itself ("no brand marks"), and subtracting the new entity's vocabulary left
+ordinary discursive words, because `prose.rules` is English and furniture nouns are a tiny subset
+of it. A sweep a human learns to ignore is worse than no sweep. Earned 2026-08-01 on
+*Will There Be Ice Cream*, where two blanket string replacements left a `spineNote` citing the
+replaced character's origin book, `aimDiscipline` pointing at pre-renumber beat numbers, and five
+beats still describing a counter, a stool, a bowl and a spoon beneath finished paintings of a park
+bench and two ice cream cones.
 
 ### 4.4 Ref contract (the resolver)
 - `resolve(entity) → real paths | error`
