@@ -1,6 +1,6 @@
 ---
 name: update-book
-description: Edit or extend an existing picture book in an Agentic Brand Universe: add, insert, revise, or remove a spread, renumber, and regenerate only the touched art + narration. Honors the words-before-art gate (voice-gate on any changed text) and re-resolves canon (canon-resolve) + reads back (render-readback) on every regenerated spread. Generic and universe-parameterized.
+description: Edit or extend an existing picture book in an Agentic Brand Universe: add, insert, revise, or remove a spread, RECAST one canon entity as another across a whole story (recast_story.py), renumber, and regenerate only the touched art + narration. Honors the words-before-art gate (voice-gate on any changed text) and re-resolves canon (canon-resolve) + reads back (render-readback) on every regenerated spread. Generic and universe-parameterized.
 ---
 
 # Update Book
@@ -60,6 +60,51 @@ For changing a book that already exists: words blessed, art on disk, usually alr
    source: a run that publishes nothing should prune nothing.
 
 8. **Verify + deliver.** Confirm the beat/spread numbering is contiguous everywhere it's tracked, re-stamp `identity.mark`/`identity.closingOrnament` on the closing plate if the edit touched it, and hand off to whatever delivery step the target renderer/platform uses. If the book ships to a shared platform, verify sibling properties on that platform are unaffected by the edit before calling it done.
+
+## Recasting: swapping one canon entity for another
+
+`add`, `insert`, `revise` and `remove` all operate on SPREADS. Replacing one entity
+with another across a whole story is a different operation, and it was done twice by
+blanket string replacement before this existed (2026-08-01, will-there-be-ice-cream:
+a character re-aged from sixteen to twelve, and a setting abandoned after the room
+would not hold its geometry across twenty-six spreads).
+
+```bash
+python3 skills/update-book/scripts/recast_story.py <universe> <story> <old-id> <new-id> \
+    [--spec <book>/render-spec.json] [--review-out review.txt] [--apply]
+```
+
+**Dry run by default.** It refuses an unregistered entity, because a recast must land
+on real canon.
+
+**What it does deterministically**, because these are provable:
+- swaps every structural id reference: beats' `location` and `characters`, `features`,
+  `writesBack`, and the render-spec's `setting` and `cast[].id`
+- flags any `plate` the NEW entity does not declare. Plate keys are per-entity
+  (`master`/`empty` versus `wide`/`close-jerry`), so a swapped setting keeps a camera
+  that no longer exists and the compiler refuses much later with no hint why. It
+  reports and never guesses: **a swap must never choose a camera.**
+
+**What it refuses to fake.** It emits a REVIEW PACKET, not a verdict: the old entity's
+self-description, the new one's, and every beat. The question is "does this sentence
+still describe the old place", which is a semantic judgment. Two heuristics were tried
+on the real case and both failed the same way. Sweeping the old entity's contract
+words buried the two true hits (`counter`, `stool`) under `jerry`, `toby`, `gold` and
+`brand`, which come from character names, scale prose and NEGATIONS the entity states
+about itself ("no brand marks"). Subtracting the new entity's vocabulary cleared those
+and left `whole`, `conversation`, `showing`, `question`: `prose.rules` is discursive
+English and furniture nouns are a tiny subset of it. **A sweep a human learns to ignore
+is worse than no sweep.**
+
+So the packet goes to a reader. This follows `judge-slot`: the judgment is a ROLE, not
+a service. Fill it with a subagent, a fresh session, a human, or the next turn.
+
+**Why this matters more than it sounds.** The five beats that shipped wrong (a bowl, a
+spoon, a counter tapped twice, a stool turned on, a bowl pushed across a counter) sat
+under finished paintings of a bench and two cones, and `book-doctor`'s caption-drift
+check correctly reported all seventy-three captions verbatim. It compares the spec to
+the story, and both were stale. **An entity swap is a MANUSCRIPT event.** Re-run
+`voice-gate` on every beat you rewrite, then re-sync captions with `compose-spec`.
 
 ## Gates honored
 - **Words-before-art + voice-gate:** any changed text is blessed and voice-clean before its art or narration regenerates.

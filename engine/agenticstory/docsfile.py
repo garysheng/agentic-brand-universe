@@ -222,8 +222,47 @@ def render_spec_changelog(root: Path) -> list[str]:
     return _table(["Version", "What changed"], rows)
 
 
+
+def render_guards(root: Path) -> list[str]:
+    """Every auto-injected prompt guard, read off the compiler itself.
+
+    SPEC 4.6 listed these by hand and drifted twice: MOTION_GUARD shipped
+    2026-07-28 and the section still read "four rules" months later, and two more
+    guards landed 2026-08-01 undocumented. A test was added to assert the names
+    were present, which is the weaker fix. Gary, 2026-08-01: "isn't the spec
+    partially generated anyway?" It is, and this belongs in that machinery: the
+    guard list already lives in `assemble_prompt.py`, so the spec should PROJECT
+    it rather than restate it. Presence is now generated and `build-docs --check`
+    fails when it is stale, exactly like every other derived block.
+
+    What stays hand-written is the JUDGEMENT beneath each entry: what the guard
+    means, the defect that earned it, when to reach past it. That is the split
+    this module exists to draw.
+    """
+    src = (root / "skills/compose-spread/scripts/assemble_prompt.py").read_text()
+    # Each guard is a module-level constant; a CONDITIONAL one has a predicate
+    # applied at the call site, which is what distinguishes the two kinds.
+    names = sorted(set(re.findall(r"^([A-Z_]+_GUARD)\s*=", src, re.M)))
+    emitted = dict(re.findall(r"^\s+([A-Z_]+_GUARD)(?:\s+if\s+(\w+)\()?", src, re.M))
+    rows = [["Guard", "Fires", "Predicate"]]
+    for n in names:
+        pred = emitted.get(n) or ""
+        rows.append([
+            f"`{n}`",
+            "conditional" if pred else "every render",
+            f"`{pred}()`" if pred else "unconditional",
+        ])
+    w = [max(len(r[i]) for r in rows) for i in range(3)]
+    out = ["| " + " | ".join(c.ljust(w[i]) for i, c in enumerate(rows[0])) + " |",
+           "|" + "|".join("-" * (w[i] + 2) for i in range(3)) + "|"]
+    for r in rows[1:]:
+        out.append("| " + " | ".join(c.ljust(w[i]) for i, c in enumerate(r)) + " |")
+    return out
+
+
 BLOCKS = {
     "README.md": {"status": render_status},
+    "SPEC.md": {"guards": render_guards},
     "docs/REFERENCE.md": {
         "skills": render_skills,
         "cli": render_cli,
