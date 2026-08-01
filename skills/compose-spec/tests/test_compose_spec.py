@@ -153,5 +153,62 @@ class TestSettingIsNotClobbered(unittest.TestCase):
             self.assertIn("notAPlate", r.stdout)
 
 
+class TestWhen(unittest.TestCase):
+    """SPEC v0.18: `when` is DERIVED from the beat when the story records it, and
+    it is NEVER invented, because a wrong `when` is worse than none: it would
+    refuse the correct look."""
+
+    def _dated(self, tmp, when=1933, windows=True):
+        root = _universe(tmp)
+        st = {"render": {"poses": {"ql-shirt": {}}}}
+        if windows:
+            st["validFor"] = {"from": 1935, "to": 1973}
+            st["altLooks"] = {"bedfast": {"validFor": {"from": 1932, "to": 1934}},
+                              "elder": {"validFor": {"from": 1974}}}
+        (root / "canon" / "entities" / "her.json").write_text(json.dumps(
+            {"id": "her", "kind": "character", "structured": st}))
+        story = json.loads((root / "stories" / "s.json").read_text())
+        if when is not None:
+            story["beats"][0]["when"] = when
+        (root / "stories" / "s.json").write_text(json.dumps(story))
+        return root
+
+    def test_when_is_carried_from_the_beat(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._dated(tmp); out = Path(tmp) / "spec.json"
+            r = _run(root, out); self.assertEqual(r.returncode, 0, r.stderr)
+            spec = json.loads(out.read_text())
+            self.assertEqual(spec["spreads"][0]["when"], 1933)
+            self.assertNotIn("when", spec["spreads"][1])
+
+    def test_a_dated_spread_with_windowed_looks_asks_for_a_decision(self):
+        """It says which look the date makes legal. It never chooses: compose-spec
+        fills what canon determines and enumerates what canon constrains."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._dated(tmp); out = Path(tmp) / "spec.json"
+            r = _run(root, out)
+            self.assertIn("era-windowed looks", r.stdout)
+            self.assertIn("bedfast", r.stdout)
+            self.assertIsNone(json.loads(out.read_text())["spreads"][0]["cast"][0].get("look"))
+
+    def test_an_authored_when_survives_a_resync(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._dated(tmp, when=None); out = Path(tmp) / "spec.json"
+            _run(root, out)
+            spec = json.loads(out.read_text())
+            spec["spreads"][0]["when"] = 1950
+            out.write_text(json.dumps(spec))
+            _run(root, out)
+            self.assertEqual(json.loads(out.read_text())["spreads"][0]["when"], 1950)
+
+    def test_no_when_anywhere_stays_absent(self):
+        """Every already-shipped book. The key must not appear from nowhere."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._dated(tmp, when=None, windows=False); out = Path(tmp) / "spec.json"
+            _run(root, out)
+            for sp in json.loads(out.read_text())["spreads"]:
+                self.assertNotIn("when", sp)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
