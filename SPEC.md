@@ -1,10 +1,29 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.26 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.27 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.27 changelog — a standard for when a REAL PERSON is reproducible.** `lock-level` answers
+> "are the files on disk." It never answered the question a brand actually needs: is there enough
+> coverage here to reproduce this person reliably, in a new pose, months from now, without their
+> likeness drifting. The character matrix requires TWO shots. For an invented character that is
+> defensible; for a real person it is not, and one session proved it — `gary` reached the required
+> set early and his likeness still had to be rebuilt across five rerolls, nine photographs and a
+> purpose-built chest-up plate before it held. §12 adds `REAL_PERSON_COVERAGE` and an advisory
+> `real_person_gaps()`, which measures three things the old model could not express. **Angle
+> coverage:** ≥6 varied photographs, because the rule "a single reference lets a face drift" lived
+> in one universe's prose preamble, was right all day, and nothing enforced it —
+> `realPerson.photoStack` accepted a single photo. **Expression coverage:** a stack carrying one
+> expression reproduces one expression; the standard wants the face known at rest AND in use.
+> **Context coverage,** the sharpest of the three: a character carrying a recurring prop needs one
+> plate where that prop is LEGIBLE at render scale. Gary's pendant kept rendering wrong not for want
+> of pendant references but because no plate showed it big enough to copy — in a head-to-toe frame
+> it is about forty pixels. A matrix that only asks "which angles of the person" cannot ask that.
+> Advisory throughout, exactly like `lock-level`: it never blocks a render, and an invented
+> character is not measured against it at all.
 
 > **v0.26 changelog — `supersedes` now covers the negatives it always claimed to.** §12 has
 > said since v0.10 that `supersedes` exists "so the QA checklist, the prompt block, AND THE

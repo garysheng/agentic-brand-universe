@@ -83,6 +83,82 @@ SCALE_REFERENCE_DEFAULT = (
 )
 
 
+# SPEC v0.27: what it takes to reproduce a REAL PERSON with confidence.
+#
+# `lock-level` answers "are the files on disk". It has never answered the question a
+# brand actually needs: is there enough coverage here to reproduce this person
+# reliably, in a new pose, months from now, without their likeness drifting.
+#
+# The kind matrix requires TWO shots for a character. For an invented character that is
+# defensible. For a real person it is not, and this universe proved it in one session:
+# `gary` reached the required set early and his likeness still had to be rebuilt across
+# five rerolls, nine photographs and a purpose-built chest-up plate before it held.
+#
+# Three things the old model could not express, each of which cost real renders:
+#
+#  1. ANGLE COVERAGE. The rule "a single reference lets a face drift, pass six varied
+#     angles" lived in one universe's prose preamble and was right all day. Nothing
+#     enforced it, and `realPerson.photoStack` accepted a single photo.
+#  2. EXPRESSION COVERAGE. A stack of one expression reproduces that expression. Gary
+#     supplied two open-smile photographs precisely because every render was coming
+#     back closed-lipped and it read wrong to him.
+#  3. CONTEXT COVERAGE. The sharpest one. His pendant kept rendering wrong not for want
+#     of pendant references, but because no plate showed it at a size the model could
+#     resolve: in a head-to-toe frame it is about forty pixels. The fix was a chest-up
+#     plate where the prop is legible. A matrix that only asks "which angles of the
+#     person" cannot ask that.
+REAL_PERSON_COVERAGE = {
+    "photoStack": {
+        "min": 6,
+        "why": "Six varied angles is the floor at which a face stops drifting between "
+               "renders. Earned across two universes and restated in every one of them.",
+    },
+    "requiredShots": ["face-neutral", "face-3q", "forward-fullbody"],
+    "expressions": {
+        "min": 2,
+        "why": "A stack carrying one expression reproduces one expression. At least a "
+               "neutral and a genuine smile, so the face is known at rest and in use.",
+    },
+    "contextPlate": {
+        "why": "Any character carrying a recurring prop needs one plate where that prop "
+               "is LEGIBLE at render scale. Without it the prop is re-invented every "
+               "time, because no reference ever showed it big enough to copy.",
+    },
+}
+
+
+def real_person_gaps(entity: dict) -> list[str]:
+    """What still stands between a real person and confident reproduction.
+
+    Advisory, exactly like `lock_level`. It never blocks a render; it answers a
+    question the framework could not previously answer at all.
+    """
+    st = entity.get("structured") or {}
+    rp = st.get("realPerson") or entity.get("realPerson") or {}
+    if not rp:
+        return []
+    gaps = []
+    stack = rp.get("photoStack") or []
+    n = REAL_PERSON_COVERAGE["photoStack"]["min"]
+    if len(stack) < n:
+        gaps.append(f"photoStack has {len(stack)} entr(ies); {n} varied angles is the floor "
+                    f"at which a face stops drifting between renders")
+    sheets = st.get("sheets") or {}
+    for shot in REAL_PERSON_COVERAGE["requiredShots"]:
+        if not sheets.get(shot):
+            gaps.append(f"no `{shot}` plate; a real person needs face-neutral, face-3q and "
+                        f"forward-fullbody before a likeness can be called reproducible")
+    if not sheets.get("expressions") and not rp.get("expressionsNote"):
+        gaps.append("no `expressions` plate; a stack carrying one expression reproduces one "
+                    "expression")
+    props = rp.get("recurringProps") or []
+    if props and not (sheets.get("chest-up") or rp.get("contextPlate")):
+        gaps.append(f"carries recurring prop(s) {props} but has no context plate where the "
+                    f"prop is legible at render scale; in a head-to-toe frame a pendant is "
+                    f"about forty pixels and gets re-invented every render")
+    return gaps
+
+
 def matrix_for(kind: str) -> dict | None:
     """The reference matrix for a kind, or None if the kind is not sheet-matrixed."""
     return REFERENCE_MATRIX.get(kind)

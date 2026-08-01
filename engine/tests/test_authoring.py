@@ -364,3 +364,72 @@ class LookAwareNegativesTest(unittest.TestCase):
     def test_an_unknown_look_is_inert_rather_than_fatal(self):
         self.assertEqual(self._ent().look_negatives("nope"),
                          ["a crucifix", "more than one necklace", "stubble"])
+
+
+class RealPersonCoverageTest(unittest.TestCase):
+    """`lock-level` says the files exist. It never said the likeness is reproducible.
+
+    `gary` reached the kind's required set early and his likeness still had to be
+    rebuilt across five rerolls, nine photographs and a purpose-built chest-up plate
+    before it held. Two shots is a defensible floor for an invented character and not
+    for a real person.
+    """
+
+    def _rp(self, **over):
+        base = {
+            "id": "p", "kind": "character",
+            "structured": {
+                "sheets": {"face-neutral": "a.png", "face-3q": "b.png",
+                           "forward-fullbody": "c.png", "chest-up": "d.png"},
+                "realPerson": {
+                    "photoStack": [f"p{i}.png" for i in range(6)],
+                    "expressionsNote": "smile + neutral",
+                    "recurringProps": ["a-pendant"],
+                },
+            },
+        }
+        base["structured"]["realPerson"].update(over.pop("realPerson", {}))
+        base["structured"].update(over)
+        return base
+
+    def test_a_fully_covered_real_person_has_no_gaps(self):
+        from agenticstory.matrix import real_person_gaps
+        self.assertEqual(real_person_gaps(self._rp()), [])
+
+    def test_an_invented_character_is_not_measured_at_all(self):
+        """Only a realPerson is held to this. Invented characters keep the kind matrix."""
+        from agenticstory.matrix import real_person_gaps
+        self.assertEqual(real_person_gaps({"id": "x", "kind": "character",
+                                           "structured": {"sheets": {}}}), [])
+
+    def test_a_thin_photo_stack_is_a_gap(self):
+        """One reference lets a face drift. Six varied angles is the floor."""
+        from agenticstory.matrix import real_person_gaps
+        g = real_person_gaps(self._rp(realPerson={"photoStack": ["only-one.png"]}))
+        self.assertTrue(any("photoStack has 1" in x for x in g))
+
+    def test_missing_core_plates_are_gaps(self):
+        from agenticstory.matrix import real_person_gaps
+        g = real_person_gaps(self._rp(sheets={"face-neutral": "a.png"}))
+        self.assertTrue(any("face-3q" in x for x in g))
+        self.assertTrue(any("forward-fullbody" in x for x in g))
+
+    def test_one_expression_is_a_gap(self):
+        """A stack carrying one expression reproduces one expression."""
+        from agenticstory.matrix import real_person_gaps
+        rp = self._rp(); rp["structured"]["realPerson"].pop("expressionsNote")
+        self.assertTrue(any("one expression" in x for x in real_person_gaps(rp)))
+
+    def test_a_recurring_prop_needs_a_context_plate(self):
+        """A pendant is ~40px in a head-to-toe frame, so it gets re-invented every time."""
+        from agenticstory.matrix import real_person_gaps
+        rp = self._rp()
+        rp["structured"]["sheets"].pop("chest-up")
+        g = real_person_gaps(rp)
+        self.assertTrue(any("legible at render scale" in x for x in g))
+
+    def test_no_recurring_prop_means_no_context_plate_required(self):
+        from agenticstory.matrix import real_person_gaps
+        rp = self._rp(); rp["structured"]["realPerson"]["recurringProps"] = []
+        rp["structured"]["sheets"].pop("chest-up")
+        self.assertEqual(real_person_gaps(rp), [])
