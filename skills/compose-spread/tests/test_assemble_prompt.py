@@ -1000,3 +1000,36 @@ class TestArchivedRefusal(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── ADDRESSING GUARD ──────────────────────────────────────────────────────
+# Earned 2026-08-01 on The Power of Obeying, three times in one book: a
+# congregation seated facing the back wall of its own church (spreads 24, 26),
+# and a preacher at a pulpit with his audience arrayed BEHIND him (spread 67).
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location("_ap", ASSEMBLE)
+_ap = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_ap)
+_has_audience, ADDRESSING_GUARD = _ap._has_audience, _ap.ADDRESSING_GUARD
+
+
+class AddressingGuardTest(unittest.TestCase):
+    def test_fires_when_someone_addresses_a_group(self):
+        self.assertTrue(_has_audience(
+            "The preacher stands behind a pulpit and the congregation sits before him."))
+        self.assertTrue(_has_audience(
+            "He is teaching about fifty students seated in rows of folding chairs."))
+
+    def test_silent_when_there_is_no_audience(self):
+        # A lone figure, and a crowd nobody is addressing, must NOT trip it:
+        # a guard that fires on everything is a guard nobody reads.
+        self.assertFalse(_has_audience(
+            "A man kneels alone on bare floorboards in an empty room at night."))
+        self.assertFalse(_has_audience(
+            "A great crowd stands ranked up the slope, looking down out of frame."))
+
+    def test_guard_states_both_legal_cameras(self):
+        # The defect was never a missing negative, it was a missing geometry, so
+        # the guard has to name what IS allowed, not only what is forbidden.
+        self.assertIn("BEHIND OR AMONG THE AUDIENCE", ADDRESSING_GUARD)
+        self.assertIn("AT THE SPEAKER", ADDRESSING_GUARD)
+        self.assertIn("NEVER ARRAYED BEHIND THE SPEAKER", ADDRESSING_GUARD)

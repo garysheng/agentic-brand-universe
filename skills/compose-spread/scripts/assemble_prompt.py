@@ -108,6 +108,61 @@ def _has_motion(scene: str) -> bool:
     return not any(t in low for t in FACING_TOKENS)
 
 
+ADDRESSING_GUARD = (
+    "SPEAKER AND AUDIENCE GEOMETRY. Someone addressing a group FACES that group, and the "
+    "group FACES THEM BACK. The two are on OPPOSITE sides of one another, never on the same "
+    "side. So there are exactly TWO legal cameras and you must pick one of them. EITHER the "
+    "camera is BEHIND OR AMONG THE AUDIENCE, in which case the audience fills the near "
+    "foreground SEEN FROM BEHIND (backs of heads and shoulders) and the speaker stands beyond "
+    "them FACING THE CAMERA. OR the camera is AT THE SPEAKER, in which case we see the speaker "
+    "from behind or in three-quarter rear view and the audience beyond them is TURNED TOWARD "
+    "THE CAMERA with their FACES VISIBLE. THE AUDIENCE IS NEVER ARRAYED BEHIND THE SPEAKER, "
+    "never scattered around them, and never seated facing the same direction the speaker "
+    "faces. A speaker with listeners behind their shoulders has their back turned on the "
+    "people they are talking to, which is not what the scene means."
+)
+
+AUDIENCE_NOUNS = (
+    "congregation", "audience", "crowd", "assembly", "students", "pews", "auditorium",
+    "listeners", "class", "attendees", "worshippers", "parishioners", "staff",
+)
+# A PULPIT OR LECTERN IS ITSELF AN ADDRESSING SIGNAL, because the furniture only
+# exists to point one person at a group. Matching verb phrases alone was too narrow
+# and MISSED THE VERY SPREAD THAT EARNED THIS GUARD: spread 67 read "standing at a
+# plain pulpit", and the phrase token "at a pulpit" does not match "at a plain
+# pulpit". Prefer the bare noun and accept a little noise; a guard that misses the
+# case it was written for is worse than one that fires on an empty church.
+ADDRESSING_VERBS = (
+    "pulpit", "lectern", "podium",
+    "preach", "preaching", "preaches", "teach", "teaching", "teaches", "address",
+    "addressing", "speak", "speaking", "speaks to", "sermon", "lectur",
+    "reads them", "reading to", "explaining", "holds up the", "holding up the",
+)
+
+
+def _has_audience(scene: str) -> bool:
+    """True when the scene has one person addressing a group.
+
+    Earned 2026-08-01 on The Power of Obeying, THREE separate times, which is what
+    promoted it from a per-scene correction to a guard. Spreads 24 and 26 seated a
+    congregation facing the BACK WALL of their own church, so a camera at the pulpit
+    returned rows of backs of heads (and in 26 they voted at the rear wall). Spread 67
+    put a preacher at a pulpit with the congregation arrayed BEHIND him, blurred, so the
+    payoff image of a seventy-year preaching ministry showed a man with his back turned
+    on everyone he was preaching to.
+
+    The prior is strong and it is a COMPOSITION prior, not a facing prior, so the
+    existing FACING_TOKENS do not neutralise it: 'church congregation' overwhelmingly
+    means the view from the back over people's heads, and 'a man at a pulpit' means a
+    portrait with a soft crowd behind him. Both are photographically common and both are
+    geometrically impossible for the beats above. Naming the camera does not help,
+    because the model satisfies the camera and then places the people by cliche.
+    """
+    low = (scene or "").lower()
+    return (any(n in low for n in AUDIENCE_NOUNS)
+            and any(v in low for v in ADDRESSING_VERBS))
+
+
 SINGLE_IMAGE_GUARD = (
     "ONE SINGLE CONTINUOUS FULL-BLEED PAINTING that fills the entire canvas edge to edge. This is "
     "NEVER a grid, NEVER a multi-panel layout, NEVER a comic page, NEVER a contact sheet, NEVER a "
@@ -1126,6 +1181,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
             MOTION_GUARD if _has_motion(scene) else "",
+            ADDRESSING_GUARD if _has_audience(scene) else "",
         ]
         if x
     )
