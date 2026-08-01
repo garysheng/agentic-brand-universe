@@ -83,7 +83,8 @@ answers questions about it, and refuses renders whose references do not exist on
 | `build-docs` | regenerate the framework's own derived docs (README + docs/REFERENCE.md) |
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
-| `init` | scaffold a new universe (conforms to spec v0.20) |
+| `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
+| `init` | scaffold a new universe (conforms to spec v0.21) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -156,6 +157,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.21 | an asset from OUTSIDE arrives with its chain (`abu import-asset`), and the > photo-stack rule stops existing twice. |
 | v0.18 | a VARIANT may declare WHICH ERA it is legal in. |
 | v0.17 | the slot-model composer is RETIRED, having never run. |
 | v0.19 | an entity has a LIFECYCLE, so canon can be RETIRED without rewriting history. |

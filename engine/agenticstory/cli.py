@@ -135,6 +135,35 @@ def build_parser() -> argparse.ArgumentParser:
     bp.add_argument("universe")
     bp.add_argument("--apply", action="store_true",
                     help="write the recipes; without this it reports the plan and changes nothing")
+    ia = sub.add_parser("import-asset",
+                        help="bring an asset made OUTSIDE this universe INTO it, writing its "
+                             "provenance chain as a side effect of the copy")
+    ia.add_argument("universe")
+    ia.add_argument("dest", nargs="?", default=None,
+                    help="universe-relative destination path for a single import")
+    ia.add_argument("--from", dest="src", default=None, help="the source file to import")
+    ia.add_argument("--manifest", default=None,
+                    help="import a BATCH from an import manifest (see docs); refuses the "
+                         "whole batch before copying anything")
+    ia.add_argument("--dest-dir", default=None,
+                    help="universe-relative directory every manifest item lands in")
+    ia.add_argument("--prompts", default=None,
+                    help="JSON map of source-path (or stem) -> the prompt that generated it, "
+                         "folded into each item's recipe as sourcePrompt")
+    ia.add_argument("--provenance", default="derived", choices=("derived", "source"),
+                    help="derived = a stated transform of a known asset (default); "
+                         "source = an original input such as a photograph")
+    ia.add_argument("--from-repo", default=None, help="the repo the source lives in")
+    ia.add_argument("--from-path", default=None, help="the source's path inside that repo")
+    ia.add_argument("--from-sha", default=None, help="sha256 (or 16-char prefix) of the source")
+    ia.add_argument("--crop", default=None, help="crop box applied to the source: x0,y0,x1,y1")
+    ia.add_argument("--source-generator", default=None, help="what generated the SOURCE")
+    ia.add_argument("--source-prompt", default=None, help="the prompt that generated the SOURCE")
+    ia.add_argument("--source-prompt-file", default=None, help="read --source-prompt from a file")
+    ia.add_argument("--blessed-by", default=None, help="who approved this asset, and when")
+    ia.add_argument("--note", default=None, help="override the recipe's default note")
+    ia.add_argument("--force", action="store_true", help="overwrite an existing destination")
+    ia.add_argument("--dry-run", action="store_true", help="report the plan; copy nothing")
     bpr = sub.add_parser("backfill-prompts",
                          help="recover a scaffolded prompts.md from the recipes beside it, so "
                               "a matrix shot outside the framework still records its prompts")
@@ -242,6 +271,56 @@ def main(argv: list[str] | None = None) -> int:
         print("next: `validate` →", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
         print("      then `assert-story <id>` before rendering (it refuses until real assets exist).")
         return 0 if not problems else 1
+
+    if args.cmd == "import-asset":
+        from pathlib import Path as _P
+        from . import importing
+        u = _P(args.universe)
+        try:
+            if args.manifest:
+                r = importing.import_manifest(
+                    u, _P(args.manifest), spec_version=SPEC_VERSION,
+                    dest=args.dest_dir, prompts=_P(args.prompts) if args.prompts else None,
+                    force=args.force, dry_run=args.dry_run)
+                if args.dry_run:
+                    print(f"import-asset [{u.name}]: would import {r['planned']} asset(s)")
+                    for it in r["items"]:
+                        print(f"  {it['to']}  <- {it['from']}  [{it['provenance']}"
+                              f"{', +sourcePrompt' if it['hasPrompt'] else ''}]")
+                    print("  (dry run; nothing copied)")
+                    return 0
+                print(f"import-asset [{u.name}]: imported {r['written']}/{r['planned']} asset(s), "
+                      f"{r['withSourcePrompt']} carrying the source prompt")
+                for a in r["items"]:
+                    print(f"  {a}")
+                return 0
+            if not (args.src and args.dest):
+                print("import-asset: need `--from <src> <dest>` or `--manifest <file>`")
+                return 2
+            crop = None
+            if args.crop:
+                crop = [int(x) for x in args.crop.replace(" ", "").split(",")]
+            prompt = args.source_prompt
+            if args.source_prompt_file:
+                prompt = _P(args.source_prompt_file).read_text().strip()
+            df = {k: v for k, v in (("repo", args.from_repo), ("path", args.from_path),
+                                    ("sha256", args.from_sha),
+                                    ("generator", args.source_generator)) if v}
+            if args.dry_run:
+                print(f"import-asset [{u.name}]: would import {args.src} -> {args.dest} "
+                      f"[{args.provenance}] (dry run; nothing copied)")
+                return 0
+            rec = importing.import_one(
+                u, _P(args.src), args.dest, spec_version=SPEC_VERSION, force=args.force,
+                provenance=args.provenance, derived_from=df or None,
+                transform={"crop": crop} if crop else None, prompt=prompt,
+                blessed_by=args.blessed_by, note=args.note, default_repo=args.from_repo)
+            print(f"import-asset [{u.name}]: {args.dest}")
+            print(f"  provenance -> {_P(rec['asset']).name}.recipe.json [{rec['provenance']}]")
+            return 0
+        except importing.ImportRefusal as e:
+            print(f"import-asset REFUSED: {e}")
+            return 1
 
     if args.cmd == "backfill-provenance":
         from pathlib import Path as _P

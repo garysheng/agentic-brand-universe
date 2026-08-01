@@ -259,14 +259,48 @@ class TestRealPersonPhotoStack(unittest.TestCase):
         root = self._with_photos(["reference/room/photos/01.png"])
         r = run(root, "--print-plan")
         self.assertEqual(r.returncode, 2)
-        self.assertIn("NOT ON DISK", r.stderr)
+        self.assertIn("does not resolve on disk", r.stderr)
 
-    def test_photo_stack_refuses_a_directory_instead_of_an_image(self):
+    def test_photo_stack_EXPANDS_a_directory(self):
+        """v0.21. This used to REFUSE, and the refusal was the bug.
+
+        SPEC §12 has called `["reference/<id>/photos"]` the idiomatic whole-stack form
+        since v0.17, and compose-spread expanded it at render time, so the recommended
+        form could be rendered from and not shot from. Earned on christofuturism `gary`.
+        """
+        root = self._with_photos(["reference/room/photos"])
+        d = root / "reference" / "room" / "photos"
+        d.mkdir(parents=True, exist_ok=True)
+        png(d / "b.png")
+        png(d / "a.png")
+        r = run(root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("a.png", r.stdout)
+        self.assertIn("b.png", r.stdout)
+
+    def test_photo_stack_refuses_a_directory_with_no_images(self):
+        """An empty folder must not silently resolve to zero photographs: that is a
+        downgrade to inventing the face from prose, wearing the costume of success."""
         root = self._with_photos(["reference/room/photos"])
         (root / "reference" / "room" / "photos").mkdir(parents=True, exist_ok=True)
         r = run(root, "--print-plan")
         self.assertEqual(r.returncode, 2)
-        self.assertIn("DIRECTORY", r.stderr)
+        self.assertIn("no images", r.stderr)
+
+    def test_photo_limit_caps_the_expanded_stack(self):
+        root = self._with_photos(["reference/room/photos"])
+        ent = root / "canon" / "entities" / "room.json"
+        d = json.loads(ent.read_text())
+        d["realPerson"]["photoLimit"] = 1
+        ent.write_text(json.dumps(d))
+        pd = root / "reference" / "room" / "photos"
+        pd.mkdir(parents=True, exist_ok=True)
+        png(pd / "a.png")
+        png(pd / "b.png")
+        r = run(root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("a.png", r.stdout)
+        self.assertNotIn("b.png", r.stdout)
 
     def test_photo_stack_resolves_and_the_plan_builds(self):
         root = self._with_photos(["reference/room/photos/01.png"])

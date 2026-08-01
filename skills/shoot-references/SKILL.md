@@ -53,6 +53,28 @@ Two things differ from an ordinary shot, and both are load-bearing:
 Read back against the ERA's own invariants (`altLooks.<key>.invariants` plus the base
 invariants it does not supersede), not against today's.
 
+## The photo stack: point at the FOLDER, and import into it with `abu import-asset`
+
+`realPerson.photoStack` may name files or a DIRECTORY, and the directory
+(`["reference/<id>/photos"]`) is the idiomatic form: it expands to the sorted images inside
+it, and `realPerson.photoLimit` caps the result AFTER expansion. Both halves of the
+framework now read that one rule (SPEC v0.21); before that this script refused a directory,
+so the recommended form rendered fine and could not be shot from.
+
+**A photograph or blessed render that comes from OUTSIDE the universe is installed with
+`abu import-asset`, never copied by hand.** The copy writes the `.recipe.json` for you, the
+same way generating does:
+
+```bash
+python3 -m agenticstory.cli import-asset <universe> --manifest <manifest.json> \
+  --dest-dir reference/<id>/photos --prompts <source-prompts.json>
+```
+
+Use `--provenance source` for an original photograph and the default `derived` for a crop
+or transform of a known asset, where `derivedFrom` + `transform` + `sourcePrompt` carry the
+chain. Hand-writing a recipe beside a copied file is provenance saved by memory, which is
+the thing the adapter exists to abolish.
+
 ## Fill `prompts.md`. Never write the prompt into a throwaway script.
 
 `add-entity` scaffolds every shot body as `TODO(author): replace each body below`.

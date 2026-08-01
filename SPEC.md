@@ -1,10 +1,38 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.20 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.21 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.21 changelog — an asset from OUTSIDE arrives with its chain (`abu import-asset`), and the
+> photo-stack rule stops existing twice.** Both additive: no universe migrates, and an asset already
+> in canon is untouched.
+>
+> **(1) `import-asset`, and a fifth provenance class, `derived`.** A universe absorbs assets it did
+> not generate: a retired brand repo is folded in, a blessed render is cut out of a product repo and
+> installed as a photo-stack reference, a client hands over photographs. The framework had no verb
+> for it, and every available path was a lie or a hand-roll. `backfill-provenance` can only classify
+> an asset as `source` ("there is no generating call to record"), `reconstructed`, `attested`
+> ("nothing about the generating call survives") or `deterministic`; for a CROP of a known
+> gpt-image-2 render whose source hash, crop box and original prompt are all in hand, **all four are
+> false**, and recording a knowable fact as unknowable is the failure that module exists to prevent,
+> pointed the other way. The remaining option was writing the `.recipe.json` by hand, which is
+> provenance saved by memory, which the provider adapter exists to abolish. §3.2 adds the class and
+> the verb: the recipe is written as a side effect of the COPY, exactly as `generate.py` writes one
+> as a side effect of generating, and a `derived` import with no stated antecedent is REFUSED.
+> Manifest mode imports a batch fail-closed, because half an imported photo stack is worse than none.
+> Earned 2026-08-01 on christofuturism `gary`: twelve blessed crops of subconscious-os renders.
+>
+> **(2) The photo-stack rule is now ONE implementation.** §12 has said since v0.17 that a
+> `realPerson.photoStack` entry may be a file or a DIRECTORY, and called the directory the idiomatic
+> whole-stack form. `compose-spread`'s assembler expanded it and applied `photoLimit` after
+> expansion; `shoot-references` REFUSED a directory outright and never read `photoLimit` at all. So
+> the form the spec recommends could be RENDERED from and not SHOT from, and an entity that declared
+> a ceiling had it honored at render time and ignored at shoot time. The rule now lives in
+> `agenticstory.refs.photo_stack`, both callers use it, and a parity test pins them together, because
+> the assembler is deliberately dependency-free and will keep its own copy.
 
 > **v0.18 changelog — a VARIANT may declare WHICH ERA it is legal in.** Additive, opt-in at both
 > ends, and backward-compatible: a spread with no `when`, or an entity whose variants declare no
@@ -334,6 +362,41 @@ A resolver maps every entity to its real assets and **asserts** them before any 
 renamed, or unlocked → hard error. This is the layer that kills silent drift. (The Nation of Fire
 `resolve_gabr.py` + `gabr-index.json` are the v0 of this layer.)
 
+**A ref path may be a FILE or a DIRECTORY.** A directory expands to the image files directly inside
+it, sorted. `agenticstory.refs.expand_ref` is the one implementation; `refs.photo_stack` layers the
+`realPerson.photoLimit` cap on top of it (§12), and the cap applies AFTER expansion. A path that
+does not resolve, or a directory holding no images, is a hard error rather than an empty list: a ref
+that silently resolves to nothing is a silent downgrade to "invent it from prose".
+
+**Every asset carries a `.recipe.json` sidecar, and there are exactly two honest ways to get one.**
+The provider adapter writes one as a side effect of GENERATING. `abu import-asset` writes one as a
+side effect of COPYING an asset in from outside. Nothing else writes a recipe by hand.
+
+    abu import-asset <universe> <dest-rel> --from <src> \
+      --from-repo <repo> --from-path <path-in-repo> --from-sha <sha> \
+      --crop x0,y0,x1,y1 --source-generator gpt-image-2 --source-prompt-file <f> \
+      --blessed-by "<who, when>"
+    abu import-asset <universe> --manifest <manifest.json> --dest-dir <rel> [--prompts <f>]
+
+**Provenance classes.** Four describe assets that were already here when the adapter arrived
+(`source`, `reconstructed`, `attested`, `deterministic`; see `backfill-provenance`). The fifth,
+**`derived` (v0.21), describes an asset that came from another repo as a stated transform of a known
+asset**: `derivedFrom` names the source repo, path and hash, `transform` names what was done to the
+bytes (a crop box), and `sourcePrompt` records the call that made the SOURCE, deliberately named so
+nothing mistakes it for a call that produced these exact bytes. `derived` is NOT `unrecorded`: the
+generating call is recorded, it simply happened elsewhere. **A `derived` import that cannot say what
+it is derived FROM is refused**, because an import with no chain is not provenance; such an asset is
+`--provenance source`, which claims only that it is an original input.
+
+Manifest mode refuses the WHOLE batch before copying anything. Half an imported photo stack is worse
+than none: the entity then declares a stack whose provenance is inconsistent, and nothing says which
+half is which.
+
+This exists because the alternatives were dishonest. Twelve blessed crops of known gpt-image-2
+renders entered `christofuturism`'s `gary` photo stack on 2026-08-01. `backfill-provenance` would
+have stamped each one `source` ("there is no generating call to record") when the source hash, the
+crop box and the original prompt were all in hand.
+
 ### 3.3 Form (a kind of deliverable)
 What makes a work the KIND of thing it is. A storybook, a flyer, a meme, a share card, an explanatory
 plate and a slide deck are six forms over one canon; the canon does not change when the kind does.
@@ -430,6 +493,12 @@ Three wired mechanisms, applied at defined points:
     // as an identity anchor is how a scene grows an extra confident stranger. When you cap, cap a
     // stack of NAMED SOLO FILES rather than a directory: an alphabetical truncation of a folder
     // picks whichever files sort first, not the best faces.
+    // v0.21: BOTH RULES APPLY AT SHOOT TIME AS WELL AS AT RENDER TIME. `agenticstory.refs.
+    // photo_stack` is the one implementation and `shoot-references` now calls it. It used to
+    // refuse a directory outright ("is a DIRECTORY, not an image") and never read photoLimit, so
+    // the form this comment calls idiomatic could be RENDERED from and not SHOT from, and a
+    // declared ceiling was honored in one half of the framework and ignored in the other. Found
+    // 2026-08-01 on christofuturism `gary`.
     "canonicalPhotos": { "face": "…", "fit": "…" },
     "approval": { "state": "gated", "by": "brenda-gentry", "on": null },  // gated | approved | none-required
     // `none-required` (v0.6.1) is for a universe whose identity.subjectApproval.realLivingPerson

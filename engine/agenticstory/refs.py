@@ -17,6 +17,69 @@ from .model import Entity, SETTING_CONTRACT_FIELDS
 from .matrix import matrix_for
 
 
+IMG_EXTS = (".png", ".jpg", ".jpeg", ".webp")
+
+
+def expand_ref(root: Path, p: str) -> list[str]:
+    """Resolve one ref path to a LIST of on-disk image files.
+
+    A path may be absolute, universe-relative, or relative to the universe's PARENT
+    (cross-repo anchors live beside the universe). **A DIRECTORY expands to the image
+    files directly inside it, sorted**, which is the form SPEC §12 calls idiomatic for a
+    `realPerson.photoStack` (`["reference/<id>/photos"]`).
+
+    Raises `FileNotFoundError` on a path that does not resolve, and on a directory that
+    holds no images. A ref that silently resolves to nothing is a silent downgrade to
+    "invent it from prose", which is the failure the whole refs layer exists to stop.
+    """
+    cand = Path(p)
+    tries = [cand] if cand.is_absolute() else [root / p, root.parent / p, cand]
+    for t in tries:
+        if t.exists():
+            if t.is_dir():
+                imgs = sorted(str(f.resolve()) for f in t.iterdir()
+                              if f.suffix.lower() in IMG_EXTS)
+                if not imgs:
+                    raise FileNotFoundError(f"ref directory has no images: {p}")
+                return imgs
+            return [str(t.resolve())]
+    raise FileNotFoundError(f"ref does not resolve on disk: {p}")
+
+
+def photo_stack(entity_raw: dict, root: Path) -> list[str]:
+    """A real person's photographs: EXPANDED first, then capped by `realPerson.photoLimit`.
+
+    THE ONE implementation of the rule for the whole framework (v0.21). It existed twice
+    before, and only one copy was right: `compose-spread`'s assembler expanded directories
+    and applied the cap after expansion, while `shoot-references` REFUSED a directory
+    outright with "is a DIRECTORY, not an image" and never read `photoLimit` at all. So the
+    form the SPEC calls idiomatic rendered a book fine and could not shoot the matrix that
+    book renders from, and an entity that declared a ceiling had it honored at render time
+    and ignored at shoot time. Earned 2026-08-01 on christofuturism `gary`.
+
+    The cap applies AFTER expansion, deliberately: a one-entry directory stack sliced
+    before expansion sails past any ceiling, which is the defect SPEC v0.17 records.
+
+    A STRING `photoStack` is treated as one path rather than iterated character by
+    character, which is the authoring mistake the SPEC already records.
+    """
+    rp = entity_raw.get("realPerson") or {}
+    stack = rp.get("photoStack")
+    if not stack:
+        return []
+    if isinstance(stack, str):
+        stack = [stack]
+    out: list[str] = []
+    for entry in stack:
+        for q in expand_ref(root, entry):
+            if q not in out:
+                out.append(q)
+    limit = rp.get("photoLimit")
+    if isinstance(limit, int) and limit >= 0:
+        out = out[:limit]
+    return out
+
+
 def resolve_entity_assets(store: CanonStore, eid: str) -> tuple[dict[str, str], list[str]]:
     """Return (resolved {key: abspath}, missing[]) for an entity's REQUIRED sheets."""
     e = store.entity(eid)

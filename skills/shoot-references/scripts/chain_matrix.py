@@ -56,14 +56,20 @@ def _abu_root(start=None):
         "  reinstall it: /plugin marketplace add garysheng/agentic-brand-universe")
 
 
+def _engine_on_path():
+    """The engine importable, resolved from the ABU root rather than assumed."""
+    eng = str(_abu_root() / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    return eng
+
+
 def _provider_script(provider="gpt-image-2"):
     """The generation script, resolved rather than assumed. This script lives at
     <repo>/skills/<name>/scripts/, so the repo root is 3 up; `.resolve()` first
     because skills are installed by symlinking into ~/.claude/skills."""
     from pathlib import Path as _P
-    eng = str(_abu_root() / "engine")
-    if eng not in sys.path:
-        sys.path.insert(0, eng)
+    _engine_on_path()
     from agenticstory.providers import resolve_str
     return resolve_str(provider)
 
@@ -436,14 +442,18 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
             print(f"note: {eid} has no locked FACE sheet and {look!r} declares no anchorPhoto; "
                   f"seeding from the register anchor alone. The look DEFINES this face.")
 
-    photos = []
-    for rel in ((ent.get("realPerson") or {}).get("photoStack") or []):
-        p = (uroot / rel).resolve()
-        if not p.exists():
-            raise Refuse(f"{eid}.realPerson.photoStack -> {p} (NOT ON DISK)")
-        if p.is_dir():
-            raise Refuse(f"{eid}.realPerson.photoStack -> {p} is a DIRECTORY, not an image")
-        photos.append(str(p))
+    # ONE implementation of the photo-stack rule, shared with the render-time assembler
+    # (v0.21). A DIRECTORY entry expands to the images inside it, which is the form SPEC
+    # §12 calls idiomatic, and `realPerson.photoLimit` caps the result AFTER expansion.
+    # This used to refuse a directory outright and never read the cap, so the idiomatic
+    # stack could be RENDERED from and not SHOT from, and a declared ceiling was honored
+    # at render time and ignored here. Earned 2026-08-01 on christofuturism `gary`.
+    _engine_on_path()
+    from agenticstory.refs import photo_stack as _photo_stack
+    try:
+        photos = _photo_stack(ent, uroot)
+    except FileNotFoundError as e:
+        raise Refuse(f"{eid}.realPerson.photoStack: {e}")
 
     seed = pick_seed(kind, shots, seed_override)
     rest = [s for s in shots if s != seed]
@@ -655,6 +665,14 @@ def main() -> int:
             print(f"  {i+1}. {s:<18} [{sz}] conditioned on: {cond}")
         if plan["negatives"]:
             print("negatives: " + ", ".join(plan["negatives"]))
+        # The photographs ride on EVERY shot and they are the identity ground truth, so
+        # the plan states which ones resolved. A stack declared as a directory used to be
+        # invisible here, which meant the one thing worth checking before spending money
+        # (are these the right faces, and how many are they) could not be checked.
+        if plan["photos"]:
+            print(f"photo stack ({len(plan['photos'])}, passed on every shot):")
+            for ph in plan["photos"]:
+                print(f"  - {Path(ph).name}")
         blessed = marker(refdir, seed).exists()
         print(f"seed blessed: {blessed}" + ("" if blessed else "  <-- chain will REFUSE"))
         return 0
