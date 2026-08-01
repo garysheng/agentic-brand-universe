@@ -62,7 +62,7 @@ retired and why, and [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the layer
 | CLI verbs | 23 | `abu --help` |
 | Agents | 1 | `agents/*.md` |
 | Commands | 1 | `commands/*.md` |
-| Tests | 843 | across 41 files; `./run-tests.sh` |
+| Tests | 857 | across 42 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,
