@@ -326,7 +326,11 @@ def lint(root):
                      f"is usually a building rather than a room. Consider child settings with "
                      f"`partOf: {eid}`.")
             # houseRules that nothing inherits is dead config
-            if (e.get("structured") or {}).get("houseRules"):
+            # only a POPULATED houseRules is dead config; the scaffold writes an empty
+            # one on every new setting so the field is discoverable, and warning on that
+            # would make the linter noisy on correct, brand-new canon.
+            _hr = (e.get("structured") or {}).get("houseRules") or {}
+            if any(v for v in _hr.values()):
                 kids = [f.stem for f in ents_dir.glob("*.json")
                         if ((jload(f) or {}).get("partOf") or "").strip() == eid]
                 if not kids:
