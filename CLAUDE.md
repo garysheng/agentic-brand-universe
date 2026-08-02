@@ -138,7 +138,7 @@ lost to whatever is in front of you. So:
   state what actually ran. Change live INSTRUCTIONS; leave every ATTESTATION alone, even
   when it points at a file that has since been deleted.
 
-## Provenance invariants (both were bugs, both are now enforced)
+## Provenance invariants (each was a bug, each is now enforced)
 
 - **A recorded transform is a PERFORMED transform.** `import-asset --crop` used to
   `shutil.copy2` the original while writing `transform.crop` into the recipe from the
@@ -148,3 +148,10 @@ lost to whatever is in front of you. So:
 - **A recipe records the output geometry it asked for.** `--size` and `--quality` were
   forwarded to the provider and never written down, so a reader could not tell an intended
   aspect from a provider default.
+- **DECLARED is not PASSED, so a recipe states both.** The entity block recorded
+  `photoStack` from canon whether or not the photographs were sent. Since `--entity-photos`
+  is OFF by default, the ordinary recipe listed a stack that never reached the provider,
+  and anyone auditing what conditioned a render would conclude it did. Now
+  `photoStackDeclared` and `photoStackPassed` are separate fields. The general rule: when a
+  record can state either what canon SAYS or what the run DID, and they can differ, it must
+  say which one it is saying.

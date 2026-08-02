@@ -204,8 +204,15 @@ def resolve_entities(specs, required_only=False, with_photos=False):
         always = ((ent.structured.get("render") or {}).get("always") or "").strip()
         if always:
             rules.append(always)
+        # DECLARED AND PASSED ARE DIFFERENT FACTS, so the recipe states both.
+        # This field used to record `photo_stack()` alone, whether or not the photos
+        # were passed. Since `--entity-photos` is OFF by default, the usual recipe
+        # listed a stack that never reached the provider, and a reader auditing what
+        # conditioned a render would conclude it did. Same shape as `import-asset
+        # --crop` recording a crop it did not perform: a false record passes an audit.
         meta.append({"universe": upath, "id": eid, "look": look,
-                     "photoStack": ent.photo_stack(),
+                     "photoStackDeclared": ent.photo_stack(),
+                     "photoStackPassed": list(ent_photos) if with_photos else [],
                      "sheets": {k: v for k, v in sorted(sheets.items())}})
     # De-dupe, preserving order: two entities may legitimately share a plate.
     seen, uniq = set(), []

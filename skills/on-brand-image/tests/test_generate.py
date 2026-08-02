@@ -654,7 +654,8 @@ def build_universe(root, *, entities, asset_root="."):
     return str(root)
 
 
-def entity(eid, *, sheets=None, invariants=(), rules="", alt_looks=None, required=None, render=None):
+def entity(eid, *, sheets=None, invariants=(), rules="", alt_looks=None, required=None,
+           render=None, photos=None):
     d = {"id": eid, "kind": "character", "status": "locked",
          "structured": {"sheets": dict(sheets or {}),
                         "requiredForRender": list(required if required is not None
@@ -664,6 +665,8 @@ def entity(eid, *, sheets=None, invariants=(), rules="", alt_looks=None, require
         d["structured"]["altLooks"] = alt_looks
     if render:
         d["structured"]["render"] = render
+    if photos is not None:
+        d["structured"]["realPerson"] = {"photoStack": list(photos)}
     if rules:
         d["prose"] = {"rules": rules}
     return d
@@ -791,6 +794,107 @@ class TestEntityRefusals(GenerateCase):
         face = os.path.join(u, "reference", "chip", "face.png")
         r = self.run_main(*self.base("--entity", f"{u}:chip", "--ref", face))
         self.assertEqual(r.uploads.count(face), 1)
+
+
+class TestWhichRefsAnEntitySends(GenerateCase):
+    """WHICH plates go, and whether the photographs go with them.
+
+    Both defaults here were set by the subject looking at renders, not by the framework
+    reasoning about them, and both are the OPPOSITE of the first implementation:
+
+    - EVERY locked plate ships, not `requiredForRender`. The first cut sent the gate's
+      minimum (2 of 9 on one character) and the renders did not look like him.
+    - PHOTOGRAPHS DO NOT ship unless asked for. The first cut passed them first on every
+      render, reasoning a photo is the person and a plate a derivative. Tested head to
+      head, the subject picked plates-only (Gary, 2026-08-01).
+
+    A default nobody can see is a default that silently reverts, so each is pinned here.
+    """
+
+    def universe(self, *entities):
+        return build_universe(self.tmp / "uni", entities=list(entities))
+
+    def chip(self, **kw):
+        """Two locked plates, one of them required; two declared photographs."""
+        u = self.universe(entity(
+            "chip",
+            sheets={"face": "reference/chip/face.png", "body": "reference/chip/body.png"},
+            required=["face"],
+            photos=["reference/chip/photos/p1.png", "reference/chip/photos/p2.png"],
+            **kw))
+        for rel in ("reference/chip/face.png", "reference/chip/body.png",
+                    "reference/chip/photos/p1.png", "reference/chip/photos/p2.png"):
+            png(Path(u) / rel, extra=rel.encode())
+        return u
+
+    def names(self, r):
+        return [os.path.basename(p) for p in r.uploads]
+
+    # --- which SHEETS -------------------------------------------------------
+    def test_by_default_every_locked_plate_ships_not_just_requiredForRender(self):
+        u = self.chip()
+        self.assertEqual(self.names(self.run_main(*self.base("--entity", f"{u}:chip"))),
+                         ["body.png", "face.png"])
+
+    def test_entity_required_only_narrows_to_the_gate_minimum(self):
+        u = self.chip()
+        r = self.run_main(*self.base("--entity", f"{u}:chip", "--entity-required-only"))
+        self.assertEqual(self.names(r), ["face.png"])
+
+    def test_entity_required_only_is_recorded_in_the_recipe(self):
+        """A narrowed stack must be legible afterwards, or a bad render cannot be traced
+        back to the flag that caused it."""
+        u = self.chip()
+        r = self.run_main(*self.base("--entity", f"{u}:chip", "--entity-required-only"))
+        self.assertEqual(sorted(r.recipe["entities"][0]["sheets"]), ["face"])
+
+    # --- whether PHOTOGRAPHS ------------------------------------------------
+    def test_photographs_are_NOT_passed_by_default(self):
+        u = self.chip()
+        got = self.names(self.run_main(*self.base("--entity", f"{u}:chip")))
+        self.assertNotIn("p1.png", got)
+        self.assertNotIn("p2.png", got)
+
+    def test_entity_photos_passes_them_BEFORE_the_plates(self):
+        u = self.chip()
+        r = self.run_main(*self.base("--entity", f"{u}:chip", "--entity-photos"))
+        self.assertEqual(self.names(r), ["p1.png", "p2.png", "body.png", "face.png"])
+
+    def test_a_missing_photograph_refuses_ONLY_when_the_photos_were_asked_for(self):
+        """The refusal must be gated by the flag. An entity whose photo stack has rotted
+        is still perfectly renderable from its blessed plates, and blocking that would
+        make an opt-in flag's failure mode mandatory for everyone."""
+        u = self.universe(entity(
+            "chip", sheets={"face": "reference/chip/face.png"},
+            photos=["reference/chip/photos/gone.png"]))
+        png(Path(u) / "reference/chip/face.png")
+        self.run_main(*self.base("--entity", f"{u}:chip"))          # must not refuse
+        msg = self.expect_exit(*self.base("--entity", f"{u}:chip", "--entity-photos"))
+        self.assertIn("photoStack entry is MISSING on disk", msg)
+        self.assertIn("gone.png", msg)
+
+    # --- what the RECIPE claims --------------------------------------------
+    def test_the_recipe_separates_the_stack_DECLARED_from_the_stack_PASSED(self):
+        """This field recorded `photo_stack()` unconditionally, so with the flag OFF —
+        the default — every recipe listed photographs that never reached the provider.
+        A reader auditing what conditioned a render would have believed they did. Same
+        defect as `import-asset --crop` recording a crop it never performed: the danger
+        of a false record is that it passes an audit."""
+        u = self.chip()
+        off = self.run_main(*self.base("--entity", f"{u}:chip")).recipe["entities"][0]
+        self.assertEqual(len(off["photoStackDeclared"]), 2)
+        self.assertEqual(off["photoStackPassed"], [])
+
+        on = self.run_main(*self.base("--entity", f"{u}:chip", "--entity-photos")) \
+            .recipe["entities"][0]
+        self.assertEqual(on["photoStackPassed"], on["photoStackDeclared"])
+
+    def test_an_entity_with_no_photo_stack_records_two_empty_lists(self):
+        u = self.universe(entity("chip", sheets={"face": "reference/chip/face.png"}))
+        png(Path(u) / "reference/chip/face.png")
+        m = self.run_main(*self.base("--entity", f"{u}:chip", "--entity-photos")) \
+            .recipe["entities"][0]
+        self.assertEqual((m["photoStackDeclared"], m["photoStackPassed"]), ([], []))
 
 
 # =====================================================================
