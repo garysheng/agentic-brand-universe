@@ -61,7 +61,7 @@ or a set of page heroes without ever declaring canon.
 | `start-new-story-universe` | Stand up a brand-new story universe on the Agentic Brand Universe framework — a typed, git-versioned canon with a load-bearing pre-render gate, conforming to a named spec version. |  |
 | `universe-doctor` | Grade how COMPLETE and how HIGH-QUALITY an Agentic Brand Universe is, then work the punch-list. | yes |
 | `update-book` | Edit or extend an existing picture book in an Agentic Brand Universe: add, insert, revise, or remove a spread (insert_spread.py), RECAST one canon entity as another across a whole story (recast_story.py), renumber, and regenerate only the touched art + narration. | yes |
-| `voice-gate` | Run a voice check on any manuscript, narration script, or overlaid caption text BEFORE it is locked or rendered to audio, in an Agentic Brand Universe. |  |
+| `voice-gate` | Run a voice check on any manuscript, narration script, or overlaid caption text BEFORE it is locked or rendered to audio, in an Agentic Brand Universe. | yes |
 <!-- END GENERATED: skills -->
 
 ## CLI

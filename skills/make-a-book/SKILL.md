@@ -252,7 +252,29 @@ shots. Idempotent, so a re-run only shoots what is missing.
   comes back. Negate the missing thing by name.
 
 ### 4. Words + render -> `abu:render-book` (per spread: `compose-spread`)
-Words-before-art: run `abu:voice-gate` on the manuscript FIRST. Then:
+
+**Words-before-art. RUN THE SCRIPT on the manuscript before anything renders:**
+```bash
+python3 <abu>/skills/voice-gate/scripts/voice_gate.py "$U" "$U"/stories/<id>.manuscript.md
+```
+It exits non-zero until every finding is fixed or waived with a written reason in
+`<id>.voice-waivers.json`. The rules are fetched from <https://garysheng.com/voice.md> and
+the gate fails if that published spec has moved since its rule table was derived, so it
+cannot quietly check against stale rules.
+
+**This step said "run `abu:voice-gate` on the manuscript FIRST" for months and the check
+did not happen**, because voice-gate was prose describing what to look for, and an agent
+carrying a book's momentum reads that, agrees, and renders. Three totalizing-emphasis
+violations shipped into two finished books that way on 2026-08-02, one of them the exact
+tic the spec names ("That is the whole shape of a sermon"). Naming the SCRIPT is the fix,
+here rather than only in `voice-gate/SKILL.md`, because this file is what gets read during
+a book run. Same failure and same fix as the read-back montage scripts below.
+
+Expect a handful of REVIEW items on any real manuscript and adjudicate them one at a time.
+Fixing is the default; a waiver is for a use that is genuinely concrete or temporal (*the
+whole time*, *she read the whole thing*), and it records why.
+
+Then:
 ```bash
 (cd "$ENG" && python3 -m agenticstory.cli validate "$U")            # must be OK
 (cd "$ENG" && python3 -m agenticstory.cli assert-story "$U" <id>)   # the load-bearing gate

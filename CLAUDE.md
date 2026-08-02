@@ -32,7 +32,7 @@ would use at the moment you need it.
 | **chain an entity's matrix shots** | `shoot-references/scripts/chain_matrix.py` |
 | **backfill prompts onto old plates** | `shoot-references/scripts/backfill_prompts.py` |
 | **judge a slot against its golden** | `judge-slot/scripts/judge.py` |
-| **voice-check text before locking** | `voice-gate/scripts/voice_gate.py` |
+| **voice-check a manuscript before locking** | `voice-gate/scripts/voice_gate.py <universe> <manuscript.md>` — rules fetched from https://garysheng.com/voice.md; fails on unadjudicated findings, waivable with a written reason |
 | **find what a session hand-rolled** | `pave-the-path/scripts/detect_handroll.py` |
 | **install the framework for someone** | `onboard/scripts/install.py` |
 | **render one spread** | `compose-spread/scripts/render_spread.py` |
