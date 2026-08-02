@@ -243,7 +243,16 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # encounter-school, 2026-07-25), and sheets-only was the original bug.
         st = entity.setdefault("structured", {})
         st.setdefault("sheets", {})[shot] = path
-        slot = {"scale-plate": "scalePlate", "blocking-plate": "blockingPlate",
+        # `scale` is an ALIAS for `scale-plate`, and it is load-bearing rather than a
+        # convenience: the prompts.md skeleton this same module writes (see the slot list
+        # in prompts_skeleton below) tells the author the shot is called `scale`, while
+        # only `scale-plate` was mapped here. Following the framework's own scaffold
+        # therefore filed the plate under emptyPlates, left contract.scalePlate null, and
+        # so the auto-lock below never fired: the entity stayed `unlocked`, assert-story
+        # refused it, and NOTHING said why. Earned 2026-08-02 on the-lit-pulpit, where it
+        # was diagnosed by hand and patched with a throwaway script.
+        slot = {"scale-plate": "scalePlate", "scale": "scalePlate",
+                "blocking-plate": "blockingPlate",
                 "blocking": "blockingPlate"}.get(shot, shot)
         if slot in ("turnaround", "blueprint", "scalePlate", "blockingPlate"):
             c[slot] = path
