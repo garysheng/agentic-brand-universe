@@ -379,5 +379,51 @@ class RenderCoverPassesSceneThrough(unittest.TestCase):
         self.assertIn("SENTINEL_COMPOSITION_TOKEN", json.loads(r.stdout)["prompt"])
 
 
+class TestAnchorSubjectNegation(unittest.TestCase):
+    """`identity.register.anchorSubject` names what the style anchor DEPICTS so a
+    renderer can ban that subject concretely. v0.29 gave the field to `chain_matrix`
+    (every matrix shot auto-negates it); the cover compiler did not read it, and a
+    cover passes the anchor FIRST like everything else, so the readiness-lamp anchor
+    painted an ancient burning oil lamp onto a cover wall (eleventh-hour-heroes,
+    2026-08-02, one paid re-roll). Same field, same law, now read by the cover path.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.u = build_universe(Path(self.tmp.name))
+
+    def _declare_subject(self, subject="an ancient oil lamp, a clay jar"):
+        uni = json.loads((self.u / "universe.json").read_text())
+        uni["identity"]["register"]["anchorSubject"] = subject
+        (self.u / "universe.json").write_text(json.dumps(uni))
+
+    def test_declared_subject_is_negated_in_the_compiled_prompt(self):
+        self._declare_subject()
+        r = run_compile(self.u)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        prompt = json.loads(r.stdout)["prompt"]
+        # the subject is named CONCRETELY, inside the negation sentence
+        self.assertIn("an ancient oil lamp, a clay jar", prompt)
+        self.assertIn("NONE OF THE FOLLOWING FROM THAT FIRST STYLE-ANCHOR REFERENCE", prompt)
+
+    def test_no_declared_subject_means_no_guard(self):
+        r = run_compile(self.u)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("STYLE-ANCHOR REFERENCE", json.loads(r.stdout)["prompt"])
+
+    def test_anchor_ref_override_suppresses_the_registers_subject(self):
+        # --anchor-ref replaces the image passed first, so the register's declared
+        # subject no longer describes what that first reference depicts; negating it
+        # would ban content the override may legitimately want. Mirrors chain_matrix,
+        # where a register override reads the PACK's own anchorSubject instead.
+        self._declare_subject()
+        alt = self.u / "reference" / "register" / "alt-anchor.png"
+        png(alt)
+        r = run_compile(self.u, "--anchor-ref", str(alt))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("an ancient oil lamp", json.loads(r.stdout)["prompt"])
+
+
 if __name__ == "__main__":
     unittest.main()

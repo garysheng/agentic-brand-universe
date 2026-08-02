@@ -37,6 +37,28 @@ SAFE_MARGIN_BLOCK = (
 RENDER_SIZE = "1024x1536"  # the only portrait size gpt-image offers (2:3)
 
 
+def anchor_subject_guard(subject) -> str:
+    """Name what the register anchor DEPICTS, and ban it, on the cover.
+
+    Ported from `shoot-references/scripts/chain_matrix.py`, which has auto-negated
+    `identity.register.anchorSubject` on every matrix shot since v0.29. This
+    compiler passes the anchor FIRST like everything else and did not read the
+    field, so a cover render inherited the exact leak the field exists to stop:
+    the readiness-lamp anchor painted an ancient burning oil lamp onto the cover
+    wall (eleventh-hour-heroes, 2026-08-02, one paid re-roll). The field is
+    declared once per universe; reading it here makes the cover honour the same
+    law as the matrix shoot and the render.
+    """
+    if not subject:
+        return ""
+    return (
+        "SPECIFICALLY, NONE OF THE FOLLOWING FROM THAT FIRST STYLE-ANCHOR REFERENCE MAY APPEAR "
+        "ANYWHERE IN THIS IMAGE, on any table, shelf, floor, sill, wall or surface, or in any "
+        f"figure's hands: {subject}. If the cover scene does not ask for them by name, they are "
+        "not in this picture at all."
+    )
+
+
 def load(p: Path):
     with open(p) as f:
         return json.load(f)
@@ -217,15 +239,22 @@ def main() -> int:
             + " | ".join(f'"{t}"' for t in text_lines)
         )
 
+    # `--anchor-ref` replaces the image passed first, so the register's declared
+    # anchorSubject no longer describes what that first reference depicts; negating
+    # it would ban content the override may legitimately want. Mirrors chain_matrix,
+    # where a register override reads the pack's own anchorSubject instead.
+    subject_guard = "" if args.anchor_ref else anchor_subject_guard(reg.get("anchorSubject"))
+
     prompt = " ".join(
-        [
+        x for x in [
             f"PORTRAIT picture-book COVER in the {reg.get('name', 'locked register')} style of the FIRST reference image.",
             text_block + ".",
             *ent_blocks,
             *( [args.scene] if args.scene else [] ),
+            subject_guard,
             SAFE_MARGIN_BLOCK,
             "NEGATIVES: " + ", ".join(negatives) + ".",
-        ]
+        ] if x
     )
 
     qa = [f'title line spelled exactly: "{t}"' for t in text_lines] + qa

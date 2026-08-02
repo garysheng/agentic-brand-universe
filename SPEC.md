@@ -41,6 +41,21 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 > `<shot>.recipe.json` while the provider wrote `<shot>.png.recipe.json` — two provenance sidecars
 > for one asset, free to diverge; the chain now merges its conditioning metadata into the provider's
 > file and removes the stale twin.
+>
+> **v0.29 same-day pave addendum #2 (2026-08-02, eleventh-hour-heroes run).** **(1)** The cover
+> compiler (`cover/compile_cover.py`) now auto-negates `identity.register.anchorSubject`, closing
+> the last render path that passed the anchor first without reading the field: a cover render
+> painted the readiness-lamp anchor's ancient burning oil lamp onto the cover wall (one paid
+> re-roll). Skipped when `--anchor-ref` overrides the anchor, since the declared subject no longer
+> describes the first reference (see Register). **(2)** `make-a-book` guidance: `allowUncast` does
+> not protect anonymous crowds from the cast closure — a spread with unnamed figures must declare
+> the per-spread `anonymous` field (two paid re-rolls); and after voice-gate blesses a manuscript,
+> beat `text` syncs to the manuscript verbatim, because book-doctor's caption check makes
+> beats == manuscript == captions the invariant (two runs did this sync by hand). **Recorded, not
+> built:** `lock-level` grades a deliberately-trimmed character matrix as 'partial' forever
+> because it grades against the canonical 8-slot matrix rather than the entity's declared sheets;
+> advisory-only (assert-story unaffected), deliberately not landed mid-flight while sibling book
+> sessions hold worktrees.
 
 > **v0.28 changelog — lookbooks became real, and clothes got attached to people.** From v0.12 to
 > v0.27 a Lookbook was a specification with no implementation: `--lookbook` wrote the vocabulary's
@@ -1433,12 +1448,18 @@ generic "take no subject from the style anchor" guard loses to a concrete pictur
 anchor put its own lamp and jar onto a spread that carried EIGHT other references, because the
 scene had a table and the anchor had tabletop objects. Declared once per universe; kept in sync
 with `anchor` (if the anchor image changes, this sentence changes with it). Consumers: Nation of
-Fire's spread compiler negates it at render time (where the field was first earned), and the
+Fire's spread compiler negates it at render time (where the field was first earned), the
 framework's `chain_matrix` negates it on every matrix shot (2026-08-02; before that, every matrix
-shoot had to hand-negate it in prompts.md, and three did in one book run). The framework's own
-spread composer (`compose-spread/assemble_prompt`) does NOT yet read it and carries only the
-generic anchor guard; that gap is logged, not hidden. A Style Pack may declare the same field for
-the same reason.
+shoot had to hand-negate it in prompts.md, and three did in one book run), and the framework's
+cover compiler (`cover/compile_cover.py`, which `render_cover.py` delegates to) negates it on
+every cover (2026-08-02; a cover passes the anchor FIRST like everything else, and the
+readiness-lamp anchor painted an ancient burning oil lamp onto a cover wall — one paid re-roll on
+eleventh-hour-heroes). When `--anchor-ref` overrides the anchor image, the cover compiler skips
+the register's declared subject, because the sentence no longer describes what the first
+reference depicts; a Style Pack override in `chain_matrix` likewise reads the PACK's own
+`anchorSubject`. The framework's own spread composer (`compose-spread/assemble_prompt`) does NOT
+yet read it and carries only the generic anchor guard; that gap is logged, not hidden. A Style
+Pack may declare the same field for the same reason.
 
 **Craft-canon is data, not skill prose.** Genres, spines, and register rules a universe discovers
 (SPEC §3.5, §5) are typed canon records the renderer reads — NOT paragraphs buried in a skill file.

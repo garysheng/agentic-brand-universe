@@ -293,6 +293,13 @@ Then `abu:render-readback` every image.
   rendered. It refuses before spending. An over-the-shoulder single still needs BOTH people cast,
   because the shoulder is a person. Quoted spans are stripped first, since a name in designed
   lettering is not a body in frame.
+- **Unnamed crowds need the per-spread `anonymous` field.** `allowUncast` only skips the
+  uncast-NAME refusal; the cast closure ("THE ONLY CHARACTERS IN THIS IMAGE ARE... NOBODY ELSE
+  APPEARS") still deletes scene-described extras. A spread with anonymous figures (a crowd, a
+  congregation, trainees, a baptizee) must declare `anonymous` naming who they are — that widens
+  the closure to "these, and nobody else". Earned 2026-08-02 on eleventh-hour-heroes: two paid
+  re-rolls lost to a described crowd being silently deleted before the field was found in
+  `assemble_prompt.py`.
 - **Single-image guard.** Several canon references are multi-panel study sheets, and the model
   copies their LAYOUT, returning a contact sheet instead of a scene.
 - **Anchor style guard.** The register anchor is passed FIRST on every render, so on a spread that
@@ -300,6 +307,11 @@ Then `abu:render-readback` every image.
 - **Per-spread overrides** (`style`, `negatives`, `anchorRef`, `size`, `settingRule`,
   `allowMultiPanel`, `allowUncast`) so one book can carry a second diegetic register, and so the
   3:4 cover and closing plate render portrait inside a landscape book.
+- **Beats sync to the blessed manuscript.** After the manuscript passes voice-gate, sync each
+  beat's `text` to its manuscript section verbatim: book-doctor's caption check compares
+  `_caption` to beat text, and captions must be manuscript-verbatim, so beats == manuscript ==
+  captions is the invariant. Two runs have now done this sync by hand (nof-universe commit
+  "story: re-sync beat text from the blessed manuscript"; eleventh-hour-heroes, 2026-08-02).
 
 **Prompt and spec discipline:**
 - **NEVER write a blanket no-text negative.** In-art text is a first-class design element; a
