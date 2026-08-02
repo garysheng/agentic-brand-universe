@@ -13,7 +13,7 @@ to 100. Each dimension scores 0..max; overall maps to a letter grade.
 
 Exit 0 always (a low grade is a report, not a failure).
 """
-import json, os, pathlib, sys
+import json, re, os, pathlib, sys
 
 # ---- rubric: (key, label, max_points) ---------------------------------------
 RUBRIC = [
@@ -125,14 +125,19 @@ def grade_universe(udir):
         for e in settings:
             st = e.get("structured") or {}
             plate_keys = set(st.get("sheets") or {})
+            # exclusivity marker, not a bare prefix; and count ROOMS, not contract slots.
+            # See lint-universe for the four false positives the loose form produced.
             scoped = [i for i in st.get("invariants") or []
-                      if isinstance(i, str) and any(i.startswith(k) for k in plate_keys)]
-            crammed = len(plate_keys) >= 8 and not (st.get("houseRules") or {})
+                      if isinstance(i, str)
+                      and any(re.match(rf"^{re.escape(k)}\s+ONLY\b", i) for k in plate_keys)]
+            rooms = plate_keys - {"turnaround", "blueprint", "scalePlate",
+                                  "blockingPlate", "master"}
+            crammed = len(rooms) >= 8 and not (st.get("houseRules") or {})
             if not scoped and not crammed:
                 clean += 1
             else:
                 why = (f"{len(scoped)} plate-scoped invariant(s)" if scoped
-                       else f"{len(plate_keys)} plates and no houseRules")
+                       else f"{len(rooms)} room plates and no houseRules")
                 issues.append((round(3 / len(settings)) + 1, "setting_nesting",
                                f"{e['id']} is one entity covering several rooms ({why}), so each "
                                f"room is read-back against the other rooms' rules",

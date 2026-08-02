@@ -332,6 +332,29 @@ class TestSettingWantsNesting(unittest.TestCase):
             _, w = run(self._house(t, invariants=["shoes-come-off-indoors"]))
             self.assertNotIn("SETTING-WANTS-NESTING", w)
 
+    def test_a_bare_plate_prefix_is_not_the_tell(self):
+        """Four false positives on real canon before this narrowed.
+
+        `porch-house-wall-left-valley-and-rail-right` and
+        `summit-is-a-modest-bald-rock-and-grass-crown` merely BEGIN with a plate key.
+        They are per-angle handedness and identity statements, which is the correct
+        way to describe one entity's several cameras. Only an explicit exclusivity
+        marker says a rule holds for one plate and NOT its siblings.
+        """
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._house(t, sheets={"porch": "reference/h/p.png"},
+                                   invariants=["porch-house-wall-left-and-rail-right"]))
+            self.assertNotIn("SETTING-WANTS-NESTING", w)
+
+    def test_contract_slots_do_not_count_as_rooms(self):
+        """the-cold-cathedral read as 8 rooms when three were structural slots."""
+        with tempfile.TemporaryDirectory() as t:
+            sheets = {k: f"reference/h/{k}.png" for k in
+                      ("turnaround", "blueprint", "scalePlate", "blockingPlate", "master",
+                       "nave", "corridor", "exterior")}
+            _, w = run(self._house(t, sheets=sheets, invariants=[]))
+            self.assertNotIn("SETTING-WANTS-NESTING", w)
+
     def test_flags_a_building_by_plate_count(self):
         with tempfile.TemporaryDirectory() as t:
             many = {f"room{i}": f"reference/h/{i}.png" for i in range(9)}

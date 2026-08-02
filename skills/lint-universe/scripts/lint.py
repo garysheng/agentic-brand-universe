@@ -310,9 +310,17 @@ def lint(root):
             # hearth room rendered small, and v0.29 added nesting because its sunken pit had
             # nowhere to declare fixed lettered seating.
             plate_keys = set((e.get("structured") or {}).get("sheets") or {})
+            # The tell is an EXCLUSIVITY marker, not merely a plate-name prefix. First cut
+            # matched any invariant starting with a plate key and produced four false
+            # positives on real canon: `porch-house-wall-left-valley-and-rail-right`,
+            # `kitchen-is-the-one-of-one-kitchen-grace` and `summit-is-a-modest-bald-rock`
+            # are per-ANGLE handedness and identity statements, which are the correct way
+            # to describe one entity's several cameras. What actually signals a flat
+            # contract straining is "studyNook ONLY: EXACTLY TWO armchairs", which says a
+            # rule holds for one plate and NOT its siblings.
             scoped = [i for i in (e.get("structured") or {}).get("invariants") or []
                       if isinstance(i, str)
-                      and any(i.startswith(k) for k in plate_keys)]
+                      and any(re.match(rf"^{re.escape(k)}\s+ONLY\b", i) for k in plate_keys)]
             if scoped:
                 warn("SETTING-WANTS-NESTING",
                      f"{eid}: {len(scoped)} invariant(s) are scoped to a single plate by name "
@@ -320,9 +328,15 @@ def lint(root):
                      f"room is read-back against the others' rules. Split the rooms into their "
                      f"own settings with `partOf: {eid}`, and move the genuinely house-wide "
                      f"rules into `structured.houseRules`.")
-            if len(plate_keys) >= 8 and not (e.get("structured") or {}).get("houseRules"):
+            # Count ROOMS, not contract slots. turnaround/blueprint/scalePlate/
+            # blockingPlate/master are structural and were inflating the count: the
+            # cold-cathedral read as 8 "rooms" when three were slots and it is cast by
+            # zero spreads.
+            _SLOTS = {"turnaround", "blueprint", "scalePlate", "blockingPlate", "master"}
+            rooms = plate_keys - _SLOTS
+            if len(rooms) >= 8 and not (e.get("structured") or {}).get("houseRules"):
                 warn("SETTING-WANTS-NESTING",
-                     f"{eid}: {len(plate_keys)} plates on one setting and no `houseRules`. That "
+                     f"{eid}: {len(rooms)} room plates on one setting and no `houseRules`. That "
                      f"is usually a building rather than a room. Consider child settings with "
                      f"`partOf: {eid}`.")
             # houseRules that nothing inherits is dead config
