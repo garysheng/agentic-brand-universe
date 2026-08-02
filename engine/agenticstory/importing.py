@@ -129,7 +129,46 @@ def import_one(universe: Path, src: Path, dest_rel: str, *, spec_version: str,
     if dst.exists() and not force:
         raise ImportRefusal(f"{dest_rel} already exists (pass --force to overwrite)")
     dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dst)
+
+    # PERFORM THE CROP, OR REFUSE TO CLAIM IT (v0.29).
+    #
+    # This used to `shutil.copy2` unconditionally while `build_record` wrote
+    # `transform.crop` into the recipe from the caller's argument. The bytes were the
+    # untouched original and the provenance asserted an edit that never happened, which
+    # is strictly worse than recording nothing: a false record passes an audit. Found on
+    # 2026-08-01, where a plate's recipe claimed crop [824,25,1638,1112] and the file was
+    # the full uncropped original.
+    #
+    # A crop is now applied or the import REFUSES. It never silently degrades to a copy,
+    # because a silent degrade is exactly how the false record got written.
+    crop = (kw.get("transform") or {}).get("crop")
+    if crop:
+        if len(crop) != 4:
+            raise ImportRefusal(
+                f"transform.crop must be [x0,y0,x1,y1]; got {crop!r}")
+        try:
+            from PIL import Image
+        except ImportError:
+            raise ImportRefusal(
+                "transform.crop was requested but Pillow is not installed, so the crop "
+                "cannot be performed. Refusing rather than copying the original and "
+                "recording a crop that did not happen: a recipe that asserts an edit it "
+                "never made is worse than one that records nothing.")
+        try:
+            with Image.open(src) as im:
+                x0, y0, x1, y1 = (int(v) for v in crop)
+                if not (0 <= x0 < x1 <= im.width and 0 <= y0 < y1 <= im.height):
+                    raise ImportRefusal(
+                        f"crop {crop} does not fit inside the source image "
+                        f"({im.width}x{im.height})")
+                im.crop((x0, y0, x1, y1)).save(dst)
+        except ImportRefusal:
+            raise
+        except Exception as e:
+            raise ImportRefusal(f"could not crop {src}: {e}")
+    else:
+        shutil.copy2(src, dst)
+
     rec = build_record(dst, src, spec_version=spec_version, **kw)
     (dst.parent / (dst.name + RECIPE_SUFFIX)).write_text(json.dumps(rec, indent=2) + "\n")
     return rec

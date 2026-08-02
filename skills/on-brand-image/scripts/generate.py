@@ -8,7 +8,8 @@ step you remember at lock time; it is a side effect of generating. This closes
 the gap where candidate renders (everything before a lock) had no provenance.
 
 On success it writes, beside the output, `<output>.recipe.json`:
-  { provider, model, prompt, specVersion, stylePack?, refs:[{path}], timestamp, sha256 }
+  { provider, model, size, quality, prompt, specVersion, stylePack?,
+    refs:[{path}], timestamp, sha256 }
 This is the SAME recipe shape `shoot-references` freezes and `compose-spread` emits, so
 a generated candidate is already lock-ready and `lint-universe`-auditable.
 
@@ -571,6 +572,13 @@ def main():
             recipe["permitted"] = lifted
         if a.ref_first:
             recipe["refFirst"] = True
+    # Output geometry belongs in provenance. It was forwarded to the provider and never
+    # recorded, so a recipe could not say whether a plate was shot portrait or landscape,
+    # and a reader measuring the file could not tell an intended aspect from a provider
+    # default (2026-08-01: `size: None` was misread as a dropped flag when the flag had
+    # worked fine).
+    recipe["size"] = a.size
+    recipe["quality"] = a.quality
     if lookbook_meta:
         # The SAMPLED exemplars, not just the lookbook's name. Which subset was drawn is
         # the difference between a reproducible render and a recipe that merely asserts

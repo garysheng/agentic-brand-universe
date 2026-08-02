@@ -64,9 +64,13 @@ lost to whatever is in front of you. So:
   state what actually ran. Change live INSTRUCTIONS; leave every ATTESTATION alone, even
   when it points at a file that has since been deleted.
 
-## Known-open bugs (do not rediscover these)
+## Provenance invariants (both were bugs, both are now enforced)
 
-- `import-asset --crop` RECORDS a crop transform it never PERFORMS. The recipe asserts an
-  edit that did not happen, which is worse than no record.
-- `generate.py --size` is forwarded to the provider but never written to the recipe, so
-  provenance is silent about output geometry.
+- **A recorded transform is a PERFORMED transform.** `import-asset --crop` used to
+  `shutil.copy2` the original while writing `transform.crop` into the recipe from the
+  caller's argument, so the provenance asserted an edit that never happened. It now crops
+  or REFUSES, including when Pillow is missing or the box does not fit the source. A false
+  record is worse than none: it passes an audit.
+- **A recipe records the output geometry it asked for.** `--size` and `--quality` were
+  forwarded to the provider and never written down, so a reader could not tell an intended
+  aspect from a provider default.

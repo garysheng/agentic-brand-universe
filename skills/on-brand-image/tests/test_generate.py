@@ -461,7 +461,7 @@ class TestRecipeIsUnskippable(GenerateCase):
     """This file's stated reason for existing: provenance is not a step you remember
     at lock time, it is a thing you cannot generate without."""
 
-    BARE_KEYS = {"provider", "model", "prompt", "specVersion", "refs", "timestamp", "sha256"}
+    BARE_KEYS = {"provider", "model", "prompt", "specVersion", "refs", "timestamp", "sha256", "size", "quality"}
 
     def test_the_recipe_lands_beside_the_output(self):
         r = self.run_main(*self.base())

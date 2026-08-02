@@ -26,6 +26,15 @@ class Base(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def real_src(self, name="face.png", size=(40, 40)):
+        """A genuinely decodable image. Required wherever a crop is exercised, because
+        `import_one` now PERFORMS the crop instead of merely recording it."""
+        from PIL import Image
+        p = self.srcdir / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", size, (200, 30, 30)).save(p)
+        return p
+
     def src(self, name="face.png", body=b"\x89PNG fake"):
         p = self.srcdir / name
         p.write_bytes(body)
@@ -37,11 +46,11 @@ class Base(unittest.TestCase):
 
 class ImportOne(Base):
     def test_copies_and_writes_the_recipe_as_a_side_effect(self):
-        rec = im.import_one(self.u, self.src(), "reference/gary/photos/face.png",
+        rec = im.import_one(self.u, self.real_src(), "reference/gary/photos/face.png",
                             spec_version="0.21",
                             derived_from={"repo": "other-os", "path": "public/a.webp",
                                           "sha256": "0a270523ea2adb29"},
-                            transform={"crop": [1, 2, 3, 4]},
+                            transform={"crop": [1, 2, 31, 24]},
                             prompt="the prompt that made the source",
                             blessed_by="Gary, 2026-08-01")
         self.assertTrue((self.u / "reference/gary/photos/face.png").is_file())
@@ -49,8 +58,13 @@ class ImportOne(Base):
         self.assertEqual(on_disk, rec)
         self.assertEqual(rec["provenance"], "derived")
         self.assertFalse(rec["unrecorded"])
+        # A recorded crop must be a PERFORMED crop. Before v0.29 this recipe asserted an
+        # edit that never happened, which is worse than recording nothing.
+        from PIL import Image
+        with Image.open(self.u / "reference/gary/photos/face.png") as out:
+            self.assertEqual(out.size, (30, 22))
         self.assertEqual(rec["derivedFrom"]["repo"], "other-os")
-        self.assertEqual(rec["transform"]["crop"], [1, 2, 3, 4])
+        self.assertEqual(rec["transform"]["crop"], [1, 2, 31, 24])
         self.assertEqual(rec["sourcePrompt"], "the prompt that made the source")
         self.assertEqual(rec["generator"], "abu import-asset")
 
@@ -121,12 +135,30 @@ class Manifest(Base):
         im.import_manifest(self.u, mf, spec_version="0.21", dest="ref", prompts=pf)
         self.assertEqual(self.recipe("ref/a.png")["sourcePrompt"], "the original call")
 
-    def test_cropbox_sugar_lands_in_transform(self):
-        self.src("a.png")
-        mf = self.write_manifest([{"file": "a.png", "cropBox": [5, 6, 7, 8],
+    def test_cropbox_sugar_is_recorded_AND_performed(self):
+        self.real_src("a.png")
+        mf = self.write_manifest([{"file": "a.png", "cropBox": [5, 6, 25, 26],
                                    "derivedFrom": {"path": "p"}}])
         im.import_manifest(self.u, mf, spec_version="0.21", dest="ref")
-        self.assertEqual(self.recipe("ref/a.png")["transform"]["crop"], [5, 6, 7, 8])
+        self.assertEqual(self.recipe("ref/a.png")["transform"]["crop"], [5, 6, 25, 26])
+        from PIL import Image
+        with Image.open(self.u / "ref/a.png") as out:
+            self.assertEqual(out.size, (20, 20))
+
+    def test_a_crop_that_does_not_fit_the_source_is_REFUSED(self):
+        self.real_src("a.png", size=(10, 10))
+        mf = self.write_manifest([{"file": "a.png", "cropBox": [0, 0, 999, 999],
+                                   "derivedFrom": {"path": "p"}}])
+        with self.assertRaises(im.ImportRefusal):
+            im.import_manifest(self.u, mf, spec_version="0.21", dest="ref")
+
+    def test_an_uncroppable_source_is_REFUSED_not_silently_copied(self):
+        """The whole bug: never degrade to a copy while still recording the crop."""
+        self.src("bad.png")                      # fake bytes, not a real image
+        mf = self.write_manifest([{"file": "bad.png", "cropBox": [1, 2, 3, 4],
+                                   "derivedFrom": {"path": "p"}}])
+        with self.assertRaises(im.ImportRefusal):
+            im.import_manifest(self.u, mf, spec_version="0.21", dest="ref")
 
     def test_the_whole_batch_is_refused_before_anything_is_copied(self):
         self.src("a.png")
