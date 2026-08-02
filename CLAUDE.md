@@ -14,7 +14,8 @@ would use at the moment you need it.
 | ...do this | Use |
 |---|---|
 | **make a contact sheet** of several renders | `render-readback/scripts/contact_sheet.py --out X.png --cols 3 *.png` |
-| **crop in on a detail** to check an invariant (jaw, throat, a mark) | `render-readback/scripts/crop_zoom.py` |
+| **verify a render** — did the canon arrive, did the look bind, is the frame dead | `render-readback/scripts/verify_render.py <png> --expect "id@look"` |
+| **crop in on a detail** to check an invariant (jaw, throat, a mark) | `render-readback/scripts/crop_zoom.py` — **use it BEFORE calling a defect.** A contact sheet is downsampled; a lace hem called "vertical stripes" from a 3-up was a correct horizontal band when zoomed. |
 | **measure a figure** in a plate | `render-readback/scripts/measure.py` (`figure` mode only; `star` mode was withdrawn for false precision) |
 | **generate ANY image** | `on-brand-image/scripts/generate.py` — the single provider adapter. Never call a provider directly; this is what writes provenance. |
 | **knock out a background** | `on-brand-image/scripts/chroma_key.py` |
@@ -101,21 +102,32 @@ Opposing invariants resolve correctly and can be trusted: a pair render where on
 canon asserts a chest patch and the other's forbids one produces exactly that asymmetry with
 neither mentioned in the prompt.
 
-**Verify before you look at the image.** Read the recipe back and confirm the canon actually
-arrived. This has caught silent bypasses four times:
+**Verify before you look at the image**, with the script, not by eye:
 
 ```bash
-python3 -c "import json,sys; p=json.load(open(sys.argv[1]))['prompt']; \
-  print('invariants:', 'LOCKED canonical traits' in p)" <out>.png.recipe.json
+python3 skills/render-readback/scripts/verify_render.py <out>.png \
+  --expect "selah@wedding-dress"           # asserts the LOOK bound, not just the person
 ```
 
-Also check for a dead render. Two came back pure black after a metaphor about light
-("catch the light like a constellation") was read as a night scene:
+It checks that the recipe exists, that the invariant block reached the prompt, that the
+entity AND look you meant are the ones that resolved, and that the frame is not pure black.
+It exits non-zero, so it can gate a loop. These were two paste-in one-liners in this file
+until 2026-08-02, and a check you paste is a check you skip: between them they had already
+caught four silent binding bypasses and two dead frames, and were still being retyped by
+hand. **`--expect selah` does NOT satisfy `--expect selah@wedding-dress`** — matching the
+id alone is exactly how the bare-entity bug stayed invisible.
+
+**To prove a look is BOUND, render a scene that never names the clothes**, and let the
+script check the scene text too:
 
 ```bash
-python3 -c "from PIL import Image;import sys; \
-  print('BLACK' if Image.open(sys.argv[1]).convert('RGB').getextrema()==((0,0),(0,0),(0,0)) else 'ok')" <out>.png
+python3 skills/render-readback/scripts/verify_render.py <out>.png \
+  --expect "selah@wedding-dress-highneck" --scene "$SCENE"
 ```
+
+If the garment words are in the prompt, the render proves nothing: it shows the model can
+follow instructions, which was never in doubt. Add the look's own hero words with
+`--forbid`, since only you know what this look is made of.
 
 ## The rule this file encodes
 
@@ -129,6 +141,23 @@ lost to whatever is in front of you. So:
   only here. The `fashion-look` form's `PROMPT.md` does this and it is the pattern.
 - Prefer a tool that **refuses loudly at the moment of misuse** over a doc that explains the
   right way. `validate` catching a bad wardrobe key taught faster than any prose.
+
+## Proving a test bites
+
+When you add a test for existing behaviour, revert the behaviour and confirm the test
+fails. A test written against code that already passes proves only that it compiles.
+
+**Assert the mutation actually applied.** Patch by string replacement and the string will
+eventually not match — a comment between two lines is enough — and the run then reports the
+mutation as SURVIVED when nothing was ever mutated. That reads as "the test is weak" and
+sends you rewriting a test that was fine. It happened on 2026-08-02:
+
+```python
+assert old in src, "PATCH DID NOT MATCH"   # without this the no-op is silent
+```
+
+Same family as every other bug in this file: a check that did not run looks exactly like a
+check that passed.
 
 ## Two standing gotchas
 
