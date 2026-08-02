@@ -101,3 +101,24 @@ the loop is the value, not the narration.
 - A **low grade is a report, not a failure** — a young universe SHOULD grade low; the punch-list is the plan. The script always exits 0.
 - The heaviest weight is **entity matrices** on purpose: a universe whose references aren't locked will drift on every render, which is the exact failure the framework exists to kill.
 - Do not "fix" a low sub-score by hand-editing a JSON to look complete (e.g. writing a plate path that doesn't resolve). The grader checks that files actually resolve; faking it just moves the lie downstream. Close the gap with the real verb.
+
+## Self-reflection: grade the grader (every run)
+
+**End every doctor run with one short reflection on the doctor itself** (Gary, 2026-08-02:
+"universe doctor should also invite self reflection about how universe doctor can improve").
+The rubric IS the framework's definition of "a done, good universe", so a blind spot here is a
+blind spot everywhere. After reporting the grade, ask three questions and act on the answers:
+
+1. **What did this run see that the rubric cannot score?** A defect you noticed by eye, a rule
+   the universe holds that no dimension measures (seating/blocking contracts, nesting hygiene,
+   register drift) — that is a MISSING SUB-SCORE. Add it to `scripts/grade.py` (with a test)
+   or file it via `evolve-abu` if it needs schema support.
+2. **What did the rubric over- or under-weight?** If the punch-list's top item was obviously
+   less important than something ranked below it, the weights are wrong; propose the reweight.
+3. **What did the operator ask about that the report didn't answer?** Their question is the
+   next report section.
+
+One paved improvement per run is a good pace; zero on a run that surfaced friction means this
+section was skipped. Route mechanics through `evolve-abu`, and log what changed in the repo's
+SAVE-LOG entry for the run. A grader that never learns converges on grading yesterday's
+universes.
