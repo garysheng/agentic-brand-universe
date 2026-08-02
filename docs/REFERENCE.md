@@ -162,6 +162,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 | v0.29 | five checks that were lying, all earned in one book run. |
 | v0.28 | lookbooks became real, and clothes got attached to people. |
 | v0.27 | a standard for when a REAL PERSON is reproducible. |
+| v0.29 | a setting may be `partOf` another setting. |
 | v0.26 | `supersedes` now covers the negatives it always claimed to. |
 | v0.25 | a shot can name WHICH of another entity's sheets it needs. |
 | v0.24 | a lock may raise a gate and must never lower one. |

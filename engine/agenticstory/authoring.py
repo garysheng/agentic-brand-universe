@@ -124,6 +124,14 @@ def scaffold_entity(
             }
     elif kind in ("setting", "visual-metaphor"):
         ent["status"] = "unlocked"
+        # SPEC v0.29: a ROOM is a setting that is `partOf` a building. Scaffolded as an
+        # explicit null rather than omitted, because a field nobody can see is a field
+        # nobody uses, and the failure this prevents is silent: a house modelled as ONE
+        # setting has a single flat contract, so a per-room rule has nowhere to live and
+        # every room gets read-back against the other rooms' rules. Leave it null for a
+        # standalone place; set it to the parent's id for a room, and put the genuinely
+        # building-wide rules in the PARENT's `structured.houseRules`.
+        ent["partOf"] = None
         ent["contract"] = {
             "turnaround": None, "emptyPlates": [], "blueprint": None,
             # SPEC v0.9: emptyPlates are people-free so a reference never bakes a face into a
@@ -140,6 +148,12 @@ def scaffold_entity(
             "blockingPlate": None,
             "map": "", "blocking": "", "dressing": "", "scale": "",
         }
+        # The other half of v0.29. Only these two keys are inherited by a child that
+        # declares `partOf` this entity: `invariants` (which become the child's read-back
+        # checks) and `dressing` (which reaches the model). Anything else here is REFUSED,
+        # because `always` and `qa` read like they should work and were verified dead.
+        # Leave empty unless this entity is a BUILDING with rooms nested inside it.
+        ent.setdefault("structured", {})["houseRules"] = {"invariants": [], "dressing": ""}
         ent["prose"] = {"rules": ""}
     else:  # doctrine, beat, group
         ent["structured"] = {"sheets": {}, "requiredForRender": []}

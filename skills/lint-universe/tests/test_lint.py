@@ -296,6 +296,100 @@ class TestGoldenRecipeInputs(unittest.TestCase):
         self.assertNotIn("PARSE", errs)
 
 
+class TestSettingWantsNesting(unittest.TestCase):
+    """SPEC v0.29: find the multi-room entity before it costs another book.
+
+    A setting carries ONE flat contract, so an entity covering several rooms has
+    nowhere to put a per-room rule. Authors work around it by prefixing the plate
+    name onto an invariant, and that workaround is the tell. It is not cosmetic:
+    every setting invariant becomes a render-readback QA check, so on a nine-room
+    entity each room gets graded against the other eight rooms' furniture.
+
+    christofuturist-home is the worked case and cost the spec twice: v0.13 added
+    contract.scalePlate because its hearth room rendered small, and v0.29 added
+    nesting because its sunken pit had nowhere to declare fixed lettered seating.
+    Run against real canon this check found FIVE more multi-room settings.
+    """
+
+    def _house(self, tmp, *, invariants=None, sheets=None, houseRules=None):
+        st = {"sheets": sheets or {"studyNook": "reference/h/a.png",
+                                   "hearth": "reference/h/b.png"}}
+        if invariants is not None:
+            st["invariants"] = invariants
+        if houseRules is not None:
+            st["houseRules"] = houseRules
+        return build(tmp, entity={"id": "house", "kind": "setting",
+                                  "contract": {"map": "m", "blocking": "b", "dressing": "d"},
+                                  "structured": st})
+
+    def test_flags_a_plate_scoped_invariant(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._house(t, invariants=["studyNook ONLY: exactly two armchairs"]))
+            self.assertIn("SETTING-WANTS-NESTING", w)
+
+    def test_quiet_when_invariants_are_room_wide(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._house(t, invariants=["shoes-come-off-indoors"]))
+            self.assertNotIn("SETTING-WANTS-NESTING", w)
+
+    def test_a_bare_plate_prefix_is_not_the_tell(self):
+        """Four false positives on real canon before this narrowed.
+
+        `porch-house-wall-left-valley-and-rail-right` and
+        `summit-is-a-modest-bald-rock-and-grass-crown` merely BEGIN with a plate key.
+        They are per-angle handedness and identity statements, which is the correct
+        way to describe one entity's several cameras. Only an explicit exclusivity
+        marker says a rule holds for one plate and NOT its siblings.
+        """
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._house(t, sheets={"porch": "reference/h/p.png"},
+                                   invariants=["porch-house-wall-left-and-rail-right"]))
+            self.assertNotIn("SETTING-WANTS-NESTING", w)
+
+    def test_contract_slots_do_not_count_as_rooms(self):
+        """the-cold-cathedral read as 8 rooms when three were structural slots."""
+        with tempfile.TemporaryDirectory() as t:
+            sheets = {k: f"reference/h/{k}.png" for k in
+                      ("turnaround", "blueprint", "scalePlate", "blockingPlate", "master",
+                       "nave", "corridor", "exterior")}
+            _, w = run(self._house(t, sheets=sheets, invariants=[]))
+            self.assertNotIn("SETTING-WANTS-NESTING", w)
+
+    def test_flags_a_building_by_plate_count(self):
+        with tempfile.TemporaryDirectory() as t:
+            many = {f"room{i}": f"reference/h/{i}.png" for i in range(9)}
+            _, w = run(self._house(t, sheets=many))
+            self.assertIn("SETTING-WANTS-NESTING", w)
+
+    def test_plate_count_alone_is_quiet_once_houseRules_exist(self):
+        """Declaring houseRules is the signal the author has thought about it."""
+        with tempfile.TemporaryDirectory() as t:
+            many = {f"room{i}": f"reference/h/{i}.png" for i in range(9)}
+            _, w = run(self._house(t, sheets=many,
+                                   houseRules={"invariants": ["shoes-come-off-indoors"]}))
+            self.assertNotIn("SETTING-WANTS-NESTING", w)
+
+    def test_houseRules_with_no_children_is_dead_config(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._house(t, houseRules={"invariants": ["r"]}))
+            self.assertIn("HOUSE-RULES-WITH-NO-CHILDREN", w)
+
+    def test_houseRules_are_fine_once_a_room_nests(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._house(t, houseRules={"invariants": ["r"]})
+            (root / "canon" / "entities" / "room.json").write_text(json.dumps(
+                {"id": "room", "kind": "setting", "partOf": "house",
+                 "contract": {"map": "m", "blocking": "b", "dressing": "d"}}))
+            _, w = run(root)
+            self.assertNotIn("HOUSE-RULES-WITH-NO-CHILDREN", w)
+
+    def test_is_never_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            e, _ = run(self._house(t, invariants=["studyNook ONLY: two armchairs"]))
+            self.assertNotIn("SETTING-WANTS-NESTING", e)
+            self.assertNotIn("HOUSE-RULES-WITH-NO-CHILDREN", e)
+
+
 class TestSettingScale(unittest.TestCase):
     """SPEC v0.9: a setting must be able to prove its own SIZE.
 

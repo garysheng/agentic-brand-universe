@@ -62,6 +62,40 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 > Advisory throughout, exactly like `lock-level`: it never blocks a render, and an invented
 > character is not measured against it at all.
 
+> **v0.29 changelog — a setting may be `partOf` another setting.** Until now a setting carried
+> exactly ONE flat contract: one `map`, one `blocking`, one `dressing`, one `scale`, for the whole
+> entity. Correct for a shed, wrong for a house. `christofuturist-home` had grown to twelve plates
+> covering nine rooms under a single room-agnostic `blocking`, and it had already cost the spec once:
+> v0.13 added `contract.scalePlate` because "christofuturist-home, whose hearth room rendered small",
+> a one-room problem that was unfixable on a nine-room entity and so became a new field for everyone.
+> On 2026-08-02 it cost again. The sunken pit needed FIXED LETTERED SEATING (SEAT A / SEAT B) and
+> there was nowhere to put it, since a `blocking` naming two seats would be a lie about the eight
+> rooms that have none. The room was promoted to a top-level sibling, which lost the containment
+> outright (nothing in the data said the pit is IN the home) and silently dropped the house rules,
+> so `everyone-indoors-wears-the-house-slippers` had to be hand-copied onto the child.
+>
+> A setting now declares `partOf: <setting-id>`, and a parent declares
+> `structured.houseRules: {invariants, dressing}`. THAT BLOCK ALONE is inherited: `invariants` union
+> into the child (parent first, deduped) and `dressing` appends before the child's.
+> **LAW inherits, ART never does.** `turnaround`, `blueprint`, `scalePlate`, `blockingPlate`,
+> `emptyPlates`, `structured.sheets` and `contract.plates` are always the room's own, because
+> inheriting a parent's plate would hand the model the hearth when it asked for the pit, which is
+> the exact drift the feature exists to stop. `map`, `blocking` and `scale` stay the child's for the
+> same reason.
+>
+> **Blind inheritance was implemented first and was wrong**, and it took ten minutes against real
+> canon to prove it: folding the parent's whole invariant list into each child handed the pit
+> `studyNook ONLY: EXACTLY TWO armchairs` and `hearthRotunda IS RETIRED`. Every setting invariant
+> becomes a render-readback QA check, so the pit would have been graded on furniture it must not
+> have. Hence the explicit opt-in. For the same reason `houseRules` accepts ONLY those two keys and
+> REFUSES `always`/`qa` by name: both were in the first cut, both were verified dead on a real
+> render (a setting's block is built from `contract`, its checks from `structured.invariants`), and
+> a field that silently does nothing is the failure this spec keeps re-earning.
+>
+> Cycles, missing parents, non-setting parents and chains deeper than 8 are refused BY NAME at the
+> gate rather than as a recursion traceback. Additive twice over: an entity with no `partOf`
+> resolves byte-identically, and a parent with no `houseRules` gives its children nothing.
+
 > **v0.26 changelog — `supersedes` now covers the negatives it always claimed to.** §12 has
 > said since v0.10 that `supersedes` exists "so the QA checklist, the prompt block, AND THE
 > COMPUTED NEGATIVES all agree by construction." For the negatives that was false from the moment

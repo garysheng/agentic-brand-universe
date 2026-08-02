@@ -330,6 +330,63 @@ def lint(root):
                          f"{'; '.join(miss)}. `locked` is a claim about the art on disk, so a "
                          f"status the gate contradicts is a record that is simply not true. "
                          f"Shoot what is missing, or set status back to 'unlocked'.")
+            # ---- NESTING (SPEC v0.29): find the multi-room entity before it costs a book
+            #
+            # A setting carries ONE flat contract, so an entity covering several rooms has
+            # nowhere to put a per-room rule. Authors work around it by prefixing the room
+            # name onto an invariant ("studyNook ONLY: exactly two armchairs"), and that
+            # workaround is the tell. It is not cosmetic: every setting invariant becomes a
+            # render-readback QA check, so on a nine-room entity each room is graded against
+            # the other eight rooms' furniture.
+            #
+            # christofuturist-home is the worked case. It reached twelve plates over nine
+            # rooms and cost the spec twice: v0.13 added contract.scalePlate because its
+            # hearth room rendered small, and v0.29 added nesting because its sunken pit had
+            # nowhere to declare fixed lettered seating.
+            plate_keys = set((e.get("structured") or {}).get("sheets") or {})
+            # The tell is an EXCLUSIVITY marker, not merely a plate-name prefix. First cut
+            # matched any invariant starting with a plate key and produced four false
+            # positives on real canon: `porch-house-wall-left-valley-and-rail-right`,
+            # `kitchen-is-the-one-of-one-kitchen-grace` and `summit-is-a-modest-bald-rock`
+            # are per-ANGLE handedness and identity statements, which are the correct way
+            # to describe one entity's several cameras. What actually signals a flat
+            # contract straining is "studyNook ONLY: EXACTLY TWO armchairs", which says a
+            # rule holds for one plate and NOT its siblings.
+            scoped = [i for i in (e.get("structured") or {}).get("invariants") or []
+                      if isinstance(i, str)
+                      and any(re.match(rf"^{re.escape(k)}\s+ONLY\b", i) for k in plate_keys)]
+            if scoped:
+                warn("SETTING-WANTS-NESTING",
+                     f"{eid}: {len(scoped)} invariant(s) are scoped to a single plate by name "
+                     f"(e.g. {scoped[0][:48]!r}). One entity is covering several rooms, so every "
+                     f"room is read-back against the others' rules. Split the rooms into their "
+                     f"own settings with `partOf: {eid}`, and move the genuinely house-wide "
+                     f"rules into `structured.houseRules`.")
+            # Count ROOMS, not contract slots. turnaround/blueprint/scalePlate/
+            # blockingPlate/master are structural and were inflating the count: the
+            # cold-cathedral read as 8 "rooms" when three were slots and it is cast by
+            # zero spreads.
+            _SLOTS = {"turnaround", "blueprint", "scalePlate", "blockingPlate", "master"}
+            rooms = plate_keys - _SLOTS
+            if len(rooms) >= 8 and not (e.get("structured") or {}).get("houseRules"):
+                warn("SETTING-WANTS-NESTING",
+                     f"{eid}: {len(rooms)} room plates on one setting and no `houseRules`. That "
+                     f"is usually a building rather than a room. Consider child settings with "
+                     f"`partOf: {eid}`.")
+            # houseRules that nothing inherits is dead config
+            # only a POPULATED houseRules is dead config; the scaffold writes an empty
+            # one on every new setting so the field is discoverable, and warning on that
+            # would make the linter noisy on correct, brand-new canon.
+            _hr = (e.get("structured") or {}).get("houseRules") or {}
+            if any(v for v in _hr.values()):
+                kids = [f.stem for f in ents_dir.glob("*.json")
+                        if ((jload(f) or {}).get("partOf") or "").strip() == eid]
+                if not kids:
+                    warn("HOUSE-RULES-WITH-NO-CHILDREN",
+                         f"{eid}: declares structured.houseRules but no entity is `partOf` it, so "
+                         f"nothing inherits them. Either nest the rooms or move the rules back "
+                         f"into this entity's own invariants.")
+
             if not (con.get("scale") or "").strip():
                 warn("SETTING-NO-SCALE-DESCRIPTOR",
                      f"{eid}: no contract.scale descriptor. State the size in human terms (\"a "

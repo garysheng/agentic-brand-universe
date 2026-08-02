@@ -1016,6 +1016,94 @@ def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     return [f"reference/{ent['id']}/{plate}.png"]
 
 
+
+def _abu_root(start=None):
+    """The ABU repo root, found by walking up for engine/agenticstory.
+
+    Mirrors render_spread._abu_root. This script is otherwise stdlib-only; the
+    engine is imported ONLY for nested-setting resolution, and a universe with no
+    `partOf` anywhere never reaches this.
+    """
+    p = Path(start or __file__).resolve()
+    for c in [p, *p.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            return c
+    return None
+
+
+def _resolve_nesting(uroot: Path, ent: dict) -> dict:
+    """Fold every ancestor's law into `ent`. Refuses loudly on a bad chain."""
+    root = _abu_root()
+    if root is None:
+        raise Refuse(
+            f"'{ent.get('id')}' declares partOf '{ent.get('partOf')}' but the ABU engine "
+            "could not be located to resolve it. Reinstall the plugin.")
+    eng = str(root / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.nesting import resolve, NestingError
+    try:
+        return resolve(lambda eid: _load_entity_or_none(uroot, eid), ent["id"])
+    except NestingError as e:
+        raise Refuse(f"NESTED SETTING: {e}")
+
+
+def _load_entity_or_none(uroot: Path, eid: str):
+    p = uroot / "canon" / "entities" / f"{eid}.json"
+    if not p.exists():
+        return None
+    with open(p) as f:
+        return json.load(f)
+
+
+def entity_block(cid: str, derived: str | None, bake: str | None,
+             kind: str | None = None, mode: str | None = None,
+             setting_rule: dict | None = None,
+             warnings: list | None = None) -> str | None:
+    """Combine a cast entry's `bake` with the entity's derived block.
+
+    `bake` REPLACES by default, and that is load-bearing for a multi-state prop or
+    motif whose derived block is prose describing EVERY state it documents: hand that
+    to the model whole and it draws all of them at once, a chart of variations instead
+    of one scene. 181 such overrides were already in use in nation-of-fire.
+
+    A SETTING IS THE EXCEPTION AND USED TO LOSE ITS GEOMETRY (v0.29). A setting's
+    derived block is not a list of states; it is `map` + `blocking` + `dressing` +
+    `scale`, which is what the place IS, which way round it is and how big. Replacing
+    that with a per-spread bake deletes the room. Measured on the-lit-pulpit
+    (movies-are-sermons, 2026-08-02): its five spreads each carried a state bake, and
+    `contract.map` reached the model on NONE of them. It only rendered correctly
+    because the author had also written the auditorium into every scene by hand, which
+    is the duplication canon exists to remove. Nothing warned.
+
+    So `setting` now APPENDS (geometry first, then the bake). Zero blast radius: a
+    sweep of every render-spec in nation-of-fire found 62 bakes on non-characters and
+    all 62 were visual-metaphors, none a setting.
+
+    `visual-metaphor` KEEPS replace, because those 62 live in nine shipped books and
+    were authored expecting it. It now WARNS when it drops a non-empty geometry block,
+    so the same defect is visible instead of silent. A cast entry can settle it
+    explicitly either way with `"bakeMode": "append" | "replace"`.
+    """
+    m = mode or ("append" if kind == "setting" else "replace")
+    if bake and derived and m == "append":
+        out = f"{derived} {bake}"
+    elif bake:
+        if derived and kind in ("setting", "visual-metaphor"):
+            (warnings if warnings is not None else []).append(
+                f"{cid}: bake REPLACED the setting block, so its map/blocking/dressing/"
+                f"scale did not reach the model. Set \"bakeMode\": \"append\" on this "
+                f"cast entry to keep the geometry, or move the room description into the "
+                f"scene text deliberately.")
+        out = bake
+    else:
+        out = derived
+    rule = (setting_rule or {}).get(cid)
+    if rule:
+        out = f"{out} {rule}" if out else rule
+    return out
+
+
 def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
     """Return (ref_paths, block) for a setting, from its WHOLE contract.
 
@@ -1116,6 +1204,11 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     if sp is None:
         raise Refuse(f"spread '{spread_id}' not in render-spec")
 
+    # Advisory findings for the operator. A REFUSAL stops a render; a warning is for the
+    # class of defect that is legal, silent and usually wrong, which until now had no
+    # channel at all and so was discovered by reading assembled prompts by hand.
+    warnings: list[str] = []
+
     # A spread may override the book preamble for the keys in _SPREAD_OVERRIDES, so ONE
     # book can carry more than one register when the change is diegetic. A spread naming
     # none of them resolves exactly as before.
@@ -1170,19 +1263,6 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # override is allowed via _SPREAD_OVERRIDES.
     setting_rule = eff.get("settingRule") or {}
 
-    def entity_block(cid: str, derived: str | None, bake: str | None) -> str | None:
-        """A cast entry's `bake` REPLACES the derived block; settingRule APPENDS to it.
-
-        Replacement is load-bearing for a multi-state visual-metaphor: the derived block
-        describes EVERY state the entity documents, so handing it to the model whole makes
-        it draw all of them at once (a chart of variations instead of one scene). 181 such
-        overrides were already in use in nation-of-fire, expressed only in its local fork.
-        """
-        out = bake if bake else derived
-        rule = setting_rule.get(cid)
-        if rule:
-            out = f"{out} {rule}" if out else rule
-        return out
 
     # ARCHIVED ENTITIES ARE REFUSED AT THE POINT OF NEW CASTING (SPEC v0.19).
     # Not at the pre-render gate: archiving must never retroactively break a book that
@@ -1262,6 +1342,13 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         # zero on the spread where he stands alone, so the signature detail the whole book
         # turns on was checked only by a human who happened to look.
         # Look-aware, because an altLook may replace the render block wholesale.
+        # NESTED SETTINGS (SPEC v0.29). A room declares `partOf` its house, and the
+        # house's LAW (invariants, qa, dressing, render.always) folds in here while its
+        # ART never does. Resolved BEFORE the invariant sweep below so an inherited
+        # house rule is checked by read-back exactly like a room's own, which is the
+        # whole reason the slipper rule had to be hand-copied before this existed.
+        if kind in ("setting", "visual-metaphor") and (ent.get("partOf") or "").strip():
+            ent = _resolve_nesting(uroot, ent)
         if kind != "character":
             for i in (ent.get("structured") or {}).get("invariants") or []:
                 qa.append(f"{c['id']}: {i}")
@@ -1270,7 +1357,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"), c)
             add_refs(r)
-            block = entity_block(c["id"], block, c.get("bake"))
+            block = entity_block(c["id"], block, c.get("bake"), kind, c.get("bakeMode"), setting_rule, warnings)
             if block:
                 ent_blocks.append(block)
             continue
@@ -1282,7 +1369,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             add_refs(r)
             derived = ((ent.get("prose") or {}).get("rules")
                        or ((ent.get("structured") or {}).get("render") or {}).get("bake"))
-            block = entity_block(c["id"], derived, c.get("bake"))
+            block = entity_block(c["id"], derived, c.get("bake"), kind, c.get("bakeMode"), setting_rule, warnings)
             if block:
                 ent_blocks.append(block)
             continue
@@ -1539,7 +1626,8 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # entity that stated the same rule in both, and a checklist that asks twice teaches
     # its reader to skim.
     qa = list(dict.fromkeys(qa))
-    return {"prompt": prompt, "refs": resolved, "size": eff.get("size", "1536x1024"), "qa": qa}
+    return {"prompt": prompt, "refs": resolved, "size": eff.get("size", "1536x1024"),
+            "qa": qa, "warnings": warnings}
 
 
 def main() -> int:
