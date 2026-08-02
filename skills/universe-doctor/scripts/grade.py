@@ -20,7 +20,8 @@ RUBRIC = [
     ("validity",        "Validity (schema-valid canon)",          15),
     ("identity",        "Identity (register, anchor, mark, voice)", 15),
     ("entities",        "Entity reference matrices filled/locked",  25),
-    ("setting_size",    "Settings prove their size (v0.9 scalePlate)", 10),
+    ("setting_size",    "Settings prove their size (v0.9 scalePlate)",  7),
+    ("setting_nesting", "Settings are rooms, not crammed buildings (v0.29)", 3),
     ("provenance",      "Provenance on every generated image",      10),
     ("craft_canon",     "Craft-canon (encoded invariants/rules)",   10),
     ("stories",         "Stories composed over the canon",          10),
@@ -93,7 +94,7 @@ def grade_universe(udir):
     # 4) SETTING SIZE (v0.9) --------------------------------------------------
     settings = [e for e in renderable if e.get("kind") in ("setting", "visual-metaphor")]
     if not settings:
-        scores["setting_size"] = 10  # nothing to prove
+        scores["setting_size"] = 7  # nothing to prove
     else:
         ok = 0
         for e in settings:
@@ -105,9 +106,39 @@ def grade_universe(udir):
                 miss = []
                 if not has_plate: miss.append("scalePlate")
                 if not has_desc: miss.append("scale descriptor")
-                issues.append((round(10 / len(settings)) + 1, "setting_size",
+                issues.append((round(7 / len(settings)) + 1, "setting_size",
                                f"{e['id']} cannot prove its size (missing {', '.join(miss)})", "add-setting"))
-        scores["setting_size"] = round(10 * ok / len(settings))
+        scores["setting_size"] = round(7 * ok / len(settings))
+
+    # 4b) SETTING STRUCTURE (SPEC v0.29) --------------------------------------
+    # A setting carries ONE flat contract, so an entity covering several rooms has
+    # nowhere to put a per-room rule and every room is read-back against the others'.
+    # The tell is an invariant prefixed with one of the entity's own plate keys
+    # ("studyNook ONLY: exactly two armchairs"), or a plate count that describes a
+    # building rather than a room. christofuturist-home cost this spec twice before
+    # nesting existed: v0.13 added scalePlate because its hearth room rendered small,
+    # and v0.29 added `partOf` because its sunken pit had nowhere to declare seating.
+    if not settings:
+        scores["setting_nesting"] = 3
+    else:
+        clean = 0
+        for e in settings:
+            st = e.get("structured") or {}
+            plate_keys = set(st.get("sheets") or {})
+            scoped = [i for i in st.get("invariants") or []
+                      if isinstance(i, str) and any(i.startswith(k) for k in plate_keys)]
+            crammed = len(plate_keys) >= 8 and not (st.get("houseRules") or {})
+            if not scoped and not crammed:
+                clean += 1
+            else:
+                why = (f"{len(scoped)} plate-scoped invariant(s)" if scoped
+                       else f"{len(plate_keys)} plates and no houseRules")
+                issues.append((round(3 / len(settings)) + 1, "setting_nesting",
+                               f"{e['id']} is one entity covering several rooms ({why}), so each "
+                               f"room is read-back against the other rooms' rules",
+                               "split the rooms into settings with `partOf`, house rules into "
+                               "`structured.houseRules`"))
+        scores["setting_nesting"] = round(3 * clean / len(settings))
 
     # 5) PROVENANCE -----------------------------------------------------------
     # A style-pack / lookbook ref is a COPY into a pack whose provenance lives in the

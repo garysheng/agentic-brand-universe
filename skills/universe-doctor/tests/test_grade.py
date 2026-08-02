@@ -59,7 +59,10 @@ class TestGrader(unittest.TestCase):
                          "map": "m", "blocking": "b", "dressing": "dr",
                          "scale": "a hall ~80ft across"}})
         _, scores, _, _ = grade.grade_universe(d)
-        self.assertEqual(scores["setting_size"], 10)
+        # assert the DIMENSION'S DECLARED MAX, not a literal: the rubric is rebalanced
+        # whenever a dimension is added (v0.29 split settings into size 7 + nesting 3),
+        # and a hardcoded 10 turns every rebalance into a false test failure.
+        self.assertEqual(scores["setting_size"], dict((k, m) for k, _l, m in grade.RUBRIC)["setting_size"])
 
     def test_provenance_counts_only_recipe_backed_images(self):
         d = tempfile.mkdtemp()
@@ -118,6 +121,54 @@ class TestGrader(unittest.TestCase):
         self.assertEqual(grade.letter(69), "D")
         self.assertEqual(grade.letter(59), "F")
 
+
+    # --- SPEC v0.29: settings are rooms, not crammed buildings ------------------
+    def _MAX(self, k):
+        return dict((a, m) for a, _l, m in grade.RUBRIC)[k]
+
+    def _room(self, d, **structured):
+        self._bare_universe(d)
+        _write(d, "canon/entities/hall.json", {
+            "id": "hall", "kind": "setting", "status": "unlocked",
+            "contract": {"turnaround": None, "emptyPlates": [], "blueprint": None,
+                         "scalePlate": None, "map": "m", "blocking": "b",
+                         "dressing": "dr", "scale": "s"},
+            "structured": structured})
+        return grade.grade_universe(d)
+
+    def test_a_plain_room_scores_full_nesting(self):
+        d = tempfile.mkdtemp()
+        _, scores, _, _ = self._room(d, sheets={"master": "reference/hall/m.png"},
+                                     invariants=["the floor is oak"])
+        self.assertEqual(scores["setting_nesting"], self._MAX("setting_nesting"))
+
+    def test_a_plate_scoped_invariant_loses_nesting_points(self):
+        """The tell that one entity is covering several rooms."""
+        d = tempfile.mkdtemp()
+        _, scores, _, issues = self._room(
+            d, sheets={"studyNook": "reference/hall/s.png"},
+            invariants=["studyNook ONLY: exactly two armchairs"])
+        self.assertLess(scores["setting_nesting"], self._MAX("setting_nesting"))
+        self.assertTrue(any("covering several rooms" in w for _, _, w, _ in issues))
+        self.assertTrue(any("partOf" in f for _, _, _, f in issues))
+
+    def test_a_building_by_plate_count_loses_points(self):
+        d = tempfile.mkdtemp()
+        many = {f"room{i}": f"reference/hall/{i}.png" for i in range(9)}
+        _, scores, _, issues = self._room(d, sheets=many, invariants=[])
+        self.assertLess(scores["setting_nesting"], self._MAX("setting_nesting"))
+        self.assertTrue(any("no houseRules" in w for _, _, w, _ in issues))
+
+    def test_houseRules_settle_the_plate_count(self):
+        """Declaring houseRules is the signal the author has thought about the split."""
+        d = tempfile.mkdtemp()
+        many = {f"room{i}": f"reference/hall/{i}.png" for i in range(9)}
+        _, scores, _, _ = self._room(d, sheets=many, invariants=[],
+                                     houseRules={"invariants": ["shoes off"]})
+        self.assertEqual(scores["setting_nesting"], self._MAX("setting_nesting"))
+
+    def test_rubric_still_totals_one_hundred(self):
+        self.assertEqual(sum(m for _k, _l, m in grade.RUBRIC), 100)
 
 if __name__ == "__main__":
     unittest.main()
