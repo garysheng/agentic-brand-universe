@@ -51,6 +51,25 @@ run it, so a change is not live until he does.
 
 ## The evolution loop
 
+0. **PROVE IT IS A GAP BEFORE PROMOTING ANYTHING.** Search the framework for what you are
+   about to build:
+
+   ```bash
+   find skills -path '*/scripts/*' | xargs -n1 basename | sort -u
+   grep -rl "<the-capability>" skills engine
+   ```
+
+   Hand-rolling is NOT proof the framework lacks the thing. It is equally often proof that
+   the thing exists and was not found, and the fixes are opposite: a real gap wants a BUILD,
+   a discovery failure wants a POINTER placed where the work happens. Promoting a duplicate
+   is worse than the hand-roll, because two implementations drift and neither is canon.
+   Earned 2026-08-01: a session hand-rolled a contact-sheet montage fifteen times with
+   `contact_sheet.py` already in the repo.
+
+   If it exists, do not build. Put a pointer in the file the operator READS DURING THE TASK
+   (the relevant skill's method, a form's PROMPT.md, a repo CLAUDE.md) and stop. A catalog
+   read at session start loses to an instruction read at the point of use.
+
 1. **Name the gap in one line** (what was hand-rolled, why the framework should own it). If it is genuinely universe-specific, STOP — it does not belong here; keep it in the universe.
 2. **Pick the level:**
    - *A skill is missing or wrong* → add/edit `agenticstory/skills/<name>/SKILL.md` (+ `scripts/`). New skill: match the frontmatter shape (`name` + a dense `description` with trigger phrases), keep it universe-agnostic (takes a target universe/pack; hardcodes nothing).

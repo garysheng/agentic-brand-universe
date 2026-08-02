@@ -86,6 +86,41 @@ The highest-yield sources, in order:
 5. **Rules you enforced by being careful.** If correctness depended on you remembering
    something, it will fail the run where you forget.
 
+### 1b. SEARCH BEFORE YOU CLASSIFY. A hand-roll is not proof of a gap.
+
+```bash
+find <framework>/skills -path '*/scripts/*' -name '*.py' | xargs -n1 basename | sort -u
+grep -rl "<the-thing-you-wrote-by-hand>" <framework>/skills <framework>/engine
+```
+
+Run this on EVERY candidate before deciding it is missing. This skill was written on the
+assumption that hand-rolled work means the framework lacks the tool, and that assumption is
+wrong often enough to be dangerous: on 2026-08-01 a session hand-rolled the same PIL
+contact-sheet montage roughly FIFTEEN times while `render-readback/scripts/contact_sheet.py`
+sat in the repo the whole session, along with `crop_zoom.py` for the crop checks it also
+hand-rolled. Nobody noticed, because a hand-roll feels like evidence of absence.
+
+**The two cases have OPPOSITE fixes and confusing them is expensive:**
+
+| | It does not exist | It exists and was not found |
+|---|---|---|
+| The fix | BUILD it (step 3) | Add a POINTER where the work happens |
+| Building anyway costs | nothing | a duplicate that will drift from the original |
+
+**A tool nobody finds at the moment of need is indistinguishable from a missing tool, and
+the fix is not more documentation.** The pointer belongs in the file that is READ DURING THE
+TASK: the skill's own method, the form's PROMPT.md, the repo's CLAUDE.md. A catalog read at
+session start loses to an instruction read at the point of use, and on a long session it
+loses badly.
+
+Two structural causes worth checking for while you are in there:
+
+- **Filed by OWNER rather than by JOB.** `contact_sheet.py` lives under `render-readback/`,
+  so it is only visible to someone who has already decided to run render-readback. Anyone who
+  merely needs a contact sheet never opens that folder.
+- **Named for its mechanism rather than its outcome.** If you would not think to search the
+  word, the name is wrong.
+
 ### 2. Classify each candidate, because they do not all get paved the same way
 
 - **PAVE (deterministic substep).** Mechanical, verifiable, no taste required: a crop, a
