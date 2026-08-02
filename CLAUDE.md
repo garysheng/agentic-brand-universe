@@ -83,6 +83,24 @@ it and `on-brand-image` did not until v0.29, so the same field was live in one r
 inert in the other, and a canon edit could look correct while steering nothing. Put standing
 STAGING there; put facts about the body in `invariants`, where a readback can check them.
 
+**TWO OR MORE PEOPLE IN ONE FRAME:** `--entity` is repeatable and every entity's plates,
+invariants and negatives merge. Landscape `1536x1024` suits two figures, portrait suits one.
+Three things that are not obvious and each cost real renders:
+
+- **State "EXACTLY ONE of each person in frame, never duplicated."** Multi-person renders
+  duplicate a face otherwise. At least one universe's craft canon already forbids this and
+  nothing enforced it.
+- **Name each person's ethnicity in the scene line** when they differ, or one drifts toward
+  the other across a batch.
+- **Never dress them in a matching set.** Same palette family and formality, cut for each
+  separately. Matching reads as costume; a shared register reads as one household. Two
+  re-shoots were caused by this: an emerald dress beside a forest-green suit, and cream
+  beside cream. Related means several shades apart in value AND saturation.
+
+Opposing invariants resolve correctly and can be trusted: a pair render where one entity's
+canon asserts a chest patch and the other's forbids one produces exactly that asymmetry with
+neither mentioned in the prompt.
+
 **Verify before you look at the image.** Read the recipe back and confirm the canon actually
 arrived. This has caught silent bypasses four times:
 

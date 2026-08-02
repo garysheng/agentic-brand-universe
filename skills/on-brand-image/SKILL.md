@@ -184,3 +184,21 @@ A universe binds a lookbook everywhere via a `craft-canon` register-rule that na
 - A full book spread with characters, poses, and a setting → `compose-spread`.
 - Standing up a new look from scratch, or a universe → `start-new-story-universe`.
 - An explanatory diagram carrying labels and text → not an image-model job at all; author it as SVG.
+
+## MULTI-ENTITY RENDERS (two or more people in one frame)
+
+`--entity` is repeatable. Every entity's locked plates, invariants and negatives merge, and
+opposing invariants resolve correctly: if one entity's canon asserts a mark and another's
+forbids it, the render carries that asymmetry without either being named in the prompt.
+
+Three requirements that are not obvious, each earned by a wrong render:
+
+1. **State "EXACTLY ONE of each person in frame, never duplicated."** Otherwise a face gets
+   duplicated into the background.
+2. **Name each person's ethnicity in the scene line** when they differ, or one drifts toward
+   the other across a batch.
+3. **Never dress a couple in a matching set.** Same palette family, same formality, cut for
+   each separately. Matching reads as costume; a shared register reads as one household.
+   "Related" means several shades apart in value AND saturation, not the same hue.
+
+Landscape (`--size 1536x1024`) suits two figures; portrait suits one.
