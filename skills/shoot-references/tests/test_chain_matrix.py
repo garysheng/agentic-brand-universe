@@ -28,14 +28,18 @@ def png(path: Path):
     Image.new("RGB", (8, 8), (180, 160, 120)).save(path)
 
 
-def build(root: Path, kind="setting", shots=("c1-wide", "c2-work", "c3-light-wall")):
+def build(root: Path, kind="setting", shots=("c1-wide", "c2-work", "c3-light-wall"),
+          anchor_subject=None):
     (root / "canon" / "entities").mkdir(parents=True)
     png(root / "reference" / "register" / "anchor.png")
+    register = {"name": "test register",
+                "anchor": "reference/register/anchor.png",
+                "rejectedPoles": ["photoreal", "anime"]}
+    if anchor_subject:
+        register["anchorSubject"] = anchor_subject
     (root / "universe.json").write_text(json.dumps({
         "name": "testverse", "assetRoot": ".",
-        "identity": {"register": {"name": "test register",
-                                  "anchor": "reference/register/anchor.png",
-                                  "rejectedPoles": ["photoreal", "anime"]}},
+        "identity": {"register": register},
     }))
     (root / "canon" / "entities" / "room.json").write_text(json.dumps({
         "id": "room", "kind": kind, "structured": {"sheets": {}, "invariants": []},
@@ -667,6 +671,119 @@ Body text.
 
     def test_absent_header_is_empty_not_an_error(self):
         self.assertEqual(self._mod()._header_block("## x\nbody\n", "Negatives"), [])
+
+
+SUBJECT = "an ancient oil lamp, a clay jar, robed figures"
+
+
+class TestAnchorSubjectNegation(unittest.TestCase):
+    """`identity.register.anchorSubject` (declared once per universe) names what the
+    register anchor DEPICTS so it can be banned concretely on every render.
+    compose-spread honoured it; this shooter did not, so every matrix shoot leaked the
+    anchor's subject unless the author hand-negated it in prompts.md — three stewards
+    did, on one book run, 2026-08-02."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_print_plan_names_the_auto_negated_subject(self):
+        root = build(Path(self.tmp.name), anchor_subject=SUBJECT)
+        r = run(root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("anchor subject (auto-negated on every shot): " + SUBJECT, r.stdout)
+
+    def test_a_universe_without_the_field_plans_without_the_line(self):
+        root = build(Path(self.tmp.name))
+        r = run(root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("anchor subject", r.stdout)
+
+
+class FakeShoot(unittest.TestCase):
+    """In-process _shoot with a monkeypatched provider call, so prompt assembly and
+    provenance behaviour are testable without a network or a key. The fake plays the
+    ADAPTER's role: it writes the image and `<image>.recipe.json` beside it, exactly
+    as every real provider script does."""
+
+    def _mod(self):
+        from importlib import util
+        spec = util.spec_from_file_location("cm", CHAIN)
+        m = util.module_from_spec(spec); spec.loader.exec_module(m)
+        return m
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _shoot_one(self, root, shot="c2-work"):
+        import argparse as _ap
+        import types
+        m = self._mod()
+        m._provider_script = lambda provider="gpt-image-2": "/dev/null/fake-provider.py"
+        captured = {}
+
+        def fake_run(cmd, *a, **kw):
+            captured["prompt"] = cmd[cmd.index("--prompt") + 1]
+            out = Path(cmd[cmd.index("--filename") + 1])
+            Image.new("RGB", (8, 8), (10, 20, 30)).save(out)
+            (out.parent / (out.name + ".recipe.json")).write_text(json.dumps({
+                "asset": str(out), "model": "gpt-image-2",
+                "prompt": captured["prompt"],
+                "inputs": [c for c in cmd if str(c).endswith(".png")],
+                "generatedAt": "2026-08-02T00:00:00+00:00"}))
+            return types.SimpleNamespace(returncode=0)
+
+        m.subprocess = types.SimpleNamespace(run=fake_run)
+        plan = m.build_plan(root, "room")
+        refdir = plan["refdir"]
+        seed_png = refdir / (plan["seed"] + ".png")
+        png(seed_png)
+        args = _ap.Namespace(size="1024x1024", max_conditioning=4)
+        anchor_abs = str((root / plan["anchor"]).resolve())
+        rc = m._shoot(plan, shot, [str(seed_png)], args, anchor_abs, "", refdir, root)
+        self.assertEqual(rc, 0)
+        return captured, refdir
+
+    def test_the_declared_anchor_subject_reaches_every_shot_prompt(self):
+        root = build(Path(self.tmp.name), anchor_subject=SUBJECT)
+        captured, _ = self._shoot_one(root)
+        self.assertIn(SUBJECT, captured["prompt"])
+        self.assertIn("NONE OF THE FOLLOWING", captured["prompt"])
+
+    def test_no_declaration_means_no_guard_sentence(self):
+        root = build(Path(self.tmp.name))
+        captured, _ = self._shoot_one(root)
+        self.assertNotIn("NONE OF THE FOLLOWING", captured["prompt"])
+
+    def test_exactly_one_recipe_per_asset(self):
+        """chain_matrix used to write `<shot>.recipe.json` while the provider wrote
+        `<shot>.png.recipe.json`: two sidecars for one asset, free to diverge. Now the
+        chain merges into the provider's file and removes the stale legacy twin."""
+        root = build(Path(self.tmp.name))
+        # a stale legacy twin from the old code, describing bytes about to be replaced
+        (root / "reference" / "room").mkdir(parents=True, exist_ok=True)
+        (root / "reference" / "room" / "c2-work.recipe.json").write_text("{}")
+        _, refdir = self._shoot_one(root)
+        recipes = sorted(p.name for p in refdir.glob("c2-work*recipe.json"))
+        self.assertEqual(recipes, ["c2-work.png.recipe.json"], recipes)
+
+    def test_the_single_recipe_holds_both_provider_and_chain_provenance(self):
+        root = build(Path(self.tmp.name))
+        _, refdir = self._shoot_one(root)
+        rec = json.loads((refdir / "c2-work.png.recipe.json").read_text())
+        # the adapter's facts survive the merge...
+        self.assertIn("generatedAt", rec)
+        self.assertIn("inputs", rec)
+        # ...and the chain's conditioning metadata is in the SAME file
+        self.assertIn("conditionedOn", rec)
+        self.assertIn("method", rec)
+        self.assertEqual(rec["shot"], "c2-work")
+        self.assertEqual(rec["entity"], "room")
 
 
 if __name__ == "__main__":

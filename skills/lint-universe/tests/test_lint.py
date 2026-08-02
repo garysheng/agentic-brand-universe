@@ -635,6 +635,42 @@ class TestSheetHygiene(unittest.TestCase):
         self.assertNotIn("SHEET-DUPLICATE-ALIAS", e)
         self.assertIn("SHEET-DUPLICATE-ALIAS", w)
 
+    def test_a_declared_sheet_alias_is_not_flagged(self):
+        # the add-keys-never-remove pattern, DECLARED: structured.sheetAliases makes an
+        # intentional alias (retired-hearthRotunda; the-park-bench camera aliases,
+        # 2026-08-02) distinguishable from a dead duplicate
+        e, w = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"the-park-bench-cam": "reference/e/m.png",
+                                      "c1-wide": "reference/e/m.png"},
+                           "sheetAliases": {"c1-wide": "the-park-bench-cam"},
+                           "requiredForRender": ["the-park-bench-cam"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["the-park-bench-cam"], "bake": "b"}}}}})
+        self.assertNotIn("SHEET-DUPLICATE-ALIAS", e)
+        self.assertNotIn("SHEET-DUPLICATE-ALIAS", w)
+
+    def test_a_declared_alias_passed_twice_in_required_is_still_an_error(self):
+        # declaring the alias does not make passing the same image twice informative
+        e, _ = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"master": "reference/e/m.png", "cam": "reference/e/m.png"},
+                           "sheetAliases": {"cam": "master"},
+                           "requiredForRender": ["master", "cam"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["master"], "bake": "b"}}}}})
+        self.assertIn("SHEET-DUPLICATE-ALIAS", e)
+
+    def test_an_undeclared_duplicate_still_warns_beside_a_declared_alias(self):
+        e, w = self.lint_with(entity={
+            "id": "e", "kind": "character",
+            "structured": {"sheets": {"master": "reference/e/m.png",
+                                      "cam": "reference/e/m.png",
+                                      "dead": "reference/e/m.png"},
+                           "sheetAliases": {"cam": "master"},
+                           "requiredForRender": ["master"],
+                           "render": {"always": "a", "poses": {"p": {"sheets": ["master"], "bake": "b"}}}}})
+        self.assertNotIn("SHEET-DUPLICATE-ALIAS", e)
+        self.assertIn("SHEET-DUPLICATE-ALIAS", w)
+
     def test_distinct_files_are_not_flagged(self):
         e, w = self.lint_with(entity={
             "id": "e", "kind": "character",

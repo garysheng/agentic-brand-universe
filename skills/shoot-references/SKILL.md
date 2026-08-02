@@ -26,8 +26,8 @@ Check which register a story declares before shooting its cast: `stories/<id>.js
 2. **For each shot that is missing or was a DEFECT** (skip already-locked passers, so re-runs are cheap):
    a. **Generate** via the `chatgpt-images` skill (gpt-image-2): pass `identity.register.anchor` as the FIRST input image; bake `register.rejectedPoles` as negatives; for a real person pass the photo stack (build from real photos, never a painting-of-a-painting) and honor the sensitive list; pass any already-locked shots of this entity so the face/build stays consistent; use the shot's prompt block from `prompts.md`. Write to `reference/<id>/<shot>.png`.
    b. **Read back** with `render-readback`: crop-zoom each of the entity's invariants, PASS/DEFECT. On any DEFECT, regenerate that shot FROM SCRATCH (never an edit pass), naming the defect as an explicit negative.
-   c. **Write the shot's recipe.** Alongside the art, write `reference/<id>/<shot>.recipe.json` capturing what produced it: `{"provider": "gpt-image-2", "prompt": "<the exact prompt sent>", "specVersion": "<universe spec.version>", "refs": [{"path": "<each input image, universe-relative>"}]}`. This is the same recipe shape `compose-spread` emits. Provenance is not optional: a golden locked without it is un-auditable and can never enter a divergence check.
-   d. **Lock the passer WITH its recipe:** `python3 -m agenticstory.cli lock-shot <universe> <id> <shot> reference/<id>/<shot>.png --recipe reference/<id>/<shot>.recipe.json`. This sets the sheet path, promotes `requiredForRender` as the required shots lock, and freezes provenance at approval (the golden's own bytes plus each input's bytes now), so `lint-universe` can later tell you if the golden drifts from what Gary blessed.
+   c. **The shot's recipe is `reference/<id>/<shot>.png.recipe.json`** — ONE sidecar per asset, at the engine-wide `<asset>.recipe.json` name. The provider adapter writes it on every render and `chain_matrix` merges its conditioning metadata (photo stack, goldens conditioned on, cross-entity refs, method) into that same file. Never write a second `<shot>.recipe.json` beside it: two sidecars for one asset can diverge, and did (2026-08-02). Provenance is not optional: a golden locked without it is un-auditable and can never enter a divergence check.
+   d. **Lock the passer WITH its recipe:** `python3 -m agenticstory.cli lock-shot <universe> <id> <shot> reference/<id>/<shot>.png --recipe reference/<id>/<shot>.png.recipe.json`. This sets the sheet path, promotes `requiredForRender` as the required shots lock, and freezes provenance at approval (the golden's own bytes plus each input's bytes now), so `lint-universe` can later tell you if the golden drifts from what Gary blessed.
 3. **Verify + commit.** `abu validate <universe>` stays green. `lock-level` should reach `partial` once the required shots pass and `locked` once the full matrix passes. Commit the generated art + the updated entity JSON.
 
 ## Locking a DECLARED-FUTURE era look (SPEC v0.10)
@@ -38,7 +38,7 @@ does NOT belong in the default matrix, so lock it into the look:
 ```bash
 python3 -m agenticstory.cli lock-shot <universe> <id> forward-fullbody \
   reference/<id>/era-2030/forward-fullbody.png --look era-2030 \
-  --recipe reference/<id>/era-2030/forward-fullbody.recipe.json
+  --recipe reference/<id>/era-2030/forward-fullbody.png.recipe.json
 ```
 
 Two things differ from an ordinary shot, and both are load-bearing:

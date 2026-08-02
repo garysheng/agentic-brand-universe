@@ -203,8 +203,12 @@ def grade_universe(udir):
                        "create-lookbook (+ a register-rule) / add a spine/genre record"))
 
     # 7) STORIES --------------------------------------------------------------
+    # voice-gate's waiver sidecars (`*.voice-waivers.json`) live in stories/ and are
+    # not stories; counting one would dilute the full-story ratio.
     sdir = root / "stories"
-    stories = [jload(f) for f in sdir.glob("*.json")] if sdir.exists() else []
+    stories = ([jload(f) for f in sdir.glob("*.json")
+                if not f.name.endswith(".voice-waivers.json")]
+               if sdir.exists() else [])
     stories = [s for s in stories if s]
     full = sum(1 for s in stories if s.get("status") == "full")
     if not stories:

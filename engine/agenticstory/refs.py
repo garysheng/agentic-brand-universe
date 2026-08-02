@@ -266,11 +266,19 @@ def lock_level(store: CanonStore, eid: str) -> str:
     if not sheets:
         return "stub"
 
+    aliases = (e.raw.get("structured") or {}).get("sheetAliases") or {}
+    if not isinstance(aliases, dict):
+        aliases = {}
+
     def on_disk(key: str) -> bool:
         # A slot is a bare path or {path, role} (SPEC v0.23); normalise before testing,
         # or every typed slot would silently report as unfilled and drop the entity's
-        # lock level.
-        p = sheet_parts(sheets.get(key))[0]
+        # lock level. A declared sheetAlias resolves one hop, the same fallback
+        # Entity.sheet_path applies, so the grader and the resolver agree.
+        slot = sheets.get(key)
+        if slot is None and key in aliases:
+            slot = sheets.get(aliases[key])
+        p = sheet_parts(slot)[0]
         return isinstance(p, str) and (root / p).exists()
 
     req = e.required_sheet_keys()

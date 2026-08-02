@@ -28,6 +28,18 @@ from typing import Any
 
 from .model import CraftCanon, Entity, Form, Generator, Relation, StorySpec, Work
 
+# Sidecar suffixes that legitimately live in stories/ but are NOT StorySpecs. ONE
+# predicate, importable, so every consumer that enumerates stories/*.json (this
+# loader, lint-universe, universe-doctor) excludes the same set instead of each
+# rediscovering the false positive on its own schedule.
+STORY_SIDECAR_SUFFIXES = (".voice-waivers.json",)
+
+
+def is_story_sidecar(path: Path) -> bool:
+    """True when a stories/*.json file is a sidecar (e.g. a voice-gate waiver file),
+    not a StorySpec."""
+    return any(path.name.endswith(s) for s in STORY_SIDECAR_SUFFIXES)
+
 
 class CanonStore:
     def __init__(self, universe_dir: str | Path):
@@ -84,6 +96,13 @@ class CanonStore:
         st_dir = self.dir / "stories"
         if st_dir.exists():
             for f in sorted(st_dir.glob("*.json")):
+                # NOT every .json in stories/ is a story. voice-gate's DEFAULT waiver
+                # path is `<manuscript-stem>.voice-waivers.json` beside the manuscript,
+                # which lives in stories/, so the loader parsed waiver sidecars as
+                # StorySpecs and `validate` emitted a false "story missing 'id'" for
+                # each one. Bit twice on 2026-08-02 (the-bible-all-points-to-jesus).
+                if is_story_sidecar(f):
+                    continue
                 s = StorySpec.from_dict(json.loads(f.read_text()))
                 self.stories[s.id] = s
 

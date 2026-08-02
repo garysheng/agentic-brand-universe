@@ -16,6 +16,16 @@ E, W = [], []
 def err(code, msg): E.append((code, msg))
 def warn(code, msg): W.append((code, msg))
 
+# NOT every .json in stories/ is a story: voice-gate writes its waiver sidecar as
+# `<manuscript-stem>.voice-waivers.json` beside the manuscript, inside stories/.
+# Mirrors engine `agenticstory.store.STORY_SIDECAR_SUFFIXES` (this script stays
+# stdlib-and-standalone, so the tuple is restated rather than imported).
+STORY_SIDECAR_SUFFIXES = (".voice-waivers.json",)
+
+def story_files(stories_dir):
+    return [f for f in sorted(stories_dir.glob("*.json"))
+            if not any(f.name.endswith(s) for s in STORY_SIDECAR_SUFFIXES)]
+
 def _sha16(path):
     """First 16 hex of a file's sha256, or None if it does not resolve. Must match the
     engine's `_digest` so a golden's recorded input hashes compare equal here."""
@@ -131,7 +141,7 @@ def lint(root):
             elif c.get("kind") == "genre": reg_genre.add(c.get("id"))
     stories_dir = root/"stories"
     if stories_dir.exists() and (reg_spine or reg_genre):
-        for sf in sorted(stories_dir.glob("*.json")):
+        for sf in story_files(stories_dir):
             s = jload(sf)
             if not s: continue
             sid = s.get("id", sf.stem)
@@ -629,7 +639,7 @@ def lint(root):
                 nondefault[e.get("id", ef.stem)] = e.get("preferredAlias")
         stories_dir = root/"stories"
         if nondefault and stories_dir.exists():
-            for sf in sorted(stories_dir.glob("*.json")):
+            for sf in story_files(stories_dir):
                 st = jload(sf) or {}
                 cast = set(st.get("features") or [])
                 for b in st.get("beats") or []:
@@ -702,6 +712,16 @@ def lint(root):
         if not e: continue
         st = e.get("structured") or {}
         sheets = st.get("sheets") or {}
+        # `structured.sheetAliases: {newKey: oldKey}` declares an INTENTIONAL alias
+        # (the add-keys-never-remove rename pattern: retired-hearthRotunda precedent;
+        # the-park-bench / apostle-lee-study camera aliases, 2026-08-02). A declared
+        # alias is exempt from the dead-duplicate warning; an UNDECLARED duplicate
+        # still warns, and requiredForRender naming two keys for one file is still an
+        # error either way, because the same image passed twice carries no information
+        # regardless of intent.
+        aliases = st.get("sheetAliases") or {}
+        if not isinstance(aliases, dict):
+            aliases = {}
         seen = {}
         for k, v in sheets.items():
             if not v: continue
@@ -709,12 +729,19 @@ def lint(root):
         for path, keys in seen.items():
             if len(keys) > 1:
                 req = [k for k in (st.get("requiredForRender") or []) if k in keys]
-                sev = err if len(req) > 1 else warn
-                sev("SHEET-DUPLICATE-ALIAS",
-                    f"{ej.name}: sheet keys {sorted(keys)} all point at '{path}'"
-                    + (f"; requiredForRender names {sorted(req)}, so the same image is passed "
-                       f"{len(req)} times and one of them carries no information."
-                       if len(req) > 1 else "; one is a dead alias."))
+                declared = {k for k in keys if aliases.get(k) in keys and aliases.get(k) != k}
+                undeclared = [k for k in keys if k not in declared]
+                if len(req) > 1:
+                    err("SHEET-DUPLICATE-ALIAS",
+                        f"{ej.name}: sheet keys {sorted(keys)} all point at '{path}'; "
+                        f"requiredForRender names {sorted(req)}, so the same image is passed "
+                        f"{len(req)} times and one of them carries no information.")
+                elif len(undeclared) > 1:
+                    warn("SHEET-DUPLICATE-ALIAS",
+                         f"{ej.name}: sheet keys {sorted(undeclared)} all point at '{path}'; "
+                         f"one is a dead alias. If the duplicate is INTENTIONAL (a renamed "
+                         f"key kept for back-compat), declare it: "
+                         f"structured.sheetAliases = {{\"<newKey>\": \"<oldKey>\"}}.")
         # The scaffolder writes `lockedBy: "TODO-you"` and nothing ever forces it to be filled,
         # so an entity can carry locked art, frozen provenance and a full pose set while its
         # record of WHO approved it is still a placeholder. Found on 5 nation-of-fire entities

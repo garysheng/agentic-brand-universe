@@ -110,6 +110,28 @@ def style_line(register_name: str | None, poles) -> str:
     return out
 
 
+def anchor_subject_guard(subject) -> str:
+    """Name what the register anchor DEPICTS, and ban it, on every matrix shot.
+
+    `compose-spread` has negated the anchor's subject at render time since
+    `identity.register.anchorSubject` was declared (a generic "take no subject from
+    the style anchor" loses to a concrete picture: an oil-lamp anchor put its own
+    lamp and jar on a spread carrying EIGHT references). This shooter did not read
+    the field, so every matrix shoot had the same leak and every author had to
+    hand-negate the anchor's subject in prompts.md — three stewards did, on one
+    book run, 2026-08-02. The field is declared once per universe; reading it here
+    makes the shoot honour the same law as the render.
+    """
+    if not subject:
+        return ""
+    return (
+        "SPECIFICALLY, NONE OF THE FOLLOWING FROM THAT FIRST STYLE-ANCHOR REFERENCE MAY APPEAR "
+        "ANYWHERE IN THIS IMAGE, on any table, shelf, floor, sill or surface, or in any figure's "
+        f"hands: {subject}. If the shot brief does not ask for them by name, they are not in this "
+        "picture at all."
+    )
+
+
 SAME_SUBJECT = (
     "CRITICAL: every reference image after the first shows THE SAME SINGLE SUBJECT, already locked. "
     "Reproduce it EXACTLY as those images show it: the same shapes, proportions, materials, colors, "
@@ -455,7 +477,7 @@ def resolve_register(uroot: Path, uni: dict, override=None):
     and a sheet in the wrong medium is a weaker identity reference than one in
     the right medium. Hence the override.
 
-    Returns (universe-relative anchor path, rejected poles, register id).
+    Returns (universe-relative anchor path, rejected poles, register id, anchor subject).
     """
     if not override:
         reg = (uni.get("identity") or {}).get("register") or {}
@@ -464,7 +486,8 @@ def resolve_register(uroot: Path, uni: dict, override=None):
             raise Refuse(
                 "identity.register.anchor is null: the universe style is not locked; "
                 "do not generate")
-        return anchor, list(reg.get("rejectedPoles", [])), reg.get("name")
+        return (anchor, list(reg.get("rejectedPoles", [])), reg.get("name"),
+                reg.get("anchorSubject"))
 
     pack_rel = Path("reference") / "style" / override
     pack_file = uroot / pack_rel / "pack.json"
@@ -479,7 +502,7 @@ def resolve_register(uroot: Path, uni: dict, override=None):
     anchor = str(pack_rel / a)
     if not (uroot / anchor).exists():
         raise Refuse(f"--register {override}: anchor not on disk: {uroot / anchor}")
-    return anchor, list(pack.get("rejectedPoles", [])), override
+    return anchor, list(pack.get("rejectedPoles", [])), override, pack.get("anchorSubject")
 
 
 def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
@@ -505,7 +528,7 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         and passing it drags the old body into the new one.
     """
     uni = load(uroot / "universe.json")
-    anchor, poles, register_id = resolve_register(uroot, uni, register_override)
+    anchor, poles, register_id, anchor_subject = resolve_register(uroot, uni, register_override)
 
     ent = load(uroot / "canon" / "entities" / f"{eid}.json")
     kind = ent.get("kind", "character")
@@ -615,7 +638,8 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
     rest = [s for s in shots if s != seed]
     return {
         "entity": eid, "kind": kind, "anchor": anchor, "refdir": refdir,
-        "register": register_id, "look": look, "lookRefs": look_refs,
+        "register": register_id, "anchorSubject": anchor_subject,
+        "look": look, "lookRefs": look_refs,
         "photos": photos,
         "seed": seed, "order": [seed] + rest, "prompts": prompts,
         # register rejectedPoles FIRST, then the entity's CANON negatives, then the
@@ -700,7 +724,9 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     # does not hold it. See style_line().
     prompt = " ".join(x for x in [style_line(plan["register"], plan["poles"]),
                                   plan["prompts"][shot], SAME_SUBJECT,
-                                  REAL_PERSON if plan["photos"] else "", neg] if x)
+                                  REAL_PERSON if plan["photos"] else "",
+                                  anchor_subject_guard(plan.get("anchorSubject")),
+                                  neg] if x)
     # Per-shot size when prompts.md declared one; --size is only the fallback.
     shot_size = plan["sizes"].get(shot, args.size)
     # CONDITIONING WINDOW. Identity is carried by the blessed seed plus the few
@@ -747,8 +773,23 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     if rc != 0 or not out.exists():
         print(f"{shot}: FAILED rc={rc}; chain STOPS (a defect must not propagate)", file=sys.stderr)
         return 1
-    # provenance travels with the asset (nothing is a mystery)
-    (refdir / f"{shot}.recipe.json").write_text(json.dumps({
+    # provenance travels with the asset (nothing is a mystery), and there is EXACTLY
+    # ONE recipe per asset. The provider adapter already writes `<shot>.png.recipe.json`
+    # beside every image (the engine-wide `<asset>.recipe.json` convention that
+    # authoring.recipe_sidecar_path, provenance.py and importing.py all share). This
+    # script used to ALSO write `<shot>.recipe.json`, so every shot carried TWO
+    # sidecars that could diverge — two truths wearing one asset's name. Now the
+    # chain MERGES its conditioning metadata INTO the adapter's file (or creates it,
+    # when a legacy provider wrote none) and removes the stale legacy twin for the
+    # asset it just replaced, whose bytes that twin no longer describes.
+    recipe_path = out.parent / (out.name + ".recipe.json")
+    try:
+        recipe = json.loads(recipe_path.read_text())
+        if not isinstance(recipe, dict):
+            recipe = {}
+    except (OSError, ValueError):
+        recipe = {}
+    recipe.update({
         "shot": shot, "entity": plan["entity"], "kind": plan["kind"],
         "model": "gpt-image-2", "size": shot_size, "prompt": prompt,
         "anchor": {"path": plan["anchor"], "sha256_16": sha(Path(anchor_abs))},
@@ -767,7 +808,14 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
         "crossEntityRefs": cross,
         "method": ("golden-chain (sequential; each shot conditions on the blessed seed "
                    f"plus the most recent accepted shots, window={args.max_conditioning or 'unbounded'})"),
-    }, indent=1))
+    })
+    recipe_path.write_text(json.dumps(recipe, indent=1))
+    # The legacy twin, if a prior run of the old code left one: it describes bytes
+    # this run just replaced, and a stale recipe is worse than none (it reads as
+    # audited while describing art nobody ever saw).
+    legacy = refdir / f"{shot}.recipe.json"
+    if legacy.exists():
+        legacy.unlink()
     print(f"{shot}: OK (conditioned on {len(cond)} golden(s), size {shot_size})")
     return 0
 
@@ -881,6 +929,8 @@ def _main() -> int:
             print(f"  {i+1}. {s:<18} [{sz}] conditioned on: {cond}")
         if plan["negatives"]:
             print("negatives: " + ", ".join(plan["negatives"]))
+        if plan.get("anchorSubject"):
+            print("anchor subject (auto-negated on every shot): " + plan["anchorSubject"])
         # The photographs ride on EVERY shot and they are the identity ground truth, so
         # the plan states which ones resolved. A stack declared as a directory used to be
         # invisible here, which meant the one thing worth checking before spending money

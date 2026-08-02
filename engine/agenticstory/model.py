@@ -160,12 +160,35 @@ class Entity:
             return list(dict.fromkeys(list(override) + list(s.get("requiredForRender") or [])))
         return list(s.get("requiredForRender", list((s.get("sheets") or {}).keys())))
 
+    def sheet_aliases(self) -> dict[str, str]:
+        """`structured.sheetAliases: {newKey: oldKey}` — declared, intentional aliases.
+
+        The add-keys-never-remove pattern (a camera slot renamed without breaking every
+        story that names the old key) used to be encoded by writing BOTH keys into
+        `sheets` pointing at one file, which is indistinguishable from a dead duplicate
+        and tripped lint's SHEET-DUPLICATE-ALIAS on every intentional rename
+        (retired-hearthRotunda precedent; the-park-bench and apostle-lee-study camera
+        aliases, 2026-08-02). Declaring the alias here makes the intent a record: the
+        resolver treats the alias as a lookup fallback, lint skips DECLARED aliases,
+        and undeclared duplicates still warn.
+        """
+        al = self.structured.get("sheetAliases") or {}
+        return al if isinstance(al, dict) else {}
+
+    def _sheet_slot(self, key: str):
+        """The raw slot for `key`, following a declared alias one hop if needed."""
+        sheets = self.structured.get("sheets") or {}
+        if key in sheets:
+            return sheets[key]
+        tgt = self.sheet_aliases().get(key)
+        return sheets.get(tgt) if isinstance(tgt, str) else None
+
     def sheet_path(self, key: str) -> str | None:
-        return sheet_parts((self.structured.get("sheets") or {}).get(key))[0]
+        return sheet_parts(self._sheet_slot(key))[0]
 
     def sheet_role(self, key: str) -> str | None:
         """What this slot CONTRIBUTES, or None if the slot does not say (SPEC v0.23)."""
-        return sheet_parts((self.structured.get("sheets") or {}).get(key))[1]
+        return sheet_parts(self._sheet_slot(key))[1]
 
     def alt_look(self, look: str) -> dict[str, Any] | None:
         return ((self.structured.get("altLooks") or {}) or {}).get(look)
@@ -402,6 +425,32 @@ class Entity:
         # A typed slot must use a role the compiler actually knows, or the gate it was
         # added for silently does nothing. A typo here is worse than no role at all,
         # because the author believes a constraint is in force.
+        # A declared alias must actually alias something, or the resolver's fallback
+        # silently resolves to nothing and the declaration reads as a guarantee it
+        # cannot deliver (the exact defect class v0.23-v0.29 keep re-finding).
+        aliases = self.structured.get("sheetAliases")
+        if aliases is not None and not isinstance(aliases, dict):
+            p.append(f"{self.id}: structured.sheetAliases must be an object {{newKey: oldKey}}")
+        elif isinstance(aliases, dict):
+            sheets = self.structured.get("sheets") or {}
+            for new, old in aliases.items():
+                if not isinstance(old, str) or not old:
+                    p.append(f"{self.id}: sheetAliases['{new}'] must name a sheet key (a string)")
+                    continue
+                if new == old:
+                    p.append(f"{self.id}: sheetAliases['{new}'] points at itself")
+                    continue
+                if old not in sheets:
+                    p.append(f"{self.id}: sheetAliases['{new}'] -> '{old}', which is not a key "
+                             f"in structured.sheets (an alias to nothing resolves to nothing)")
+                    continue
+                if new in sheets:
+                    pa = sheet_parts(sheets.get(new))[0]
+                    pb = sheet_parts(sheets.get(old))[0]
+                    if pa and pb and pa != pb:
+                        p.append(f"{self.id}: sheetAliases declares '{new}' aliases '{old}', but "
+                                 f"sheets['{new}'] and sheets['{old}'] point at DIFFERENT files; "
+                                 f"a diverged alias is two truths wearing one name")
         for k, v in (self.structured.get("sheets") or {}).items():
             if not isinstance(v, dict):
                 continue
