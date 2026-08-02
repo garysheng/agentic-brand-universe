@@ -280,6 +280,20 @@ Then `abu:render-readback` every image.
 - **A contact sheet of four is the right read-back unit.** It catches composition, wrong
   character, invented people, panels, photoreal drift and gross canon breaches. Crop-zoom only
   what a beat actually depends on.
+  **THE SCRIPTS ALREADY EXIST. DO NOT WRITE THE MONTAGE BY HAND:**
+  ```bash
+  python3 <abu>/skills/render-readback/scripts/contact_sheet.py --out /tmp/cs.png --cols 3 <pngs>
+  python3 <abu>/skills/render-readback/scripts/crop_zoom.py /tmp/z.png IMG --grid 3x3   # LOCATE first
+  python3 <abu>/skills/render-readback/scripts/crop_zoom.py /tmp/z.png IMG --box .3,.85,.45,1 --label "shoes: no brand logo"
+  python3 <abu>/skills/render-readback/scripts/verify_render.py OUT.png --expect "id@look"
+  ```
+  Naming them here is load-bearing, because this file is what an agent reads during a book run
+  and `render-readback/SKILL.md` is not. Prescribing the TECHNIQUE without the TOOL is why the
+  same inline montage keeps getting rewritten: roughly fifteen times in one session on
+  2026-08-01, and five more times on 2026-08-02 during the-only-scoreboard. **Reach for
+  `--grid` FIRST when you do not already know where the detail is.** Guessing a box, getting
+  shadow, and guessing again costs two round trips per check; that happened three times in the
+  same run (two shoe crops and a wall-text crop) and the grid mode exists precisely to stop it.
 - **Back up every roll when two failure axes are live.** Each roll fixes one and breaks the other,
   and without copies there is nothing to compare. Park rejects in `<book>/candidates/` under names
   stating what is wrong, never as `spread-*` (the render guard would accept them as inputs).

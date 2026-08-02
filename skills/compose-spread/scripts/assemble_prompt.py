@@ -1160,6 +1160,26 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         # drifting size across a book is the commonest form of this defect.
         entity_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}
         seating_charts.update((ent.get("structured") or {}).get("seating") or {})
+        # READ-BACK QA IS NOT A CHARACTER-ONLY CONCERN (SPEC v0.24).
+        #
+        # `qa` used to be built only in the character branch below, and every other kind
+        # `continue`s before reaching it. So a setting, visual-metaphor, motif or prop could
+        # DECLARE `structured.invariants`, have them validate and lint clean, and still
+        # contribute NOTHING to the readback checklist. The entity looked guarded and was not.
+        #
+        # Earned on the-only-scoreboard (nation-of-fire, 2026-08-02): the-one-lit-board is the
+        # spine object of the book and declares twelve invariants covering the things most
+        # likely to drift (no board is ever gold, the marked row is a solid dark dot and never
+        # a white fill, the lit board is never enlarged, never a screen, never a sports
+        # scoreboard). `compose-spread --dry-run` reported "0 qa invariants" on every one of the
+        # seven spreads that cast it, so all twelve were checked by eye. Three drifted anyway
+        # across the run, twice on the gold rule the entity states first.
+        #
+        # Collected for EVERY kind here, before the per-kind branches return, for the same
+        # reason `scale` is: the defect it catches is not specific to people.
+        if kind != "character":
+            for i in (ent.get("structured") or {}).get("invariants") or []:
+                qa.append(f"{c['id']}: {i}")
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"))
             add_refs(r)
