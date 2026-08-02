@@ -961,6 +961,46 @@ def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     return [f"reference/{ent['id']}/{plate}.png"]
 
 
+
+def _abu_root(start=None):
+    """The ABU repo root, found by walking up for engine/agenticstory.
+
+    Mirrors render_spread._abu_root. This script is otherwise stdlib-only; the
+    engine is imported ONLY for nested-setting resolution, and a universe with no
+    `partOf` anywhere never reaches this.
+    """
+    p = Path(start or __file__).resolve()
+    for c in [p, *p.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            return c
+    return None
+
+
+def _resolve_nesting(uroot: Path, ent: dict) -> dict:
+    """Fold every ancestor's law into `ent`. Refuses loudly on a bad chain."""
+    root = _abu_root()
+    if root is None:
+        raise Refuse(
+            f"'{ent.get('id')}' declares partOf '{ent.get('partOf')}' but the ABU engine "
+            "could not be located to resolve it. Reinstall the plugin.")
+    eng = str(root / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.nesting import resolve, NestingError
+    try:
+        return resolve(lambda eid: _load_entity_or_none(uroot, eid), ent["id"])
+    except NestingError as e:
+        raise Refuse(f"NESTED SETTING: {e}")
+
+
+def _load_entity_or_none(uroot: Path, eid: str):
+    p = uroot / "canon" / "entities" / f"{eid}.json"
+    if not p.exists():
+        return None
+    with open(p) as f:
+        return json.load(f)
+
+
 def resolve_setting(ent: dict, plate: str | None):
     """Return (ref_paths, block) for a setting, from its WHOLE contract.
 
@@ -1177,6 +1217,13 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         #
         # Collected for EVERY kind here, before the per-kind branches return, for the same
         # reason `scale` is: the defect it catches is not specific to people.
+        # NESTED SETTINGS (SPEC v0.29). A room declares `partOf` its house, and the
+        # house's LAW (invariants, qa, dressing, render.always) folds in here while its
+        # ART never does. Resolved BEFORE the invariant sweep below so an inherited
+        # house rule is checked by read-back exactly like a room's own, which is the
+        # whole reason the slipper rule had to be hand-copied before this existed.
+        if kind in ("setting", "visual-metaphor") and (ent.get("partOf") or "").strip():
+            ent = _resolve_nesting(uroot, ent)
         if kind != "character":
             for i in (ent.get("structured") or {}).get("invariants") or []:
                 qa.append(f"{c['id']}: {i}")

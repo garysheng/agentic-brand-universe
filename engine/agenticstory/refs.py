@@ -108,6 +108,10 @@ def resolve_setting(store: CanonStore, eid: str) -> list[str]:
     if e.kind not in ("setting", "visual-metaphor"):
         return [f"'{eid}' is kind '{e.kind}', not a setting/visual-metaphor"]
     problems: list[str] = []
+    # NESTED SETTINGS (v0.29): refuse a broken `partOf` chain HERE, at the gate, rather
+    # than letting the renderer discover it. A cycle or a missing parent is named.
+    from .nesting import problems as _nest_problems
+    problems += _nest_problems(lambda i: (store.entity(i).raw if store.entity(i) else None), eid)
     if e.raw.get("status") != "locked":
         problems.append(f"setting '{eid}' status is '{e.raw.get('status')}' (not 'locked') — "
                         f"lock turnaround + emptyPlates + blueprint + map + blocking + dressing first")
