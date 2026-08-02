@@ -43,6 +43,56 @@ Engine verbs (`python3 -m agenticstory.cli <verb>` from `engine/`):
 `wardrobe` · `lock-shot` · `archive` · `import-asset` · `add-entity` · `build-canon` ·
 `build-docs` · `backfill-provenance` · `massing` · `elevation` · `land` · `init`
 
+## Rendering a named person: ALWAYS use the look binding
+
+```bash
+python3 skills/on-brand-image/scripts/generate.py \
+  --out <path>.png --no-open --no-wardrobe \
+  --entity "<universe>:<entity>@<look-id>" \
+  --prompt "<the SCENE only. Never describe the outfit.>"
+```
+
+**`@<look-id>` is the whole point.** It resolves the person's locked plates AND the look's
+own `invariants`, which state the garment. Bare `--entity selah` with a hand-written outfit
+description is how a blessed A-line gown came back as a fitted trumpet and blessed
+straightened hair came back curly: the binding existed, was not used, and nothing complained.
+
+**Never hand-assemble a prompt by slicing an older recipe.** A `.split("SETTING:")[0]` on a
+previous prompt silently dropped an entire dress description, and the render looked plausible
+enough that only the owner caught it. If the look is bound, the words come from canon.
+
+Looks bound in `christofuturism` today:
+
+| Pass this | Wears |
+|---|---|
+| `gary@usa-flag-jacket` | American-flag leather bomber |
+| `gary@texas-denim` | denim trucker with the Proof of Vibes patch |
+| `gary@at-home-loungewear` | silk pyjamas, indoors only, no pendant |
+| `selah@wedding-dress` | ivory lace A-line, two hair sheets (below) |
+| `selah@usa-flag-dress` | American-flag fit-and-flare |
+| `selah@at-home-robe` | silk wrap robe, indoors only |
+
+A look may carry EXTRA SHEETS beyond `look`. `selah@wedding-dress` has
+`hair-curls-down` and `hair-ironed-side`; name the one you want in the prompt, or the model
+picks. A look may also `supersede` a base invariant, which is how the ironed style is legal
+inside that look and nowhere else.
+
+**Verify before you look at the image.** Read the recipe back and confirm the canon actually
+arrived. This has caught silent bypasses four times:
+
+```bash
+python3 -c "import json,sys; p=json.load(open(sys.argv[1]))['prompt']; \
+  print('invariants:', 'LOCKED canonical traits' in p)" <out>.png.recipe.json
+```
+
+Also check for a dead render. Two came back pure black after a metaphor about light
+("catch the light like a constellation") was read as a night scene:
+
+```bash
+python3 -c "from PIL import Image;import sys; \
+  print('BLACK' if Image.open(sys.argv[1]).convert('RGB').getextrema()==((0,0),(0,0),(0,0)) else 'ok')" <out>.png
+```
+
 ## The rule this file encodes
 
 **Discoverability is a just-in-time problem, not a documentation problem.** Anything that
