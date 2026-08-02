@@ -77,6 +77,12 @@ A look may carry EXTRA SHEETS beyond `look`. `selah@wedding-dress` has
 picks. A look may also `supersede` a base invariant, which is how the ironed style is legal
 inside that look and nowhere else.
 
+**`structured.render.always` is honoured here.** It is prompt-craft that applies to every
+render of an entity: register, staging, standing composition. `compose-spread` always read
+it and `on-brand-image` did not until v0.29, so the same field was live in one renderer and
+inert in the other, and a canon edit could look correct while steering nothing. Put standing
+STAGING there; put facts about the body in `invariants`, where a readback can check them.
+
 **Verify before you look at the image.** Read the recipe back and confirm the canon actually
 arrived. This has caught silent bypasses four times:
 

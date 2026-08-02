@@ -654,7 +654,7 @@ def build_universe(root, *, entities, asset_root="."):
     return str(root)
 
 
-def entity(eid, *, sheets=None, invariants=(), rules="", alt_looks=None, required=None):
+def entity(eid, *, sheets=None, invariants=(), rules="", alt_looks=None, required=None, render=None):
     d = {"id": eid, "kind": "character", "status": "locked",
          "structured": {"sheets": dict(sheets or {}),
                         "requiredForRender": list(required if required is not None
@@ -662,6 +662,8 @@ def entity(eid, *, sheets=None, invariants=(), rules="", alt_looks=None, require
                         "invariants": list(invariants)}}
     if alt_looks:
         d["structured"]["altLooks"] = alt_looks
+    if render:
+        d["structured"]["render"] = render
     if rules:
         d["prose"] = {"rules": rules}
     return d
@@ -686,6 +688,18 @@ class TestEntityRefusals(GenerateCase):
         png(Path(u) / "reference" / "chip" / "face.png", extra=b"f")
         png(Path(u) / "reference" / "chip" / "body.png", extra=b"b")
         return u
+
+    def test_structured_render_always_reaches_the_prompt(self):
+        """`render.always` is prompt-craft applying to EVERY render of an entity, and
+        `compose-spread` has always honoured it. This path ignored it, so the same field
+        was live in one renderer and inert in the other: an author could write a rule into
+        canon, see it look correct, and have it steer nothing."""
+        u = self.universe(entity(
+            "chip", sheets={"face": "reference/chip/face.png"},
+            render={"always": "ALWAYS STAGE HIM ON THE RIGHT OF FRAME."}))
+        png(Path(u) / "reference" / "chip" / "face.png", extra=b"f")
+        r = self.run_main(*self.base("--entity", f"{u}:chip"))
+        self.assertIn("ALWAYS STAGE HIM ON THE RIGHT OF FRAME.", r.prompt)
 
     def test_a_spec_without_a_colon_refuses(self):
         msg = self.expect_exit(*self.base("--entity", "chip"))

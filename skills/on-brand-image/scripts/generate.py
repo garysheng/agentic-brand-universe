@@ -192,6 +192,18 @@ def resolve_entities(specs, required_only=False, with_photos=False):
         r = ((ent.raw.get("prose") or {}).get("rules") or "").strip()
         if r:
             rules.append(r)
+        # `structured.render.always` is PROMPT-CRAFT that applies to every render of this
+        # entity: register, staging, framing, standing composition. `compose-spread` has
+        # always read it; this path never did, so the SAME FIELD was honoured by one
+        # renderer and silently ignored by the other. An author who writes a rule there and
+        # renders through on-brand-image gets a canon edit that looks right and does
+        # nothing, which is the same defect class as the lookbook that recorded its own
+        # name and steered nothing (2026-08-01: a standing frame-position preference was
+        # written to render.always and only took effect because it was ALSO typed into the
+        # prompt by hand).
+        always = ((ent.structured.get("render") or {}).get("always") or "").strip()
+        if always:
+            rules.append(always)
         meta.append({"universe": upath, "id": eid, "look": look,
                      "photoStack": ent.photo_stack(),
                      "sheets": {k: v for k, v in sorted(sheets.items())}})
