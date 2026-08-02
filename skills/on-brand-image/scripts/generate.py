@@ -106,7 +106,7 @@ def sha256(p):
 ENGINE = None  # resolved lazily by _engine_on_path(); see engine/agenticstory/providers.py
 
 
-def resolve_entities(specs):
+def resolve_entities(specs, required_only=False, with_photos=False):
     """Resolve `UNIVERSE:ID[@LOOK]` specs to (refs, invariants, rules, meta).
 
     REFUSES the render on anything unresolvable. That refusal is the whole point:
@@ -134,7 +134,13 @@ def resolve_entities(specs):
         if ent is None:
             sys.exit(f"generate.py: no entity {eid!r} in {upath}")
         try:
-            sheets = ent.look_sheets(look)
+            # THE MULTI-ANGLE IDENTITY LOCK. `look_sheets` answers the GATE's question
+            # (is there enough on disk to allow this render); a render needs every
+            # locked angle, or the face drifts. Passing the gate's minimum here sent
+            # 2 of gary's 9 plates and 1 of selah's 8, beside 9 lookbook exemplars of
+            # OTHER PEOPLE, and they came back not looking like themselves.
+            sheets = (ent.look_sheets(look) if required_only
+                      else ent.identity_sheets(look))
         except ValueError as e:
             sys.exit(f"generate.py: {e}")
         if not sheets:
@@ -142,6 +148,32 @@ def resolve_entities(specs):
                      f"{'@' + look if look else ''} resolved ZERO reference sheets. "
                      f"Lock its art first; rendering a canon entity with no plates is "
                      f"exactly the drift this flag exists to prevent.")
+
+        # PHOTOGRAPHS ARE OPT-IN, and this is the opposite of what the first cut did.
+        #
+        # That cut passed them FIRST on every render, reasoning that a photograph is the
+        # person and a plate is a derivative. Tested head-to-head on one prompt with
+        # three ref stacks, the universe's owner picked PLATES-ONLY without hesitation
+        # and rejected both photos-only and photos-then-plates (Gary, 2026-08-01: "plates
+        # only are the only ones that look good"). Blessed plates are not merely
+        # derivative: they are the likeness a human already approved, shot under
+        # controlled light at a consistent crop, and they carry that approval into every
+        # new render in a way candid photographs do not.
+        #
+        # So the default is the locked matrix, and the photo stack is available when a
+        # caller wants it. Whose likeness it is decides this, not the framework.
+        photos = []
+        ent_photos = ent.photo_stack() if with_photos else []
+        for rel in ent_photos:
+            pp = os.path.normpath(os.path.join(str(store.asset_root), rel))
+            if os.path.exists(pp):
+                photos.append(pp)
+            else:
+                sys.exit(f"generate.py: {eid}'s declared photoStack entry is MISSING on "
+                         f"disk: {rel}\nRefusing to render: the photographs are the "
+                         f"identity ground truth, and rendering without them silently "
+                         f"conditions the result on prior renders instead.")
+        refs.extend(photos)
 
         missing = []
         for key, rel in sorted(sheets.items()):
@@ -160,6 +192,7 @@ def resolve_entities(specs):
         if r:
             rules.append(r)
         meta.append({"universe": upath, "id": eid, "look": look,
+                     "photoStack": ent.photo_stack(),
                      "sheets": {k: v for k, v in sorted(sheets.items())}})
     # De-dupe, preserving order: two entities may legitimately share a plate.
     seen, uniq = set(), []
@@ -211,8 +244,22 @@ def main():
     ap.add_argument("--no-wardrobe", action="store_true",
                     help="Skip automatic wardrobe resolution from --entity. Use for a render "
                          "where clothing is genuinely not the subject (a prop, a room, a mark).")
-    ap.add_argument("--lookbook-refs", type=int, default=3,
-                    help="How many exemplars to sample per lookbook (SPEC 4.7.1 says 2-4).")
+    ap.add_argument("--lookbook-refs", type=int, default=-1,
+                    help="How many exemplars to sample per lookbook. DEFAULT 0 when any "
+                         "--entity is present and 3 otherwise. A clothing exemplar is a "
+                         "photograph of A DIFFERENT PERSON, so passing nine of them beside "
+                         "three plates of your actual subjects is how a couple portrait comes "
+                         "back looking like strangers. With named entities the vocabulary "
+                         "still arrives as TEXT; set this above 0 to override.")
+    ap.add_argument("--entity-photos", action="store_true",
+                    help="Also pass each real person's realPerson.photoStack. OFF by default: "
+                         "a head-to-head test showed blessed plates alone produced the better "
+                         "likeness, because a plate is an APPROVED likeness under controlled "
+                         "light, not merely a derivative of a photo.")
+    ap.add_argument("--entity-required-only", action="store_true",
+                    help="Pass only each entity's requiredForRender sheets instead of every "
+                         "locked angle. Narrower, and it lets a face drift; the default is the "
+                         "full identity matrix.")
     # RESOLVE CANON HERE, NOT IN THE CALLER'S HEAD.
     #
     # `canon-resolve` has always been a SKILL: a document instructing whoever is
@@ -365,7 +412,9 @@ def main():
     # subject's own plates must outrank it. Ordering the other way is how a pack
     # wins an argument it should never have been in.
     if a.entity:
-        canon_refs, invariants, rules, resolved_meta = resolve_entities(a.entity)
+        canon_refs, invariants, rules, resolved_meta = resolve_entities(
+            a.entity, required_only=a.entity_required_only,
+            with_photos=a.entity_photos)
         seen_now = {os.path.normpath(os.path.expanduser(r)) for r in a.ref}
         a.ref = [p for p in canon_refs
                  if os.path.normpath(p) not in seen_now] + a.ref
@@ -444,11 +493,16 @@ def main():
                     merged["negatives"] += [n for n in lb.negatives
                                             if n not in merged["negatives"]]
 
+            # Identity outranks vocabulary. When the render names real entities, their
+            # plates must not be crowded out by exemplars wearing other people's faces.
+            n_refs = a.lookbook_refs
+            if n_refs < 0:
+                n_refs = 0 if a.entity else 3
             lb_refs = []
             for lb, _res in resolved_all:
                 # Seed on the OUTPUT PATH so successive renders in one batch draw
                 # different subsets while any single render replays identically.
-                picked = lb.sample(a.lookbook_refs, seed=f"{lb.id}:{os.path.abspath(a.out)}")
+                picked = lb.sample(n_refs, seed=f"{lb.id}:{os.path.abspath(a.out)}") if n_refs else []
                 lb_refs += [str(p) for p in picked]
                 lookbook_meta.append({"id": lb.id, "dir": str(lb.dir),
                                       "sampled": [str(p) for p in picked],

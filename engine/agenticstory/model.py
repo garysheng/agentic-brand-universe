@@ -75,7 +75,27 @@ class Entity:
 
     @property
     def real_person(self) -> dict[str, Any] | None:
-        return self.raw.get("realPerson")
+        """The real-person dossier, from `structured` first, then top level.
+
+        TWO READERS, TWO CONVENTIONS, AND THEY DISAGREED (v0.28). This returned the
+        TOP-LEVEL block only, while `matrix.real_person_gaps` had always read
+        `structured.realPerson` first. An entity carrying both got graded against one
+        stack and rendered against the other, and nothing anywhere compared them.
+
+        On `gary` that was not hypothetical: `structured.realPerson.photoStack` held
+        nine real photographs, the top-level block held five photographs plus four
+        RENDERS filed as photographs, and the top-level one won every render. So the
+        identity ground truth was partly derivative, one entry was a denim plate that
+        kept reintroducing a look its owner had retired, and the coverage report kept
+        saying the stack was fine because it was reading the other one.
+
+        `structured` wins because that is where authors put it and where the grader
+        already looked. `validate` refuses the conflict outright rather than picking
+        silently, since a canon that quietly holds two answers is worse than one that
+        refuses to hold either.
+        """
+        st = (self.structured or {}).get("realPerson")
+        return st if st else self.raw.get("realPerson")
 
     def required_sheet_keys(self) -> list[str]:
         s = self.structured
@@ -95,6 +115,49 @@ class Entity:
 
     def alt_look(self, look: str) -> dict[str, Any] | None:
         return ((self.structured.get("altLooks") or {}) or {}).get(look)
+
+    def photo_stack(self) -> list[str]:
+        """A real person's PHOTOGRAPHS: the identity ground truth, if any.
+
+        THE PHOTOGRAPH WINS. Every universe that renders real people writes that rule
+        down, and until v0.28 nothing passed the photographs. `--entity` resolved
+        `structured.sheets` only, so a render of a real person was conditioned entirely
+        on PRIOR RENDERS: a copy of a copy, with the photographic ground truth sitting
+        in canon and never reaching the model. Each generation drifts a little further
+        from the person, and because every plate is internally consistent the drift is
+        invisible until someone who knows the face says "that isn't me" (Gary, 2026-08-01,
+        after a fashion shoot conditioned on nine plates and zero of his nine photos).
+        """
+        rp = self.real_person or {}
+        return [str(p) for p in (rp.get("photoStack") or [])]
+
+    def identity_sheets(self, look: str | None = None) -> dict[str, str]:
+        """EVERY locked sheet for this look, not merely the required minimum.
+
+        THE MULTI-ANGLE IDENTITY LOCK, which several universes state as law and no
+        code enforced: a single reference lets a face drift or hallucinate, so a
+        recurring character needs 4+ varied angles passed on EVERY render.
+
+        `look_sheets` deliberately returns `requiredForRender`, which is the GATE's
+        question ("is there enough on disk to allow this render at all"). Callers
+        reused it as the render's ref list, which is a different question, and the
+        gap between them is invisible until you look at a recipe: a character with
+        NINE locked plates rendered from two, beside nine lookbook exemplars of
+        other people, and came back not looking like himself (2026-08-01).
+
+        Required sheets come FIRST, because ref order is precedence.
+        """
+        req = self.look_sheets(look)
+        if look:
+            # An alt look has already resolved its own composition; widening it with
+            # base plates would drag back exactly what dropSheets removed.
+            return req
+        out = dict(req)
+        for k, v in (self.structured.get("sheets") or {}).items():
+            p = sheet_parts(v)[0]
+            if p and k not in out:
+                out[k] = p
+        return out
 
     def look_sheets(self, look: str | None) -> dict[str, str]:
         """The sheets a render should actually pass for this entity in this look.
@@ -263,6 +326,24 @@ class Entity:
             for k in self.required_sheet_keys():
                 if not self.sheet_path(k):
                     p.append(f"{self.id}: requiredForRender '{k}' has no path in sheets")
+        # A REAL PERSON'S GROUND TRUTH MUST BE GROUND TRUTH (v0.28).
+        #
+        # Two failures, both found on one entity the same day. First, an entity may
+        # carry `realPerson` in two places, and until v0.28 two readers disagreed about
+        # which one counted, so the grader and the renderer used different stacks.
+        # Only the DUPLICATE is refused. Whether a photoStack may contain renders is a
+        # judgement for the universe's owner, not the framework: Gary, 2026-08-01, "im
+        # fine with ai images being references". An earlier cut of this guard refused
+        # them outright and was withdrawn the same hour as an opinion masquerading as a
+        # correctness check. What is NOT a judgement call is two dossiers disagreeing,
+        # because then nobody can say what the stack even is.
+        top = self.raw.get("realPerson")
+        st_rp = (self.structured or {}).get("realPerson")
+        if top and st_rp and top != st_rp:
+            p.append(f"{self.id}: has BOTH a top-level 'realPerson' and a "
+                     f"'structured.realPerson', and they DIFFER. Keep one "
+                     f"(structured.realPerson wins at render time); two disagreeing "
+                     f"dossiers means the grader and the renderer read different stacks")
         # A typed slot must use a role the compiler actually knows, or the gate it was
         # added for silently does nothing. A typo here is worse than no role at all,
         # because the author believes a constraint is in force.

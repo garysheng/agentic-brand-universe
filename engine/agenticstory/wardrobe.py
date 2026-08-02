@@ -43,7 +43,15 @@ LOOKBOOK_ROOT_DEFAULT = "reference/lookbook"
 # The typed keys `structured.wardrobe` accepts. A typo in a wardrobe block is exactly
 # as dangerous as a typo in a sheet role: the author believes a constraint is in force
 # and nothing is reading it. So unknown keys are a validation problem, not a shrug.
-WARDROBE_KEYS = {"lookbooks", "era", "negatives", "alwaysWears", "note"}
+WARDROBE_KEYS = {"lookbooks", "era", "negatives", "alwaysWears", "note", "outfits"}
+
+# `outfits` is the SELECTION half of wardrobe, added once the sampling half proved wrong
+# for named characters. A lookbook is a generative vocabulary and every negative added to
+# it is one more thing to route around; three rounds of constraining a named character's
+# clothing from the lookbook side all failed, and naming one outfit worked immediately.
+# So: crowds sample, named people select. An entry is
+# `<look-id>: {look, words, blessedOn}`, produced by the `fashion-look` form and mirrored
+# as an `altLooks` entry so `--entity <universe>:<id>@<look-id>` resolves it at render.
 
 # The minimum a lookbook needs before it is a vocabulary rather than a mood board.
 # `gate` is required and must be non-empty: SPEC §4.7.1 has said since v0.12 that "a
