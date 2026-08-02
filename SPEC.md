@@ -28,6 +28,19 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 > on three of seven spreads. Lint warns; a spread can scope the plate out. Also: `backfill-prompts`
 > now SCAFFOLDS a missing `prompts.md`, since an entity older than the scaffolder had none and was
 > invisible to the sweep, which left a locked, actively-cast character unable to be re-shot.
+>
+> **v0.29 same-day pave addendum (2026-08-02, the-bible-all-points-to-jesus run).** Four more
+> members of the same "a check that lied or a silent foot-gun" class, found by six stewards in one
+> book run and paved the same day. **(1)** `stories/*.voice-waivers.json` — voice-gate's own default
+> waiver sidecar, which lives in stories/ — parsed as a StorySpec, so `validate` emitted a false
+> "story missing 'id'" per waiver file (bit twice in one day). Sidecars are excluded by one shared
+> predicate. **(2)** `structured.sheetAliases` (§12) lets an intentional add-keys-never-remove
+> rename be DECLARED, so lint can tell it from a dead duplicate. **(3)** `chain_matrix` now honours
+> `identity.register.anchorSubject` (see Register) instead of every matrix shoot hand-negating the
+> anchor's subject in prompts.md. **(4)** ONE recipe per asset: `chain_matrix` used to write
+> `<shot>.recipe.json` while the provider wrote `<shot>.png.recipe.json` — two provenance sidecars
+> for one asset, free to diverge; the chain now merges its conditioning metadata into the provider's
+> file and removes the stale twin.
 
 > **v0.28 changelog — lookbooks became real, and clothes got attached to people.** From v0.12 to
 > v0.27 a Lookbook was a specification with no implementation: `--lookbook` wrote the vocabulary's
@@ -1402,7 +1415,8 @@ known by, that generic skills read.
   "register": {                              // the universe's illustrative style (v0.4)
     "name": "detailed comic book",           // named style, defaulted by start-universe
     "anchor": "reference/register/style-anchor.png", // content-neutral swatch, passed FIRST every render
-    "rejectedPoles": ["photoreal", "anime", "washed-out"]
+    "rejectedPoles": ["photoreal", "anime", "washed-out"],
+    "anchorSubject": "an ancient oil lamp, a clay jar, robed figures" // optional: what the anchor DEPICTS
   }
 }
 ```
@@ -1412,6 +1426,19 @@ points at a content-neutral **style anchor** the renderer passes as the first re
 render, with `rejectedPoles` baked as negatives. A per-property `register` (SPEC §4.3) may still
 override it. `start-new-story-universe` defaults `register.name` to "detailed comic book" and locks
 the anchor via a style-lock step.
+
+**`register.anchorSubject` (optional).** When the anchor is not perfectly content-neutral, this
+field NAMES what it depicts, so a renderer can ban that subject concretely on every render. The
+generic "take no subject from the style anchor" guard loses to a concrete picture: an oil-lamp
+anchor put its own lamp and jar onto a spread that carried EIGHT other references, because the
+scene had a table and the anchor had tabletop objects. Declared once per universe; kept in sync
+with `anchor` (if the anchor image changes, this sentence changes with it). Consumers: Nation of
+Fire's spread compiler negates it at render time (where the field was first earned), and the
+framework's `chain_matrix` negates it on every matrix shot (2026-08-02; before that, every matrix
+shoot had to hand-negate it in prompts.md, and three did in one book run). The framework's own
+spread composer (`compose-spread/assemble_prompt`) does NOT yet read it and carries only the
+generic anchor guard; that gap is logged, not hidden. A Style Pack may declare the same field for
+the same reason.
 
 **Craft-canon is data, not skill prose.** Genres, spines, and register rules a universe discovers
 (SPEC §3.5, §5) are typed canon records the renderer reads — NOT paragraphs buried in a skill file.
@@ -1558,6 +1585,17 @@ Default measured reference, when a universe declares no `identity.scaleReference
     so the model is told what each reference is for instead of weighing them all equally. Earned
     on two watercolour costume plates that were admissible as matrix slots on a hyperreal
     character because their sidecars said "garment design only" in prose no gate could read.
+  - **`structured.sheetAliases: {newKey: oldKey}` (2026-08-02) — a DECLARED sheet alias.** The
+    add-keys-never-remove pattern (a camera slot renamed without breaking every story or spec that
+    names the old key: retired-hearthRotunda precedent; the-park-bench and apostle-lee-study camera
+    aliases) used to be encoded by writing BOTH keys into `sheets` pointing at one file, which is
+    indistinguishable from a dead duplicate and tripped `SHEET-DUPLICATE-ALIAS` on every
+    intentional rename. Declaring the alias makes the intent a record: the resolver treats the
+    alias as a sheet-lookup fallback (one hop; a real `sheets` key always wins), `validate` refuses
+    an alias to nothing, to itself, or one whose two keys have diverged to different files, and
+    lint skips declared aliases while undeclared duplicates still warn. `requiredForRender` naming
+    both halves of an alias is still an error, because the same image passed twice carries no
+    information regardless of intent.
   - **`structured.negatives` (v0.23) — a negative that names ONE person.** Emitted only on
     spreads where that entity is in frame. Some rules are absolute about an individual and must
     be silent about everyone else: a universe may forbid glasses on one character while
