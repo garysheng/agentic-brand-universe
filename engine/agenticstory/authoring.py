@@ -13,7 +13,7 @@ import json
 import pathlib
 
 from .matrix import matrix_for, known_shots_for
-from .model import SETTING_CONTRACT_FIELDS
+from .model import setting_contract_gaps
 
 
 def _digest(path) -> str | None:
@@ -247,10 +247,9 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # convenience: the prompts.md skeleton this same module writes (see the slot list
         # in prompts_skeleton below) tells the author the shot is called `scale`, while
         # only `scale-plate` was mapped here. Following the framework's own scaffold
-        # therefore filed the plate under emptyPlates, left contract.scalePlate null, and
-        # so the auto-lock below never fired: the entity stayed `unlocked`, assert-story
-        # refused it, and NOTHING said why. Earned 2026-08-02 on the-lit-pulpit, where it
-        # was diagnosed by hand and patched with a throwaway script.
+        # therefore filed the plate under emptyPlates and left contract.scalePlate null.
+        # Earned 2026-08-02 on the-lit-pulpit, where it was diagnosed by hand and patched
+        # with a throwaway script.
         slot = {"scale-plate": "scalePlate", "scale": "scalePlate",
                 "blocking-plate": "blockingPlate",
                 "blocking": "blockingPlate"}.get(shot, shot)
@@ -260,13 +259,18 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
             plates = c.setdefault("emptyPlates", [])
             if path not in plates:
                 plates.append(path)
-        # Promote to locked only when the WHOLE contract is satisfied, mirroring how
+        # Promote to locked only when the RENDER GATE would accept it, mirroring how
         # requiredForRender is recomputed for sheet-matrixed kinds. Partial art must
         # never open the gate.
-        if all(
-            (c.get(f) not in (None, "")) and not (f == "emptyPlates" and not c.get(f))
-            for f in SETTING_CONTRACT_FIELDS
-        ):
+        #
+        # THE PROMOTER AND THE GATE MUST ASK THE SAME QUESTION (v0.29). This used to
+        # require every SETTING_CONTRACT_FIELDS entry including the advisory `scalePlate`,
+        # which `refs.resolve_setting` never checks and which SPEC 12 says is advisory. A
+        # setting that legitimately must not carry a painted scale plate could therefore
+        # never be promoted by this tool and had to be hand-flipped in the JSON, which is
+        # the hand-editing this module exists to remove. `setting_contract_gaps` is now the
+        # single definition, shared with the gate and with `Entity.is_locked_setting`.
+        if not setting_contract_gaps(c):
             entity["status"] = "locked"
     else:
         st = entity.setdefault("structured", {})

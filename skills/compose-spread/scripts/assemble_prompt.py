@@ -556,35 +556,90 @@ def resolve_render_block(ent: dict, pose: str | None, look: str | None = None):
     defines one, because front-facing is the common case and the case canon warns
     about; a descriptor sets `pose` explicitly for anything else (e.g. "back").
     """
-    st = ent.get("structured") or {}
-    r = st.get("render") or {}
-    # An alt look may REPLACE the render block wholesale. dropSheets already stops
-    # a contradicted base SHEET reaching the model; this stops the contradicted
-    # base PROSE. Without it, jerry-man's `render.always` kept asserting "his gold
-    # NORTH STAR pendant" and "do NOT change his age" on a college-era look whose
-    # invariants say the neck is bare and he is twenty, and the prose won: the
-    # render came back with a necklace on a man who does not own one yet.
-    if look:
-        al = (st.get("altLooks") or {}).get(look) or {}
-        if "render" in al:
-            r = al["render"] or {}
+    r = render_block_for(ent, look)
     if not r:
         return [], None
     parts = []
     if r.get("always"):
         parts.append(r["always"])
     sheets: list[str] = []
-    poses = r.get("poses") or {}
-    if poses:
-        key = pose or ("front" if "front" in poses else None)
-        if key is not None:
-            if key not in poses:
-                raise Refuse(f"{ent['id']} has no render pose '{key}'")
-            p = poses[key]
-            if p.get("bake"):
-                parts.append(p["bake"])
-            sheets = list(p.get("sheets") or [])
+    p = selected_pose(ent, pose, look)
+    if p is not None:
+        if p.get("bake"):
+            parts.append(p["bake"])
+        sheets = list(p.get("sheets") or [])
     return sheets, (" ".join(parts) if parts else None)
+
+
+def render_block_for(ent: dict, look: str | None) -> dict:
+    """`structured.render`, honouring an alt look that REPLACES it wholesale.
+
+    dropSheets already stops a contradicted base SHEET reaching the model; this
+    stops the contradicted base PROSE. Without it, jerry-man's `render.always`
+    kept asserting "his gold NORTH STAR pendant" and "do NOT change his age" on a
+    college-era look whose invariants say the neck is bare and he is twenty, and
+    the prose won: the render came back with a necklace on a man who does not own
+    one yet.
+    """
+    st = ent.get("structured") or {}
+    r = st.get("render") or {}
+    if look:
+        al = (st.get("altLooks") or {}).get(look) or {}
+        if "render" in al:
+            r = al["render"] or {}
+    return r or {}
+
+
+def selected_pose(ent: dict, pose: str | None, look: str | None = None) -> dict | None:
+    """The pose declaration this spread selected, or None when no pose applies.
+
+    Pose defaults to "front" when the entity defines one, because front-facing is
+    the common case and the case canon warns about; a descriptor sets `pose`
+    explicitly for anything else (e.g. "back"). Factored out of
+    `resolve_render_block` in v0.29 so the pose's SUPERSEDES can be read by the
+    invariant and negative compilers without re-deriving which pose won.
+    """
+    poses = (render_block_for(ent, look).get("poses") or {})
+    if not poses:
+        return None
+    key = pose or ("front" if "front" in poses else None)
+    if key is None:
+        return None
+    if key not in poses:
+        raise Refuse(f"{ent['id']} has no render pose '{key}'")
+    p = poses[key]
+    if not isinstance(p, dict):
+        # lint-universe already flags this as CAST-POSE-SHAPE. Refusing here too keeps
+        # it a stated refusal rather than an AttributeError three frames down.
+        raise Refuse(f"{ent['id']}: render pose '{key}' is a {type(p).__name__}, not an "
+                     f"object. A pose is {{'sheets': [...], 'bake': '...'}}.")
+    return p
+
+
+def pose_invariants(base: list[str], ent: dict, pose: str | None,
+                    look: str | None = None) -> list[str]:
+    """Apply a POSE's `supersedes` / `invariants` to an already-look-resolved list.
+
+    A POSE COULD NOT SUPERSEDE A BASE INVARIANT UNTIL v0.29, AND ONLY AN altLook COULD.
+    That is the wrong tool for the job whenever the FACE must not change: an altLook
+    auto-drops the base face sheets, so expressing "in this one pose the jacket is worn
+    half-on, left sleeve off the shoulder" as a look also throws away the identity
+    anchor. The only remaining way to say it was to hand-word the base invariant as
+    "...except in pose X", which is a rule enforced by an author remembering to phrase
+    it, and a read-back checklist that then reads as a contradiction of itself.
+
+    Earned on nation-of-fire's `theo-doorchaser` (The Tithe Is a Test, 2026-08-02),
+    whose half-on jacket was the spine of the book and was expressed nowhere a gate
+    could read it.
+
+    Exact-string matching, exactly like `altLooks.<key>.supersedes` (SPEC 12), so the
+    two mechanisms behave identically and a pose can retire a look's invariant too.
+    """
+    p = selected_pose(ent, pose, look)
+    if not p:
+        return list(base)
+    dead = set(p.get("supersedes") or [])
+    return [i for i in base if i not in dead] + list(p.get("invariants") or [])
 
 
 # How many real photographs from a `realPerson.photoStack` reach the model.
@@ -961,7 +1016,7 @@ def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     return [f"reference/{ent['id']}/{plate}.png"]
 
 
-def resolve_setting(ent: dict, plate: str | None):
+def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
     """Return (ref_paths, block) for a setting, from its WHOLE contract.
 
     THE GEOMETRY FIELDS USED TO BE DROPPED. This built the block from
@@ -987,6 +1042,7 @@ def resolve_setting(ent: dict, plate: str | None):
     """
     refs = resolve_plate(ent, plate)
     con = ent.get("contract", {})
+    entry = entry or {}
 
     # THE SEATING CHART AS A PICTURE (SPEC v0.19). `blocking` is prose and
     # `structured.seating` is one sentence; a model paraphrases both and then decides
@@ -1000,7 +1056,26 @@ def resolve_setting(ent: dict, plate: str | None):
     # positions at correct relative size. It rides along on every render of the setting,
     # regardless of which camera plate is selected, because placement is continuity
     # rather than composition. Advisory: absent the field, behaviour is unchanged.
+    #
+    # AND IT RIDES ALONG INTO EVERY OTHER BOOK THAT REUSES THE SETTING (v0.29). A
+    # blocking plate is drawn for the book that earned it, so its mannequins hold that
+    # book's props. `the-park-bench` was authored for will-there-be-ice-cream: its plate
+    # shows two figures holding ice cream cones and its `contract.dressing` says each of
+    # them holds a cone. Three of the first seven spreads of an UNRELATED book came back
+    # with both men holding ice cream, through scene text and a per-spread negative that
+    # banned ice cream BY NAME on every one of them. A reference image plus an injected
+    # contract sentence together outrank a negative word, every time.
+    #
+    # So a spread may scope the plate out, with `"blockingPlate": false` on the cast
+    # entry, and a plate may do it for every spread that selects it with
+    # `contract.plates.<plate>.includeBlockingPlate: false`. Absent either, behaviour is
+    # unchanged. The DURABLE fix for a leaking setting is still to reshoot the plate
+    # propless (lint-universe warns SETTING-DRESSING-NAMES-HELD-PROP); this is the escape
+    # hatch for the spread in front of you.
+    pcfg = ((con.get("plates") or {}).get(plate) or {}) if plate else {}
     bp = con.get("blockingPlate")
+    if entry.get("blockingPlate") is False or pcfg.get("includeBlockingPlate") is False:
+        bp = None
     if bp and bp not in refs:
         refs = list(refs) + [bp]
 
@@ -1019,7 +1094,6 @@ def resolve_setting(ent: dict, plate: str | None):
     # `note` is appended for that plate; includeBlocking:false drops the room-wide
     # blocking law, which is exactly what a close-up needs. Absent config, behaviour
     # is unchanged, so every existing universe renders byte-identically.
-    pcfg = ((con.get("plates") or {}).get(plate) or {}) if plate else {}
     keys = ["map", "blocking", "dressing", "scale"]
     if pcfg.get("includeBlocking") is False:
         keys.remove("blocking")
@@ -1177,11 +1251,24 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         #
         # Collected for EVERY kind here, before the per-kind branches return, for the same
         # reason `scale` is: the defect it catches is not specific to people.
+        #
+        # `render.qa` IS PART OF THE CHECKLIST AND WAS READ BY NOTHING (v0.29). SPEC 4.6
+        # has stated since v0.4 that "qa = the union of every in-frame entity's
+        # `invariants` + `render.qa`", and the second half of that union was never
+        # implemented in any compiler. So an entity could carry a well-written six-item
+        # `structured.render.qa`, validate, lint clean, and contribute ZERO lines to the
+        # read-back checklist. Earned on nation-of-fire's `theo-doorchaser`: a dry
+        # assemble reported 13 QA invariants on a two-hander (all 13 the other man's) and
+        # zero on the spread where he stands alone, so the signature detail the whole book
+        # turns on was checked only by a human who happened to look.
+        # Look-aware, because an altLook may replace the render block wholesale.
         if kind != "character":
             for i in (ent.get("structured") or {}).get("invariants") or []:
                 qa.append(f"{c['id']}: {i}")
+        for i in _as_neg_list(render_block_for(ent, c.get("look")).get("qa")):
+            qa.append(f"{c['id']}: {i}")
         if kind in ("setting", "visual-metaphor"):
-            r, block = resolve_setting(ent, c.get("plate"))
+            r, block = resolve_setting(ent, c.get("plate"), c)
             add_refs(r)
             block = entity_block(c["id"], block, c.get("bake"))
             if block:
@@ -1223,6 +1310,10 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                 "variation, put scene-specific detail in `scene` (which is additive), or "
                 "set allowIdentityOverride if you really mean to override canon.")
         r, inv = resolve_character(ent, c.get("look"), uroot)
+        # A POSE MAY SUPERSEDE A BASE INVARIANT (v0.29). Applied here so the prompt
+        # block, the QA checklist and the computed negatives below all read the SAME
+        # resolved list, exactly as `supersedes` already works for an alt look.
+        inv = pose_invariants(inv, ent, c.get("pose"), c.get("look"))
         add_refs(r)
         # Canon's prescribed prompt-craft (structured.render) is emitted ALONGSIDE
         # the invariant list: the invariants remain the QA keys, the render block
@@ -1379,12 +1470,22 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         # retires an invariant. Merging the flat list regardless of look put 32
         # pendant negatives into a bare-neck render, one of them "more than one
         # necklace", which affirms the very thing the look removes.
-        _look = next((c.get("look") for c in entries if c.get("id") == _cid), None)
+        _entry = next((c for c in entries if c.get("id") == _cid), {})
+        _look = _entry.get("look")
         _neg = list(_st.get("negatives") or [])
         if _look:
             _al = (_st.get("altLooks") or {}).get(_look) or {}
             _dead = set(_al.get("supersedes") or [])
             _neg = [n for n in _neg if n not in _dead] + list(_al.get("negatives") or [])
+        # POSE-AWARE TOO (v0.29), for the same reason a look is: a pose that inverts a
+        # signature invariant ("worn half-on, left sleeve off the shoulder") is fighting
+        # the entity's own negative ("never worn off the shoulder") on every render that
+        # selects it, and a reference plus a negative outrank a scene sentence.
+        _pose = selected_pose(_e, _entry.get("pose"), _look) or {}
+        _pdead = set(_pose.get("supersedes") or [])
+        if _pdead:
+            _neg = [n for n in _neg if n not in _pdead]
+        _neg += list(_pose.get("negatives") or [])
         negs += _as_neg_list(_neg)
 
     # Resolve every ref to an absolute on-disk path (register anchor stays first).
@@ -1434,6 +1535,10 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         if x
     )
 
+    # De-duped, order preserved: `invariants` and `render.qa` legitimately overlap on an
+    # entity that stated the same rule in both, and a checklist that asks twice teaches
+    # its reader to skim.
+    qa = list(dict.fromkeys(qa))
     return {"prompt": prompt, "refs": resolved, "size": eff.get("size", "1536x1024"), "qa": qa}
 
 

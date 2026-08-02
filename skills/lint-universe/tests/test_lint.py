@@ -355,6 +355,126 @@ class TestSettingScale(unittest.TestCase):
 
 
 
+class TestSettingContractLeaks(unittest.TestCase):
+    """A setting's contract rides on EVERY render of it in EVERY book (v0.29).
+
+    `the-park-bench` was authored for will-there-be-ice-cream. Its `contract.dressing`
+    said "Each of them holds an ice cream cone" and its blocking plate showed two
+    mannequins holding cones. Three of the first seven spreads of an UNRELATED book came
+    back with both men holding ice cream, through scene text AND a per-spread negative
+    that banned ice cream by name. A reference image plus an injected contract sentence
+    together outrank a negative word.
+    """
+
+    def _setting(self, tmp, **contract):
+        con = {"map": "m", "blocking": "b", "dressing": "d"}
+        con.update(contract)
+        return build(tmp, entity={"id": "bench", "kind": "setting", "contract": con})
+
+    def test_a_held_prop_in_dressing_is_flagged(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(
+                t, dressing="A bench under a tree. Each of them holds an ice cream cone."))
+            self.assertIn("SETTING-DRESSING-NAMES-HELD-PROP", w)
+
+    def test_a_held_prop_in_blocking_is_flagged(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(
+                t, blocking="Two seats. He is carrying the bowl in his left hand."))
+            self.assertIn("SETTING-DRESSING-NAMES-HELD-PROP", w)
+
+    def test_ordinary_room_dressing_is_silent(self):
+        """The room's own furniture is exactly what `dressing` is FOR."""
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(
+                t, dressing="Fallen leaves on the slats, a litter bin, a bike rack.",
+                blocking="Two seats, the left one nearer the path."))
+            self.assertNotIn("SETTING-DRESSING-NAMES-HELD-PROP", w)
+
+    def test_it_is_never_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            e, _ = run(self._setting(t, dressing="Each of them holds a cone."))
+            self.assertNotIn("SETTING-DRESSING-NAMES-HELD-PROP", e)
+
+
+class TestLockedSettingAgreesWithTheGate(unittest.TestCase):
+    """`status: locked` is a claim about art on disk, so the gate must agree with it.
+
+    `lock_shot` and `refs.resolve_setting` disagreed about what locked meant, which
+    forced hand-flipping the JSON, and a hand-flip cannot be checked by the tool it
+    bypassed. nation-of-fire's `the-candle-against-the-sun` sits at `locked` with a null
+    `turnaround`, a state `resolve_setting` refuses, and nothing said so.
+    """
+
+    def _setting(self, tmp, status, **contract):
+        con = {"map": "m", "blocking": "b", "dressing": "d",
+               "turnaround": "t.png", "blueprint": "bp.png", "emptyPlates": ["e.png"]}
+        con.update(contract)
+        return build(tmp, entity={"id": "hall", "kind": "setting", "status": status,
+                                  "contract": con})
+
+    def test_locked_with_a_null_turnaround_is_flagged(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(t, "locked", turnaround=None))
+            self.assertIn("SETTING-LOCKED-BUT-GATE-REFUSES", w)
+
+    def test_a_gate_complete_locked_setting_is_silent(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(t, "locked"))
+            self.assertNotIn("SETTING-LOCKED-BUT-GATE-REFUSES", w)
+
+    def test_a_missing_scale_plate_is_not_a_gate_gap(self):
+        """The advisory fields must not come back in through this door."""
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(t, "locked", scalePlate=None, scale=""))
+            self.assertNotIn("SETTING-LOCKED-BUT-GATE-REFUSES", w)
+
+    def test_an_unlocked_setting_is_not_nagged(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._setting(t, "unlocked", turnaround=None))
+            self.assertNotIn("SETTING-LOCKED-BUT-GATE-REFUSES", w)
+
+
+class TestQaWithoutInvariants(unittest.TestCase):
+    """`render.qa` is compiled now, but `invariants` is what four other gates read.
+
+    `theo-doorchaser` (The Tithe Is a Test, 2026-08-02) carried six well-written qa
+    items and zero invariants, so a dry assemble reported ZERO checks on the spread
+    where he stands alone, and his half-on jacket was the spine of the book.
+    """
+
+    def _char(self, tmp, **structured):
+        st = {"sheets": {"forward-fullbody": "reference/e/f.png"},
+              "requiredForRender": [],
+              "render": {"always": "a man", "poses": {"front": {"sheets": []}}}}
+        st.update(structured)
+        return build(tmp, entity={"id": "theo", "kind": "character",
+                                  "authority": {"lockedBy": "gary"}, "structured": st})
+
+    def test_populated_qa_with_no_invariants_is_flagged(self):
+        with tempfile.TemporaryDirectory() as t:
+            st = {"sheets": {"forward-fullbody": "reference/e/f.png"},
+                  "requiredForRender": [], "invariants": [],
+                  "render": {"always": "a man", "qa": ["jacket-half-on", "brown-boots"],
+                             "poses": {"front": {"sheets": []}}}}
+            _, w = run(self._char(t, **st))
+            self.assertIn("ENTITY-QA-WITHOUT-INVARIANTS", w)
+
+    def test_qa_alongside_invariants_is_silent(self):
+        with tempfile.TemporaryDirectory() as t:
+            st = {"invariants": ["one-locked-face"],
+                  "render": {"always": "a man", "qa": ["brown-boots"],
+                             "poses": {"front": {"sheets": []}}}}
+            _, w = run(self._char(t, **st))
+            self.assertNotIn("ENTITY-QA-WITHOUT-INVARIANTS", w)
+
+    def test_no_qa_at_all_is_silent(self):
+        """Additive: an entity that never used the field is not nagged about it."""
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._char(t, invariants=[]))
+            self.assertNotIn("ENTITY-QA-WITHOUT-INVARIANTS", w)
+
+
 class TestProvenancePolicy(unittest.TestCase):
     """Provenance is enforced going forward; the pre-policy library is historical (Gary,
     2026-07-25). The grandfather list is a FILE, not a date, so the debt is reviewable and

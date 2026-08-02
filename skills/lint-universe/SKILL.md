@@ -60,6 +60,28 @@ a pack without one is a mood board; `styleLine` exists. Warns under three refs.
 A golden is Gary's approved answer of record. These checks make the golden library an auditable eval
 set rather than a pile of images with no memory of how they were judged.
 
+**A setting's contract belongs to the PLACE, not to one book** (`SETTING-DRESSING-NAMES-HELD-PROP`,
+warn). `contract.dressing` is injected into every prompt that casts the setting and
+`contract.blockingPlate` is passed as a reference image on every one of those renders, in every book
+that reuses it. So a prop written into either leaks forever: `the-park-bench` said "Each of them
+holds an ice cream cone" and its plate showed two mannequins holding cones, and three of the first
+seven spreads of an unrelated book came back with both men holding ice cream **through a per-spread
+negative that banned ice cream by name**. A reference image plus an injected contract sentence
+outrank a negative word. The detector requires a person and a held object in the SAME sentence and
+still lets some noise through; that is the right trade for a warning, since the version tuned until
+it was silent on everything questionable was also silent on the entity that earned it.
+
+**`locked` must mean what the render gate means** (`SETTING-LOCKED-BUT-GATE-REFUSES`, warn). The
+promoter and the gate disagreed until v0.29, so the only way to lock some settings was to hand-edit
+the JSON, and a hand-flip cannot be checked by the tool it bypassed. Both now call one predicate;
+this reports canon whose recorded status the gate contradicts (six entities in nation-of-fire, all
+predating the fix).
+
+**An entity guarded only by `render.qa`** (`ENTITY-QA-WITHOUT-INVARIANTS`, warn). `render.qa` reaches
+the read-back checklist from v0.29, but `structured.invariants` is what the identity bake guard,
+auto-disambiguation, `supersedes` and `judge-slot` all read, so an entity with a populated `render.qa`
+and an empty `invariants` is guarded in one place out of five.
+
 **Quirks.** The provider registry parses, and a pinned provider that the registry has never heard of is
 flagged, because it will silently inherit no quirks.
 

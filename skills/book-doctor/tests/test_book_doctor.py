@@ -286,6 +286,142 @@ class TestBookDoctor(unittest.TestCase):
             code, out = run(book, "--universe", str(tmp / "u"))
             self.assertEqual(code, 0, out)
 
+    # ── captions: which source is the blessed one ────────────────────────────
+    #
+    # A beat's `text` is INSTRUCTION FOR THE RENDERER; a `_caption` is the words the
+    # reader reads. In a universe that keeps `stories/<id>.manuscript.md` those two are
+    # different by design, and comparing them called 29 of 29 verbatim-correct captions
+    # stale on The Tithe Is a Test (2026-08-02). A check that fails on every spread of
+    # every book trains its operator to ignore it.
+
+    def _with_story(self, tmp: Path, beats, captions, manuscript=None):
+        book = build_composer(tmp, n_spreads=len(beats))
+        spec = json.loads((book / "render-spec.json").read_text())
+        spec["story"] = "s"
+        for i, cap in enumerate(captions, start=1):
+            next(s for s in spec["spreads"] if s["id"] == f"spread-{i:02d}")["_caption"] = cap
+        (book / "render-spec.json").write_text(json.dumps(spec))
+        st = tmp / "u" / "stories"
+        st.mkdir(parents=True, exist_ok=True)
+        (tmp / "u" / "canon" / "entities").mkdir(parents=True, exist_ok=True)
+        (st / "s.json").write_text(json.dumps({
+            "id": "s",
+            "beats": [{"n": i, "text": t} for i, t in enumerate(beats, start=1)]}))
+        if manuscript is not None:
+            (st / "s.manuscript.md").write_text(manuscript)
+        return book
+
+    def test_a_caption_from_the_manuscript_is_not_stale(self):
+        """The false positive that earned this: 29 of 29 correct captions called stale."""
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = self._with_story(
+                tmp,
+                beats=["Theo sitting on the bench beside Jerry, telling him about the baptism.",
+                       "Jerry listening, hands still."],
+                captions=["It had been a year since he stood at the back of the room.",
+                          "Jerry did not say anything for a while."],
+                manuscript="# S\n\n---\n\n**1.**\nIt had been a year since he stood at the "
+                           "back of the room.\n\n**2.**\nJerry did not say anything for a while.\n")
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 0, out)
+            self.assertIn("match s.manuscript.md verbatim", out)
+
+    def test_a_stale_caption_is_still_caught_against_the_manuscript(self):
+        """will-there-be-ice-cream: the manuscript moved to a bench, the caption did not."""
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = self._with_story(
+                tmp,
+                beats=["Two men on a park bench.", "They watch the light go."],
+                captions=["A small creamery on a warm evening.", "They watch the light go."],
+                manuscript="**1.**\nTwo men sat on a park bench.\n\n"
+                           "**2.**\nThey watch the light go.\n")
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 1, out)
+            self.assertIn("captions", out)
+            self.assertIn("beat(s) 1", out)
+
+    def test_the_spread_convention_manuscript_parses(self):
+        """`**Spread 1**: *stage direction*` puts the caption on the NEXT line, and the
+        italic direction is renderer instruction rather than words on the page."""
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = self._with_story(
+                tmp, beats=["x"], captions=["He said the whole thing out loud."],
+                manuscript="**Spread 1**: *the confession (jerry alone, plain)*\n"
+                           "He said the whole thing out loud.\n")
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 0, out)
+
+    def test_typography_alone_is_never_stale(self):
+        """A curly apostrophe is not a rewritten caption, and saying it is is how a
+        check gets switched off."""
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = self._with_story(
+                tmp, beats=["x"], captions=["He didn't say it twice."],
+                manuscript="**1.**\nHe didn’t   say it twice.\n")
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 0, out)
+
+    def test_beat_text_is_still_the_source_with_no_manuscript(self):
+        """The original check, unchanged, for a universe that keeps no manuscript."""
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = self._with_story(tmp, beats=["A park bench."],
+                                    captions=["A small creamery on a warm evening."])
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 1, out)
+            self.assertIn("captions", out)
+
+    def test_a_caption_pasted_under_the_wrong_beat_says_so(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            book = self._with_story(
+                tmp, beats=["x", "y"], captions=["The second thing.", "The second thing."],
+                manuscript="**1.**\nThe first thing.\n\n**2.**\nThe second thing.\n")
+            code, out = run(book, "--universe", str(tmp / "u"))
+            self.assertEqual(code, 1, out)
+            self.assertIn("it matches beat 2", out)
+
+    # ── the closing plate under a name the doctor did not know ───────────────
+
+    def test_a_closing_plate_named_plate_closing_is_an_endcap(self):
+        """The two checks contradicted each other: `plate-closing` was not in
+        CLOSING_IDS, so check 2 demanded a LANDSCAPE `plate-closing` while check 3
+        demanded a PORTRAIT one, and no file could satisfy both. The Tithe Is a Test
+        resolved it by renaming the spec id; the doctor should accept the pair."""
+        with tempfile.TemporaryDirectory() as t:
+            book = build_composer(Path(t))
+            spec = json.loads((book / "render-spec.json").read_text())
+            for s in spec["spreads"]:
+                if s["id"] == "closing-plate":
+                    s["id"] = "plate-closing"
+            (book / "render-spec.json").write_text(json.dumps(spec))
+            src = book / "spreads" / "closing-plate.png"
+            src.rename(book / "spreads" / "plate-closing.png")
+            (book / "spreads" / "closing-plate.png.recipe.json").rename(
+                book / "spreads" / "plate-closing.png.recipe.json")
+            code, out = run(book)
+            self.assertEqual(code, 0, out)
+
+    def test_the_alias_does_not_excuse_a_landscape_closing_plate(self):
+        with tempfile.TemporaryDirectory() as t:
+            book = build_composer(Path(t), plate_size=LANDSCAPE)
+            spec = json.loads((book / "render-spec.json").read_text())
+            for s in spec["spreads"]:
+                if s["id"] == "closing-plate":
+                    s["id"] = "plate-closing"
+            (book / "render-spec.json").write_text(json.dumps(spec))
+            (book / "spreads" / "closing-plate.png").rename(
+                book / "spreads" / "plate-closing.png")
+            (book / "spreads" / "closing-plate.png.recipe.json").rename(
+                book / "spreads" / "plate-closing.png.recipe.json")
+            code, out = run(book)
+            self.assertEqual(code, 1, out)
+            self.assertIn("closing plate", out)
+
     def test_json_output_is_machine_readable(self):
         with tempfile.TemporaryDirectory() as t:
             book = build(Path(t))

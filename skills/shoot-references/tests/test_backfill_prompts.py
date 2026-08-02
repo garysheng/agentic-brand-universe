@@ -242,5 +242,69 @@ class TestOrphansAndCircles(Base):
         self.assertIn("records NO PROMPT", " ".join(notes))
 
 
+class TestScaffoldsAMissingFile(unittest.TestCase):
+    """An entity with NO prompts.md was a dead end, and it is the commonest state of
+    any entity older than the scaffolder.
+
+    This tool walks the files that EXIST, `chain_matrix.py` refuses to shoot without
+    one, and `add-entity` writes one only for entities it creates. Three correct
+    behaviours whose sum was a locked, actively-cast character that could not be
+    re-shot: with `--entity <id>` this exited 2 saying "no prompts.md for <id>".
+    Earned on the cast step of The Tithe Is a Test (2026-08-02).
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        (self.root / "canon" / "entities").mkdir(parents=True)
+        (self.root / "reference").mkdir(parents=True)
+        (self.root / "universe.json").write_text(json.dumps(
+            {"identity": {"register": {"name": "warm ink", "anchor": "reference/a.png"}}}))
+        (self.root / "canon" / "entities" / "theo.json").write_text(json.dumps({
+            "id": "theo", "kind": "character",
+            "structured": {"sheets": {"face-neutral": "reference/theo/face-neutral.png"}}}))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def md(self):
+        return self.root / "reference" / "theo" / "prompts.md"
+
+    def test_it_no_longer_exits_two_for_an_entity_with_no_file(self):
+        import sys as _s
+        argv = _s.argv
+        _s.argv = ["backfill_prompts", str(self.root), "theo"]
+        try:
+            code = bf.main()
+        finally:
+            _s.argv = argv
+        self.assertEqual(code, 0)
+        self.assertTrue(self.md().exists())
+        self.assertIn("## face-neutral", self.md().read_text())
+
+    def test_dry_run_writes_nothing(self):
+        import sys as _s
+        argv = _s.argv
+        _s.argv = ["backfill_prompts", str(self.root), "theo", "--dry-run"]
+        try:
+            bf.main()
+        finally:
+            _s.argv = argv
+        self.assertFalse(self.md().exists())
+
+    def test_it_invents_no_prompt(self):
+        """The scaffold is not an attestation: bodies stay TODO until a recipe or a
+        human fills them. A plausible reconstruction would look like provenance while
+        being fiction, which is the rule this whole tool is built on."""
+        import sys as _s
+        argv = _s.argv
+        _s.argv = ["backfill_prompts", str(self.root), "theo"]
+        try:
+            bf.main()
+        finally:
+            _s.argv = argv
+        self.assertIn("TODO(author)", self.md().read_text())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

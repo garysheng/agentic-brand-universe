@@ -162,7 +162,8 @@ A per-universe `compile_render.py` / `gen-spread.py` is the failure this skill e
    - `identity.register.anchor` first (or the book's `anchorRef` override when the universe anchor is unsuitable, e.g. a photo in a painterly universe);
    - each in-frame entity's block from canon for its SELECTED look (an alt-look supersedes the base look's superseded invariants and swaps in the alt anchor photo — the default sheets are NOT passed, so they can't fight it);
    - auto-disambiguation naming what makes each castmate distinct when ≥2 share the frame;
-   - negatives = `rejectedPoles` + book `negatives` + `guardedNegatives` **kept only when no in-frame look positively declares the guarded feature** (a negatively-phrased invariant like `…never-a-mustache` does not count as declaring it).
+   - negatives = `rejectedPoles` + book `negatives` + `guardedNegatives` **kept only when no in-frame look positively declares the guarded feature** (a negatively-phrased invariant like `…never-a-mustache` does not count as declaring it), then each in-frame entity's own `structured.negatives` as resolved by the selected look AND pose;
+   - `qa` = every in-frame entity's `invariants` PLUS its `structured.render.qa`, for every kind, de-duped. `render.qa` was inert until v0.29 despite the spec promising it since v0.4, so an entity could carry six well-written qa items and contribute zero checks.
    Do not edit the assembled prompt by hand. If it is wrong, the fix is in canon or the descriptor, never a one-off patch to the prompt string (that reintroduces drift).
 
 3. **Generate.** Pass the assembled `prompt` + `refs` (anchor first) + `size` to the image model. `scripts/render_spread.py <universe> <render-spec.json> <spread-id> --out <path>` does assemble+generate in one call (3 retries); use `--print-prompt` to inspect.
@@ -264,6 +265,30 @@ jacket.
 
 **Test an alt look before rendering a batch with it:** assemble one spread and read the `refs` list
 and the prompt back. Every ref and every sentence should belong to the look you selected.
+
+### When the thing that changes is a POSE, not a look (v0.29)
+
+`render.poses.<key>` now takes `supersedes`, `invariants` and `negatives`, matched by exact string
+exactly as an alt look's are. **Reach for a pose, not a look, whenever the FACE must not change**:
+an alt look auto-drops the base face sheets, so expressing "in this one pose the jacket is worn
+half-on, left sleeve off the shoulder" as a look throws away the identity anchor to change a sleeve.
+Before v0.29 the only way to say it was to hand-word the base invariant as "...except in pose X",
+which is a rule enforced by an author remembering to phrase it, and a checklist that contradicts
+itself. Earned on theo-doorchaser, whose half-on jacket was the spine of a whole book.
+
+### A setting's BLOCKING PLATE rides on every render, including other books' (v0.29)
+
+`contract.blockingPlate` is passed on every camera of a setting, because placement is continuity
+rather than composition. That also means one book's props travel into every book that reuses the
+place: `the-park-bench` came from a book about ice cream, its plate showed two figures holding
+cones, and three of the first seven spreads of an unrelated book came back with both men holding
+ice cream **through a per-spread negative that banned ice cream by name**. A reference image plus an
+injected `contract.dressing` sentence outrank a negative word, every time.
+
+Fix the setting (reshoot the plate propless, move the prop into the spread's `scene`;
+`lint-universe` warns `SETTING-DRESSING-NAMES-HELD-PROP`). To unblock the spread in front of you,
+set `"blockingPlate": false` on the cast entry, or
+`contract.plates.<plate>.includeBlockingPlate: false` for every spread that selects that camera.
 
 ## The model fills silence with cliché
 

@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -49,6 +50,25 @@ TOLERANCE = 0.02
 # to ignore it. Caught by the-power-of-obeying-book, which was correct.
 COVER_IDS = ("cover", "cover-0", "spread-00-cover", "spread-00")
 CLOSING_IDS = ("closing-plate", "plate-0", "closing", "back-cover")
+
+
+def _is_closing_id(sid: str) -> bool:
+    """Is this spread id the CLOSING PLATE, under any of the names in the wild?
+
+    The list above is a fixed set, and the two checks that consume it could
+    contradict each other: an id is accepted as the closing plate only if it is IN
+    the set, while check 2 separately demands a landscape `<spread id>` file for
+    every spec spread that is not. So a spec whose closing spread is called
+    `plate-closing` failed one check or the other no matter what the file was named,
+    and the only way out was renaming the spec id. Earned on The Tithe Is a Test
+    (2026-08-02), which resolved it by renaming; the doctor should accept the pair.
+
+    Word-boundary matching, so `closing-plate`, `plate-closing`, `closing`,
+    `back-cover` and `spread-30-closing` all resolve, while an interior called
+    `spread-07` never can.
+    """
+    s = str(sid).lower()
+    return s in CLOSING_IDS or "closing" in s.split("-") or s.endswith("back-cover")
 
 
 def _load_json(p: Path):
@@ -98,6 +118,76 @@ def _numeric_suffix(sid) -> int | None:
     return int(tail) if tail.isdigit() else None
 
 
+# THE CAPTION COMES FROM THE MANUSCRIPT, NOT FROM THE BEAT (fixed 2026-08-02).
+#
+# A StorySpec beat's `text` is a SCENE DESCRIPTION written for the RENDERER ("Theo
+# sitting on the bench beside Jerry, telling him about the baptism"). A spread's
+# `_caption` is the sentence the reader reads, and in every universe that keeps a
+# blessed manuscript it comes from `stories/<id>.manuscript.md` ("It had been a year
+# since he stood at the back of the room"). They are different by design and always
+# will be, so comparing them called 29 of 29 correct captions stale on The Tithe Is a
+# Test, on a book whose captions were verbatim from the manuscript. A check that fails
+# on every spread of every book teaches its operator to ignore it, which costs more
+# than never having written it.
+#
+# The defect this was built to catch survives, because the MANUSCRIPT is what gets
+# rewritten: on will-there-be-ice-cream beats 1 and 2 were moved from an ice cream
+# counter to a park bench after the spec was scaffolded, and the caption kept the old
+# words under the new painting.
+_MS_BEAT = re.compile(
+    r"^(?:"
+    r"\*\*(?P<a>\d+)\.\*\*"            # **7.**
+    r"|\*\*Spread\s+(?P<b>\d+)\*\*\s*:?"  # **Spread 7**: *stage direction*
+    r"|###\s+(?P<c>\d+)\s*$"           # ### 7
+    r")[ \t]*(?P<rest>.*)$", re.M)
+
+
+def _norm(s: str) -> str:
+    """Whitespace, emphasis and typographic punctuation are not caption content.
+
+    Every normalisation here exists to avoid a FALSE POSITIVE, which is the failure
+    mode this check has already had once. A curly apostrophe in a manuscript and a
+    straight one in a spec is not a stale caption, and a doctor that says it is gets
+    switched off.
+    """
+    s = str(s or "")
+    for a, b in (("’", "'"), ("‘", "'"), ("“", '"'), ("”", '"'),
+                 ("—", "-"), ("–", "-"), ("…", "...")):
+        s = s.replace(a, b)
+    s = re.sub(r"[*_`]", "", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def manuscript_beats(md: Path) -> dict:
+    """{beat number: caption text} from a blessed manuscript.
+
+    The body of a beat is everything after its marker up to the next marker. A
+    stage-direction line (wholly italic, the `**Spread 7**: *the win (plate C1)*`
+    convention) is NOT caption text and is dropped: it is instruction for the
+    renderer, exactly like a beat's `text`.
+    """
+    try:
+        text = md.read_text()
+    except OSError:
+        return {}
+    hits = list(_MS_BEAT.finditer(text))
+    out = {}
+    for i, m in enumerate(hits):
+        n = int(m.group("a") or m.group("b") or m.group("c"))
+        body = m.group("rest") + "\n" + text[m.end(): hits[i + 1].start() if i + 1 < len(hits) else len(text)]
+        lines = []
+        for ln in body.splitlines():
+            ln = ln.strip()
+            if not ln or ln.startswith(("---", "#", ">", "|")):
+                continue
+            if ln.startswith("*") and ln.endswith("*") and not ln.startswith("**"):
+                continue  # a stage direction, not the words on the page
+            lines.append(ln)
+        if lines:
+            out[n] = " ".join(lines)
+    return out
+
+
 def _recipe_for(asset: Path):
     for c in (asset.with_suffix(asset.suffix + ".recipe.json"),
               asset.with_suffix(".recipe.json")):
@@ -127,7 +217,7 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
     # Resolve the ENDCAPS out of `declared` BEFORE anything grades an interior,
     # so no asset is graded against two contradictory aspect rules.
     declared_cover = next((d for d in declared if d in COVER_IDS), None)
-    declared_closing = next((d for d in declared if d in CLOSING_IDS), None)
+    declared_closing = next((d for d in declared if _is_closing_id(d)), None)
     endcap_ids = {x for x in (declared_cover, declared_closing) if x}
     interiors = [d for d in declared if d not in endcap_ids]
 
@@ -253,34 +343,62 @@ def diagnose(book_dir: str, universe: str | None = None) -> dict:
         # are never hand-typed, faithfully emitted "a small creamery on a warm
         # evening" to sit under a painting of a park bench. It was caught by hand.
         # Nothing in the chain would have caught it.
+        #
+        # COMPARE AGAINST THE RIGHT SOURCE (2026-08-02). See `manuscript_beats`: a
+        # beat's `text` is renderer instruction and a `_caption` is the words on the
+        # page, so in any universe that keeps `stories/<id>.manuscript.md` those two
+        # are different BY DESIGN and this check reported every spread of every book as
+        # stale. The manuscript is the source when there is one; `beats[].text` remains
+        # the source when there is not, which is the shape this check was written for.
         story_id = spec.get("story")
         sp_dir = Path(universe) / "stories"
         story_path = sp_dir / f"{story_id}.json" if story_id else None
-        if story_path and story_path.exists():
+        ms_path = sp_dir / f"{story_id}.manuscript.md" if story_id else None
+        source, blessed = None, {}
+        if ms_path and ms_path.exists():
+            blessed = manuscript_beats(ms_path)
+            if blessed:
+                source = ms_path
+        if not blessed and story_path and story_path.exists():
             story = _load_json(story_path) or {}
-            beats = {b.get("n"): b.get("text") for b in story.get("beats", []) or []}
+            blessed = {b.get("n"): b.get("text") for b in story.get("beats", []) or []
+                       if b.get("n") is not None}
+            source = story_path
+        if blessed:
             by_id = {s.get("id"): s for s in spec.get("spreads", []) or []}
-            stale = []
-            for n, text in beats.items():
-                if n is None:
-                    continue
+            norm = {n: _norm(t) for n, t in blessed.items()}
+            stale, checked = [], 0
+            for n, want in norm.items():
                 sp = by_id.get(f"spread-{n:02d}") or by_id.get(f"spread-{n}")
                 if sp is None:
                     continue
                 cap = sp.get("_caption")
-                if cap is not None and cap != text:
-                    stale.append(n)
+                if cap is None:
+                    continue
+                checked += 1
+                got = _norm(cap)
+                # A caption may legitimately be PART of its beat (one beat set across
+                # two spreads), so containment passes. A wholesale stale caption, which
+                # is the defect, is neither equal nor contained.
+                if got == want or (got and got in want):
+                    continue
+                elsewhere = [m for m, t in norm.items() if got and (got == t or got in t)]
+                note = f" (it matches beat {elsewhere[0]})" if elsewhere else ""
+                stale.append(f"{n}{note}")
             if stale:
-                shown = ", ".join(str(n) for n in stale[:8])
+                shown = ", ".join(stale[:8])
                 more = f" (+{len(stale) - 8} more)" if len(stale) > 8 else ""
-                row("captions", str(story_path), False,
-                    f"{len(stale)} caption(s) disagree with the blessed manuscript: "
-                    f"beat(s) {shown}{more}. The art followed the new beat text and the "
+                row("captions", str(source), False,
+                    f"{len(stale)} caption(s) disagree with {source.name}: "
+                    f"beat(s) {shown}{more}. The art followed the new text and the "
                     f"caption kept the old, so the book would ship the wrong words under "
-                    f"the right picture. Re-sync _caption from the story before delivering.")
+                    f"the right picture. Re-sync _caption from {source.name} before delivering.")
+            elif checked:
+                row("captions", str(source), True,
+                    f"all {checked} match {source.name} verbatim")
             else:
-                row("captions", str(story_path), True,
-                    f"all {len(beats)} match the blessed manuscript verbatim")
+                row("captions", str(source), True,
+                    "no spread declares a _caption, so there is nothing to compare")
 
         ents = Path(universe) / "canon" / "entities"
         cast: set[str] = set()

@@ -198,6 +198,32 @@ def backfill_file(prompts_md: Path, extra: list[re.Pattern]):
     return new, notes
 
 
+def _scaffold_missing(uroot: Path, only: set[str] | None, apply: bool) -> list[str]:
+    """Delegate to the engine, which owns the skeleton `add-entity` writes.
+
+    Guarded import: this script must still run from a checkout whose engine is not
+    importable, and skipping the scaffold is better than refusing to backfill at all.
+    The engine ships in this repo (which IS the plugin payload), so it always resolves
+    in practice.
+
+    The root is found by WALKING UP FOR A MARKER, never by counting parents: this file
+    runs both from a git clone and from a plugin cache, and a fixed depth encodes one of
+    those two layouts and silently picks wrong in the other. `test_installable` enforces
+    it, and enforced it on the first draft of this function.
+    """
+    here = Path(__file__).resolve()
+    root = next((c for c in [here, *here.parents]
+                 if (c / "engine" / "agenticstory").is_dir()), None)
+    if root is None:
+        return []
+    try:
+        sys.path.insert(0, str(root / "engine"))
+        from agenticstory.promptsfile import scaffold_missing
+    except Exception:
+        return []
+    return scaffold_missing(uroot, only, apply=apply)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(prog="backfill_prompts")
     ap.add_argument("universe")
@@ -217,12 +243,30 @@ def main() -> int:
         return 2
     extra = [re.compile(x, re.I) for x in a.strip]
 
+    # AN ENTITY WITH NO prompts.md AT ALL WAS A DEAD END, and it is the commonest state
+    # of any entity older than the scaffolder that writes the file. This tool walks the
+    # files that EXIST, `chain_matrix.py` refuses to shoot without one, and `add-entity`
+    # only ever writes one for entities it creates. Three correct behaviours whose sum
+    # was a locked, actively-cast character that could not be re-shot without hand-typing
+    # the file the framework owns (earned on the cast step of The Tithe Is a Test,
+    # 2026-08-02, where this exited 2 with "no prompts.md for <id>").
+    #
+    # Scaffolding invents nothing: the headings come from the entity's own declared
+    # slots and every body stays TODO(author) until a recipe fills it below or a human
+    # writes it. That is exactly what `add-entity` would have written at the time.
+    scaffolded = _scaffold_missing(uroot, set(a.entity) or None, apply=not a.dry_run)
+    if scaffolded:
+        verb = "would scaffold" if a.dry_run else "scaffolded"
+        print(f"  {verb} a prompts.md for {len(scaffolded)} entity(ies) that had none: "
+              f"{', '.join(scaffolded[:12])}")
+
     targets = sorted(ref.rglob("prompts.md"))
     if a.entity:
         want = set(a.entity)
         targets = [p for p in targets if p.parent.name in want or p.parent.parent.name in want]
-        if not targets:
-            print(f"backfill-prompts: no prompts.md for {', '.join(sorted(want))}",
+        if not targets and not scaffolded:
+            print(f"backfill-prompts: no prompts.md for {', '.join(sorted(want))}, and no "
+                  f"entity of that id declares reference slots to scaffold one from",
                   file=sys.stderr)
             return 2
 

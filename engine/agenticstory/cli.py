@@ -369,6 +369,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"backfill-prompts [{u.name}]: {verb} {r['filled']} shot prompt(s) from recipes, "
               f"{r['appended']} of them into slots the scaffold never had; "
               f"{r['still_todo']} shot(s) have no recipe and stay TODO (never shot).")
+        if r["scaffolded"]:
+            sv = "scaffolded" if args.apply else "would scaffold"
+            print(f"  {sv} a prompts.md for {len(r['scaffolded'])} entity(ies) that had none "
+                  f"(pre-scaffolder canon; shoot-references had nothing to read): "
+                  f"{', '.join(r['scaffolded'][:12])}"
+                  + (f" (+{len(r['scaffolded']) - 12} more)" if len(r["scaffolded"]) > 12 else ""))
         for f in r["files"]:
             if not (f["filled"] or f["appended"]):
                 continue

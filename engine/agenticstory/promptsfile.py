@@ -150,6 +150,61 @@ def prompt_files(universe: Path) -> list[Path]:
     return sorted(ref.rglob("prompts.md")) if ref.is_dir() else []
 
 
+def missing_prompt_files(universe: Path, only: set[str] | None = None) -> list[str]:
+    """Entities that declare reference SLOTS and have no `prompts.md` at all.
+
+    THE FILE IS SCAFFOLDED ONCE, BY `add-entity`, AND EVERY ENTITY OLDER THAN THAT
+    SCAFFOLDER HAS NONE. Nothing else ever wrote one, so `shoot-references` had nothing
+    to read, `chain_matrix.py` correctly refused to shoot, and `backfill-prompts`
+    correctly wrote nothing (a recipe recorded as `unrecorded` carries no prompt to
+    recover). Three tools each behaving correctly, and the net effect was a locked,
+    actively-cast character that could not be shot again without hand-typing the file
+    the framework is supposed to own. Earned on the cast step of The Tithe Is a Test
+    (2026-08-02).
+
+    The scaffold is not an attestation and invents nothing: the headings come from the
+    entity's own declared slots and every body stays `TODO(author)` until either a
+    recipe fills it or a human writes it. That is exactly what `add-entity` would have
+    written had it existed then.
+    """
+    ents = universe / "canon" / "entities"
+    if not ents.is_dir():
+        return []
+    out = []
+    for f in sorted(ents.glob("*.json")):
+        eid = f.stem
+        if only and eid not in only:
+            continue
+        try:
+            ent = json.loads(f.read_text())
+        except (OSError, ValueError):
+            continue
+        has_slots = bool((ent.get("structured") or {}).get("sheets")) or bool(ent.get("contract"))
+        if has_slots and not (universe / "reference" / eid / "prompts.md").is_file():
+            out.append(eid)
+    return out
+
+
+def scaffold_missing(universe: Path, only: set[str] | None = None,
+                     apply: bool = False) -> list[str]:
+    """Write the missing `prompts.md` skeletons. Never touches an existing file."""
+    from .authoring import prompts_skeleton
+    try:
+        register = (json.loads((universe / "universe.json").read_text())
+                    .get("identity", {}).get("register"))
+    except (OSError, ValueError):
+        register = None
+    written = []
+    for eid in missing_prompt_files(universe, only):
+        if apply:
+            ent = json.loads((universe / "canon" / "entities" / f"{eid}.json").read_text())
+            d = universe / "reference" / eid
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "prompts.md").write_text(prompts_skeleton(ent, register))
+        written.append(eid)
+    return written
+
+
 def append_block(shot: str, prompt: str, entity: str) -> str:
     return (f"\n## {shot}  -> reference/{entity}/{shot}.png\n"
             f"RECOVERED from this shot's recipe: the scaffold had no slot for it, so the\n"
@@ -165,6 +220,10 @@ def run(universe: Path, apply: bool = False, only: list[str] | None = None) -> d
     reported rather than rewritten.
     """
     want = set(only or [])
+    # SCAFFOLD BEFORE RECOVERING. An entity with no `prompts.md` at all was invisible to
+    # this sweep (it walks the files that exist), so the commonest state of a
+    # pre-scaffolder entity produced a clean report over a universe that could not shoot.
+    scaffolded = scaffold_missing(universe, want or None, apply=apply)
     files, total_filled, total_todo, total_appended = [], 0, 0, 0
     for md in prompt_files(universe):
         if want and md.parent.name not in want:
@@ -182,4 +241,4 @@ def run(universe: Path, apply: bool = False, only: list[str] | None = None) -> d
         total_todo += len(p["still_todo"])
         total_appended += len(p["appended"])
     return {"files": files, "filled": total_filled, "still_todo": total_todo,
-            "appended": total_appended, "applied": apply}
+            "appended": total_appended, "applied": apply, "scaffolded": scaffolded}

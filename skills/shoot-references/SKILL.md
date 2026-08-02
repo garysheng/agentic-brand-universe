@@ -217,6 +217,15 @@ the next run does not double it. Three things it will not do, and each was earne
   Writing it back would satisfy every checker and launder the gap into something that looks
   like provenance. The two recovery tools would otherwise chase each other in a circle.
 
+**It also SCAFFOLDS a `prompts.md` for an entity that has none (2026-08-02).** That is the
+commonest state of any entity older than the scaffolder, and it used to be a dead end: this tool
+walks the files that EXIST, `chain_matrix.py` refuses to shoot without one, and `add-entity` writes
+one only for entities it creates, so three correct behaviours summed to a locked, actively-cast
+character that could not be re-shot. `--entity <id>` on such an entity exited 2. The scaffold
+invents nothing: headings come from the entity's own declared slots and every body stays
+`TODO(author)` until a recipe fills it or a human writes it. `--dry-run` names it and writes
+nothing.
+
 It never touches a code-built blueprint: a massing render carries `"prompt": null` by design,
 because its provenance is a declarative spec plus deterministic code, which is better than a
 prompt.

@@ -127,5 +127,77 @@ class BackfillPrompts(unittest.TestCase):
         self.assertEqual(r["files"], [])
 
 
+class ScaffoldsAMissingPromptsFile(unittest.TestCase):
+    """An entity older than the scaffolder has no `prompts.md`, and nothing wrote one.
+
+    Three tools each behaved correctly and the net effect was a dead end: `add-entity`
+    only ever writes the file for entities it creates, `chain_matrix.py` refuses to
+    shoot a matrix whose prompts are TODO, and this sweep walks the files that EXIST, so
+    an entity with no file at all was invisible to it and the run reported clean.
+    Earned on the cast step of The Tithe Is a Test (2026-08-02): a locked, actively-cast
+    character that could not be re-shot without hand-typing the file the framework owns.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = Path(self.tmp.name)
+        (self.u / "canon" / "entities").mkdir(parents=True)
+        (self.u / "reference").mkdir(parents=True)
+        (self.u / "universe.json").write_text(json.dumps(
+            {"identity": {"register": {"name": "warm ink", "anchor": "reference/a.png"}}}))
+        (self.u / "canon" / "entities" / "theo.json").write_text(json.dumps({
+            "id": "theo", "kind": "character",
+            "structured": {"sheets": {"face-neutral": "reference/theo/face-neutral.png",
+                                      "back": None}}}))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def md(self):
+        return self.u / "reference" / "theo" / "prompts.md"
+
+    def test_plan_names_it_and_writes_nothing(self):
+        r = promptsfile.run(self.u)
+        self.assertEqual(r["scaffolded"], ["theo"])
+        self.assertFalse(self.md().exists())
+
+    def test_apply_writes_the_skeleton(self):
+        r = promptsfile.run(self.u, apply=True)
+        self.assertEqual(r["scaffolded"], ["theo"])
+        text = self.md().read_text()
+        self.assertIn("## face-neutral", text)
+        self.assertIn("TODO(author)", text)
+        self.assertIn("reference/a.png", text, "the register anchor leads every shot")
+
+    def test_it_invents_no_prompt(self):
+        """A scaffold is not an attestation: every body stays TODO until a recipe or a
+        human fills it. Inventing the prompt that made an existing plate is exactly the
+        falsified provenance `backfill-provenance` exists to prevent."""
+        promptsfile.run(self.u, apply=True)
+        self.assertNotIn("RECOVERED", self.md().read_text())
+
+    def test_it_never_touches_an_existing_file(self):
+        d = self.u / "reference" / "theo"
+        d.mkdir(parents=True)
+        (d / "prompts.md").write_text("## face-neutral\nAn authored prompt.\n")
+        r = promptsfile.run(self.u, apply=True)
+        self.assertEqual(r["scaffolded"], [])
+        self.assertIn("An authored prompt.", self.md().read_text())
+
+    def test_scoping_to_one_entity_leaves_the_rest_alone(self):
+        (self.u / "canon" / "entities" / "other.json").write_text(json.dumps({
+            "id": "other", "kind": "character",
+            "structured": {"sheets": {"face-neutral": None}}}))
+        r = promptsfile.run(self.u, apply=True, only=["theo"])
+        self.assertEqual(r["scaffolded"], ["theo"])
+        self.assertFalse((self.u / "reference" / "other" / "prompts.md").exists())
+
+    def test_an_entity_with_no_slots_is_not_given_a_file(self):
+        (self.u / "canon" / "entities" / "a-doctrine.json").write_text(json.dumps({
+            "id": "a-doctrine", "kind": "doctrine", "prose": {"rules": "x"}}))
+        r = promptsfile.run(self.u, apply=True)
+        self.assertNotIn("a-doctrine", r["scaffolded"])
+
+
 if __name__ == "__main__":
     unittest.main()

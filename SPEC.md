@@ -1,10 +1,33 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.28 — 2026-08-01.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.29 — 2026-08-02.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.29 changelog — five checks that were lying, all earned in one book run.** *The Tithe Is a
+> Test* (nation-of-fire, shipped 2026-08-02) walked the whole chain and every defect it surfaced has
+> the same shape: a surface that LOOKS like it is enforcing something and is not. **(1) The book
+> doctor's caption check produced 29 of 29 false positives** because it compared a `_caption` (the
+> words the reader reads) against `beats[].text` (instruction for the renderer), which are different
+> documents by design in any universe that keeps a manuscript. It now reads
+> `stories/<id>.manuscript.md` when there is one, and a check that fails on every spread of every
+> book stops teaching its operator to ignore it (§3.5). **(2) `structured.render.qa` steered nothing
+> and checked nothing.** §4.6 has stated since v0.4 that the checklist is the union of `invariants`
+> and `render.qa`, and no compiler ever read the second half, so a six-item `render.qa` compiled to
+> zero checks. Fifth instance of the v0.23-v0.28 defect class: a spec guarantee no code could
+> deliver. **(3) A POSE may now supersede a base invariant** (§12), because an `altLook` is the wrong
+> instrument when the face must not change and the only alternative was hand-wording "...except in
+> pose X". **(4) `lock-shot` and `resolve_setting` disagreed about what `locked` means** for a
+> setting, the promoter demanding the advisory `scalePlate` this spec explicitly says is advisory, so
+> settings that legitimately cannot have one were hand-flipped in JSON. One predicate now,
+> `setting_contract_gaps`, plus the `emptyPlatesExpected` count. **(5) `contract.blockingPlate` and
+> `contract.dressing` leaked one book's props into every book reusing the setting**, and a reference
+> image plus an injected contract sentence beat a per-spread negative that banned the prop by name,
+> on three of seven spreads. Lint warns; a spread can scope the plate out. Also: `backfill-prompts`
+> now SCAFFOLDS a missing `prompts.md`, since an entity older than the scaffolder had none and was
+> invisible to the sweep, which left a locked, actively-cast character unable to be re-shot.
 
 > **v0.28 changelog — lookbooks became real, and clothes got attached to people.** From v0.12 to
 > v0.27 a Lookbook was a specification with no implementation: `--lookbook` wrote the vocabulary's
@@ -575,12 +598,32 @@ Three wired mechanisms, applied at defined points:
   renders nothing while still exiting 0. It now refuses and names the exact fix, and the check runs
   **before** the skip, or the skip still swallows the batch.
 - **Captions must match the blessed manuscript verbatim.** A render-spec's `_caption` is copied from
-  the beat text when the spec is scaffolded and nothing re-syncs it, so editing a beat afterwards
-  leaves the art following the new words and the caption keeping the old. The book doctor compares
-  every caption against the story and fails on any drift. **Its limit is stated deliberately:** it
-  compares two artifacts, so it cannot see prose that is stale in BOTH, which is exactly what an
-  entity recast produces (§4.3). Earned 2026-08-01, where it correctly passed all 73 captions of a
-  book whose story still described the room it had left.
+  the blessed text when the spec is scaffolded and nothing re-syncs it, so editing that text
+  afterwards leaves the art following the new words and the caption keeping the old. The book doctor
+  compares every caption against the blessed source and fails on any drift. **Its limit is stated
+  deliberately:** it compares two artifacts, so it cannot see prose that is stale in BOTH, which is
+  exactly what an entity recast produces (§4.3). Earned 2026-08-01, where it correctly passed all 73
+  captions of a book whose story still described the room it had left.
+  - **WHICH source is the blessed one (v0.29).** When `stories/<id>.manuscript.md` exists it is the
+    source, and `beats[].text` is the source only when it does not. These are different documents on
+    purpose: a beat's `text` is **instruction for the renderer** ("Theo sitting on the bench beside
+    Jerry, telling him about the baptism") while a `_caption` is **the words the reader reads** ("It
+    had been a year since he stood at the back of the room"). Comparing the two therefore fails on
+    every spread of every book in any universe that keeps a manuscript, which is what happened: 29 of
+    29 verbatim-correct captions were reported stale on *The Tithe Is a Test* (2026-08-02). **A check
+    that fails on every spread of every book trains its operator to ignore it**, which costs more
+    than never having written it. The defect the check exists for survives the change, because the
+    manuscript is what gets rewritten.
+  - Three manuscript conventions are parsed (`**7.**`, `**Spread 7**:`, `### 7`), a wholly-italic
+    line is treated as stage direction rather than caption, and comparison normalises whitespace,
+    emphasis and typographic punctuation. Every one of those normalisations exists to prevent a
+    false positive; a caption that is a SUBSTRING of its beat passes, because one beat set across two
+    spreads is legitimate and a wholesale stale caption is neither equal nor contained.
+  - **The endcap naming rule is a PAIR, not a list.** A spread id is the closing plate if it is one
+    of the known names or carries `closing` as a word (`closing-plate`, `plate-closing`,
+    `spread-30-closing`). The fixed list contradicted itself: an unrecognised id was demanded at
+    landscape interior aspect by one check and at portrait endcap aspect by another, so no file could
+    satisfy both and the only escape was renaming the spec id.
 
 ## 4. Primitives (the schemas)
 
@@ -766,6 +809,16 @@ removes that step.
   - refs = each entity's `requiredForRender` + the pose's `render.poses[pose].sheets` (de-duped);
   - prompt = `preamble.register` + setting bake (the setting's `contract.dressing` + book rule) + each character's `render.always` + `render.poses[pose].bake` + extra bakes + `scene` + `preamble.negatives`;
   - qa = the union of every in-frame entity's `invariants` + `render.qa` — **the checklist is compiled from the same canon as the prompt**, so read-back can never check the wrong things (the second half of the earned failure: the QA checklist was also hand-written and never checked the missing patches).
+    **`render.qa` was finally implemented in v0.29.** This line has stated the union since v0.4 and
+    no compiler ever read the second half of it, so an entity could carry a well-written
+    `structured.render.qa`, validate, lint clean, and contribute ZERO lines to the checklist. Earned
+    on `theo-doorchaser` (2026-08-02), six qa items and an empty `invariants`: a dry assemble
+    reported thirteen QA invariants on a two-hander (all thirteen the other man's) and zero on the
+    spread where he stands alone, and his half-on jacket was the spine of the book. Compiled for
+    every kind, look-aware (an alt look may replace the render block wholesale), and de-duped against
+    `invariants`. `lint-universe` additionally warns `ENTITY-QA-WITHOUT-INVARIANTS`, because
+    `invariants` is what the identity bake guard, auto-disambiguation, `supersedes` and `judge-slot`
+    read: an entity guarded only by `render.qa` is guarded in one place out of five.
 - **Provider-agnostic:** the compiler emits `(prompt, refs, size)` and hands off to a swappable
   provider adapter (`gpt-image-2` today, others behind the same interface). The adapter normalizes the
   *call*; per-provider reference-conditioning and moderation (e.g. a `public-figure` block) remain
@@ -1485,6 +1538,18 @@ Default measured reference, when a universe declares no `identity.scaleReference
     contradicts, because **a reference image outranks a word**: a look whose invariant said "neck
     completely bare" still had the adult pendant sheet passed, and the necklace rendered. An alt
     look **auto-drops the base FACE sheets**, since the look's own `anchorPhoto` is the face.
+  - **`structured.render.poses.<key>.supersedes` / `.invariants` / `.negatives` (v0.29) — when the
+    thing that changes is a POSE, not a look.** A pose could add a `bake` sentence and extra
+    `sheets` and could not retire anything, so a pose that INVERTS one signature invariant had no
+    legal expression. An `altLook` is the wrong instrument whenever the FACE must not change, because
+    a look auto-drops the base face sheets; the only remaining move was hand-wording the base
+    invariant as "...except in pose X", which is a rule enforced by an author remembering to phrase
+    it and a read-back checklist that contradicts itself. A pose now retires base invariants and
+    base negatives by exact string exactly as a look does, and adds its own, so **the prompt block,
+    the QA checklist and the computed negatives agree by construction** for a pose as well as for a
+    look. A pose that declares none of the three compiles exactly as before. Earned on
+    `theo-doorchaser` (*The Tithe Is a Test*, 2026-08-02), whose jacket is worn half-on with the left
+    sleeve off the shoulder in one recurring pose and fully on everywhere else.
   - **Declared-future (prophetic) looks (v0.10): `keepSheets`, `keepPhotos`.** A universe that
     permits expectant work renders a person's declared future, and that look inverts every
     assumption above: **the face is CONTINUOUS, the body changes, and the future has no
@@ -1548,6 +1613,39 @@ Default measured reference, when a universe declares no `identity.scaleReference
       be named by hand on all 71 spreads because nothing could check it.
 - **setting** — the existing `contract`: `turnaround`, `emptyPlates[]`, `blueprint` (files) plus
   `map`, `blocking`, `dressing` (descriptors), **and `scalePlate` + the `scale` descriptor (v0.9)**.
+  - **WHAT `locked` MEANS FOR A SETTING, IN ONE PLACE (v0.29).** The gate fields are
+    `turnaround` + `blueprint` (non-null and on disk), `emptyPlates` (non-empty, all on disk) and the
+    `map` / `blocking` / `dressing` descriptors (non-empty). `scalePlate`, `scale` and
+    `blockingPlate` are **advisory** and never block promotion or rendering, which this section has
+    said since v0.9. Three surfaces used to answer this question and gave three answers: `lock-shot`
+    and `abu list` demanded every field including the advisory ones, while `resolve_setting`, the
+    gate that actually refuses a render, looked at none of them. So a setting whose empty plates must
+    contain no people (a painted scale plate would drag figures into every state of it) could never
+    be promoted by the tool at all and had to be hand-flipped to `locked` in its JSON, which is the
+    hand-editing the engine exists to remove. All three now call one predicate,
+    `model.setting_contract_gaps`, and `lint-universe` warns `SETTING-LOCKED-BUT-GATE-REFUSES` on
+    older canon whose recorded status the gate contradicts (six such entities in nation-of-fire).
+  - **`contract.emptyPlatesExpected` (v0.29, optional int) — the declared COUNT.** Without it the
+    gate can only ask whether the list is non-empty, so a setting that genuinely needs four cameras
+    is promoted to `locked` on the second and the two nobody shot are improvised at render time,
+    differently every spread. Omit it to keep the old behaviour.
+  - **A SETTING'S CONTRACT RIDES ON EVERY BOOK THAT REUSES IT, so it must hold nothing that
+    belongs to ONE story (v0.29).** `contract.dressing` is injected into every prompt that casts the
+    place and `contract.blockingPlate` is passed as a REFERENCE IMAGE on every one of those renders,
+    whichever camera plate was selected, because placement is continuity rather than composition.
+    Both are correct for the setting and catastrophic for a prop. `the-park-bench` was authored for
+    *Will There Be Ice Cream*: its `dressing` read "Each of them holds an ice cream cone" and its
+    blocking plate showed two mannequins holding cones. Three of the first seven spreads of an
+    unrelated book came back with both men holding ice cream, through scene text AND a per-spread
+    negative that banned ice cream BY NAME on every one of them. **A reference image plus an injected
+    contract sentence together outrank a negative word**, which is the same law §12 already states as
+    "a reference image outranks a word", one level up.
+    - The durable fix is to move the prop into the spread's `scene` and reshoot the plate propless.
+      `lint-universe` warns `SETTING-DRESSING-NAMES-HELD-PROP` when a setting's `dressing` or
+      `blocking` says a person is holding, carrying or wearing a named object.
+    - The escape hatch for the spread in front of you: `"blockingPlate": false` on the cast entry
+      drops the plate for that spread, and `contract.plates.<plate>.includeBlockingPlate: false`
+      drops it for every spread that selects that camera. Absent either, behaviour is unchanged.
   - **`scalePlate` (file) and `scale` (descriptor) exist because AN EMPTY PLATE CANNOT PROVE SIZE.**
     `emptyPlates` are people-free on purpose, so that a setting reference never bakes a character's
     face into the room. That rule is right and it stays. But it has a cost nobody priced: a

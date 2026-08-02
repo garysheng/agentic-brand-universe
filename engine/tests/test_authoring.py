@@ -59,13 +59,19 @@ class TestLockShotSettingContract(unittest.TestCase):
         self.assertEqual(e["status"], "unlocked")
 
     def test_a_complete_contract_promotes_the_setting(self):
+        """v0.29: the GATE's fields, not every field the scaffold carries.
+
+        This used to assert the opposite (still unlocked until `scale-plate` lands),
+        which encoded the promoter/gate disagreement as if it were the contract.
+        """
         e = _setting()
         lock_shot(e, "turnaround", "reference/a-school/turnaround.png")
         lock_shot(e, "empty-a1-yard", "reference/a-school/a1.png")
         lock_shot(e, "blueprint", "reference/a-school/blueprint.png")
-        self.assertEqual(e["status"], "unlocked", "scalePlate still missing")
-        lock_shot(e, "scale-plate", "reference/a-school/scale.png")
-        self.assertEqual(e["status"], "locked")
+        self.assertEqual(e["status"], "locked",
+                         "scalePlate is ADVISORY (SPEC 12, v0.9: a setting with no scale "
+                         "plate still locks and still renders), so it must not gate promotion")
+        self.assertIsNone(e["contract"]["scalePlate"])
 
     def test_a_missing_descriptor_still_blocks_promotion(self):
         e = _setting()
@@ -75,6 +81,77 @@ class TestLockShotSettingContract(unittest.TestCase):
             lock_shot(e, shot, p)
         self.assertEqual(e["status"], "unlocked",
                          "prose descriptors are part of the contract, not decoration")
+
+    def test_a_declared_plate_count_holds_the_gate_shut(self):
+        """v0.29: `emptyPlatesExpected` is the only way to say 'four cameras, not two'.
+
+        Without it the gate can only ask whether the list is non-empty, so a setting
+        that needs four cameras promotes on the second and the two nobody shot get
+        improvised at render time, differently every spread.
+        """
+        e = _setting()
+        e["contract"]["emptyPlatesExpected"] = 4
+        for shot, p in (("turnaround", "t.png"), ("blueprint", "b.png"),
+                        ("empty-a1", "a1.png"), ("empty-a2", "a2.png")):
+            lock_shot(e, shot, p)
+        self.assertEqual(e["status"], "unlocked", "2 of 4 declared plates")
+        lock_shot(e, "empty-a3", "a3.png")
+        lock_shot(e, "empty-a4", "a4.png")
+        self.assertEqual(e["status"], "locked")
+
+
+class TestPromoterAgreesWithGate(unittest.TestCase):
+    """The promoter, `abu list`, and the render gate must answer ONE question.
+
+    They gave three answers before v0.29: `lock_shot` and `Entity.is_locked_setting`
+    demanded the advisory `scalePlate`/`scale`, while `refs.resolve_setting` (the
+    gate that actually refuses a render) never looked at either. The visible cost was
+    a setting that must not have a painted scale plate and so could only ever reach
+    `locked` by hand-editing its JSON.
+    """
+
+    def test_scale_fields_are_advisory_everywhere(self):
+        from agenticstory.model import Entity, setting_contract_gaps
+        contract = {"turnaround": "t.png", "blueprint": "b.png",
+                    "emptyPlates": ["a1.png"], "map": "m", "blocking": "b",
+                    "dressing": "d", "scalePlate": None, "scale": ""}
+        self.assertEqual(setting_contract_gaps(contract), [])
+        e = Entity.from_dict({"id": "x", "kind": "setting", "status": "locked",
+                              "contract": contract})
+        self.assertTrue(e.is_locked_setting(),
+                        "`abu list` must not print UNLOCKED for a setting the gate accepts")
+
+    def test_every_gate_gap_also_blocks_promotion(self):
+        """Field by field: whatever the gate requires, the promoter requires."""
+        from agenticstory.model import setting_contract_gaps
+        full = {"turnaround": "t.png", "blueprint": "b.png", "emptyPlates": ["a1.png"],
+                "map": "m", "blocking": "b", "dressing": "d"}
+        for field, empty in (("turnaround", None), ("blueprint", None),
+                             ("emptyPlates", []), ("map", ""), ("blocking", ""),
+                             ("dressing", "")):
+            with self.subTest(field=field):
+                c = dict(full, **{field: empty})
+                self.assertTrue(setting_contract_gaps(c), f"{field} must be gate-bearing")
+                e = {"id": "x", "kind": "setting", "status": "unlocked", "contract": c}
+                # locking one more advisory plate must never promote a gappy contract
+                lock_shot(e, "scale-plate", "s.png")
+                self.assertEqual(e["status"], "unlocked")
+
+    def test_a_locked_setting_the_gate_would_refuse_is_visible(self):
+        """The other direction: `locked` in the JSON does not make it gate-complete.
+
+        nation-of-fire's `the-candle-against-the-sun` sits at `locked` with a null
+        `turnaround`, which `resolve_setting` refuses. `is_locked_setting` used to
+        agree it was broken for the WRONG reason (the missing scale plate); it must
+        now disagree with `status` for the real one.
+        """
+        from agenticstory.model import Entity
+        e = Entity.from_dict({
+            "id": "the-candle", "kind": "visual-metaphor", "status": "locked",
+            "contract": {"turnaround": None, "blueprint": "b.png",
+                         "emptyPlates": ["s1.png"], "map": "m", "blocking": "b",
+                         "dressing": "d"}})
+        self.assertFalse(e.is_locked_setting())
 
     def test_empty_plates_are_also_addressable_as_sheets(self):
         """The compiler picks a plate by key; the gate counts them in emptyPlates."""

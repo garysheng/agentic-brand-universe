@@ -23,6 +23,60 @@ ENTITY_KINDS = {
 ENTITY_LIFECYCLES = {"active", "archived"}
 SETTING_CONTRACT_FIELDS = ("turnaround", "emptyPlates", "blueprint", "scalePlate", "map", "blocking", "dressing", "scale")
 
+# THE SETTING GATE, IN ONE PLACE (v0.29).
+#
+# Three surfaces answered "is this setting locked" and they gave three answers.
+# `lock_shot` promoted only when EVERY field of SETTING_CONTRACT_FIELDS was non-empty,
+# `Entity.is_locked_setting` (what `abu list` prints) said the same, and
+# `refs.resolve_setting` -- the ACTUAL render gate -- never looked at `scalePlate` or
+# `scale` at all. SPEC 12 has said since v0.9 that a scale plate is advisory and "a
+# setting with no scalePlate still locks and still renders", so the promoter was
+# enforcing a rule the spec explicitly disclaims.
+#
+# The cost is not theoretical. A setting whose emptyPlates must contain no people (so a
+# painted scale plate would drag figures into every state of it) could never be promoted
+# by the tool at all and had to be hand-flipped to `locked` in the JSON, which is exactly
+# the hand-editing the engine exists to remove. In the other direction, nation-of-fire's
+# `the-candle-against-the-sun` sits at `locked` with a null `turnaround`, a state the
+# render gate would refuse, and nothing said so.
+#
+# So: ONE predicate, `setting_contract_gaps`, and every surface calls it.
+# `scalePlate` / `scale` / `blockingPlate` stay ADVISORY -- `lint-universe` warns
+# (SETTING-NO-SCALE-PLATE, SETTING-NO-SCALE-DESCRIPTOR) and nothing blocks on them.
+SETTING_GATE_FILE_FIELDS = ("turnaround", "blueprint")
+SETTING_GATE_DESCRIPTOR_FIELDS = ("map", "blocking", "dressing")
+SETTING_ADVISORY_FIELDS = ("scalePlate", "scale", "blockingPlate")
+
+
+def setting_contract_gaps(contract: dict) -> list[str]:
+    """Every reason this contract is NOT gate-complete. Empty means locked-worthy.
+
+    Pure: it never touches the filesystem, so it is safe to call from the promoter,
+    from the model, and from a linter. `refs.resolve_setting` layers the on-disk
+    existence checks on top, which is the one thing this cannot know.
+
+    `emptyPlatesExpected` (v0.29) is the optional declared COUNT. Without it the gate
+    can only ask "is the list non-empty", so a setting that genuinely needs four
+    cameras was promoted to `locked` after the second, and the two cameras nobody shot
+    were then improvised at render time, differently every spread.
+    """
+    contract = contract or {}
+    gaps: list[str] = []
+    for f in SETTING_GATE_FILE_FIELDS:
+        if contract.get(f) in (None, ""):
+            gaps.append(f"{f} is null (required image)")
+    plates = contract.get("emptyPlates") or []
+    want = contract.get("emptyPlatesExpected")
+    if not plates:
+        gaps.append("emptyPlates is empty (need per-angle EMPTY plates)")
+    elif isinstance(want, int) and len(plates) < want:
+        gaps.append(f"emptyPlates has {len(plates)} of the {want} declared in "
+                    f"contract.emptyPlatesExpected")
+    for f in SETTING_GATE_DESCRIPTOR_FIELDS:
+        if not str(contract.get(f) or "").strip():
+            gaps.append(f"{f} is empty (required descriptor: prose passed in every prompt)")
+    return gaps
+
 
 # Sheets that assert WHO the entity is rather than what it is made of. An alt look
 # changes substance or era, so these are dropped by default and re-added only when the
@@ -281,17 +335,18 @@ class Entity:
         return " ".join(bits)
 
     def is_locked_setting(self) -> bool:
-        """A setting/visual-metaphor is locked only when every contract field is present."""
+        """A setting/visual-metaphor is locked only when the RENDER GATE would accept it.
+
+        v0.29: this used to demand every field of SETTING_CONTRACT_FIELDS, including the
+        advisory `scalePlate` and `scale`, so `abu list` printed UNLOCKED for a setting
+        that renders perfectly well and that SPEC 12 explicitly says may lock without a
+        scale plate. It now asks the same question the gate asks.
+        """
         if self.kind not in ("setting", "visual-metaphor"):
             return True
         if self.raw.get("status") != "locked":
             return False
-        contract = self.raw.get("contract", {}) or {}
-        for f in SETTING_CONTRACT_FIELDS:
-            v = contract.get(f)
-            if v in (None, "") or (f == "emptyPlates" and not v):
-                return False
-        return True
+        return not setting_contract_gaps(self.raw.get("contract", {}) or {})
 
     @staticmethod
     def from_dict(d: dict[str, Any]) -> "Entity":

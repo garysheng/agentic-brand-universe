@@ -90,6 +90,24 @@ def lint(root):
 
     SKILLS = pathlib.Path(__file__).resolve().parents[2]
 
+    # ONE definition of a gate-complete setting, imported rather than restated. Guarded:
+    # the linter must still run from a checkout whose engine is not importable, and a
+    # silently-skipped check is better than a linter that cannot start. The engine ships
+    # in this repo (which IS the plugin payload), so in practice this always resolves.
+    #
+    # Found by WALKING UP FOR A MARKER, never by counting parents: this runs from a git
+    # clone and from a plugin cache, and a fixed depth encodes one of those layouts.
+    _here = pathlib.Path(__file__).resolve()
+    _root = next((c for c in [_here, *_here.parents]
+                  if (c / "engine" / "agenticstory").is_dir()), None)
+    _gaps = None
+    if _root is not None:
+        try:
+            sys.path.insert(0, str(_root / "engine"))
+            from agenticstory.model import setting_contract_gaps as _gaps
+        except Exception:
+            _gaps = None
+
     u = jload(root/"universe.json")
     if not u: return
 
@@ -296,6 +314,22 @@ def lint(root):
             elif not (root/sp).exists():
                 warn("SETTING-NO-SCALE-PLATE",
                      f"{eid}: contract.scalePlate -> {sp} (NOT ON DISK)")
+            # ---- `status: locked` MUST MEAN THE GATE WOULD ACCEPT IT (v0.29)
+            #
+            # `lock_shot` and `refs.resolve_setting` disagreed about what locked meant, so
+            # a setting could only reach `locked` by being hand-flipped in the JSON, and a
+            # hand-flip cannot be checked by the tool that was bypassed. Both now call
+            # `setting_contract_gaps`; this reports an entity whose recorded status and
+            # actual gate-completeness disagree, which is a state the promoter can no
+            # longer create and old canon still carries.
+            if e.get("status") == "locked" and _gaps is not None:
+                miss = _gaps(con)
+                if miss:
+                    warn("SETTING-LOCKED-BUT-GATE-REFUSES",
+                         f"{eid}: status is 'locked' but the render gate would refuse it: "
+                         f"{'; '.join(miss)}. `locked` is a claim about the art on disk, so a "
+                         f"status the gate contradicts is a record that is simply not true. "
+                         f"Shoot what is missing, or set status back to 'unlocked'.")
             if not (con.get("scale") or "").strip():
                 warn("SETTING-NO-SCALE-DESCRIPTOR",
                      f"{eid}: no contract.scale descriptor. State the size in human terms (\"a "
@@ -322,6 +356,95 @@ def lint(root):
                      f"this object is and it will render at whatever size the model assumes "
                      f"next to a figure. State it in human terms (\"about 40 mm across, worn "
                      f"at the collarbone\").")
+
+    # ---- A SETTING'S DRESSING IS THE ROOM, NEVER WHAT A PERSON IS HOLDING (v0.29)
+    #
+    # A setting is REUSABLE by design: that is the whole reason canon holds it once. But
+    # `contract.dressing` is injected into every prompt that casts the setting, in every
+    # book, forever, and `contract.blockingPlate` is passed as a REFERENCE IMAGE on every
+    # one of those renders regardless of which camera plate was selected. So a prop that
+    # belongs to ONE book, written into either of them, leaks into every book after it.
+    #
+    # Earned 2026-08-02. `the-park-bench` was authored for will-there-be-ice-cream: its
+    # `dressing` said "Each of them holds an ice cream cone" and its blocking plate showed
+    # two mannequins holding cones. Three of the first seven spreads of an unrelated book
+    # came back with both men holding ice cream, through scene text AND a per-spread
+    # negative that banned ice cream BY NAME on every one of them. A reference image plus
+    # an injected contract sentence together outrank a negative word, every time.
+    #
+    # The durable fix is to move the prop to the spread's scene text and reshoot the plate
+    # propless. The escape hatch for the spread in front of you is `"blockingPlate": false`
+    # on the cast entry, or `contract.plates.<plate>.includeBlockingPlate: false`.
+    # THE DETECTOR IS THE PART THAT FAILS (SPEC 4.6 says this about the compiler's
+    # conditional guards, and it is just as true here). Two rules keep it honest, both
+    # measured against nation-of-fire's 144 settings:
+    #
+    #   1. Both halves must appear in the SAME SENTENCE. Scanning the whole field
+    #      matched "continuity holds" in one sentence against "people" in another and
+    #      flagged a quarter of every setting in the universe.
+    #   2. The verb must take a CONCRETE OBJECT (an article or possessive then a noun).
+    #      "the SAME framing hold" and "carries the warm sunset-gold" are the metaphors
+    #      that survive rule 1, and an object test drops most of them.
+    #
+    # It still lets some noise through, which is the right trade for a warning: the
+    # alternative version, tuned until it was silent on everything questionable, was
+    # also silent on `the-park-bench`, the entity that earned the check.
+    HELD = re.compile(
+        r"\b(hold|holds|holding|carr(?:y|ies|ying)|clutch(?:es|ing)?|grip(?:s|ping)?|"
+        r"sip(?:s|ping)?|eat(?:s|ing)?|drink(?:s|ing)?|wear(?:s|ing)?)\s+"
+        r"(?:a|an|the|his|her|their|its|one|two|some)\s+\w", re.I)
+    PERSON = re.compile(
+        r"\b(each of them|they|them|he|she|his|her|their|someone|person|people|man|men|"
+        r"woman|women|figure|figures|customer|customers|guest|guests|patron|patrons|"
+        r"child|children)\b", re.I)
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("kind") not in ("setting", "visual-metaphor"):
+                continue
+            eid = e.get("id", ef.stem)
+            con = e.get("contract") or {}
+            for field in ("dressing", "blocking"):
+                txt = con.get(field)
+                if not isinstance(txt, str) or not txt.strip():
+                    continue
+                hit = next((s for s in re.split(r"(?<=[.;!?])\s+", txt)
+                            if HELD.search(s) and PERSON.search(s)), None)
+                if hit:
+                    warn("SETTING-DRESSING-NAMES-HELD-PROP",
+                         f"{eid}: contract.{field} says {HELD.search(hit).group(0).strip()!r} "
+                         f"of a person, in \"{hit.strip()[:90]}\". A setting's "
+                         f"contract rides on EVERY render of it in EVERY book, so a prop belonging "
+                         f"to one story leaks into every story that reuses the place, and a "
+                         f"per-spread negative cannot win against it. Move the prop to the "
+                         f"spread's scene text. If contract.blockingPlate also depicts it, reshoot "
+                         f"the plate propless or scope it out per spread with "
+                         f"`\"blockingPlate\": false` on the cast entry.")
+
+    # ---- `structured.render.qa` MUST NOT BE THE ONLY GUARD ON AN ENTITY (v0.29)
+    #
+    # `render.qa` is now compiled into the read-back checklist (SPEC 4.6, implemented at
+    # last in v0.29), so it is no longer inert. `structured.invariants` is still the field
+    # every OTHER gate reads: the identity bake guard, auto-disambiguation between two
+    # people in one frame, `supersedes` on a look or a pose, and `judge-slot`. An entity
+    # with a populated `render.qa` and an EMPTY `invariants` therefore looks guarded and
+    # is guarded in exactly one of five places.
+    #
+    # Earned on `theo-doorchaser` (The Tithe Is a Test, 2026-08-02): six well-written qa
+    # items, zero invariants, and a dry assemble reported ZERO checks on the spread where
+    # he stands alone. His half-on jacket was the spine of the book.
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            st = e.get("structured") or {}
+            qa = (st.get("render") or {}).get("qa") or []
+            if qa and not (st.get("invariants") or []):
+                warn("ENTITY-QA-WITHOUT-INVARIANTS",
+                     f"{e.get('id', ef.stem)}: declares {len(qa)} structured.render.qa item(s) "
+                     f"and NO structured.invariants. `invariants` is what the identity bake "
+                     f"guard, auto-disambiguation, `supersedes` and judge-slot all read, so this "
+                     f"entity is guarded in one place out of five. State the checkable facts as "
+                     f"invariants; keep render.qa for what only a reader can judge.")
 
     # ---- a character must be able to prove its own SCALE and its FUTURE (SPEC v0.10, §12)
     #

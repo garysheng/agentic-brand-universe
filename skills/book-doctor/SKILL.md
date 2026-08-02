@@ -59,7 +59,32 @@ Accepted endcap names, in either naming convention:
 | role | composer names (pre-conform, PORTRAIT enforced) | staged names (post-conform, exact 3:4) |
 |---|---|---|
 | front cover | `cover`, `cover-0` | `spread-00-cover` |
-| closing plate | `closing-plate`, `plate-0` | `spread-<N+1>` |
+| closing plate | `closing-plate`, `plate-0`, or any id carrying `closing` as a word | `spread-<N+1>` |
+
+The closing-plate names are matched by WORD, not by a fixed list, because a fixed list made the
+two checks contradict each other: an id the list did not know (`plate-closing`) was demanded at
+LANDSCAPE interior aspect by check 2 and at PORTRAIT endcap aspect by check 3, so no file could
+satisfy both and the only escape was renaming the spec id. Earned on The Tithe Is a Test,
+2026-08-02, which took the rename.
+
+### The caption check reads the MANUSCRIPT when there is one (2026-08-02)
+
+A beat's `text` is **instruction for the renderer** ("Theo sitting on the bench beside Jerry,
+telling him about the baptism"); a spread's `_caption` is **the words the reader reads** ("It had
+been a year since he stood at the back of the room"). In any universe that keeps
+`stories/<id>.manuscript.md` those two are different documents on purpose, so comparing them
+reported **29 of 29 verbatim-correct captions as stale** on a shipped book. A check that fails on
+every spread of every book is worse than no check at all, for the same reason the endcap bug above
+was: it teaches its operator to ignore the one run that finds something real.
+
+So: the manuscript is the source when it exists, `beats[].text` when it does not. The defect the
+check was built for survives, because **the manuscript is what gets rewritten** — on
+will-there-be-ice-cream the words moved from an ice cream counter to a park bench and the caption
+kept the old line. Three manuscript conventions parse (`**7.**`, `**Spread 7**:`, `### 7`), a
+wholly-italic line is stage direction rather than caption, and comparison normalises whitespace,
+emphasis and typographic punctuation. A caption that is a SUBSTRING of its beat passes, because
+one beat set across two spreads is legitimate. When a caption matches a DIFFERENT beat, the report
+says which, since that is an ordering mistake rather than a rewrite.
 
 ## The boundary (read this before extending it)
 

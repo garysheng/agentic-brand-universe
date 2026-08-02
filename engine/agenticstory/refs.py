@@ -13,7 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from .store import CanonStore
-from .model import Entity, SETTING_CONTRACT_FIELDS, sheet_parts
+from .model import (Entity, SETTING_GATE_FILE_FIELDS, setting_contract_gaps,
+                    sheet_parts)
 from .matrix import matrix_for
 
 
@@ -113,25 +114,18 @@ def resolve_setting(store: CanonStore, eid: str) -> list[str]:
                         f"lock turnaround + emptyPlates + blueprint + map + blocking + dressing first")
     root = store.asset_root
     contract = e.raw.get("contract", {}) or {}
-    # File fields must resolve on disk; descriptor fields (prose passed in prompts) must be non-empty.
-    file_fields = ("turnaround", "blueprint")
-    descriptor_fields = ("map", "blocking", "dressing")
-    for f in file_fields:
+    # THE SAME PREDICATE THE PROMOTER USES (v0.29). `setting_contract_gaps` owns which
+    # fields are load-bearing (file fields non-null, emptyPlates present and up to any
+    # declared count, descriptors non-empty); this function adds the one thing a pure
+    # predicate cannot know, which is whether the files are actually on disk.
+    problems += [f"{eid}.{g}" for g in setting_contract_gaps(contract)]
+    for f in SETTING_GATE_FILE_FIELDS:
         v = contract.get(f)
-        if v in (None, ""):
-            problems.append(f"{eid}.{f} is null (required image; the drawn plate/blueprint)")
-        elif not (root / v).exists():
+        if v and not (root / v).exists():
             problems.append(f"{eid}.{f} -> {v} (NOT ON DISK)")
-    plates = contract.get("emptyPlates") or []
-    if not plates:
-        problems.append(f"{eid}.emptyPlates is empty (need per-angle EMPTY plates)")
-    else:
-        for rel in plates:
-            if not (root / rel).exists():
-                problems.append(f"{eid}.emptyPlates -> {rel} (NOT ON DISK)")
-    for f in descriptor_fields:
-        if not (contract.get(f) or "").strip():
-            problems.append(f"{eid}.{f} is empty (required descriptor: prose passed in every prompt)")
+    for rel in contract.get("emptyPlates") or []:
+        if not (root / rel).exists():
+            problems.append(f"{eid}.emptyPlates -> {rel} (NOT ON DISK)")
     return problems
 
 
