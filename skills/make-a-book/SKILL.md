@@ -112,6 +112,41 @@ run** — route it to `evolve-abu` and keep going.
 
 You still own the two operator gates and the final report. The steward owns verb selection.
 
+## `ls <skill>/scripts/` BEFORE you write one. The verb is usually already code.
+
+`shoot-references` and `render-readback` are described in prose in this file, which reads
+like they are procedures you carry out. **They ship runnable scripts.** `shoot-references`
+has `chain_matrix.py`, which shoots a whole matrix in declared chain order off `prompts.md`,
+caps conditioning so late shots do not time out, honours a per-shot `(WxH)` in the heading,
+and writes provenance. `render-readback` has `contact_sheet.py`, `crop_zoom.py` and
+`measure.py`.
+
+On 2026-08-02 a run hand-rolled two bespoke shoot scripts and a contact-sheet script, all
+three of which duplicated shipped tooling badly: the hand-rolled shooters hardcoded the
+register line that `identity.register` already owns, and re-derived a conditioning chain by
+hand. Nothing was broken. The scripts were simply never looked for, because the SKILL.md
+reads as instructions to a human.
+
+So before writing any helper, run `ls <skill>/scripts/` and `--help` what is there. A
+skill's prose describes the JUDGEMENT; its `scripts/` usually already holds the mechanics.
+
+## A rule that must BEAT another entity's invariant needs an entity of its own
+
+Prose cannot make the compiler pass a file, and this is the sharp form of that: when a new
+rule CONTRADICTS an invariant some other entity already declares, writing the rule as prose
+loses, quietly and about half the time.
+
+Earned 2026-08-02: a house rule that everyone indoors wears slippers was written into the
+setting's `dressing`. It rendered four different slippers across fourteen spreads and was
+beaten outright, in four of them, by a character's own `signature-...-brown-leather-boots`.
+The character block and the setting block are both just text in one prompt, and the model
+has no way to know which is meant to win.
+
+It held the moment the slippers became a locked PROP with art on disk, cast into each
+affected spread. A reference image outranks any number of words. **The tell that you are
+about to make this mistake: you are writing "always/never X" into one entity in order to
+override something a DIFFERENT entity already says.** Give the rule a body instead.
+
 ## Prose does not bind. Refusals bind.
 
 Every rule this chain BROKE on 2026-07-30 existed as prose in a skill file: use
