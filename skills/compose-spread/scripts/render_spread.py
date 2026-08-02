@@ -160,6 +160,11 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
         for r in job["refs"]:
             echo("  " + r)
 
+    # Advisory findings surface on EVERY run, dry or paid. A warning the operator only
+    # sees on --dry-run is a warning nobody sees, because the paid run is the one they do.
+    for w in job.get("warnings") or []:
+        echo(f"  warn {sid}: {w}")
+
     if args.dry_run:
         echo(f"{sid}: DRY RUN ok ({len(job['refs'])} refs, "
              f"{len(job['qa'])} qa invariants, size {job['size']}) — nothing generated")

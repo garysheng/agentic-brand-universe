@@ -1001,6 +1001,54 @@ def _load_entity_or_none(uroot: Path, eid: str):
         return json.load(f)
 
 
+def entity_block(cid: str, derived: str | None, bake: str | None,
+             kind: str | None = None, mode: str | None = None,
+             setting_rule: dict | None = None,
+             warnings: list | None = None) -> str | None:
+    """Combine a cast entry's `bake` with the entity's derived block.
+
+    `bake` REPLACES by default, and that is load-bearing for a multi-state prop or
+    motif whose derived block is prose describing EVERY state it documents: hand that
+    to the model whole and it draws all of them at once, a chart of variations instead
+    of one scene. 181 such overrides were already in use in nation-of-fire.
+
+    A SETTING IS THE EXCEPTION AND USED TO LOSE ITS GEOMETRY (v0.29). A setting's
+    derived block is not a list of states; it is `map` + `blocking` + `dressing` +
+    `scale`, which is what the place IS, which way round it is and how big. Replacing
+    that with a per-spread bake deletes the room. Measured on the-lit-pulpit
+    (movies-are-sermons, 2026-08-02): its five spreads each carried a state bake, and
+    `contract.map` reached the model on NONE of them. It only rendered correctly
+    because the author had also written the auditorium into every scene by hand, which
+    is the duplication canon exists to remove. Nothing warned.
+
+    So `setting` now APPENDS (geometry first, then the bake). Zero blast radius: a
+    sweep of every render-spec in nation-of-fire found 62 bakes on non-characters and
+    all 62 were visual-metaphors, none a setting.
+
+    `visual-metaphor` KEEPS replace, because those 62 live in nine shipped books and
+    were authored expecting it. It now WARNS when it drops a non-empty geometry block,
+    so the same defect is visible instead of silent. A cast entry can settle it
+    explicitly either way with `"bakeMode": "append" | "replace"`.
+    """
+    m = mode or ("append" if kind == "setting" else "replace")
+    if bake and derived and m == "append":
+        out = f"{derived} {bake}"
+    elif bake:
+        if derived and kind in ("setting", "visual-metaphor"):
+            (warnings if warnings is not None else []).append(
+                f"{cid}: bake REPLACED the setting block, so its map/blocking/dressing/"
+                f"scale did not reach the model. Set \"bakeMode\": \"append\" on this "
+                f"cast entry to keep the geometry, or move the room description into the "
+                f"scene text deliberately.")
+        out = bake
+    else:
+        out = derived
+    rule = (setting_rule or {}).get(cid)
+    if rule:
+        out = f"{out} {rule}" if out else rule
+    return out
+
+
 def resolve_setting(ent: dict, plate: str | None):
     """Return (ref_paths, block) for a setting, from its WHOLE contract.
 
@@ -1082,6 +1130,11 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     if sp is None:
         raise Refuse(f"spread '{spread_id}' not in render-spec")
 
+    # Advisory findings for the operator. A REFUSAL stops a render; a warning is for the
+    # class of defect that is legal, silent and usually wrong, which until now had no
+    # channel at all and so was discovered by reading assembled prompts by hand.
+    warnings: list[str] = []
+
     # A spread may override the book preamble for the keys in _SPREAD_OVERRIDES, so ONE
     # book can carry more than one register when the change is diegetic. A spread naming
     # none of them resolves exactly as before.
@@ -1136,19 +1189,6 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # override is allowed via _SPREAD_OVERRIDES.
     setting_rule = eff.get("settingRule") or {}
 
-    def entity_block(cid: str, derived: str | None, bake: str | None) -> str | None:
-        """A cast entry's `bake` REPLACES the derived block; settingRule APPENDS to it.
-
-        Replacement is load-bearing for a multi-state visual-metaphor: the derived block
-        describes EVERY state the entity documents, so handing it to the model whole makes
-        it draw all of them at once (a chart of variations instead of one scene). 181 such
-        overrides were already in use in nation-of-fire, expressed only in its local fork.
-        """
-        out = bake if bake else derived
-        rule = setting_rule.get(cid)
-        if rule:
-            out = f"{out} {rule}" if out else rule
-        return out
 
     # ARCHIVED ENTITIES ARE REFUSED AT THE POINT OF NEW CASTING (SPEC v0.19).
     # Not at the pre-render gate: archiving must never retroactively break a book that
@@ -1230,7 +1270,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"))
             add_refs(r)
-            block = entity_block(c["id"], block, c.get("bake"))
+            block = entity_block(c["id"], block, c.get("bake"), kind, c.get("bakeMode"), setting_rule, warnings)
             if block:
                 ent_blocks.append(block)
             continue
@@ -1242,7 +1282,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             add_refs(r)
             derived = ((ent.get("prose") or {}).get("rules")
                        or ((ent.get("structured") or {}).get("render") or {}).get("bake"))
-            block = entity_block(c["id"], derived, c.get("bake"))
+            block = entity_block(c["id"], derived, c.get("bake"), kind, c.get("bakeMode"), setting_rule, warnings)
             if block:
                 ent_blocks.append(block)
             continue
@@ -1481,7 +1521,8 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         if x
     )
 
-    return {"prompt": prompt, "refs": resolved, "size": eff.get("size", "1536x1024"), "qa": qa}
+    return {"prompt": prompt, "refs": resolved, "size": eff.get("size", "1536x1024"),
+            "qa": qa, "warnings": warnings}
 
 
 def main() -> int:
