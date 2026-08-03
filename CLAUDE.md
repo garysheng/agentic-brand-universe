@@ -18,7 +18,7 @@ would use at the moment you need it.
 | **crop in on a detail** to check an invariant (jaw, throat, a mark) | `render-readback/scripts/crop_zoom.py` — **use it BEFORE calling a defect.** A contact sheet is downsampled; a lace hem called "vertical stripes" from a 3-up was a correct horizontal band when zoomed. |
 | **measure a figure** in a plate | `render-readback/scripts/measure.py` (`figure` mode only; `star` mode was withdrawn for false precision) |
 | **generate ANY image** | `on-brand-image/scripts/generate.py` — the single provider adapter. Never call a provider directly; this is what writes provenance. |
-| **knock out a background** | `on-brand-image/scripts/chroma_key.py` |
+| **knock out a background** | `on-brand-image/scripts/chroma_key.py` (add `--choke 12` for a dark-on-dark silhouette, or despill leaves a yellow edge hairline) |
 | **see where a universe stands** | `abu/scripts/status.py --json` |
 | **grade a universe** | `universe-doctor/scripts/grade.py` |
 | **grade a rendered book** | `book-doctor/scripts/book_doctor.py` |
