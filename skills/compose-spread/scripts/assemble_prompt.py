@@ -1354,6 +1354,27 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                 qa.append(f"{c['id']}: {i}")
         for i in _as_neg_list(render_block_for(ent, c.get("look")).get("qa")):
             qa.append(f"{c['id']}: {i}")
+        # A POSE ON A NON-CHARACTER SELECTS NOTHING, SO SAY SO.
+        #
+        # `pose` is a character selector. Every other kind chooses its variant with
+        # `plate`, and none of the branches below read pose at all, so a cast entry
+        # writing {"id": "a-visual-metaphor", "pose": "dark"} was accepted in silence
+        # and resolved to the DEFAULT plate. A multi-state object then rendered the
+        # same state everywhere while the spec looked correct. Nine spreads of a real
+        # book shipped that way (2026-08-03), every one showing a wall of lights the
+        # story needed dark.
+        #
+        # Same shape as the lookbook that recorded its own name and steered nothing,
+        # and as `import-asset --crop` recording a crop it never performed: canon that
+        # reads as a rule and does nothing. A typo in a selector is a REFUSAL here,
+        # exactly as an unknown sheet name is for REFS.
+        if kind != "character" and c.get("pose"):
+            _avail = sorted((ent.get("structured") or {}).get("sheets") or {})
+            raise Refuse(
+                f"{c['id']} is a {kind}, which selects its variant with 'plate', not "
+                f"'pose' (got pose={c['pose']!r}). Poses are a character selector and no "
+                f"other kind reads them, so this entry would silently render the default. "
+                f"Available plates: {_avail or 'none'}.")
         if kind in ("setting", "visual-metaphor"):
             r, block = resolve_setting(ent, c.get("plate"), c)
             add_refs(r)
