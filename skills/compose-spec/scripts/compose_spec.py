@@ -28,6 +28,16 @@ AUTHORED = ("scene", "negatives", "size", "style", "anchorRef", "settingRule",
             "allowUncast", "allowMultiPanel", "allowPlatelessSetting", "allowIdentityOverride")
 CHOSEN = ("plate", "pose", "look", "bake")
 
+def _engine_on_path():
+    """Make the engine importable, resolved from the ABU root rather than assumed.
+    This script lives at <repo>/skills/<name>/scripts/, so the repo root is 3 up;
+    `.resolve()` first because skills are installed by symlinking into the harness."""
+    import pathlib
+    eng = str(pathlib.Path(__file__).resolve().parents[3] / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    return eng
+
 def jload(p):
     with open(p) as f:
         return json.load(f)
@@ -37,10 +47,22 @@ def entity(uroot, eid):
     return jload(p) if os.path.exists(p) else None
 
 def plates_for(ent):
+    """Which plates a spread may CHOOSE for this entity.
+
+    Goes through the shared predicate, not `structured.sheets`, because a setting
+    and a visual-metaphor declare their art in `contract` and this reader only knew
+    the other convention. The visible symptom was compose-spec reporting
+    "available: NONE - shoot a shot list" for a LOCKED setting with three plates
+    sitting on disk, which sends an author off to re-shoot art that already exists.
+    Third reader found with this bug (2026-08-03); the predicate is the fix so
+    there is not a fourth.
+    """
     if not ent:
         return []
-    sheets = (ent.get("structured") or {}).get("sheets") or {}
-    return [k for k in sheets if k not in ("blueprint", "scalePlate")]
+    _engine_on_path()
+    from agenticstory.model import Entity
+    sheets = Entity(id=ent.get("id") or "", kind=ent.get("kind") or "", raw=ent).referenceable_sheets()
+    return [k for k in sheets if k not in ("blueprint", "scalePlate", "blockingPlate", "turnaround")]
 
 def poses_for(ent):
     if not ent:
