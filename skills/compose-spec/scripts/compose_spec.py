@@ -29,14 +29,24 @@ AUTHORED = ("scene", "negatives", "size", "style", "anchorRef", "settingRule",
 CHOSEN = ("plate", "pose", "look", "bake")
 
 def _engine_on_path():
-    """Make the engine importable, resolved from the ABU root rather than assumed.
-    This script lives at <repo>/skills/<name>/scripts/, so the repo root is 3 up;
-    `.resolve()` first because skills are installed by symlinking into the harness."""
+    """Make the engine importable, found by walking UP for a marker.
+
+    NOT a fixed `parents[N]`: that encodes one directory layout, and this code runs
+    from at least two (a git clone, and a plugin cache under ~/.claude/plugins).
+    The repo has a test that refuses fixed-depth lookup for exactly this reason, and
+    it caught the first version of this helper.
+    """
     import pathlib
-    eng = str(pathlib.Path(__file__).resolve().parents[3] / "engine")
-    if eng not in sys.path:
-        sys.path.insert(0, eng)
-    return eng
+    here = pathlib.Path(__file__).resolve()
+    for c in [here, *here.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            eng = str(c / "engine")
+            if eng not in sys.path:
+                sys.path.insert(0, eng)
+            return eng
+    raise SystemExit(
+        "compose-spec: cannot locate the ABU root from " + str(here) + ".\n"
+        "  Looked upward for engine/agenticstory.")
 
 def jload(p):
     with open(p) as f:
