@@ -354,6 +354,16 @@ def parse_prompts_full(md: Path) -> dict:
                 refs[cur] = list(dict.fromkeys(header_refs + cur_refs))
             head = m.group(1)
             path = re.search(r"reference/[^/]+/([A-Za-z0-9._-]+)\.png", head)
+            # A SHOT HEADING NAMES AN OUTPUT. A `##` section that does not point at
+            # one is prose (a rationale, a note to the next author), and treating it
+            # as a shot invents a shot named after a sentence, silently lengthens the
+            # chain, and conditions every later shot on a plate that will never exist.
+            # Earned 2026-08-03: a "## The chain, and why it is shaped this way"
+            # section became shot 2 of 6 in the-lit-index's matrix. Authors should be
+            # able to explain their chain inside the file that defines it.
+            if not path and "->" not in head:
+                cur, buf, cur_refs = None, [], []
+                continue
             cur = path.group(1) if path else head.split("—")[0].split("->")[0].strip()
             # PER-SHOT SIZE, declared in the heading as "(WxH)". A reference matrix
             # legitimately MIXES aspects: full-body and profiles want portrait, while
@@ -408,7 +418,7 @@ def entity_ref_images(uroot: Path, token: str) -> list[dict]:
     a spec of 1.24:1, reading as the crucifix the wearer's invariant forbids by name.
     """
     _engine_on_path()
-    from agenticstory.model import sheet_parts
+    from agenticstory.model import Entity, sheet_parts
 
     eid, selected = parse_ref_token(token)
     ent_path = uroot / "canon" / "entities" / f"{eid}.json"
@@ -416,7 +426,10 @@ def entity_ref_images(uroot: Path, token: str) -> list[dict]:
         raise Refuse(f"REFS names '{eid}', which is not a canon entity")
     ent = load(ent_path)
     st = ent.get("structured") or {}
-    sheets = st.get("sheets") or {}
+    # `referenceable_sheets` and not `structured.sheets`: a setting and a
+    # visual-metaphor declare their plates in `contract`, so reading the raw map
+    # made every locked setting unreferenceable (see model.contract_sheets).
+    sheets = Entity(id=eid, kind=ent.get("kind") or "", raw=ent).referenceable_sheets()
 
     def _path_of(name):
         # Typed slots (SPEC v0.23) are `{"path", "role"}`; bare paths still work.

@@ -201,3 +201,51 @@ class ScaffoldsAMissingPromptsFile(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProseSectionsAreNotShots(unittest.TestCase):
+    """A `##` heading that names no output is PROSE, not a shot.
+
+    Earned 2026-08-03: a "## The chain, and why it is shaped this way" section
+    written to explain a matrix's conditioning became shot 2 of 6 in that matrix.
+    The parser invented a shot named after a sentence, lengthened the chain, and
+    conditioned every later shot on a plate that would never exist. Authors should
+    be able to explain a chain inside the file that defines it.
+    """
+
+    def parse(self, md):
+        import importlib.util, pathlib, tempfile
+        p = pathlib.Path(__file__).resolve().parents[2] / "skills/shoot-references/scripts/chain_matrix.py"
+        spec = importlib.util.spec_from_file_location("cm", p)
+        cm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cm)
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+            f.write(md)
+            tmp = pathlib.Path(f.name)
+        return cm.parse_prompts_full(tmp)
+
+    MD = """# e — prompts
+
+## Why this chain is shaped this way
+Prose explaining the conditioning. Names no output at all.
+
+## master (1024x1024)  -> reference/e/master.png
+The real shot.
+"""
+
+    def test_a_heading_with_no_output_is_skipped(self):
+        got = self.parse(self.MD)
+        shots = got["prompts"] if isinstance(got, dict) and "prompts" in got else got
+        keys = set(shots.keys()) if hasattr(shots, "keys") else set()
+        self.assertNotIn("Why this chain is shaped this way", keys)
+
+    def test_the_real_shot_still_parses(self):
+        got = self.parse(self.MD)
+        shots = got["prompts"] if isinstance(got, dict) and "prompts" in got else got
+        keys = set(shots.keys()) if hasattr(shots, "keys") else set()
+        self.assertIn("master", keys)
+
+    def test_prose_body_does_not_leak_into_the_next_shot(self):
+        got = self.parse(self.MD)
+        shots = got["prompts"] if isinstance(got, dict) and "prompts" in got else got
+        self.assertNotIn("Prose explaining", shots["master"])

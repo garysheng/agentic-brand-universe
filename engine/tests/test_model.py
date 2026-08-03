@@ -132,3 +132,62 @@ class DuplicateDossierIsRefused(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ContractShapedSheets(unittest.TestCase):
+    """A LOCKED SETTING WAS UNREFERENCEABLE, and nothing said so.
+
+    Settings and visual-metaphors declare their art in `contract`; every other kind
+    uses `structured.sheets`. Readers only knew the second convention, so
+    `REFS: marcus-study` refused with "has no locked reference art to pass" against
+    an entity that is `status: locked`, has three plates on disk, and is cast by a
+    shipped book. Found 2026-08-03 shooting `the-lit-index`, whose four state plates
+    came back in four different rooms because the room could not be passed.
+    """
+
+    def setting(self, **contract):
+        base = {"turnaround": None, "emptyPlates": [], "blueprint": None,
+                "scalePlate": None, "blockingPlate": None}
+        base.update(contract)
+        return {"id": "a-room", "kind": "setting", "contract": base}
+
+    def ent(self, raw):
+        return Entity(id=raw["id"], kind=raw["kind"], raw=raw)
+
+    def test_contract_plates_are_referenceable(self):
+        e = self.ent(self.setting(turnaround="reference/a-room/desk.png",
+                                  emptyPlates=["reference/a-room/livingroom.png"]))
+        sheets = e.referenceable_sheets()
+        self.assertEqual(sheets["livingroom"], "reference/a-room/livingroom.png")
+
+    def test_keyed_by_BOTH_stem_and_contract_field(self):
+        """The stem is what an author names (`@livingroom`); the contract field is
+        what generic code looks for (every fallback list in the codebase probes
+        `turnaround`). Keying by stem alone left a bare `REFS: <setting>` still
+        refusing, because this room's turnaround is a file called `desk.png`."""
+        e = self.ent(self.setting(turnaround="reference/a-room/desk.png"))
+        sheets = e.referenceable_sheets()
+        self.assertEqual(sheets["desk"], "reference/a-room/desk.png")
+        self.assertEqual(sheets["turnaround"], "reference/a-room/desk.png")
+
+    def test_declared_sheets_OUTRANK_the_derivation(self):
+        """An explicit declaration is an author decision and must win."""
+        raw = self.setting(turnaround="reference/a-room/desk.png")
+        raw["structured"] = {"sheets": {"desk": "reference/a-room/HAND-PICKED.png"}}
+        self.assertEqual(self.ent(raw).referenceable_sheets(),
+                         {"desk": "reference/a-room/HAND-PICKED.png"})
+
+    def test_a_character_gets_NO_contract_derivation(self):
+        """Only setting and visual-metaphor are contract-shaped. Deriving for a
+        character would invent sheets out of a block it does not use."""
+        raw = {"id": "someone", "kind": "character",
+               "contract": {"turnaround": "reference/someone/x.png"}}
+        self.assertEqual(self.ent(raw).referenceable_sheets(), {})
+
+    def test_does_NOT_widen_the_render_GATE(self):
+        """required_sheet_keys answers "is there enough on disk to allow this render
+        at all". Wiring the derivation into it would silently start demanding every
+        contract plate of every setting in every universe, breaking shipped books."""
+        e = self.ent(self.setting(turnaround="reference/a-room/desk.png",
+                                  emptyPlates=["reference/a-room/livingroom.png"]))
+        self.assertEqual(e.required_sheet_keys(), [])

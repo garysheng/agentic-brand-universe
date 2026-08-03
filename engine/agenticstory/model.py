@@ -117,6 +117,61 @@ def sheet_parts(v) -> tuple[str | None, str | None]:
     return None, None
 
 
+# A setting and a visual-metaphor declare their art in `contract`, never in
+# `structured.sheets`. Every other kind does the opposite.
+CONTRACT_SHAPED_KINDS = ("setting", "visual-metaphor")
+
+# The contract's single-plate fields, in precedence order: the turnaround is the
+# view exposing the most geometry, so it leads.
+_CONTRACT_PLATE_FIELDS = ("turnaround", "blueprint", "scalePlate", "blockingPlate")
+
+
+def contract_sheets(raw: dict[str, Any]) -> dict[str, str]:
+    """The referenceable plates a contract-shaped entity actually has, keyed by
+    filename stem.
+
+    THIS EXISTS BECAUSE A LOCKED SETTING WAS UNREFERENCEABLE. `marcus-study` is
+    `status: locked`, has three plates on disk, and is cast by a shipped book, and a
+    cross-entity `REFS: marcus-study` still refused with "has no locked reference art
+    to pass" — because the resolver reads `structured.sheets` and a setting has never
+    written one. Two surfaces, two conventions, and the disagreement is invisible
+    until you try to pass a room to something (2026-08-03, shooting `the-lit-index`,
+    whose four state plates came back in four different rooms for exactly this
+    reason).
+
+    Same family as the promoter-versus-gate disagreement about what `locked` means
+    for a setting: one predicate, shared, instead of each surface deciding again.
+
+    Deliberately NOT wired into `required_sheet_keys`. That answers the GATE's
+    question ("is there enough on disk to allow this render at all"), and widening it
+    would silently start demanding every contract plate of every setting in every
+    universe. This answers a different question: "what may be passed as a reference."
+    """
+    if (raw.get("kind") or "") not in CONTRACT_SHAPED_KINDS:
+        return {}
+    c = raw.get("contract") or {}
+    out: dict[str, str] = {}
+
+    def put(p, *keys):
+        path = sheet_parts(p)[0]
+        if isinstance(path, str) and path:
+            # TWO keys per plate, both of which an author will reach for. The STEM
+            # is what you name when you know the room (`@livingroom`), and the
+            # CONTRACT FIELD is what generic code looks for (`turnaround` is in
+            # every fallback list in the codebase). Keying by stem alone left
+            # `REFS: marcus-study` still refusing, because its turnaround is a file
+            # called `desk.png` and no caller was ever going to guess that.
+            stem = path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            for k in (*keys, stem):
+                out.setdefault(k, path)
+
+    for f in _CONTRACT_PLATE_FIELDS:
+        put(c.get(f), f)
+    for p in (c.get("emptyPlates") or []):
+        put(p)
+    return out
+
+
 @dataclass
 class Entity:
     id: str
@@ -126,6 +181,18 @@ class Entity:
     @property
     def structured(self) -> dict[str, Any]:
         return self.raw.get("structured", {}) or {}
+
+    def referenceable_sheets(self) -> dict[str, str]:
+        """Every plate that may be PASSED as a reference for this entity.
+
+        `structured.sheets` when the entity declares them, falling back to the
+        contract for a setting or visual-metaphor that does not. An entity that
+        declares both keeps its declared sheets: an explicit declaration is an
+        author decision and must outrank a derivation.
+        """
+        declared = {k: sheet_parts(v)[0] for k, v in (self.structured.get("sheets") or {}).items()}
+        declared = {k: v for k, v in declared.items() if v}
+        return declared or contract_sheets(self.raw)
 
     @property
     def real_person(self) -> dict[str, Any] | None:
