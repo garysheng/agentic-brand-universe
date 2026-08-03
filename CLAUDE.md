@@ -25,6 +25,7 @@ would use at the moment you need it.
 | **static-check before rendering** (free, no API calls) | `lint-universe/scripts/lint.py` |
 | **list what a universe can MAKE** | `make-a-work/scripts/forms.py list <universe>` |
 | **scaffold a style pack / lookbook** | `create-style-pack/scripts/scaffold.py`, `create-lookbook/scripts/scaffold.py` |
+| **scaffold a new form** (a new KIND of work) | `create-form/scripts/scaffold.py` (refuses on zero evidence works; the method lives in the create-form SKILL) |
 | **assemble a spread prompt from canon** | `compose-spread/scripts/assemble_prompt.py` |
 | **scaffold or re-sync a book render-spec** | `compose-spec/scripts/compose_spec.py` |
 | **add / insert / renumber a spread** | `update-book/scripts/insert_spread.py` |

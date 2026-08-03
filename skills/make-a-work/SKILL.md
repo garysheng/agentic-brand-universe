@@ -81,18 +81,23 @@ nothing can be made from it.
 
 ## Adding a NEW kind of work
 
-Do not write a skill. Make a folder:
+A new kind of work is still a FOLDER, and authoring that folder is now a skill's job:
+**`abu:create-form`** owns the method. It scaffolds
 
 ```
 <universe>/forms/<new-id>/
-  FORM.md      what it is; its golden(s); a STATUS section saying how much evidence it rests on
+  FORM.md      what it is; its golden(s); a STATUS section stating the evidence base
   PROMPT.md    the method, step by step, with the gates named
   evals/       whatever the method calls
 ```
 
-Write it from a work you have ACTUALLY MADE, and say in `FORM.md` how many. A form
-written before anything exists in it is the failure this framework spent a day removing:
-the retired composer had 896 lines, 91 tests and zero works.
+and its scaffolder REFUSES on zero evidence, because a form is written from works you
+have ACTUALLY MADE, with `FORM.md` saying how many. A form written before anything
+exists in it is the failure this framework spent a day removing: the retired composer
+had 896 lines, 91 tests and zero works.
+
+The division of labor: `create-form` produces the folder, this skill remains the one
+door for MAKING works in it. Forms stay data either way.
 
 ## Gates honored
 
@@ -103,5 +108,5 @@ Only the requester blesses. An unusable form refuses rather than improvising.
 
 - A picture book → `abu:make-a-book`, which owns that chain.
 - One on-brand image with no form → `abu:on-brand-image`.
-- Authoring a new form → make the folder (above). There is no scaffolder yet, and until a
-  form exists in more than one universe there is nothing proven to scaffold.
+- Authoring a new form → `abu:create-form`. It produces the folder (above); this door
+  is for making works in a form that already exists.

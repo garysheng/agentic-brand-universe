@@ -734,6 +734,43 @@ class WorkTests(unittest.TestCase):
         problems = self._store(proj=proj).validate_canon()
         self.assertTrue(any("carries no 'rule'" in p for p in problems), problems)
 
+    def test_a_work_declaring_a_live_folder_form_is_valid(self):
+        """A LIVE form is a folder holding FORM.md + PROMPT.md (post-4.8 retirement).
+
+        The validator only knew the RETIRED form.json registry, so every work.json
+        that declared a folder-form drew a false 'form not found': christofuturism's
+        gary-send-off flyer declared `event-flyer` (a legal, usable folder-form) and
+        validate reported it missing from a registry holding only the retired
+        scrolling-diorama encoding. create-form's backfill step institutionalizes
+        exactly these declarations, so the lying check had to stop lying first.
+        """
+        store = self._store()
+        fdir = store.dir / "forms" / "event-flyer"
+        fdir.mkdir(parents=True)
+        (fdir / "FORM.md").write_text("# Event Flyer\n## STATUS: one work\n")
+        (fdir / "PROMPT.md").write_text("# Method\n")
+        w = store.dir / "works" / "send-off"
+        w.mkdir(parents=True)
+        (w / "work.json").write_text(json.dumps(
+            {"id": "send-off", "form": "event-flyer"}))
+        problems = CanonStore(store.dir).validate_canon()
+        self.assertFalse(any("send-off" in p for p in problems), problems)
+
+    def test_a_folder_missing_its_method_is_still_not_found(self):
+        """FORM.md alone is a note about a form, not a form (forms.py refuses it too);
+        a work declaring it must still be reported."""
+        store = self._store()
+        fdir = store.dir / "forms" / "event-flyer"
+        fdir.mkdir(parents=True)
+        (fdir / "FORM.md").write_text("# Event Flyer\n")   # no PROMPT.md
+        w = store.dir / "works" / "send-off"
+        w.mkdir(parents=True)
+        (w / "work.json").write_text(json.dumps(
+            {"id": "send-off", "form": "event-flyer"}))
+        problems = CanonStore(store.dir).validate_canon()
+        self.assertTrue(any("send-off" in p and "not found" in p for p in problems),
+                        problems)
+
 
 class TestAltLookResolution(unittest.TestCase):
     """SPEC v0.10 declared altLooks; nothing read them until 2026-07-28.

@@ -191,9 +191,21 @@ class CanonStore:
             pr = self.forms.get(c.form)
             if pr is None:
                 if c.form:
+                    # A LIVE form (post-§4.8 retirement) is a FOLDER holding
+                    # FORM.md + PROMPT.md, discovered by make-a-work's forms.py. It
+                    # carries prose, not slots, so a work declaring one is valid here
+                    # and there is nothing further to slot-check. Before this branch
+                    # existed, every backfilled work.json declaring a folder-form
+                    # (event-flyer, 2026-07-31) drew a false "form not found" from a
+                    # validator that only knew the RETIRED form.json registry.
+                    fdir = self.dir / "forms" / c.form.split("@", 1)[0]
+                    if (fdir / "FORM.md").exists() and (fdir / "PROMPT.md").exists():
+                        continue
                     have = ", ".join(sorted(self.forms)) or "none"
                     problems.append(
-                        f"work '{c.id}': form '{c.form}' not found (have: {have})"
+                        f"work '{c.id}': form '{c.form}' not found "
+                        f"(retired-encoding forms here: {have}; a live form is a folder "
+                        f"holding FORM.md + PROMPT.md)"
                     )
                 continue
             declared = {s.get("id") for s in pr.slots}
