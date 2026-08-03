@@ -135,10 +135,17 @@ Expected: the three-step message above, `exit=1`. No traceback.
 - [ ] **Step 6: Prove no private path survived**
 
 ```bash
-grep -rn "\.agents/skills" illustrations/ || echo "CLEAN"
+grep -rln "\.agents/skills" illustrations/
 ```
 
-Expected: `CLEAN`.
+Expected at THIS point: exactly one file, `illustrations/scripts/render-page.sh`, which
+Task 5 deletes. The clean check only becomes possible after that deletion, so do not
+expect zero hits here.
+
+Do NOT satisfy this by explaining the old path in a comment. The vendoring note in
+`generate.py` deliberately describes it in words rather than spelling it, because a
+blunt grep that its own documentation trips is a check people learn to ignore. Keep the
+check blunt and keep the literal path out of the tree.
 
 - [ ] **Step 7: Commit**
 
@@ -826,15 +833,42 @@ Add a recurring character only if you want one. If you do, the master-first
 workflow above is not optional; it is what keeps the character from drifting.
 ```
 
-- [ ] **Step 3: Rename the interface throughout**
+- [ ] **Step 3: Rename the interface throughout, in THREE files not one**
 
-Replace every occurrence of `render-page.sh` with `render-hero.sh` and update the usage block to show the slug-plus-scene signature and the `--panels` / `--single` / `--dry-run` flags.
+`SPEC.md` is not the only doc naming the old script. Two READMEs do too, and the
+original plan missed both:
+
+| File | What it says |
+|---|---|
+| `illustrations/SPEC.md` | the workflow, plus stale `PREFIX`/`SUFFIX` sync instructions |
+| `illustrations/scripts/README.md` | "One canonical script: `render-page.sh`" |
+| `README.md` | the AI-native illustration system section and fork-time setup |
+
+The `PREFIX`/`SUFFIX` references are stale in a deeper way than a rename fixes: the
+register now lives in `hero_register.register` in `wiki.config.json`, not in strings
+inside the script. Keeping two copies of one fact in sync is what let them drift. Say
+so where you remove them.
 
 ```bash
-grep -c "render-page.sh" illustrations/SPEC.md
+grep -rn "render-page\|render-graphic\|brand_os_url" . \
+  --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=build --exclude-dir=.docusaurus
 ```
 
-Expected after the edit: `0`.
+Expected after the edit: no output.
+
+- [ ] **Step 3b: The private-path check, correctly scoped**
+
+```bash
+grep -rln "\.agents/skills" illustrations/
+```
+
+Expected: no output, and this is the first task where that is achievable, since
+`render-page.sh` is only deleted in the next step.
+
+Scope this to `illustrations/` and NOT to `scripts/`. `scripts/register-skills.sh`
+legitimately documents `~/.agents/skills` as the global registry it writes into, which
+has nothing to do with the image generator. A check that flags a correct line teaches
+people to ignore it.
 
 - [ ] **Step 4: Delete the superseded script**
 
