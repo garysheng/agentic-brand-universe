@@ -149,6 +149,104 @@ evidence.
 
 ---
 
+### G6. The visual-metaphor location gate hard-requires a `blueprint` the authoring skill calls optional
+
+**What.** `setting_contract_gaps` lists `blueprint` in `SETTING_GATE_FILE_FIELDS`, so any
+visual-metaphor cast as a beat LOCATION blocks `assert-story` on `blueprint is null`, while
+add-visual-metaphor treats the blueprint as advisory for organic forms.
+
+**Evidence.** 2026-08-04, all-the-data-in-the-world beat 22: `the-city-of-threads` (organic
+aerial city, honestly no massable geometry) blocked the story gate. The run declined to
+falsify a blueprint; the beat was re-homed from `location` to cast, which is honest for a
+portrait-of-the-metaphor but is a workaround where the metaphor truly stages a scene.
+
+**Next invocation.** Any book staging a beat INSIDE an organic locked metaphor.
+
+**Would close it.** Make `blueprint` advisory for kind=visual-metaphor when the entity
+declares `blueprintWaived: "<reason>"`, keeping the hard gate for architecture.
+
+**Still open because.** Wants a spec decision (which kinds owe which files), not a mid-fleet
+patch.
+
+---
+
+### G7. `compose_prompts` and `chain_matrix` disagree about scaffold TODO stubs
+
+**What.** compose_prompts treats the scaffolder's `TODO(author)` stub bodies as authored and
+composes 0 shots, while chain_matrix refuses on the same stubs; plus `-> None` headings and
+character-shaped warm-studio boilerplate on non-character kinds.
+
+**Evidence.** 2026-08-04, shooting `the-archive-of-everything`: hand-unblocked once.
+
+**Next invocation.** Every new non-character entity shot from a fresh scaffold.
+
+**Would close it.** One shared stub predicate both scripts call; kind-aware prompt
+boilerplate in the scaffolder.
+
+**Still open because.** Touches two skills' scripts and the scaffolder together; wants one
+deliberate change, not three drive-bys.
+
+---
+
+### G8. The code-drawn blueprint is dropped from non-seed conditioning while --print-plan promises it
+
+**What.** chain_matrix's plan output lists the blueprint on every shot, but recipes prove
+only the seed received it — the v0.29 "surface that looks like it enforces and doesn't"
+class.
+
+**Evidence.** 2026-08-04, the-archive-of-everything: plates passed read-back because the
+seed carried the geometry, but the plan lied.
+
+**Next invocation.** Any multi-state chain where a late state drifts geometry and the
+operator trusts --print-plan.
+
+**Would close it.** Either pass the blueprint on every shot or make the plan print what is
+actually passed.
+
+**Still open because.** Recorded same-day with recipes as evidence; fix is small but sits in
+the same script as G7's refactor.
+
+---
+
+### G9. Beats -> manuscript sync is hand-rolled every book (third occurrence)
+
+**What.** The invariant beats == manuscript == captions is enforced by book-doctor, but no
+script GENERATES the manuscript from beats or re-syncs after an edit; make-a-book already
+records two runs doing it by hand, and all-the-data-in-the-world did it twice more inline
+(initial write, then a one-word beat-8 fix re-mirrored by hand).
+
+**Evidence.** 2026-08-04, all-the-data-in-the-world: two inline python heredocs whose whole
+job was title + mark + `## n` + beat text + closing verse.
+
+**Next invocation.** Every book, twice (first write and every caption edit).
+
+**Would close it.** `compose-spec/scripts/sync_manuscript.py <universe> <story>`: emit the
+manuscript from the StorySpec deterministically; `--check` mode for book-doctor parity.
+
+**Still open because.** Filed during a live seven-session fleet under G5; building it means
+touching the shared checkout, so it is queued for the next quiet window.
+
+---
+
+### G10. `render_cover.py` cannot express the two closing-plate decisions
+
+**What.** compile_cover has `--no-text`; render_cover does not, so the working convention is
+`--title ""` (discovered only by reading a prior book's recipe). And the hero is auto-cast
+from the story, so a plate whose scene wants NO figure quietly renders the hero into it.
+
+**Evidence.** 2026-08-04, all-the-data-in-the-world plate-0: `--no-text` errored; the
+sky-and-sparrows scene came back with Jerry standing in it. The result was kept because the
+verse made it work, which is luck, not control.
+
+**Next invocation.** Every book's closing plate.
+
+**Would close it.** Pass `--no-text` through to render_cover and add `--no-hero`.
+
+**Still open because.** Same G5 fleet constraint; a two-flag change queued for the quiet
+window.
+
+---
+
 ## Filing a gap here
 
 Append an entry with the five headings above (**What / Evidence / Next invocation / Would
