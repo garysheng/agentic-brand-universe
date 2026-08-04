@@ -31,14 +31,15 @@ would use at the moment you need it.
 | **scaffold or re-sync a book render-spec** | `compose-spec/scripts/compose_spec.py` |
 | **add / insert / renumber a spread** | `update-book/scripts/insert_spread.py` |
 | **recast one entity as another across a story** | `update-book/scripts/recast_story.py` |
-| **chain an entity's matrix shots** | `shoot-references/scripts/chain_matrix.py` |
+| **chain an entity's matrix shots** | `shoot-references/scripts/chain_matrix.py` — if the universe declares `identity.register.stylePack` AND an inline `anchor`, it REFUSES until you say which (`--register <pack>` / `--no-style-pack`). A shoot is sparse enough that the anchor's own subject comes back whole; nation-of-fire's seed came back photoreal off the inline anchor on 2026-08-04. |
 | **backfill prompts onto old plates** | `shoot-references/scripts/backfill_prompts.py` |
 | **judge a slot against its golden** | `judge-slot/scripts/judge.py` |
 | **voice-check a manuscript before locking** | `voice-gate/scripts/voice_gate.py <universe> <manuscript.md>` — rules fetched from https://garysheng.com/voice.md; fails on unadjudicated findings, waivable with a written reason |
 | **find what a session hand-rolled** | `pave-the-path/scripts/detect_handroll.py` |
 | **install the framework for someone** | `onboard/scripts/install.py` |
+| **check whether this is a KNOWN gap** (before you work around one) | [`docs/GAPS.md`](./docs/GAPS.md) — the standing register of found-and-proven, not-yet-closed gaps, with the verb that would close each one. Read it before hand-rolling around something, and file into it when you decline to build. |
 | **render one spread** | `compose-spread/scripts/render_spread.py` |
-| **render / compile / conform a cover** | `cover/scripts/render_cover.py`, `compile_cover.py`, `conform_cover.py` |
+| **render / compile / conform a cover** | `cover/scripts/render_cover.py`, `compile_cover.py`, `conform_cover.py` — `render_cover.py --out .../cover-raw.png` ALSO publishes `cover.png` + its recipe (v0.33). **Never `cp cover-raw.png cover.png`**; the hand copy failed `book-doctor` on `provenance cover.png` until its sidecar was hand-copied too. |
 | **make an explanatory plate** (diagram-style) | `explanatory-plate/scripts/plate.py` |
 
 Engine verbs (`python3 -m agenticstory.cli <verb>` from `engine/`):

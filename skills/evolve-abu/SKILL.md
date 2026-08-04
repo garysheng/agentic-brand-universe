@@ -70,6 +70,20 @@ run it, so a change is not live until he does.
    (the relevant skill's method, a form's PROMPT.md, a repo CLAUDE.md) and stop. A catalog
    read at session start loses to an instruction read at the point of use.
 
+   **Then read `docs/GAPS.md`, the standing register of known-open gaps.** It says whether
+   this one has already been found, what the evidence was, which verb closes it, and why it
+   is still open — so a second session neither re-discovers it from scratch nor lands a
+   half-fix beside a planned one.
+
+0b. **RECORD A GAP YOU ARE NOT GOING TO BUILD TODAY.** Some gaps are real, proven, and still
+   the wrong thing to land right now: an engine or SPEC change with sibling sessions
+   mid-render, a refusal that would stop work in flight, a fix that wants doing once for a
+   whole defect class rather than four times. Those go in `docs/GAPS.md` with their evidence
+   and their next invocation, NOT into SAVE-LOG alone. This rule is paid for: the v0.32
+   changelog records a gap that "had been FOUND AND FILED in this repo's own save log two
+   days earlier and declined, and the next book paid for it by hand-negating an oil lamp and
+   a clay jar in all 27 of its spreads." A chronological log is written once and read never.
+
 1. **Name the gap in one line** (what was hand-rolled, why the framework should own it). If it is genuinely universe-specific, STOP — it does not belong here; keep it in the universe.
 2. **Pick the level:**
    - *A skill is missing or wrong* → add/edit `agenticstory/skills/<name>/SKILL.md` (+ `scripts/`). New skill: match the frontmatter shape (`name` + a dense `description` with trigger phrases), keep it universe-agnostic (takes a target universe/pack; hardcodes nothing).

@@ -135,6 +135,13 @@ Two structural causes worth checking for while you are in there:
 - **LEAVE.** Genuinely one-off. Say so explicitly, so the next reader knows it was
   considered and declined rather than missed.
 
+**A PAVE / BUG / GATE row you are not building TODAY goes in `docs/GAPS.md`,** the standing
+register of known-open gaps, with its evidence, its next invocation, and why it is still
+open. Not SAVE-LOG, and not only your report: both are chronological, and this framework has
+already lost a filed gap that way once (SPEC v0.32's changelog names the book that paid for
+it). "Not yet" is a legitimate answer here; "not written down anywhere anyone will look" is
+not.
+
 ### 3. Build it. Do not merely route it.
 
 - PAVE / BUG → `evolve-abu`, and see it THROUGH: the edit, the test that proves it,

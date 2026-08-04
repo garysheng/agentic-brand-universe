@@ -23,11 +23,13 @@ Usage:
 """
 import argparse
 import hashlib
-import json
 import pathlib
 import sys
 
 from PIL import Image, ImageDraw, ImageFilter
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from cover_provenance import write_derivative_recipe  # noqa: E402
 
 
 def _sha16(p: "pathlib.Path") -> str:
@@ -52,45 +54,16 @@ def _write_derivative_recipe(args, src_size, out_size) -> "pathlib.Path | None":
     recipe and hash. It carries `spec`/`universe`/`story` forward from the source recipe
     when there is one, so the chain back to the canon that made the art is unbroken.
     """
-    out = pathlib.Path(args.out)
-    src = pathlib.Path(args.src)
-    src_recipe = src.with_name(src.name + ".recipe.json")
-    carried = {}
-    if src_recipe.exists():
-        try:
-            s = json.loads(src_recipe.read_text())
-            carried = {k: s[k] for k in ("spec", "universe", "story") if k in s}
-        except (json.JSONDecodeError, OSError):
-            carried = {}
-    rec = {
-        "asset": str(out),
-        "model": "none (deterministic image transform, no model call)",
-        "mode": "derive",
-        "tool": "abu:cover/scripts/conform_cover.py",
-        "args": {"aspect": args.aspect, "mode": args.mode, "inset": args.inset,
-                 "blur": args.blur, "keyline": args.keyline},
-        "prompt": None,
-        "transform": f"{src_size[0]}x{src_size[1]} -> {out_size[0]}x{out_size[1]}",
-        "inputs": [{"path": str(src), "sha256_16": _sha16(src), "role": "source render"}],
-        "sha256_16": _sha16(out),
-        "derivedFrom": {
-            "path": str(src),
-            "recipe": str(src_recipe) if src_recipe.exists() else None,
-            "sha256_16": _sha16(src),
-        },
-        "note": ("DERIVATIVE, not a generation. The cover was conformed to the reader "
-                 "platform's page aspect by conform_cover.py. No image model was called "
-                 "and no pixels of the sharp art were repainted; see derivedFrom for the "
-                 "recipe of the render this came from."),
-        **carried,
-    }
-    try:
-        out.with_name(out.name + ".recipe.json").write_text(
-            json.dumps(rec, indent=2) + "\n")
-    except OSError as e:
-        print(f"WARNING: could not write provenance beside {out}: {e}", file=sys.stderr)
-        return None
-    return out.with_name(out.name + ".recipe.json")
+    return write_derivative_recipe(
+        args.out, args.src,
+        tool="abu:cover/scripts/conform_cover.py",
+        args={"aspect": args.aspect, "mode": args.mode, "inset": args.inset,
+              "blur": args.blur, "keyline": args.keyline},
+        transform=f"{src_size[0]}x{src_size[1]} -> {out_size[0]}x{out_size[1]}",
+        note=("DERIVATIVE, not a generation. The cover was conformed to the reader "
+              "platform's page aspect by conform_cover.py. No image model was called "
+              "and no pixels of the sharp art were repainted; see derivedFrom for the "
+              "recipe of the render this came from."))
 
 
 def _bleed(im, cw, ch, blur):

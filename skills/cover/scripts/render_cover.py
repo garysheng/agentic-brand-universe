@@ -23,6 +23,55 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from cover_provenance import write_derivative_recipe  # noqa: E402
+
+
+def platform_path(out: Path) -> Path | None:
+    """The platform-facing sibling of a `-raw` render, or None if there is none.
+
+    `<anything>-raw.png` -> `<anything>.png`. Nothing else triggers, so passing
+    `--out cover.png` behaves exactly as it always has and no book gains a file it
+    did not ask for.
+    """
+    stem = out.stem
+    return out.with_name(stem[:-4] + out.suffix) if stem.endswith("-raw") else None
+
+
+def publish_platform_copy(out: Path) -> Path | None:
+    """Emit the file the platform actually ships, WITH its provenance.
+
+    THE TWO-LINE MANUAL STEP THIS REPLACES. `render_cover.py --out .../cover-raw.png`
+    wrote `cover-raw.png` + its recipe, already conformed to 3:4, and stopped. The
+    staging layer wants `cover.png`, so every single book run ended with a hand
+    `cp cover-raw.png cover.png` — and then `book_doctor` FAILED with "provenance
+    cover.png: no recipe.json beside the asset" until the sidecar was hand-copied too.
+    Mechanical, certain to recur, and it blocked the healthy verdict on a book that was
+    otherwise finished. Named on An Amazing Sex Life (nation-of-fire, 2026-08-04); the
+    same two files sit beside every shipped Nation of Fire book on disk, which is the
+    convention this now produces instead of asking for.
+
+    The copy is byte-identical, so the recipe is honest by construction: same bytes,
+    same hash, and `derivedFrom` points at the raw plus its own recipe, which is the
+    record of the generation. A hand-copied sidecar could not say that — the one on
+    An Amazing Sex Life claims `asset: cover-raw.png` while sitting beside cover.png.
+    """
+    dst = platform_path(out)
+    if dst is None:
+        return None
+    dst.write_bytes(out.read_bytes())
+    write_derivative_recipe(
+        dst, out,
+        tool="abu:cover/scripts/render_cover.py",
+        args={"publish": "platform-facing copy of the conformed cover"},
+        transform="copy (byte-identical; no resample, no crop, no repaint)",
+        role="conformed cover",
+        note=("DERIVATIVE, not a generation. This is the platform-facing name for the "
+              "conformed cover: byte-identical to the file in derivedFrom, which "
+              "carries the recipe of the render that made the art. Published by "
+              "render_cover.py so that the copy and its provenance can never be done "
+              "by hand, or half-done."))
+    return dst
 
 
 def _abu_root() -> Path:
@@ -43,6 +92,11 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-mark", action="store_true")
     ap.add_argument("--print-prompt", action="store_true")
+    ap.add_argument("--no-platform-copy", action="store_true",
+                    help="do NOT publish the `-raw` render under its platform-facing "
+                         "name (cover-raw.png -> cover.png + recipe). The copy is on by "
+                         "default because every book needs it and hand-copying it fails "
+                         "book-doctor's provenance check.")
     # compile_cover.py has accepted --scene and --anchor-ref since it was written, and this
     # wrapper silently dropped both. A cover therefore could not state its own composition,
     # and the register anchor's SUBJECT (an oil lamp and a clay jar, for nation-of-fire) leaked
@@ -117,6 +171,10 @@ def main() -> int:
             return 1
 
     print(f"cover: OK -> {out}")
+    if not a.no_platform_copy:
+        dst = publish_platform_copy(out)
+        if dst:
+            print(f"cover: published platform-facing copy -> {dst} (+ .recipe.json)")
     print("NOT DONE YET: read the title back glyph by glyph against the BAKED TEXT above. "
           "A typo means regenerate the whole cover, never patch the lettering.")
     return 0

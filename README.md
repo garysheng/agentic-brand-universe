@@ -22,6 +22,8 @@ rendered from.
 - **The architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — how the layers fit, what the
   linter checks, and where hosted execution is headed (aspirational, see SPEC §14; everything here runs
   locally today). Diagrams included (hand-authored SVG; there is no generator for them yet).
+- **The known gaps:** [`docs/GAPS.md`](./docs/GAPS.md) — found and proven by a real run, not yet
+  closed, each with the evidence, the verb that would close it, and why it is still open.
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
   canon), and [`hyperagentic-age`](https://github.com/garysheng/hyperagentic-age), a public universe
@@ -55,14 +57,14 @@ retired and why, and [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the layer
 <!-- BEGIN GENERATED: status -->
 |  | Value | Source |
 |---|---|---|
-| Spec | v0.32 | `SPEC.md`, dated 2026-08-04 |
-| Engine conforms to | v0.32 | `engine/agenticstory/__init__.py` |
+| Spec | v0.33 | `SPEC.md`, dated 2026-08-04 |
+| Engine conforms to | v0.33 | `engine/agenticstory/__init__.py` |
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 34 | `skills/*/SKILL.md` |
 | CLI verbs | 24 | `abu --help` |
 | Agents | 1 | `agents/*.md` |
 | Commands | 1 | `commands/*.md` |
-| Tests | 1208 | across 63 files; `./run-tests.sh` |
+| Tests | 1226 | across 64 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,

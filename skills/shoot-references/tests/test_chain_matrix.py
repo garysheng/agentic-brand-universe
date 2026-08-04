@@ -661,6 +661,118 @@ class TestRegisterOverride(unittest.TestCase):
         self.assertIn("not on disk", r.stderr)
 
 
+class TestDeclaredStylePack(unittest.TestCase):
+    """A universe that DECLARES identity.register.stylePack must not be shot against
+    identity.register.anchor by accident.
+
+    THE DEFECT, 2026-08-04, nation-of-fire. That universe declares both:
+
+        identity.register.stylePack = reference/style/nof-soft-painterly
+        identity.register.anchor    = reference/the-readiness-lamp/hero.png
+
+    and its own stylePackNote says the pack exists BECAUSE the lamp anchor has a
+    SUBJECT that is returned wholesale on a sparse render, naming two failures that
+    same day where it was. This resolver went to the lamp anyway, the seed for
+    `the-sealed-spring` came back fully PHOTOREAL — the register's own top rejected
+    pole — and it was only recovered by finding the pack by hand and passing
+    `--register nof-soft-painterly`, which was right on the first re-shot. One wasted
+    paid image, and a whole seven-shot matrix if the seed had been blessed.
+
+    SPEC 4.7 has described the field since v0.12 and no compiler read it, which made
+    it possible to declare a pack, score for it in universe-doctor, and never shoot
+    against it.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = build(Path(self.tmp.name))
+        pack = self.root / "reference" / "style" / "inky"
+        png(pack / "refs" / "anchor.png")
+        (pack / "pack.json").write_text(json.dumps({
+            "id": "inky", "name": "Inky", "anchor": "refs/anchor.png",
+            "rejectedPoles": ["crayon", "pastel"]}))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _register(self, **changes):
+        uni = json.loads((self.root / "universe.json").read_text())
+        reg = uni["identity"]["register"]
+        for k, v in changes.items():
+            if v is None:
+                reg.pop(k, None)
+            else:
+                reg[k] = v
+        (self.root / "universe.json").write_text(json.dumps(uni))
+
+    def test_declaring_both_refuses_at_plan_time_and_names_both_ways_out(self):
+        self._register(stylePack="inky")
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("reference/register/anchor.png", r.stderr)
+        self.assertIn("inky", r.stderr)
+        self.assertIn("--register inky", r.stderr)
+        self.assertIn("--no-style-pack", r.stderr)
+
+    def test_the_refusal_costs_nothing(self):
+        """It fires from build_plan, before any generation, so the ambiguity is
+        resolved for free rather than for the price of a seed."""
+        self._register(stylePack="inky")
+        sys.path.insert(0, str(SCRIPTS))
+        import chain_matrix
+        with self.assertRaises(chain_matrix.Refuse):
+            chain_matrix.build_plan(self.root, "room")
+
+    def test_register_override_still_wins_over_a_declared_pack(self):
+        self._register(stylePack="inky")
+        r = run(self.root, "--register", "inky", "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("register=inky", r.stdout)
+
+    def test_no_style_pack_shoots_the_identity_anchor_deliberately(self):
+        self._register(stylePack="inky")
+        r = run(self.root, "--no-style-pack", "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("register=test register", r.stdout)
+        neg = [l for l in r.stdout.splitlines() if l.startswith("negatives:")][0]
+        self.assertIn("photoreal", neg)
+
+    def test_a_pack_only_register_resolves_from_the_pack(self):
+        """SPEC 4.7 full mode, which no compiler implemented. This branch cannot
+        change any existing render: a register with no inline anchor previously hit
+        the 'anchor is null' refusal and could not shoot at all."""
+        self._register(stylePack="inky", anchor=None)
+        sys.path.insert(0, str(SCRIPTS))
+        import chain_matrix
+        plan = chain_matrix.build_plan(self.root, "room")
+        self.assertEqual(plan["anchor"], "reference/style/inky/refs/anchor.png")
+        self.assertEqual(plan["register"], "inky")
+        self.assertIn("crayon", plan["poles"])
+        self.assertNotIn("photoreal", plan["poles"])
+
+    def test_style_pack_may_be_a_path_because_real_universes_write_one(self):
+        """SPEC 4.7 spells the field "<id-or-path>"; nation-of-fire uses the path."""
+        self._register(stylePack="reference/style/inky", anchor=None)
+        sys.path.insert(0, str(SCRIPTS))
+        import chain_matrix
+        plan = chain_matrix.build_plan(self.root, "room")
+        self.assertEqual(plan["anchor"], "reference/style/inky/refs/anchor.png")
+        self.assertEqual(plan["register"], "inky")
+
+    def test_a_universe_with_no_style_pack_is_completely_unchanged(self):
+        """The whole point of shipping this as a refusal: every universe that has not
+        declared a pack shoots exactly what it shot yesterday."""
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("register=test register", r.stdout)
+
+    def test_null_anchor_with_no_pack_still_refuses_as_before(self):
+        self._register(anchor=None)
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("not locked", r.stderr)
+
+
 class TestMultiLineHeaders(unittest.TestCase):
     """A header that spans lines must contribute ALL of it.
 

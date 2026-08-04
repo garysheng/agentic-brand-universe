@@ -1,10 +1,38 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.32 — 2026-08-04.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.33 — 2026-08-04.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.33 changelog — three surfaces that each assumed a name meant a thing.** Paved out of
+> the *An Amazing Sex Life* run (nation-of-fire, 2026-08-04). **(1)** No check may infer an
+> entity's reference folder from its id (§3.5, id-is-not-the-folder). `audit_spec_refs.py`
+> assumed `reference/<entity-id>/` and so could not see an entity whose art was deliberately
+> re-foldered: it reported the Apostle as "being drawn from prose" four times in one book,
+> on the same lines its own ref column listed ten of his plates. It reads the entity's
+> declared paths now — sheets, alt-look sheets and anchor photos, contract slots, photo
+> stack — and warns only when NONE of them arrived. Second instance of the class the caption
+> check opened in v0.29: a check that is wrong every time it fires trains its operator to
+> ignore it, and the true positive underneath is identical. **(2)** A byte copy is a
+> transform and owns its recipe (§3.2). `render_cover.py` wrote `cover-raw.png` and stopped
+> one step short of `cover.png`, so every book ended with a hand `cp` and then a
+> `book-doctor` FAIL on `provenance cover.png` until the sidecar was hand-copied too; it
+> publishes both now, byte-identical, with a `derived` recipe naming the raw and the raw's
+> own recipe. The hand-copied sidecars on disk claim `asset: cover-raw.png` while sitting
+> beside `cover.png`, which a generated one cannot. **(3)** A declared
+> `identity.register.stylePack` binds the reference SHOOT (§4.7). Full mode was described
+> from v0.12 and read by no compiler, so a universe could declare a pack, score for it in
+> `universe-doctor`, and never shoot against it: nation-of-fire's seed for `the-sealed-spring`
+> was shot against the inline anchor and came back fully PHOTOREAL, that register's own top
+> rejected pole, on the same day its `stylePackNote` recorded two other renders returning
+> the anchor's subject wholesale. A register declaring ONLY a pack now resolves from it
+> (previously it could not shoot at all); a register declaring BOTH REFUSES at plan time and
+> names both ways out. Backward compatible: the shoot default is unchanged for every universe
+> that has not declared a pack, canon renders still read `identity.register.anchor`, and
+> every addition is a new refusal or a new sidecar rather than a change to an existing
+> contract.
 
 > **v0.32 changelog — three compilers passed the same anchor and only two obeyed the same
 > law.** Paved out of the *Why We Are the Luckiest Generation* run (nation-of-fire). **(1)**
@@ -663,6 +691,19 @@ asset` and FAILED every book that conformed a cover, and two book runs hand-wrot
 rather than fixing the tool. A transform that produces a shipped asset owns its provenance, exactly
 as a generator does.
 
+**A byte copy is a transform, and the step that makes it owns its recipe too (v0.33).** The rule
+above closed the hole one step upstream of where books were actually failing. `render_cover.py --out
+.../cover-raw.png` left the conformed render and its recipe on disk and stopped; the staging layer
+wants `cover.png`, so every book run finished with a hand `cp`, and `book-doctor` then failed on
+`provenance cover.png` until the sidecar was hand-copied after it. Two mechanical lines, certain to
+recur on every book, blocking the healthy verdict on a finished one. `render_cover.py` now PUBLISHES
+the platform-facing name itself: any `--out <name>-raw.<ext>` also emits `<name>.<ext>` as a
+byte-identical copy plus a `derived` recipe whose `derivedFrom` names the raw and the raw's own
+recipe, so the chain back to the generation is unbroken and the two hashes provably agree. Nothing
+else triggers, so `--out cover.png` behaves as it always did, and `--no-platform-copy` opts out. A
+hand-copied sidecar could not have said any of this: the copies on disk claim
+`asset: .../cover-raw.png` while sitting beside `cover.png`.
+
     abu import-asset <universe> <dest-rel> --from <src> \
       --from-repo <repo> --from-path <path-in-repo> --from-sha <sha> \
       --crop x0,y0,x1,y1 --source-generator gpt-image-2 --source-prompt-file <f> \
@@ -755,6 +796,20 @@ Three wired mechanisms, applied at defined points:
     `spread-30-closing`). The fixed list contradicted itself: an unrecognised id was demanded at
     landscape interior aspect by one check and at portrait endcap aspect by another, so no file could
     satisfy both and the only escape was renaming the spec id.
+
+**AN ENTITY'S ID IS NOT A PROMISE ABOUT WHERE ITS ART LIVES (v0.33).** No check may infer an
+entity's reference folder from its id; it reads the paths the entity itself declares
+(`structured.sheets`, every `altLooks.<key>` anchorPhoto and sheet, the `contract` slots, a
+realPerson `photoStack`), and only the id when the entity declares no path at all. `reference/<id>/`
+is a scaffolder's default, not a contract: `add-character` puts the folder there and canon is free
+to point anywhere afterwards, which universes do deliberately (nation-of-fire keeps every plate of
+`apostle-lee` under `reference/apostle-delmar-lee-coward-jr/` by written universe law: one folder,
+one man). `audit_spec_refs.py` assumed the default and so reported "casts `apostle-lee` but NO
+reference image from `reference/apostle-lee/` was passed... it is being drawn from prose" four times
+in one book, on the same lines where its own ref column listed ten of his plates. Same rule as the
+caption check above: **a check that is wrong every time it fires trains its operator to ignore it**,
+and this one is otherwise load-bearing, because the true positive it exists to catch — a cast entity
+whose plates never reach the model — reads identically.
 
 ## 4. Primitives (the schemas)
 
@@ -1122,6 +1177,31 @@ them" — which has no recurring-identity requirement and therefore no need for 
   `stylePack: "<id-or-path>"` to source its `anchor` + `rejectedPoles` from a pack instead of inlining
   them, so a universe's canon renders and a one-off image share ONE definition of the look. Registers
   that inline their anchor stay valid; the field is additive.
+- **A declared `stylePack` binds the reference SHOOT (v0.33).** Full mode was described here from
+  v0.12 and read by no compiler: `universe-doctor` scored whether the path resolved, and nothing
+  consumed it, so a universe could declare a pack, score for it, and never once shoot against it.
+  `shoot-references` (`chain_matrix.py`) now resolves the register in three cases.
+
+  | register declares | a shoot uses |
+  |---|---|
+  | `stylePack`, no inline `anchor` | the PACK — this is full mode, finally implemented |
+  | `anchor` only | the inline anchor, exactly as before |
+  | BOTH | **REFUSES at plan time**, naming both and the two ways out |
+
+  The refusal exists because the two are different pictures and only the author knows which is
+  wanted. `nation-of-fire` declares both, and its own `stylePackNote` says the pack exists BECAUSE
+  the inline anchor has a SUBJECT that comes back wholesale on a sparse render, naming two failures
+  on 2026-08-04 where it did. A third followed that day: a seed shot against the inline anchor
+  returned fully PHOTOREAL, that register's own top rejected pole, and was fixed on the first
+  re-shot by passing `--register <pack>`. A reference shoot is the sparsest render there is (one
+  subject, no scene), so it is where an anchor's subject is returned rather than merely leaking.
+  `--register <id-or-path>` answers the refusal one way and `--no-style-pack` the other; both are
+  free, and the refusal fires before any generation.
+
+  **Scope, deliberately narrow.** This changes the SHOOT only. `compose-spread` and `cover` still
+  read `identity.register.anchor` for canon renders, so no book renders differently. Making the pack
+  the silent default for shoots would have made the reference matrix and the book disagree about the
+  look with nothing said out loud; a refusal costs one flag and states the disagreement instead.
 - **Portable (mirrors §3a self-containment).** A pack resolves every ref within its own folder, so it
   can be copied anywhere and still generate. A pack may live standalone OR inside a universe
   (`reference/style/<pack>/`); the skill only ever needs the pack path.

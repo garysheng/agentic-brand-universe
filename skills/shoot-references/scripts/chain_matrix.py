@@ -592,7 +592,34 @@ def marker(refdir: Path, shot: str) -> Path:
     return refdir / f"{shot}.golden.json"
 
 
-def resolve_register(uroot: Path, uni: dict, override=None):
+def _pack_dir(spec: str) -> Path:
+    """A pack is named by ID (`nof-soft-painterly`) or by universe-relative PATH
+    (`reference/style/nof-soft-painterly`). `identity.register.stylePack` is spelled
+    "<id-or-path>" in SPEC 4.7 and real universes use the path form, so both resolve
+    here rather than at each call site."""
+    return Path(spec) if "/" in spec else Path("reference") / "style" / spec
+
+
+def _load_pack(uroot: Path, spec: str, why: str):
+    """(anchor, poles, id, anchorSubject) from a Style Pack, or Refuse."""
+    pack_rel = _pack_dir(spec)
+    pack_file = uroot / pack_rel / "pack.json"
+    if not pack_file.exists():
+        raise Refuse(f"{why}: no Style Pack at {pack_file}")
+    pack = load(pack_file)
+    a = pack.get("anchor")
+    if not a:
+        raise Refuse(f"{why}: {pack_file} declares no anchor")
+    # A pack's `anchor` is relative to the pack dir; every other path here is
+    # universe-relative, so normalise it once rather than at each use site.
+    anchor = str(pack_rel / a)
+    if not (uroot / anchor).exists():
+        raise Refuse(f"{why}: anchor not on disk: {uroot / anchor}")
+    return (anchor, list(pack.get("rejectedPoles", [])),
+            pack.get("id") or Path(spec).name, pack.get("anchorSubject"))
+
+
+def resolve_register(uroot: Path, uni: dict, override=None, no_style_pack=False):
     """Which Style Pack this matrix is shot in.
 
     Defaults to `identity.register`, which is correct for a universe that has
@@ -603,36 +630,77 @@ def resolve_register(uroot: Path, uni: dict, override=None):
     and a sheet in the wrong medium is a weaker identity reference than one in
     the right medium. Hence the override.
 
+    A DECLARED `identity.register.stylePack` IS NOT A DECORATION (added 2026-08-04).
+    SPEC 4.7 full mode says a register MAY set `stylePack` to source its `anchor` and
+    `rejectedPoles` from a pack "instead of inlining them", and until now NO compiler
+    read the field: `universe-doctor` scored whether it resolved and nothing else in
+    the framework consumed it. So this resolver went straight to the inline anchor and
+    a universe could declare a pack, score points for it, and never shoot against it.
+
+    Two cases, and they are different questions:
+
+      * **`stylePack` declared, no inline `anchor`.** The pack IS the register, exactly
+        as 4.7 describes. Shoot against it. This branch changes no existing render
+        anywhere, because such a universe previously hit the "anchor is null" refusal
+        below and could not shoot at all.
+      * **BOTH declared.** Genuinely ambiguous, and only the author knows the answer,
+        so this REFUSES and names both. It is not a hypothetical: nation-of-fire
+        declares `anchor: reference/the-readiness-lamp/hero.png` AND
+        `stylePack: reference/style/nof-soft-painterly`, and its own `stylePackNote`
+        says the pack exists BECAUSE the lamp anchor has a subject that comes back
+        wholesale on a sparse render, naming two failures on 2026-08-04 where exactly
+        that happened. A third followed the same day inside this resolver: the seed for
+        `the-sealed-spring` was shot against the lamp and came back fully PHOTOREAL,
+        which is that register's own top rejected pole. One paid image wasted, and a
+        whole seven-shot matrix would have been if the seed had been blessed. The pack
+        was found by hand and `--register nof-soft-painterly` fixed it on the first
+        re-shot.
+
+    Refusing rather than silently switching the default is deliberate. A shoot is paid
+    generation, the two anchors produce genuinely different plates, and a universe's
+    canon renders (compose-spread, cover) still read `identity.register.anchor` — so
+    quietly changing what a shoot renders against would have made the reference matrix
+    and the book disagree with nothing said out loud. One flag at plan time, before any
+    spend, is the cheaper end of that trade.
+
     Returns (universe-relative anchor path, rejected poles, register id, anchor subject).
     """
-    if not override:
-        reg = (uni.get("identity") or {}).get("register") or {}
-        anchor = reg.get("anchor")
-        if not anchor:
-            raise Refuse(
-                "identity.register.anchor is null: the universe style is not locked; "
-                "do not generate")
-        return (anchor, list(reg.get("rejectedPoles", [])), reg.get("name"),
-                reg.get("anchorSubject"))
+    if override:
+        return _load_pack(uroot, override, f"--register {override}")
 
-    pack_rel = Path("reference") / "style" / override
-    pack_file = uroot / pack_rel / "pack.json"
-    if not pack_file.exists():
-        raise Refuse(f"--register {override}: no Style Pack at {pack_file}")
-    pack = load(pack_file)
-    a = pack.get("anchor")
-    if not a:
-        raise Refuse(f"--register {override}: {pack_file} declares no anchor")
-    # A pack's `anchor` is relative to the pack dir; every other path here is
-    # universe-relative, so normalise it once rather than at each use site.
-    anchor = str(pack_rel / a)
-    if not (uroot / anchor).exists():
-        raise Refuse(f"--register {override}: anchor not on disk: {uroot / anchor}")
-    return anchor, list(pack.get("rejectedPoles", [])), override, pack.get("anchorSubject")
+    reg = (uni.get("identity") or {}).get("register") or {}
+    anchor, pack_spec = reg.get("anchor"), reg.get("stylePack")
+
+    if pack_spec and not no_style_pack:
+        if not anchor:
+            return _load_pack(uroot, pack_spec,
+                              f"identity.register.stylePack {pack_spec!r}")
+        raise Refuse(
+            "this universe declares BOTH identity.register.anchor and "
+            "identity.register.stylePack, and they are not the same picture:\n"
+            f"  anchor:    {anchor}\n"
+            f"  stylePack: {pack_spec}\n"
+            "A reference shoot is sparse by nature (one subject, no scene), which is "
+            "exactly where an anchor's OWN SUBJECT is returned wholesale instead of "
+            "leaking subtly, so the choice decides what you pay for. Say which:\n"
+            f"  --register {Path(pack_spec).name}   shoot in the declared Style Pack "
+            "(usually right: a pack anchor is normally content-neutral)\n"
+            "  --no-style-pack               shoot against identity.register.anchor "
+            "deliberately\n"
+            "Read the register's own stylePackNote/anchorNote before choosing; a "
+            "universe that has written one has usually already recorded which anchor "
+            "leaked and when.")
+
+    if not anchor:
+        raise Refuse(
+            "identity.register.anchor is null: the universe style is not locked; "
+            "do not generate")
+    return (anchor, list(reg.get("rejectedPoles", [])), reg.get("name"),
+            reg.get("anchorSubject"))
 
 
 def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
-               register_override=None, look=None):
+               register_override=None, look=None, no_style_pack=False):
     """`look` shoots a DECLARED ALT-LOOK (an era body, a wardrobe state) instead of the
     default matrix.
 
@@ -654,7 +722,8 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         and passing it drags the old body into the new one.
     """
     uni = load(uroot / "universe.json")
-    anchor, poles, register_id, anchor_subject = resolve_register(uroot, uni, register_override)
+    anchor, poles, register_id, anchor_subject = resolve_register(
+        uroot, uni, register_override, no_style_pack=no_style_pack)
 
     ent = load(uroot / "canon" / "entities" / f"{eid}.json")
     kind = ent.get("kind", "character")
@@ -1042,14 +1111,23 @@ def _main() -> int:
                          "accepted shots ride along. Unbounded accumulation makes every "
                          "step a larger upload than the last until the final shots of a "
                          "big matrix time out. 0 disables the cap.")
-    ap.add_argument("--register", metavar="ID",
+    ap.add_argument("--register", metavar="ID_OR_PATH",
                     help="Shoot the matrix in the Style Pack at "
-                         "reference/style/<ID>/ instead of the universe's "
+                         "reference/style/<ID>/ (a universe-relative path also works) "
+                         "instead of the universe's "
                          "identity.register. For a MULTI-REGISTER universe, where "
                          "identity.register names only the default and each look is "
                          "its own pack: an entity whose story declares a different "
                          "register needs its sheets shot in the medium it is actually "
-                         "rendered in. Defaults to the universe register.")
+                         "rendered in. Defaults to the universe register, or to a "
+                         "declared identity.register.stylePack when the register has "
+                         "no inline anchor.")
+    ap.add_argument("--no-style-pack", dest="no_style_pack", action="store_true",
+                    help="shoot against identity.register.anchor even though the "
+                         "universe declares identity.register.stylePack. Only needed "
+                         "to answer the refusal a universe that declares BOTH raises: "
+                         "the two anchors are different pictures and a shoot is sparse "
+                         "enough that the anchor's own subject comes back whole.")
     # STAR TOPOLOGY: every state off the SEED, never off a sibling (v0.31).
     #
     # The default chain is cumulative, and for a matrix whose shots are ANGLES on one
@@ -1089,7 +1167,8 @@ def _main() -> int:
     try:
         plan = build_plan(uroot, args.entity, args.seed,
                           args.shots.split(",") if args.shots else None,
-                          register_override=args.register, look=args.look)
+                          register_override=args.register, look=args.look,
+                          no_style_pack=args.no_style_pack)
     except Refuse as e:
         print(f"REFUSE: {e}", file=sys.stderr)
         return 2

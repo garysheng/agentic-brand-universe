@@ -45,6 +45,82 @@ def entities_in_refs(uroot: Path, refs: list[str]) -> set[str]:
     return out
 
 
+def declared_paths(ent: dict) -> list[str]:
+    """EVERY reference path this entity itself declares, across all four homes.
+
+    `structured.sheets` (including a typed {path, role} slot), every `altLooks.<key>`
+    anchorPhoto and sheet, the `contract` slots a setting / visual-metaphor hangs its
+    art off, and a realPerson's `photoStack`. This is deliberately a UNION and not a
+    resolution: the question here is only "which folders is this entity's art in", so
+    a plate that a given spread would not select still counts.
+    """
+    st = ent.get("structured") or {}
+    out: list[str] = []
+
+    def take(v):
+        p = ap._sheet_path(v)
+        if p:
+            out.append(p)
+
+    for v in (st.get("sheets") or {}).values():
+        take(v)
+    for al in (st.get("altLooks") or {}).values():
+        if not isinstance(al, dict):
+            continue
+        take(al.get("anchorPhoto"))
+        for v in (al.get("sheets") or {}).values():
+            take(v)
+    con = ent.get("contract") or st.get("contract") or {}
+    if isinstance(con, dict):
+        for k in ("turnaround", "master", "blueprint", "scalePlate"):
+            take(con.get(k))
+        for v in (con.get("plates") or {}).values():
+            take(v)
+        for v in con.get("emptyPlates") or []:
+            take(v)
+    rp = ent.get("realPerson") or st.get("realPerson") or {}
+    if isinstance(rp, dict):
+        ps = rp.get("photoStack")
+        if isinstance(ps, str):
+            out.append(ps)
+        elif isinstance(ps, list):
+            out.extend(x for x in ps if isinstance(x, str))
+    return out
+
+
+def declared_ref_dirs(uroot: Path, eid: str) -> set[str]:
+    """The reference FOLDERS this entity's own canon points at, never its id.
+
+    AN ENTITY'S ID IS NOT A PROMISE ABOUT WHERE ITS ART LIVES. This check used to
+    assume `reference/<entity-id>/` and warn whenever no ref came out of that exact
+    folder, so an entity whose art was deliberately re-foldered was reported as
+    "drawn from prose" on every spread that cast it, while the audit's own ref line
+    listed its plates two columns to the left.
+
+    Earned 2026-08-04 on An Amazing Sex Life (nation-of-fire). The Apostle is one man
+    in one folder by explicit universe law — all his art is under
+    `reference/apostle-delmar-lee-coward-jr/` while the canon id stays `apostle-lee`,
+    which is the id every story and every render-spec casts. The warning fired four
+    times in one book, on a book where all ten of his plates reached the model. A
+    check that is wrong every time it fires trains its operator to ignore it, and this
+    one is otherwise load-bearing: the true positive it exists to catch (a cast entity
+    whose plates never arrive) looks identical.
+
+    Falls back to the id when the entity declares no paths at all, which is the
+    plateless-setting case: there is nothing else to compare against, and an entity
+    with no art anywhere still deserves the warning.
+    """
+    ent = ap.load_entity(uroot, eid)
+    dirs = set()
+    for p in declared_paths(ent):
+        parts = Path(str(p)).parts
+        if "reference" in parts:
+            i = parts.index("reference")
+            if len(parts) > i + 1:
+                dirs.add(parts[i + 1])
+    return dirs or {eid}
+
+
 def audit(uroot: Path, spec: dict) -> tuple[list[dict], list[str]]:
     rows, problems = [], []
     anchor_dir = None
@@ -86,13 +162,21 @@ def audit(uroot: Path, spec: dict) -> tuple[list[dict], list[str]]:
                 "leaks. Cast the entities this spread is actually about.")
 
         # Declared in cast, absent from refs: the canon exists and never arrived.
+        # Compared against the folders the ENTITY declares, not against its id, and
+        # against every folder that contributed (the anchor's included), because an
+        # entity that IS the register anchor did reach the model.
         for cid in cast_ids:
-            if cid not in contributing:
+            try:
+                want = declared_ref_dirs(uroot, cid)
+            except ap.Refuse:
+                continue  # unregistered id: build() already refused and said so
+            if not (want & ents):
+                where = ", ".join(f"reference/{d}/" for d in sorted(want))
                 problems.append(
-                    f"{sid}: casts {cid!r} but NO reference image from "
-                    f"reference/{cid}/ was passed. Its plates are not reaching the model, "
-                    "so it is being drawn from prose. Check the entity's "
-                    "requiredForRender, or name a `plate`/`pose` that exists.")
+                    f"{sid}: casts {cid!r} but NO reference image from {where} was "
+                    "passed. Its plates are not reaching the model, so it is being "
+                    "drawn from prose. Check the entity's requiredForRender, or name a "
+                    "`plate`/`pose` that exists.")
     return rows, problems
 
 

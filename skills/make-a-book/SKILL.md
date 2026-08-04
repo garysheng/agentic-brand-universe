@@ -413,7 +413,12 @@ regenerate from scratch on any typo.
 
 - **Conform the aspect with the framework tool, never a hand-rolled pad.** Models emit a
   producible 2:3; the reader wants 3:4. Flat side bars seam visibly against textured art. Use
-  `conform_cover.py --mode pad` (blurred self-bleed).
+  `conform_cover.py --mode pad` (blurred self-bleed). `render_cover.py` runs the conform for you.
+- **Never `cp cover-raw.png cover.png` (v0.33).** `render_cover.py --out .../cover-raw.png`
+  publishes the platform-facing `cover.png` itself, byte-identical and WITH its own recipe. The
+  hand copy was a two-line step on every book that then failed `book-doctor` on
+  `provenance cover.png` until the sidecar was hand-copied too. If you are typing `cp` here, you
+  are on the wrong path; `--no-platform-copy` opts out for a book that genuinely wants only the raw.
 - **The closing plate needs its OWN title-free art.** A baked-title cover leaves no untitled
   version to fall back on, and the plate sits behind the overlaid closing verse. Generate a
   dedicated clean plate with a calm, open lower half.

@@ -12,6 +12,21 @@ Turn a scaffolded entity's empty matrix slots into locked reference shots. This 
 ## Inputs
 - The target universe (a path with `universe.json`) and the entity id.
 - Read `identity.register` (anchor + rejectedPoles). If `register.anchor` is null, STOP: the universe's style is not locked. Point the operator at the start-universe style-lock step and do not generate.
+- **Read `identity.register.stylePack` too, and read the notes beside it.** A universe that declares a pack usually declares it BECAUSE its inline anchor misbehaved, and the note says how.
+
+### A declared `stylePack` is not a decoration (v0.33)
+
+A reference shoot is the sparsest render there is: one subject, no scene, and often nothing in frame but the style anchor. That is exactly where an anchor's own SUBJECT comes back wholesale instead of leaking subtly. So if the register declares a Style Pack, `chain_matrix.py` will not quietly shoot against the inline anchor:
+
+| register declares | the shoot uses |
+|---|---|
+| `stylePack`, no inline `anchor` | the PACK (SPEC §4.7 full mode) |
+| `anchor` only | the inline anchor, exactly as before |
+| BOTH | **REFUSES at plan time** — answer with `--register <id-or-path>` or `--no-style-pack` |
+
+Earned 2026-08-04 in nation-of-fire, which declares both. Its own `stylePackNote` records two renders that came back as the anchor's oil lamp and clay jar; the shoot that afternoon made a third, a seed that returned fully PHOTOREAL, that register's top rejected pole. Passing `--register nof-soft-painterly` was right on the first re-shot. The refusal is free and fires before any generation; a wrong seed is a paid image, and a blessed wrong seed is a whole matrix.
+
+**Before answering the refusal, read the register's `anchorNote` / `stylePackNote`.** A universe that wrote one has usually already recorded which anchor leaked, when, and into what.
 
 ### Multi-register universes: `--register <pack-id>`
 
