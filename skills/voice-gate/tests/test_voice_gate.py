@@ -143,6 +143,41 @@ class VoiceGate(unittest.TestCase):
             self.assertTrue(stubs)
             self.assertEqual(stubs[0]["rule"], "totalizing-emphasis")
 
+    # --- universe-local oneWord terms ----------------------------------------
+
+    def test_one_word_term_does_not_fire_on_a_shared_prefix(self):
+        """The regression that blocked a whole manuscript over the word 'Christ'.
+
+        `oneWord: ["Christofuturist"]` used to compile to `Christ[ -]\\w`, so in a
+        universe whose books are about Jesus, every ordinary "Christ will", "Christ
+        was", "Christ and" was a BLOCKING misspelling. Caught on the Nation of Fire
+        book God Does Not Need Our Help, on the line "Christ will not come back
+        because we ended homelessness".
+        """
+        uni = {"identity": {"voice": {"capitalize": [], "oneWord": ["Christofuturist"]}}}
+        with tempfile.TemporaryDirectory() as d:
+            code, out = run(Path(d), "Christ will not come back because we ended it.\n",
+                            universe=uni)
+        self.assertNotIn("one-word-term", out)
+        self.assertEqual(code, 0, out)
+
+    def test_one_word_term_still_catches_a_real_split(self):
+        """The fix must not buy its silence by checking nothing."""
+        uni = {"identity": {"voice": {"capitalize": [], "oneWord": ["Christofuturist"]}}}
+        for bad in ("A Christo futurist village.", "A Christo-futurist village."):
+            with self.subTest(bad=bad), tempfile.TemporaryDirectory() as d:
+                code, out = run(Path(d), bad + "\n", universe=uni)
+            self.assertIn("one-word-term", out, bad)
+            self.assertNotEqual(code, 0, bad)
+
+    def test_one_word_term_leaves_the_correct_spelling_alone(self):
+        uni = {"identity": {"voice": {"capitalize": [], "oneWord": ["Christofuturist"]}}}
+        with tempfile.TemporaryDirectory() as d:
+            code, out = run(Path(d), "A Christofuturist village stands there.\n",
+                            universe=uni)
+        self.assertNotIn("one-word-term", out)
+        self.assertEqual(code, 0, out)
+
     # --- the published spec --------------------------------------------------
 
     def test_offline_falls_back_to_the_vendored_spec(self):

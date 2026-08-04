@@ -99,6 +99,26 @@ JUST_OK = re.compile(
     r"|ran|began|wrote|bought|taught|thought"
     r")\b", re.I)
 
+
+def one_word_split(term: str) -> str:
+    """Regex matching a `oneWord` term that has been SPLIT by a space or hyphen.
+
+    Anchored on the FULL term: every alternative is a real split point, so
+    prefix + suffix always reassembles into the term itself. The previous
+    implementation matched `term[:6] + r"[ -]\\w"`, a fixed six-character prefix
+    with anything after it, which in a Christian universe made `Christofuturist`
+    fire on the word "Christ" followed by any word at all. "Christ will not come
+    back" was reported as a BLOCKING misspelling of Christofuturist. The check
+    never caught a real defect that this one misses, because a genuine split of a
+    compound is exactly what this enumerates.
+    """
+    alts = "|".join(
+        rf"{re.escape(term[:i])}[ -]{re.escape(term[i:])}"
+        for i in range(1, len(term))
+    )
+    return rf"\b(?:{alts})\b"
+
+
 RULES: tuple[Rule, ...] = (
     # --- BLOCK: no judgment call exists. -----------------------------------------
     Rule("em-dash", BLOCK, re.compile(r"[—–]"),
@@ -263,7 +283,7 @@ def check_file(path: Path, voice: dict) -> list[Finding]:
 
         # Universe-local term rules. `oneWord` is mechanical; `capitalize` is not.
         for term in voice.get("oneWord") or []:
-            for m in re.finditer(rf"\b{re.escape(term[:6])}[ -]\w", raw, re.I):
+            for m in re.finditer(one_word_split(term), raw, re.I):
                 findings.append(Finding("one-word-term", BLOCK, where, raw.strip(),
                                         m.group(0), f"{term!r} must be one word"))
         for term in voice.get("capitalize") or []:
