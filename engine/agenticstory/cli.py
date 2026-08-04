@@ -11,6 +11,7 @@ Agentic Brand Universe CLI.
   abu build-canon <universe> [--check|--adopt]  # regenerate CANON.md from per-record files
   abu build-docs [--root R] [--check]  # regenerate THIS repo's derived docs (README, REFERENCE)
   abu add-entity <universe> <kind> <eid> [--name N] [--origin S] [--photo path ...]
+                 [--state NAME ...]        (visual-metaphor: one per argued state)
                                                # scaffold a schema-valid entity stub
   abu archive <universe> <eid> --reason R [--superseded-by ID]
                                                # retire an entity from NEW casting
@@ -136,6 +137,11 @@ def build_parser() -> argparse.ArgumentParser:
     ae.add_argument("universe"); ae.add_argument("kind"); ae.add_argument("eid")
     ae.add_argument("--name", default=""); ae.add_argument("--origin", default=None)
     ae.add_argument("--photo", action="append", default=None, help="a photo-stack path (repeatable)")
+    ae.add_argument("--state", action="append", default=None, metavar="NAME",
+                    help="visual-metaphor ONLY, repeatable: one state the object is argued "
+                         "across (SPEC 12 = a locked master plus state plates). Emits "
+                         "contract.states, the matching structured.sheets keys, and one "
+                         "render pose per state so a spread can select it by name.")
     bc = sub.add_parser("build-canon", help="regenerate CANON.md from canon/properties + canon/crossovers")
     bc.add_argument("universe")
     bc.add_argument("--check", action="store_true", help="fail if stale or if any crossover number is duplicated")
@@ -613,8 +619,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "add-entity":
         from .authoring import scaffold_entity
         uni = Path(args.universe)
+        # `--state` is meaningless on any other kind, and accepting it silently would
+        # let an author believe a character's states were declared when nothing read
+        # them. Refuse instead: this whole verb exists so the shape is not guesswork.
+        if args.state and args.kind != "visual-metaphor":
+            print(f"REFUSE: --state applies to visual-metaphor only, not '{args.kind}'. "
+                  f"A character's variants are `altLooks`; a setting's are `emptyPlates`.",
+                  file=sys.stderr)
+            return 2
         ent = scaffold_entity(args.kind, args.eid, args.name or args.eid,
-                              origin_story=args.origin, photo_stack=args.photo)
+                              origin_story=args.origin, photo_stack=args.photo,
+                              states=args.state)
         dest = uni / "canon" / "entities" / f"{args.eid}.json"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(ent, indent=2) + "\n")
@@ -634,6 +649,11 @@ def main(argv: list[str] | None = None) -> int:
             (uni / "reference" / args.eid / "photos").mkdir(parents=True, exist_ok=True)
         store = CanonStore(uni)
         print(f"wrote {dest.relative_to(uni)}  (lock_level: {refs.lock_level(store, args.eid)})")
+        if args.kind == "visual-metaphor" and not args.state:
+            print("  NOTE: no --state given. SPEC 12 defines a visual-metaphor as a locked "
+                  "master plus STATE plates, so this entity has an anchor and nothing to "
+                  "argue with. Re-run with --state <name> (repeatable) once the states are "
+                  "known, or add the keys to contract.states + structured.sheets by hand.")
         return 0
     if args.cmd == "lock-shot":
         from .authoring import lock_shot, recipe_sidecar_path

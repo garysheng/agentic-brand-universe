@@ -1,10 +1,36 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.30 — 2026-08-03.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.31 — 2026-08-04.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.31 changelog — the `visual-metaphor` was a second-class kind, and four surfaces
+> proved it in one book run.** *What a Relief*, nation-of-fire, 2026-08-03. SPEC 12 has
+> defined this kind since v0.4 as "a locked master plus `state` plates" and no tool could
+> say either word, so the kind was authored by hand every time and the framework's own
+> vocabulary was the thing in the way. **(1) `lock-shot` had no entry for `master`**, so a
+> complete four-plate shoot filed the anchor into `contract.emptyPlates`, left
+> `contract.turnaround` null, could never clear `setting_contract_gaps`, and sat at
+> `status: unlocked` with no error anywhere; the repair was hand-editing the JSON to match a
+> sibling that had been hand-edited the same way. Third instance of the alias defect class
+> `scale` opened in v0.29: the word the spec and the scaffolder give the author is not the
+> word the locker accepts. **(2) `chain_matrix` planned to REGENERATE a code-drawn
+> blueprint**, overwriting a deterministic `abu elevation` output with an AI render and
+> destroying the geometry seed the whole matrix is built on, which is the exact inverse of
+> the blueprint-seeded chain this spec and `make-a-book` both prescribe. A shot whose
+> recipe records a deterministic generator is now conditioning, never work, and it is
+> passed to every shot automatically instead of being hand-wired into four prompts.md
+> sections. **(3) There was no way to say "every state chains off the SEED, never off a
+> sibling."** The cumulative chain is right for angles on one subject and wrong for states
+> that differ in light: `--star` exists now, and `the-broken-cisterns`'s own authority.note
+> had already recorded the same finding in prose one book earlier with no flag to act on.
+> **(4) `add-entity visual-metaphor` scaffolded a SETTING** — room slots, a `houseRules`
+> block for rooms an object does not have, and no `structured.sheets` at all, which is the
+> one key the compiler resolves plates from. `--state` is repeatable now and emits the
+> contract, the sheet keys, the pose selectors and a prompts.md whose prose is at level 3,
+> because `chain_matrix` reads level-2 headings AS SHOTS.
 
 > **v0.30 changelog — two checks that fired at the wrong time, both from one book run.** *He Is
 > a Jealous God*, nation-of-fire, 2026-08-03. **(1)** A REFS selector could not condition a
@@ -1567,6 +1593,44 @@ turnaround because a single flat front view flattens back into an equilateral st
 flat plates were all the resolver could pass, and the rendered pendant measured 1.79:1
 height-to-width against a spec of 1.24:1.
 
+**HOW A MATRIX IS CHAINED, and the two ways the default is wrong (v0.31).** The shoot is
+sequential and each shot conditions on the human-blessed seed plus the most recently accepted
+shots. That is correct when the matrix is ANGLES on one unchanging subject, where every accepted
+view makes the next more consistent. It is wrong in two specific shapes, and both were driven
+around by hand before the tool could express them.
+
+- **A CODE-DRAWN SHOT IS CONDITIONING, NEVER WORK.** A shot whose art is already on disk AND whose
+  `<shot>.png.recipe.json` records a deterministic generator (an `agenticstory.*` generator such as
+  `elevation` or `massing`, or any §4.11 generator declaring `deterministic` with no `model`) is
+  NEVER planned for generation. It is skipped and passed as conditioning to EVERY shot in that
+  entity's matrix, ahead of the painted goldens, which on the seed makes it the only conditioning
+  there is — the blueprint-seeded chain v0.15 and `make-a-book` both prescribe for a multi-state
+  object. Naming such a shot in `--shots` or `--seed` is a REFUSAL rather than a skip: an implicit
+  skip is the ergonomic default, and an explicit request to overwrite deterministic art with an AI
+  render is someone asking for a loss. **The RECIPE decides, never the filename**, because
+  `blueprint` is a convention and a painted plate may legitimately carry that name; an asset with no
+  recipe at all is treated as paint, since the pre-provenance library is real art.
+  The defect (2026-08-03, nation-of-fire `the-shelter-he-held-up`): the plan seeded on `master` and
+  listed `blueprint` as shot 2 conditioned on the style anchor, which would have overwritten an
+  `abu elevation` output and destroyed the geometry seed every later state was built on. Reaching
+  the prescribed shape instead took hand-adding `REFS: <id>@blueprint` to four prompts.md sections
+  and hand-declaring `structured.sheets.blueprint` before the selector would resolve.
+- **STAR TOPOLOGY: `--star` (alias `--no-sibling-chain`).** Every non-seed shot conditions on the
+  blessed seed and on any code-drawn geometry, and on NO sibling. Use it whenever the shots are
+  STATES rather than angles — states that differ in lighting, weather, season, or the presence or
+  absence of something. Cumulative chaining walks each state's light into the next and no negative
+  can undo it, because a reference image outranks any word. A sibling is not a candidate under
+  `--star`, so no `--max-conditioning` value widens it back in.
+  The defect: `the-shelter-he-held-up`'s states are a cold night plate, a warm-gold daylight plate
+  carrying the book's register law, and a cool overcast morning, and the only way to shoot them was
+  invoking the chain once per state as `--shots master,<one-state> --skip-existing`.
+  `the-broken-cisterns`'s own `authority.note` records the identical finding in prose, one book
+  earlier, with no flag to act on it.
+
+Both are recorded in the shot's single recipe: code-drawn conditioning under `codeDrawnRefs`
+(alongside `crossEntityRefs`, under the same rule that a provenance writer may not under-report
+its inputs), and the topology in `method`.
+
 - **character** — the anti-uncanny-valley set: `face-neutral`, `face-3q`, `expressions`,
   `forward-fullbody`, `profile-left`, `profile-right`, `back`, `signature-pose`. Minimum
   (`requiredForRender`) is `forward-fullbody` + `face-neutral`; the rest strengthen identity
@@ -1823,6 +1887,33 @@ Default measured reference, when a universe declares no `identity.scaleReference
     `the-broken-arrow-ground`, one Oklahoma parcel as a 1900s farm and as the 1976 site bought for
     RHEMA, whose whole argument is that the ground is the same.
 - **visual-metaphor** — a locked master plus `state` plates (the object across its argued states).
+  - **`contract.states` and `add-entity --state` (v0.31) — the states are DECLARABLE.** A
+    visual-metaphor shares the `contract` SHAPE with a setting and shares nothing else: it has no
+    fixed cameras, no seating, and no rooms nested inside it, so it carries neither `partOf` nor
+    `structured.houseRules`. `abu add-entity <u> visual-metaphor <id> --state <name>` (repeatable)
+    emits `contract.states` (the ordered plate list: `blueprint`, `master`, then each argued
+    state), `contract.emptyPlatesExpected` (so a three-state object cannot promote itself to
+    `locked` after one plate), the matching null-valued `structured.sheets` keys, and one
+    `structured.render.poses` entry per state passing that state's own plate — without which a
+    spread naming the state is a hard refusal in the compiler, and the state is one no spread can
+    select. `prompts.md` gets ONE section per state, the code-drawn-blueprint instruction, and its
+    prose at heading level 3, because `chain_matrix` reads level-2 headings AS SHOTS and a `##`
+    prose section is planned and shot as garbage. `--state` on any other kind is a refusal: a
+    character's variants are `altLooks` and a setting's are `emptyPlates`.
+    Earned 2026-08-03 on nation-of-fire `the-shelter-he-held-up`, where the scaffolder emitted a
+    SETTING (room slots `empty-c1` and `scale`, a `houseRules` block, and no `structured.sheets`
+    at all, which is the one key the compiler resolves plates from) and every state, sheet key,
+    pose selector and invariant was hand-authored in a throwaway script.
+  - **`master` IS this kind's `turnaround` (v0.31).** The contract shape is shared with `setting`,
+    so the anchor plate is stored in `contract.turnaround` and the states in
+    `contract.emptyPlates`. `lock-shot` accepts the SPEC's word: `abu lock-shot <u> <vm> master
+    <path>` sets `contract.turnaround` and `structured.sheets.master`, and never files the anchor
+    among the states. Before v0.31 it had no entry for `master` at all, so a complete four-plate
+    shoot filed the anchor into `emptyPlates`, left `turnaround` null, and could never clear
+    `setting_contract_gaps`; the entity sat at `status: unlocked` with no error anywhere and the
+    only repair was hand-editing the JSON. Earned 2026-08-03 on nation-of-fire
+    `the-shelter-he-held-up`. The alias is scoped to this kind: a `setting` has no `master` in its
+    matrix, and promoting one would invent a slot the spec does not give that kind.
 - **prop / motif** — `hero` plus `detail` crops.
   - **`prop.structured.scale` and an optional `prop` `scale-plate` (v0.22).** A prop had no size
     record of ANY kind, neither descriptor nor plate, which is the character defect one level

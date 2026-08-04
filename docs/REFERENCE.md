@@ -85,7 +85,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.30) |
+| `init` | scaffold a new universe (conforms to spec v0.31) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -160,6 +160,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.31 | the `visual-metaphor` was a second-class kind, and four surfaces > proved it in one book run. |
 | v0.30 | two checks that fired at the wrong time, both from one book run. |
 | v0.29 | five checks that were lying, all earned in one book run. |
 | v0.28 | lookbooks became real, and clothes got attached to people. |

@@ -824,5 +824,191 @@ class FakeShoot(unittest.TestCase):
         self.assertEqual(rec["entity"], "room")
 
 
+# --- code-drawn shots are conditioning, never work ---------------------------
+# Earned 2026-08-03 on nation-of-fire `the-shelter-he-held-up` (What a Relief).
+# `pick_seed` chose `master`, then planned `blueprint` as shot 2 conditioned on the
+# anchor: a deterministic `abu elevation` output about to be overwritten by an AI render,
+# destroying the geometry seed every later shot was meant to inherit. `make-a-book`
+# prescribes the exact opposite ("Seed a multi-state object's chain on a CODE-DRAWN
+# BLUEPRINT, not a state plate"), and reaching that shape meant hand-adding
+# `REFS: <id>@blueprint` to four prompts.md sections plus hand-declaring
+# `structured.sheets.blueprint` before the selector would resolve.
+def drawn_png(path: Path, generator="agenticstory.elevation"):
+    """A shot that already exists on disk AND whose recipe records a code generator."""
+    png(path)
+    (path.parent / (path.name + ".recipe.json")).write_text(json.dumps({
+        "asset": str(path), "generator": generator,
+        "mode": "deterministic-2d-elevation", "model": None, "inputs": []}))
+
+
+class TestCodeDrawnShots(unittest.TestCase):
+    SHOTS = ("blueprint", "master", "strained", "beside-the-house", "let-go")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = build(Path(self.tmp.name), kind="visual-metaphor", shots=self.SHOTS)
+        drawn_png(self.root / "reference" / "room" / "blueprint.png")
+
+    def test_a_code_drawn_shot_is_not_planned_for_generation(self):
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        numbered = [l for l in r.stdout.splitlines()
+                    if l.strip().startswith(tuple(f"{i}." for i in range(1, 10)))]
+        self.assertTrue(numbered)
+        self.assertFalse([l for l in numbered if "blueprint" in l.split("conditioned on:")[0]],
+                         "blueprint is still planned as a shot:\n" + "\n".join(numbered))
+
+    def test_it_is_passed_as_conditioning_to_every_shot_instead(self):
+        r = run(self.root, "--print-plan")
+        numbered = [l for l in r.stdout.splitlines()
+                    if l.strip().startswith(tuple(f"{i}." for i in range(1, 10)))]
+        for l in numbered:
+            self.assertIn("code-drawn: blueprint", l, l)
+
+    def test_a_painted_plate_of_the_same_name_is_still_shot(self):
+        """The RECIPE decides, never the filename. `blueprint` is a convention and a
+        painted plate may legitimately carry it; guessing from the name would refuse to
+        re-shoot real art."""
+        p = self.root / "reference" / "room" / "blueprint.png"
+        (p.parent / (p.name + ".recipe.json")).write_text(json.dumps(
+            {"asset": str(p), "model": "gpt-image-2", "prompt": "a painted blueprint"}))
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("code-drawn (never generated", r.stdout)
+        self.assertIn("blueprint", r.stdout)
+
+    def test_an_asset_with_no_recipe_at_all_is_still_shot(self):
+        """The pre-provenance library is real art with no sidecar. It must not be
+        mistaken for a deterministic output nobody may overwrite."""
+        (self.root / "reference" / "room" / "blueprint.png.recipe.json").unlink()
+        r = run(self.root, "--print-plan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("code-drawn (never generated", r.stdout)
+
+    def test_naming_it_in_shots_refuses_rather_than_overwriting(self):
+        r = run(self.root, "--shots", "blueprint,master", "--print-plan")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("CODE-DRAWN", r.stderr)
+        self.assertIn("agenticstory.elevation", r.stderr)
+
+    def test_naming_it_as_the_seed_refuses(self):
+        r = run(self.root, "--seed", "blueprint", "--print-plan")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("CODE-DRAWN", r.stderr)
+
+    def test_the_seed_is_picked_from_the_paint_shots(self):
+        r = run(self.root, "--print-plan")
+        self.assertIn("seed (hero) = master", r.stdout)
+
+    def test_a_massing_blueprint_is_recognised_too(self):
+        drawn_png(self.root / "reference" / "room" / "blueprint.png",
+                  generator="agenticstory.massing (code-built 3D massing render)")
+        r = run(self.root, "--print-plan")
+        self.assertIn("code-drawn (never generated", r.stdout)
+
+    def test_a_deterministic_flag_with_no_model_is_recognised(self):
+        """SPEC 4.11 generators are not named `agenticstory.*`, so the second tell has
+        to work on its own or every universe-authored generator is invisible here."""
+        p = self.root / "reference" / "room" / "blueprint.png"
+        (p.parent / (p.name + ".recipe.json")).write_text(json.dumps(
+            {"asset": str(p), "generator": "starfield", "deterministic": True,
+             "model": None}))
+        r = run(self.root, "--print-plan")
+        self.assertIn("code-drawn (never generated", r.stdout)
+
+    def test_a_matrix_that_is_entirely_code_drawn_refuses_clearly(self):
+        root = build(Path(tempfile.mkdtemp()), kind="visual-metaphor", shots=("blueprint",))
+        drawn_png(root / "reference" / "room" / "blueprint.png")
+        r = subprocess.run([sys.executable, str(CHAIN), str(root), "room", "--print-plan"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("nothing for this chain to paint", r.stderr)
+
+
+# --- star topology: every state off the SEED, never off a sibling ------------
+# The default cumulative chain is right for ANGLES on one unchanging subject and wrong
+# for a multi-state OBJECT: on `the-shelter-he-held-up` the states are a cold night
+# plate, a warm-gold daylight plate and a cool overcast morning, and serial chaining
+# walks each state's light into the next. The workaround was invoking this script three
+# separate times as `--shots master,<one-state> --skip-existing`, and
+# `the-broken-cisterns`'s authority.note already recorded the same finding in prose.
+class TestStarTopology(unittest.TestCase):
+    SHOTS = ("master", "strained", "beside-the-house", "let-go")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = build(Path(self.tmp.name), kind="visual-metaphor", shots=self.SHOTS)
+
+    def _shot4(self, *extra):
+        r = run(self.root, "--print-plan", *extra)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout, [l for l in r.stdout.splitlines() if "4. let-go" in l][0]
+
+    def test_the_default_is_still_cumulative(self):
+        """Nothing changes for the matrices this behaviour is correct for."""
+        out, line = self._shot4()
+        self.assertIn("CUMULATIVE", out)
+        self.assertIn("strained", line)
+        self.assertIn("beside-the-house", line)
+
+    def test_star_conditions_shot_four_on_the_seed_and_no_sibling(self):
+        out, line = self._shot4("--star")
+        self.assertIn("STAR", out)
+        self.assertIn("master", line)
+        self.assertNotIn("strained", line)
+        self.assertNotIn("beside-the-house", line)
+
+    def test_no_sibling_chain_is_the_same_flag(self):
+        _, line = self._shot4("--no-sibling-chain")
+        self.assertNotIn("strained", line)
+
+    def test_max_conditioning_cannot_let_a_sibling_back_in(self):
+        """A sibling is never a candidate under --star, so it is not a window that a
+        larger `--max-conditioning` widens."""
+        _, line = self._shot4("--star", "--max-conditioning", "0")
+        self.assertNotIn("strained", line)
+        self.assertIn("master", line)
+
+    def test_the_actual_run_passes_only_the_seed(self):
+        """The plan and the run must agree; the plan is a printout and the run is what
+        costs money. This asserts the --input-image list the provider is handed."""
+        import argparse as _ap, importlib.util, types
+        spec = importlib.util.spec_from_file_location("cm", CHAIN)
+        m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+        m._provider_script = lambda provider="gpt-image-2": "/dev/null/fake-provider.py"
+        seen = {}
+
+        def fake_run(cmd, *a, **kw):
+            seen["inputs"] = [cmd[i + 1] for i, c in enumerate(cmd) if c == "--input-image"]
+            out = Path(cmd[cmd.index("--filename") + 1])
+            Image.new("RGB", (8, 8), (10, 20, 30)).save(out)
+            return types.SimpleNamespace(returncode=0)
+
+        m.subprocess = types.SimpleNamespace(run=fake_run)
+        drawn_png(self.root / "reference" / "room" / "blueprint.png")
+        (self.root / "reference" / "room" / "prompts.md").write_text(
+            (self.root / "reference" / "room" / "prompts.md").read_text()
+            + "## blueprint → `reference/room/blueprint.png`\nThe blueprint.\n\n")
+        plan = m.build_plan(self.root, "room")
+        refdir = plan["refdir"]
+        goldens = []
+        for s in ("master", "strained", "beside-the-house"):
+            png(refdir / f"{s}.png")
+            goldens.append(str((refdir / f"{s}.png").resolve()))
+        args = _ap.Namespace(size="1024x1024", max_conditioning=4, star=True)
+        m._shoot(plan, "let-go", goldens, args,
+                 str((self.root / plan["anchor"]).resolve()), "", refdir, self.root)
+        names = [Path(p).name for p in seen["inputs"]]
+        self.assertIn("master.png", names)
+        self.assertIn("blueprint.png", names, "code-drawn geometry must ride along")
+        self.assertNotIn("strained.png", names)
+        self.assertNotIn("beside-the-house.png", names)
+        rec = json.loads((refdir / "let-go.png.recipe.json").read_text())
+        self.assertIn("star-chain", rec["method"])
+        self.assertEqual([r["shot"] for r in rec["codeDrawnRefs"]], ["blueprint"])
+
+
 if __name__ == "__main__":
     unittest.main()

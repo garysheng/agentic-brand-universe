@@ -125,7 +125,30 @@ flattened back into an equilateral star. The turnaround was registered, provenan
 by the entity's own render rule, and no shot could reach it; three flat plates were all that
 resolved, and the pendant rendered at 1.79:1 against a spec of 1.24:1.
 
-## A multi-state object: the blueprint holds the OBJECT, not the FRAMING
+## A multi-state object: seed on the blueprint, and use `--star`
+
+Two flags carry the pattern SPEC §12 prescribes, so you never hand-build it again:
+
+```bash
+python3 skills/shoot-references/scripts/chain_matrix.py <universe> <entity> --star --print-plan
+```
+
+- **A code-drawn blueprint is found and passed automatically.** If `reference/<id>/blueprint.png`
+  exists and its `.recipe.json` names a deterministic generator (`abu elevation` / `abu massing`,
+  or any `deterministic` generator with no `model`), the chain will NOT generate it and WILL pass
+  it as conditioning to every shot in the matrix. You do not add `REFS: <id>@blueprint` to each
+  section and you do not pre-declare `structured.sheets.blueprint`. Ask for it explicitly with
+  `--shots blueprint` or `--seed blueprint` and the chain refuses rather than overwriting it.
+- **`--star` when the shots are STATES rather than angles.** Every non-seed shot then conditions on
+  the blessed seed plus the blueprint, and on no sibling. Reach for it the moment two states differ
+  in lighting, weather, season, or the presence of something — a cold night plate and a warm-gold
+  noon plate chained serially walk the night into the noon, and a negative cannot undo a reference
+  image. Do NOT use it for a character's angle matrix, where cumulative chaining is the point.
+
+`--print-plan` prints the topology and every code-drawn input on every line, so both decisions are
+checkable for free before anything is spent.
+
+### The blueprint holds the OBJECT, not the FRAMING
 
 Seeding every state off one code-drawn blueprint is the right rule and it is not enough.
 Earned 2026-07-30 on `the-book-of-your-days`, twice in a row.
@@ -146,7 +169,9 @@ So for any object whose states must read as one object:
   anyone adds inherits it:
   `every-state-shares-identical-cover-height-and-width-only-thickness-changes`.
 - If a later state still drifts, **chain it off the state that already passed** rather than
-  off the blueprint, so it inherits a cover that has been blessed.
+  off the blueprint, so it inherits a cover that has been blessed. This is the one case that
+  wants a sibling, so drop `--star` for that shot alone
+  (`--shots <blessed-state>,<drifting-state> --skip-existing`) rather than for the matrix.
 
 The general form: a blueprint constrains geometry, a prompt constrains framing, and a state
 set needs both pinned or the states are siblings rather than the same thing twice.

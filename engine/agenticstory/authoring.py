@@ -85,13 +85,26 @@ def scaffold_entity(
     name: str,
     origin_story: str | None = None,
     photo_stack: list[str] | None = None,
+    states: list[str] | None = None,
 ) -> dict:
     """A schema-valid entity stub for `kind`. Raises ValueError on an unknown kind.
 
     - character/prop/motif: `structured.sheets` carries the kind's matrix keys as
       null slots; `requiredForRender` is [] (populated when art locks).
-    - setting/visual-metaphor: an `unlocked` `contract` (refused until locked).
+    - setting: an `unlocked` `contract` (refused until locked).
+    - visual-metaphor: the same contract PLUS `states` (v0.31) — see below.
     - a non-empty `photo_stack` (character only) adds a `gated` `realPerson` block.
+
+    `states` (visual-metaphor only) names the states the object is argued across.
+    SPEC 12 defines this kind's matrix as "a locked master plus `state` plates", and
+    until v0.31 there was no way to say either word: the scaffolder emitted a SETTING's
+    room slots (`empty-c1`, `scale`), wrote `structured.houseRules` (a rule set for a
+    BUILDING with rooms inside it), and wrote no `structured.sheets` at all, which is the
+    one key the compiler resolves plates from. Every state, sheet key, pose selector and
+    invariant of `the-shelter-he-held-up` was therefore hand-authored in a throwaway
+    script, and the residue is visible across nation-of-fire: five visual-metaphors carry
+    hand-written state blocks and their `prompts.md` files still hold orphan `empty-c1`
+    and `scale` sections nobody will ever shoot.
     """
     KNOWN = {"character", "setting", "visual-metaphor", "doctrine", "motif", "beat", "prop", "group"}
     if kind not in KNOWN:
@@ -148,12 +161,48 @@ def scaffold_entity(
             "blockingPlate": None,
             "map": "", "blocking": "", "dressing": "", "scale": "",
         }
-        # The other half of v0.29. Only these two keys are inherited by a child that
-        # declares `partOf` this entity: `invariants` (which become the child's read-back
-        # checks) and `dressing` (which reaches the model). Anything else here is REFUSED,
-        # because `always` and `qa` read like they should work and were verified dead.
-        # Leave empty unless this entity is a BUILDING with rooms nested inside it.
-        ent.setdefault("structured", {})["houseRules"] = {"invariants": [], "dressing": ""}
+        if kind == "visual-metaphor":
+            # A VISUAL-METAPHOR IS A MASTER PLUS STATES, NOT A ROOM (v0.31).
+            #
+            # It shares the `contract` SHAPE with a setting because the anchor plate and
+            # the per-view plates are the same two ideas, and it shares nothing else:
+            # there are no fixed cameras, no seating, and no rooms nested inside it, so
+            # `houseRules` and `partOf` are removed rather than scaffolded as fields an
+            # author is invited to fill.
+            ent.pop("partOf", None)
+            sts = list(dict.fromkeys(states or []))
+            # `states` is the ordered PLATE list, matching the shape both hand-authored
+            # visual-metaphors in nation-of-fire converged on independently: the
+            # code-drawn blueprint, the master, then each argued state.
+            ent["contract"]["states"] = ["blueprint", "master"] + sts
+            if sts:
+                # SPEC v0.29's declared COUNT, which is what stops a three-state object
+                # promoting itself to `locked` after the first state plate and then
+                # improvising the other two, differently, at render time.
+                ent["contract"]["emptyPlatesExpected"] = len(sts)
+            ent["structured"] = {
+                # THE KEY THE COMPILER ACTUALLY RESOLVES PLATES FROM. Scaffolding the
+                # contract alone is the v0.30 `LOCKED-BUT-NO-SHEETS` defect built in at
+                # birth: the entity looks finished, and `compose-spec` reports
+                # `available: NONE` mid-book.
+                "sheets": {s: None for s in ent["contract"]["states"]},
+                "requiredForRender": [],
+                "invariants": [],
+                # ONE POSE PER STATE, so a spread can SELECT a state by name. A spread
+                # naming a pose the entity does not declare is a hard refusal in the
+                # compiler (`<id> has no render pose '<key>'`), so states without poses
+                # are states no spread can ask for. Each pose passes its own plate and
+                # nothing else; the `bake` sentence is the author's to write, and is
+                # left absent rather than stubbed so no TODO text can reach a prompt.
+                "render": {"poses": {s: {"sheets": [s]} for s in ["master"] + sts}},
+            }
+        else:
+            # The other half of v0.29. Only these two keys are inherited by a child that
+            # declares `partOf` this entity: `invariants` (which become the child's read-back
+            # checks) and `dressing` (which reaches the model). Anything else here is REFUSED,
+            # because `always` and `qa` read like they should work and were verified dead.
+            # Leave empty unless this entity is a BUILDING with rooms nested inside it.
+            ent.setdefault("structured", {})["houseRules"] = {"invariants": [], "dressing": ""}
         ent["prose"] = {"rules": ""}
     else:  # doctrine, beat, group
         ent["structured"] = {"sheets": {}, "requiredForRender": []}
@@ -267,6 +316,25 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         slot = {"scale-plate": "scalePlate", "scale": "scalePlate",
                 "blocking-plate": "blockingPlate",
                 "blocking": "blockingPlate"}.get(shot, shot)
+        # `master` IS a visual-metaphor's turnaround (v0.31). SPEC 12 defines the kind's
+        # matrix as "a locked master plus `state` plates", so `master` is the anchor plate
+        # this contract calls `turnaround` -- and it was absent from the map above, so
+        # `abu lock-shot <u> <vm> master <path>` filed the anchor into `contract.emptyPlates`,
+        # left `contract.turnaround` null, and therefore could never satisfy
+        # `setting_contract_gaps`. The entity stayed `unlocked` after a complete, correct
+        # shoot with no error anywhere, and the only way out was hand-editing the JSON.
+        #
+        # Same defect as the `scale` alias two lines up and the same cause: the vocabulary
+        # SPEC and the scaffolder hand the author is not the vocabulary the locker accepts.
+        # Earned 2026-08-03 on nation-of-fire `the-shelter-he-held-up` (What a Relief), where
+        # all four plates were locked, `status` never flipped, and the JSON was hand-edited
+        # to match its already-hand-edited sibling `the-broken-cisterns`.
+        #
+        # Scoped to the KIND rather than added to the shared map, because a `setting` has no
+        # `master` in its matrix and silently promoting one to its turnaround would invent a
+        # slot the spec does not give that kind.
+        if kind == "visual-metaphor" and shot == "master":
+            slot = "turnaround"
         if slot in ("turnaround", "blueprint", "scalePlate", "blockingPlate"):
             c[slot] = path
         else:
@@ -346,7 +414,43 @@ def prompts_skeleton(entity: dict, register: dict | None = None) -> str:
             "anchor, (b) bake the rejected poles as negatives, (c) state the invariants that must "
             "not drift, and (d) contain no legible text unless the design calls for it.", ""]
 
-    if kind in ("setting", "visual-metaphor"):
+    if kind == "visual-metaphor":
+        # A VISUAL-METAPHOR'S SLOTS ARE ITS OWN (v0.31). This used to emit a SETTING's
+        # room slots -- `empty-c1` and `scale`, for cameras and a room size an object
+        # does not have -- so every visual-metaphor in the reference universe still
+        # carries orphan sections nobody will ever shoot, and the states the object is
+        # actually argued across had to be hand-written in a throwaway script.
+        slots = list((entity.get("contract") or {}).get("states")
+                     or (entity.get("structured", {}).get("sheets") or {})
+                     or ["blueprint", "master"])
+        out += [
+            "### SHOOT ORDER",
+            "",
+            "1. **`blueprint` is CODE-DRAWN, not prompted. Build it BEFORE you shoot anything "
+            "else**, with `abu elevation` or `abu massing` from a declarative spec in "
+            "`canon/blueprints/`, so the geometry is a number rather than a guess. Once it is on "
+            "disk with its recipe, `shoot-references` never regenerates it and passes it as "
+            "conditioning to EVERY shot automatically (SPEC 12), and its section below is never "
+            "used. The section is only the fallback for an object with no fixed geometry, and it "
+            "is what you will get by default if you skip this step.",
+            "2. **`master` is the seed** and the plate the human blesses. Shoot it with "
+            "`--shoot-seed`, look at it, then `--bless-seed master`.",
+            "3. **Every state chains off `master`, never off a sibling state.** Pass `--star`. "
+            "States differ in light, weather, season, or the presence of something, and a "
+            "reference image outranks any negative: chained serially, one state's night walks "
+            "into the next state's noon.",
+            "",
+            "### WHAT MUST NOT DRIFT",
+            "",
+            "TODO(author): the object's geometry in NUMBERS, and what is identical in every "
+            "state versus what each state changes. Put the same facts on the entity as "
+            "`structured.invariants` so read-back can check them.",
+            "",
+            "Every heading below is a SHOT and every one above is level-3 prose. A level-2 "
+            "heading that is not a shot is parsed as one and shot as garbage.",
+            "",
+        ]
+    elif kind == "setting":
         slots = ["turnaround", "blueprint", "empty-c1", "scale"]
         out.append("Lock `turnaround` and `blueprint` FIRST, then chain each empty plate off them "
                    "so the geometry cannot drift between cameras. Add one `empty-<c>` section per "

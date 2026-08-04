@@ -168,6 +168,60 @@ def sha(p: Path) -> str:
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()[:16]
 
 
+# A CODE-DRAWN SHOT IS NOT A SHOT THIS CHAIN MAY TAKE (v0.31).
+#
+# `agenticstory.elevation` and `agenticstory.massing` DRAW an asset from a declarative
+# spec. Its correctness is a number, its pixels are reproducible, and it is the geometry
+# seed everything else in the matrix is built on. `make-a-book` prescribes exactly that:
+# "Seed a multi-state object's chain on a CODE-DRAWN BLUEPRINT, not a state plate."
+#
+# This chain could not see the difference. It read `prompts.md`, found a `## blueprint`
+# heading, and planned to GENERATE it — overwriting a deterministic output with an AI
+# render and destroying the geometry seed every later shot was supposed to inherit.
+# Caught 2026-08-03 on nation-of-fire `the-shelter-he-held-up` (What a Relief): the plan
+# had `master` as seed and `blueprint` as shot 2, conditioned on the anchor.
+#
+# The tell is the asset's own provenance, never its filename: `blueprint` is a convention
+# and `import-asset` can file a PAINTED plate under that name. A recipe naming an
+# `agenticstory.*` generator, or declaring `deterministic` with no `model`, is the record
+# of a run that can be repeated for free and identically. That is what makes overwriting
+# it unambiguously a loss.
+def deterministic_generator(png: Path) -> str | None:
+    """The generator that DREW this asset, or None if it was prompted (or is unknown).
+
+    Reads the asset's own `<name>.png.recipe.json`, which is the single provenance
+    sidecar convention (`authoring.recipe_sidecar_path`, `provenance.py`, `importing.py`).
+    An asset with no recipe returns None: the pre-provenance library is real, and
+    guessing "code-drawn" from a filename would refuse to re-shoot painted plates that
+    happen to be called `blueprint`.
+    """
+    try:
+        rec = json.loads(Path(str(png) + ".recipe.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(rec, dict):
+        return None
+    gen = rec.get("generator")
+    if isinstance(gen, str) and gen.startswith("agenticstory."):
+        return gen
+    if rec.get("deterministic") is True and not rec.get("model"):
+        return gen if isinstance(gen, str) else "deterministic generator"
+    return None
+
+
+def code_drawn_shots(refdir: Path, shots: list[str]) -> dict:
+    """`{shot: {"path": abs, "generator": str}}` for every shot already DRAWN in code."""
+    out = {}
+    for s in shots:
+        p = refdir / f"{s}.png"
+        if not p.exists():
+            continue
+        gen = deterministic_generator(p)
+        if gen:
+            out[s] = {"path": str(p.resolve()), "generator": gen}
+    return out
+
+
 
 def _look_negatives(ent: dict, look: str | None) -> list[str]:
     """The entity's canon negatives for the SELECTED look (SPEC v0.26).
@@ -678,10 +732,53 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
     except FileNotFoundError as e:
         raise Refuse(f"{eid}.realPerson.photoStack: {e}")
 
+    # SPLIT OFF THE CODE-DRAWN SHOTS BEFORE PICKING A SEED (v0.31). They are not
+    # shots this chain may take; they are conditioning it must carry. See
+    # `deterministic_generator` above for why the recipe and not the filename decides.
+    drawn = code_drawn_shots(refdir, shots)
+    if drawn:
+        # FAIL CLOSED when the operator NAMED one. An implicit skip is the ergonomic
+        # default; an explicit `--shots blueprint` or `--seed blueprint` is someone
+        # asking for the overwrite, and the framework says no rather than silently
+        # doing something other than what was asked.
+        named = sorted(set(shots_override or []) & set(drawn))
+        if named:
+            raise Refuse(
+                f"{', '.join(named)} already exist(s) as CODE-DRAWN art and this chain "
+                f"would overwrite it with an AI render.\n"
+                + "\n".join(f"  {s}: drawn by {drawn[s]['generator']}" for s in named)
+                + "\nA deterministic asset is the geometry seed the rest of the matrix is "
+                  "built on, and it can be re-made for free and identically from its own "
+                  "spec. To change it, re-run that generator (`abu elevation` / `abu "
+                  "massing`). To re-draw it by hand as painted art, delete the .png and "
+                  "its .recipe.json first, which is a deliberate act rather than a "
+                  "side effect of shooting the matrix.")
+        if seed_override in drawn:
+            raise Refuse(
+                f"--seed '{seed_override}' is CODE-DRAWN ({drawn[seed_override]['generator']}). "
+                f"It is already the seed: it is passed as conditioning to every shot in this "
+                f"matrix and is never generated. Name a PAINT shot as the seed, or omit "
+                f"--seed and let the kind's hero order choose one.")
+        for s, d in drawn.items():
+            print(f"  [code-drawn] {s}: {d['generator']} — not generated, passed as "
+                  f"conditioning to every shot", file=sys.stderr)
+        shots = [s for s in shots if s not in drawn]
+    if not shots:
+        raise Refuse(
+            f"every shot in {refdir / 'prompts.md'} is already CODE-DRAWN "
+            f"({', '.join(sorted(drawn))}). There is nothing for this chain to paint.")
+
     seed = pick_seed(kind, shots, seed_override)
     rest = [s for s in shots if s != seed]
     return {
         "entity": eid, "kind": kind, "anchor": anchor, "refdir": refdir,
+        # Passed on EVERY shot, so a multi-state object's whole matrix is built on one
+        # geometry. Before this, reaching the documented blueprint-seeded pattern meant
+        # hand-adding `REFS: <id>@blueprint` to every section of prompts.md AND
+        # hand-declaring `structured.sheets.blueprint` before the selector would resolve
+        # — four sections by hand on `the-shelter-he-held-up`, for the shape the spec
+        # calls the normal one.
+        "codeDrawn": drawn,
         "register": register_id, "anchorSubject": anchor_subject,
         "look": look, "lookRefs": look_refs,
         "photos": photos,
@@ -779,7 +876,12 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     # step until the tail of a big matrix dies on an API timeout, which is the
     # worst place to fail because those shots are the most expensive to redo.
     cond = goldens
-    if args.max_conditioning and len(goldens) > args.max_conditioning:
+    if getattr(args, "star", False):
+        # STAR: the blessed seed alone. Not a window applied to a chain — the siblings
+        # are never candidates in the first place, so no `--max-conditioning` value can
+        # let one back in.
+        cond = goldens[:1]
+    elif args.max_conditioning and len(goldens) > args.max_conditioning:
         cond = [goldens[0]] + goldens[-(args.max_conditioning - 1):]
     cmd = ["uv", "run", _provider_script(), "--prompt", prompt, "--filename", str(out),
            "--size", shot_size, "--quality", "high", "--no-open",
@@ -788,6 +890,12 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     # chain must not drift on, and later references carry more weight.
     for ph in plan["photos"]:
         cmd += ["--input-image", ph]
+    # CODE-DRAWN GEOMETRY RIDES ON EVERY SHOT (v0.31), ahead of the painted goldens.
+    # It is layout scaffolding rather than art to copy (SPEC 12), so it must not outrank
+    # an accepted plate; on the SEED there are no goldens, which is exactly the
+    # blueprint-seeded chain `make-a-book` prescribes.
+    for d in (plan.get("codeDrawn") or {}).values():
+        cmd += ["--input-image", d["path"]]
     # LOOK REFS ARE FOR THE SEED ONLY. They are the DEFAULT matrix's face sheets,
     # passed so the first plate of an alt-look has an identity to be built from. Once
     # the look has its own blessed plate, those defaults become a liability: they carry
@@ -850,8 +958,19 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
         # changing underneath it. Under-reporting provenance is the one thing a
         # provenance writer may not do.
         "crossEntityRefs": cross,
-        "method": ("golden-chain (sequential; each shot conditions on the blessed seed "
-                   f"plus the most recent accepted shots, window={args.max_conditioning or 'unbounded'})"),
+        # Under-reporting provenance is the one thing a provenance writer may not do, and
+        # a blueprint that silently conditioned every plate in a matrix is a large input
+        # to leave unrecorded. Same rule as crossEntityRefs above.
+        "codeDrawnRefs": [
+            {"shot": s, "generator": d["generator"], "path": d["path"],
+             "sha256_16": sha(Path(d["path"]))}
+            for s, d in sorted((plan.get("codeDrawn") or {}).items())],
+        "method": (
+            "star-chain (every non-seed shot conditions on the blessed seed and on NO "
+            "sibling state, so one state's lighting cannot walk into the next)"
+            if getattr(args, "star", False) else
+            "golden-chain (sequential; each shot conditions on the blessed seed "
+            f"plus the most recent accepted shots, window={args.max_conditioning or 'unbounded'})"),
     })
     recipe_path.write_text(json.dumps(recipe, indent=1))
     # The legacy twin, if a prior run of the old code left one: it describes bytes
@@ -903,6 +1022,26 @@ def _main() -> int:
                          "its own pack: an entity whose story declares a different "
                          "register needs its sheets shot in the medium it is actually "
                          "rendered in. Defaults to the universe register.")
+    # STAR TOPOLOGY: every state off the SEED, never off a sibling (v0.31).
+    #
+    # The default chain is cumulative, and for a matrix whose shots are ANGLES on one
+    # unchanging subject that is exactly right: each accepted view makes the next more
+    # consistent. For a multi-state OBJECT it is wrong and expensive, because the states
+    # differ in the very things a reference image transmits hardest. On
+    # `the-shelter-he-held-up` the states are a cold night plate, a warm-gold daylight
+    # plate under the book's register law, and a cool overcast morning; serial chaining
+    # walks night lighting into the noon plate and house-gold into the morning one, and
+    # no negative can undo it, because a reference image outranks any word. That verdict
+    # is not new: `the-broken-cisterns`'s own authority.note records the same finding in
+    # prose, and the only way to act on it was invoking this script once per state with
+    # `--shots master,<one-state> --skip-existing`, which is the tool being driven around
+    # its own behaviour three times in a row.
+    ap.add_argument("--star", "--no-sibling-chain", dest="star", action="store_true",
+                    help="STAR topology: every non-seed shot conditions on the blessed "
+                         "seed (plus any code-drawn geometry) and on NO sibling shot. Use "
+                         "for a multi-state object whose states differ in lighting, "
+                         "weather, season, or the presence of something; the default "
+                         "cumulative chain walks each state's light into the next.")
     ap.add_argument("--skip-existing", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--print-plan", action="store_true")
@@ -947,14 +1086,26 @@ def _main() -> int:
         print(f"entity={plan['entity']} kind={plan['kind']} "
               f"register={plan['register'] or '(universe default)'}")
         print(f"seed (hero) = {seed}")
+        print("topology = " + ("STAR (every shot off the seed, no sibling chaining)"
+                               if args.star else "CUMULATIVE (seed + recent siblings)"))
+        for s, d in sorted((plan.get("codeDrawn") or {}).items()):
+            print(f"code-drawn (never generated, conditioning on every shot): "
+                  f"{s} <- {d['generator']}")
         for i, s in enumerate(plan["order"]):
             # Show the ACTUAL conditioning window, not every prior shot: a plan that
             # advertises conditioning the run will not perform is worse than no plan.
             prior = plan["order"][:i]
-            if args.max_conditioning and len(prior) > args.max_conditioning:
+            if args.star:
+                prior = prior[:1]            # the seed, and no sibling
+            elif args.max_conditioning and len(prior) > args.max_conditioning:
                 prior = [prior[0], "..."] + prior[-(args.max_conditioning - 1):]
             cond = "HUMAN-BLESSED SEED" if i == 0 else \
                    "anchor + " + ", ".join(prior)
+            # Code-drawn geometry is passed to every shot including the seed, so it is
+            # named on every line: a plan that omits an input the run will pass is the
+            # same defect as one that advertises conditioning it will not perform.
+            if plan.get("codeDrawn"):
+                cond += " + code-drawn: " + ", ".join(sorted(plan["codeDrawn"]))
             # CROSS-ENTITY REFS RIDE ON THE SEED TOO. This was gated on `i > 0`, so
             # the plan for shot 1 silently omitted them -- and the seed is both the
             # shot most worth checking before spending money and the one every later
