@@ -27,6 +27,7 @@ would use at the moment you need it.
 | **scaffold a style pack / lookbook** | `create-style-pack/scripts/scaffold.py`, `create-lookbook/scripts/scaffold.py` |
 | **scaffold a new form** (a new KIND of work) | `create-form/scripts/scaffold.py` (refuses on zero evidence works; the method lives in the create-form SKILL) |
 | **assemble a spread prompt from canon** | `compose-spread/scripts/assemble_prompt.py` |
+| **check a WHOLE render-spec's refs before rendering** (free, no model) | `compose-spread/scripts/audit_spec_refs.py <universe> <spec>` — **run it after compose-spec and after any spec edit.** Catches the silent one: spread-level `plate` selects the SETTING's plate, so on a spread with no `setting` it is ignored and the entity's plates never reach the model. Shipped once (Looked Like Hate, five candle spreads with zero spine-object plates) and recurred on God Does Not Need Our Help (26 spreads, zero arch plates). "Dry-run and look at the ref count" was already the instruction; looking is the part that fails. |
 | **scaffold or re-sync a book render-spec** | `compose-spec/scripts/compose_spec.py` |
 | **add / insert / renumber a spread** | `update-book/scripts/insert_spread.py` |
 | **recast one entity as another across a story** | `update-book/scripts/recast_story.py` |

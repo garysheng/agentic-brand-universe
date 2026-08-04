@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""A whole-spec ref audit, because "dry-run and LOOK AT the ref count" is a check nobody runs.
+
+The defect these tests pin: the spread-level `plate` key selects the SETTING's plate, so
+on a spread with no `setting` it is SILENTLY IGNORED. A spec can therefore name a spine
+object's state on every single spread and pass none of its plates, with nothing erroring.
+Shipped once on Looked Like Hate (five candle spreads, zero spine-object plates) and hit
+again on God Does Not Need Our Help (26 spreads, zero arch plates), which is the second
+instance that earns the tool.
+"""
+import json, os, sys, tempfile, unittest
+from pathlib import Path
+
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(HERE, "scripts"))
+from audit_spec_refs import audit  # noqa: E402
+
+
+def _universe(tmp):
+    root = Path(tmp)
+    (root / "canon" / "entities").mkdir(parents=True)
+    for d in ("anchor", "the-object", "a-room"):
+        (root / "reference" / d).mkdir(parents=True)
+    (root / "reference" / "anchor" / "hero.png").write_bytes(b"\x89PNG")
+    (root / "reference" / "the-object" / "master.png").write_bytes(b"\x89PNG")
+    (root / "reference" / "the-object" / "state-b.png").write_bytes(b"\x89PNG")
+    (root / "reference" / "a-room" / "master.png").write_bytes(b"\x89PNG")
+    (root / "universe.json").write_text(json.dumps({
+        "name": "t", "assetRoot": ".",
+        "identity": {"register": {"name": "r", "anchor": "reference/anchor/hero.png"}}}))
+    (root / "canon" / "entities" / "the-object.json").write_text(json.dumps({
+        "id": "the-object", "kind": "visual-metaphor", "status": "locked",
+        "structured": {"sheets": {"master": "reference/the-object/master.png",
+                                  "state-b": "reference/the-object/state-b.png"},
+                       "requiredForRender": ["master"]},
+        "contract": {"map": "An object.", "blocking": "b", "dressing": "d", "scale": "s"},
+        "prose": {"rules": "It never changes."}}))
+    (root / "canon" / "entities" / "a-room.json").write_text(json.dumps({
+        "id": "a-room", "kind": "setting", "status": "locked",
+        "structured": {"sheets": {"master": "reference/a-room/master.png"},
+                       "requiredForRender": ["master"]},
+        "contract": {"map": "A room.", "blocking": "b", "dressing": "d", "scale": "s"}}))
+    return root
+
+
+def _spec(spreads):
+    return {"book": "b", "story": "s", "size": "1536x1024",
+            "preamble": {"register": "r"}, "spreads": spreads}
+
+
+class TestAuditSpecRefs(unittest.TestCase):
+    def test_spread_level_plate_without_a_setting_is_reported(self):
+        """THE regression. Silently ignored by the compiler, so nothing else catches it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp)
+            spec = _spec([{"id": "spread-01", "plate": "state-b",
+                           "scene": "The object alone in a field.", "cast": []}])
+            _, problems = audit(root, spec)
+        joined = " ".join(problems)
+        self.assertIn("spread-01", joined)
+        self.assertIn("silently ignored", joined.lower())
+        self.assertIn("cast", joined.lower())
+
+    def test_cast_entity_that_contributes_no_ref_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp)
+            # Entity exists in canon but its sheets are removed from disk resolution.
+            (root / "reference" / "the-object" / "master.png").unlink()
+            spec = _spec([{"id": "spread-01", "scene": "The object alone.",
+                           "cast": [{"id": "the-object", "plate": "master"}]}])
+            _, problems = audit(root, spec)
+        self.assertTrue(problems, "a cast entity passing no image must be reported")
+
+    def test_anchor_only_spread_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp)
+            spec = _spec([{"id": "spread-01", "scene": "An empty field at dawn.",
+                           "cast": []}])
+            _, problems = audit(root, spec)
+        self.assertIn("anchor", " ".join(problems).lower())
+
+    def test_a_correct_spec_passes_clean(self):
+        """The fix must not buy its silence by flagging everything."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp)
+            spec = _spec([
+                {"id": "spread-01", "scene": "The object alone in a field.",
+                 "cast": [{"id": "the-object", "plate": "state-b"}]},
+                {"id": "spread-02", "setting": "a-room", "plate": "master",
+                 "scene": "A quiet room.",
+                 "cast": [{"id": "the-object", "plate": "master"}]},
+            ])
+            rows, problems = audit(root, spec)
+        self.assertEqual(problems, [], problems)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("the-object", rows[0]["entities"])
+
+
+if __name__ == "__main__":
+    unittest.main()
