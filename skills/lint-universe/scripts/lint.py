@@ -274,22 +274,39 @@ def lint(root):
             if (e.get("structured") or {}).get("sheets"):
                 continue
             con = e.get("contract") or {}
-            repair = {}
+
+            # KEY EVERY SHEET BY ITS FILENAME, never by the contract SLOT it came from.
+            # The slot name is right only when the two happen to agree. A multi-state
+            # visual-metaphor stores its neutral plate as `contract.turnaround`, so keying
+            # by slot emits `"turnaround": ".../master.png"` and the entity ends up with no
+            # `master` key at all, which is the one name the resolver's own hero fallback
+            # looks for. Keying by filename produced `master` for three of the eleven
+            # entities this check first found (the-conditioned-bell, the-old-feast,
+            # the-one-lit-board) and matched the slot name everywhere else.
+            def _key(p): return p.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+
+            repair, empties = {}, []
             for k in ("turnaround", "blueprint", "scalePlate", "blockingPlate"):
-                if isinstance(con.get(k), str) and con[k]:
-                    repair[k] = con[k]
+                v = con.get(k)
+                if isinstance(v, str) and v:
+                    repair.setdefault(_key(v), v)
             for p in con.get("emptyPlates") or []:
                 if isinstance(p, str) and p:
-                    repair.setdefault(p.rsplit("/", 1)[-1].rsplit(".", 1)[0], p)
+                    repair.setdefault(_key(p), p)
+                    empties.append(_key(p))
             if not repair:
                 continue
+            # The GATE is ONE SINGLE-VIEW plate. Never the turnaround: it is a multi-panel
+            # study, and the compiler's single-image guard exists precisely because passing
+            # one makes the model reproduce its LAYOUT instead of the scene.
+            gate = "master" if "master" in repair else (empties[0] if empties else next(iter(repair)))
             pairs = ", ".join(f'"{k}": "{v}"' for k, v in repair.items())
             warn("LOCKED-BUT-NO-SHEETS",
                  f"{eid}: is locked and declares {len(repair)} contract plate(s), but has no "
                  f"`structured.sheets`, so the compiler can resolve NO plate for it and "
                  f"compose-spec will report 'available: NONE'. Repair (additive, invents "
-                 f"nothing): set structured.sheets = {{{pairs}}} and pick a "
-                 f"requiredForRender from those keys.")
+                 f"nothing): set structured.sheets = {{{pairs}}} and "
+                 f'requiredForRender = ["{gate}"].')
 
     # carrying a wardrobe-ish sheet. WARNING, never an error: a character who appears once
     # does not need a capsule.

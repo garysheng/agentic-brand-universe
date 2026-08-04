@@ -1879,9 +1879,14 @@ Default measured reference, when a universe declares no `identity.scaleReference
     somewhere else, as `compose-spec` printing `available: NONE` for a place the author has
     already written into a beat, at which point no plate is passed and the spread renders off
     the style anchor alone. `lint-universe` now warns `LOCKED-BUT-NO-SHEETS` on any LOCKED
-    entity that declares contract plates and no `sheets`, and prints the deterministic repair
-    (`contract.turnaround` -> `sheets.turnaround`, `blueprint` -> `sheets.blueprint`, each
-    `emptyPlates` entry -> its basename) as pasteable JSON rather than as a description of it.
+    entity that declares contract plates and no `sheets`, and prints the deterministic repair as pasteable JSON rather than as a
+    description of it. **Every sheet is keyed by its FILENAME, never by the contract slot it
+    came from**: a multi-state visual-metaphor stores its neutral plate as
+    `contract.turnaround`, so keying by slot would emit `"turnaround": ".../master.png"` and
+    leave the entity with no `master` key, which is the one name the resolver's own hero
+    fallback looks for. The suggested `requiredForRender` is ONE single-view plate, a `master`
+    if there is one and otherwise the first empty plate, and never the turnaround, because a
+    multi-panel study passed on every render makes the model reproduce its layout.
     Unlocked entities are never flagged: `add-setting` scaffolds exactly that shape and it is
     correct until `shoot-references` fills the plates. Earned 2026-08-03 (nation-of-fire
     `he-is-a-jealous-god`) on `the-great-stage`, locked since 2026-07-19 with four plates and

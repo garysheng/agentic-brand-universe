@@ -179,6 +179,26 @@ class TestLockedButNoSheets(unittest.TestCase):
         # the exact keys an author can paste, not a description of them
         self.assertIn('"turnaround": "reference/stage/turnaround.png"', msg)
         self.assertIn('"empty-c1": "reference/stage/empty-c1.png"', msg)
+        # the gate is the single-view empty plate, never the multi-panel turnaround
+        self.assertIn('requiredForRender = ["empty-c1"]', msg)
+
+    def test_sheets_are_keyed_by_FILENAME_not_by_contract_slot(self):
+        # A multi-state visual-metaphor stores its neutral plate as contract.turnaround.
+        # Keying by slot would emit "turnaround": ".../master.png" and leave the entity
+        # with no `master` key, which is the one name the resolver's hero fallback wants.
+        with tempfile.TemporaryDirectory() as t:
+            root = build(t, entity={
+                "id": "bell", "kind": "visual-metaphor", "status": "locked",
+                "contract": {"turnaround": "reference/bell/master.png",
+                             "emptyPlates": ["reference/bell/state-live.png"]}},
+                projections={"p": {"id": "p", "slots": [OK_SLOT],
+                                   "generators": [OK_GEN], "invariants": OK_INV}})
+            lint.E.clear(); lint.W.clear(); lint.lint(str(root))
+            msg = next(m for c, m in lint.W if c == "LOCKED-BUT-NO-SHEETS")
+        self.assertIn('"master": "reference/bell/master.png"', msg)
+        self.assertNotIn('"turnaround"', msg)
+        # and a `master` outranks an empty plate as the gate
+        self.assertIn('requiredForRender = ["master"]', msg)
 
 
 class TestGoldenProvenance(unittest.TestCase):
