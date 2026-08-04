@@ -400,6 +400,33 @@ def parse_prompts_full(md: Path) -> dict:
     header_refs = _split_ids(", ".join(_header_block(text, "Refs")))
 
     out, refs, sizes, cur, buf, cur_refs = {}, {}, {}, None, [], []
+    # A shot is keyed by the FILE IT WRITES, not by its heading text, so two headings
+    # that point at the same output are the same shot and the later one silently
+    # REPLACES the earlier one's prompt. That is invisible, it is expensive, and it
+    # does not look like its own cause: on 2026-08-04 an alias section
+    # `## present-night -> .../master.png` overwrote `## master`'s real prompt with the
+    # words "ALIAS OF master. Do not shoot.", so the model received a two-sentence stub
+    # plus the style anchor and returned the ANCHOR'S OWN SUBJECT, twice, at full price.
+    # It was diagnosed as an anchor leak and re-prompted before anyone read the recipe.
+    # An alias belongs in the ENTITY's structured.sheets, where two keys may point at
+    # one file; prompts.md gets one heading per output.
+    heading_for: dict = {}
+
+    def _claim(key: str, head: str) -> None:
+        prev = heading_for.get(key)
+        if prev is not None and prev != head:
+            raise Refuse(
+                f"{md}: two shot headings write the same file '{key}.png', so the second "
+                f"would silently replace the first one's prompt.\n"
+                f"  first:  ## {prev}\n"
+                f"  second: ## {head}\n"
+                "Give each shot its own output, or delete the duplicate heading. If you meant "
+                "an ALIAS (two names for one plate), put it in the entity's structured.sheets "
+                "instead, where two keys may point at one file; prompts.md takes one heading "
+                "per output."
+            )
+        heading_for[key] = head
+
     for line in text.splitlines():
         m = re.match(r"^##\s+(.*)$", line)
         if m:
@@ -419,6 +446,7 @@ def parse_prompts_full(md: Path) -> dict:
                 cur, buf, cur_refs = None, [], []
                 continue
             cur = path.group(1) if path else head.split("—")[0].split("->")[0].strip()
+            _claim(cur, head)
             # PER-SHOT SIZE, declared in the heading as "(WxH)". A reference matrix
             # legitimately MIXES aspects: full-body and profiles want portrait, while
             # multi-panel sheets (expressions, era/turnaround rows) want landscape.

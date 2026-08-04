@@ -198,6 +198,41 @@ class TestNegativesAndCrossRefs(unittest.TestCase):
         self.assertNotIn("REFS", parsed["prompts"]["c2-work"])
         self.assertEqual(parsed["refs"]["c2-work"], ["the-door"])
 
+    def test_two_headings_writing_one_file_refuse(self):
+        """A shot is keyed by the file it writes, so a duplicate `->` target used to
+        make the LATER heading silently replace the earlier one's prompt. That cost two
+        paid renders on 2026-08-04 and looked like a style-anchor leak, because the
+        clobbered shot went to the model as a two-sentence alias stub."""
+        self._locked_other()
+        self._write_prompts(
+            "# room\n\n"
+            "## c1-wide -> `reference/room/c1-wide.png`\nThe real prompt for this plate.\n\n"
+            "## c2-work -> `reference/room/c2-work.png`\nWork view.\n\n"
+            "## alias-of-c1 -> `reference/room/c1-wide.png`\nALIAS. Do not shoot.\n")
+        from importlib import util
+        spec = util.spec_from_file_location("cm", CHAIN)
+        cm = util.module_from_spec(spec); spec.loader.exec_module(cm)
+        with self.assertRaises(cm.Refuse) as ctx:
+            cm.parse_prompts_full(self.root / "reference" / "room" / "prompts.md")
+        msg = str(ctx.exception)
+        self.assertIn("c1-wide.png", msg)
+        self.assertIn("alias-of-c1", msg)
+        self.assertIn("structured.sheets", msg)
+
+    def test_one_heading_per_output_still_parses(self):
+        """The refusal must not fire on a normal matrix."""
+        self._locked_other()
+        self._write_prompts(
+            "# room\n\n"
+            "## c1-wide -> `reference/room/c1-wide.png`\nWide view.\n\n"
+            "## c2-work -> `reference/room/c2-work.png`\nWork view.\n")
+        from importlib import util
+        spec = util.spec_from_file_location("cm", CHAIN)
+        cm = util.module_from_spec(spec); spec.loader.exec_module(cm)
+        parsed = cm.parse_prompts_full(self.root / "reference" / "room" / "prompts.md")
+        self.assertEqual(parsed["prompts"]["c1-wide"], "Wide view.")
+        self.assertEqual(parsed["prompts"]["c2-work"], "Work view.")
+
     def test_header_refs_apply_to_every_shot(self):
         self._locked_other()
         self._write_prompts(

@@ -1072,6 +1072,95 @@ def _pose_without_look_guard(c: dict, ent: dict, spread_id: str) -> None:
     )
 
 
+# Authoring vocabulary: words that only ever appear when a canon field is talking to a
+# PERSON about how the book is made. Deliberately narrow. Bare "plate" is NOT here,
+# because a dinner plate is a real object a setting may legitimately describe.
+_AUTHORING_MARKER = re.compile(
+    r"""(?xi)
+      \bper-spread\b
+    | \bbakes?\s+exactly\b           # "spread 30 bakes exactly ENCOUNTER SAN ANTONIO"
+    | \bgabr-?\d                     # "blueprint gabr-23"
+    | \brender-spec\b
+    | \bQA\b
+    | \bread-?back\b
+    | \blint-universe\b
+    | \brecord\s+so\b                # "record so QA does not 'fix' it"
+    | \bEarned\s+\d{4}-              # "Earned 2026-08-01: a front camera returned..."
+    | \bLAYOUT\s+ONLY\b              # blueprint-handling instruction
+    """
+)
+
+# A bare spread reference. Enough to kill a PARENTHETICAL aside, never enough on its own
+# to kill a whole sentence: sentences that mention a spread number usually carry a
+# durable continuity RULE that happens to cite where it starts ("After spread 19 Malik
+# has none, forever"), and deleting those causes the exact defects the field exists to
+# prevent. Per-spread STATE sitting in a global contract field is a canon-shape problem
+# whose real fix is `contract.plates`; a prompt-time filter must not silently paper over
+# it by throwing the rule away.
+_SPREAD_REF = re.compile(r"\bspreads?\s+\d", re.I)
+
+
+def strip_authoring_notes(prose: str) -> str:
+    """Remove author-facing meta from a canon contract field before it reaches a model.
+
+    `contract.map`/`blocking`/`dressing`/`scale` are injected into the prompt verbatim,
+    and authors write notes to each other in them. A model has no way to tell a
+    description of the place from an instruction about the book, so it renders the
+    instruction AS THE PLACE.
+
+    Earned 2026-08-04 (nation-of-fire). encounter-san-antonio's `map` says its sign
+    board is "(BLANK on the plate; spread 30 bakes exactly ENCOUNTER SAN ANTONIO)".
+    A render came back with a sign reading "30 BAKES EXACTLY ENCOUNTER SAN ANTONIO".
+    A sweep of that one universe then found 24 such sentences across 13 settings,
+    including a `dressing` field that ends "record so QA does not 'fix' its
+    presence/absence" — a note to a reviewer, shipped to an image model on every render
+    of that room. Mostly this only wastes instruction budget and muddies the prompt;
+    occasionally it is drawn.
+
+    Two passes, both conservative, because over-stripping a real description is worse
+    than leaving a stray note in:
+      1. Drop a PARENTHETICAL when the aside carries authoring vocabulary OR merely
+         cites a spread number. "(north up)" and "(the teaching bench)" survive;
+         "(BLANK on the plate; spread 30 bakes exactly X)" and "(spread 23 on)" do not.
+      2. Drop a SENTENCE only for UNAMBIGUOUS authoring vocabulary (QA, read-back,
+         render-spec, gabr-N, "record so", "Earned <date>"). A bare spread reference is
+         deliberately NOT enough here. An earlier draft of this function did drop those
+         sentences and it ate "After spread 19 Malik has none, forever" out of
+         the-cords' blocking, which is a durable continuity rule that merely cites where
+         it begins. Losing it would put cords back on a character the canon says is free
+         of them: a worse defect than the noise this function exists to remove.
+
+    The durable fix is still to keep authoring notes out of render-facing fields (put
+    them in `authority.note`, where nothing injects them). This is the guard for the
+    canon that already exists.
+    """
+    if not isinstance(prose, str) or not prose.strip():
+        return ""
+    def _paren(m):
+        inner = m.group(1)
+        if _AUTHORING_MARKER.search(inner):
+            return ""
+        # A spread citation kills the aside ONLY when the citation is essentially all
+        # the aside contains. "(spread 23 on)" is pure bookkeeping. "(Nyanya, Neema,
+        # Baraka, and the child in spread 30)" names WHO a rule applies to, and deleting
+        # it leaves "the gold thread attaches to the clean bloodline ." with the people
+        # removed, which is a continuity defect rather than a cleanup.
+        if _SPREAD_REF.search(inner):
+            residue = _SPREAD_REF.sub(" ", inner)
+            residue = re.sub(r"[\d\s,;/&+.-]+|\b(on|to|from|and|the|in|only|after|before)\b",
+                             " ", residue, flags=re.I)
+            # Empty residue only. One surviving word is typically a NAME ("Jabari after
+            # spread 17"), and a name is exactly the thing worth keeping.
+            if not residue.split():
+                return ""
+        return m.group(0)
+
+    cleaned = re.sub(r"\(([^()]*)\)", _paren, prose)
+    kept = [s for s in re.split(r"(?<=[.;])\s+", cleaned)
+            if s.strip() and not _AUTHORING_MARKER.search(s)]
+    return re.sub(r"\s{2,}", " ", " ".join(kept)).replace(" ;", ";").replace(" ,", ",").strip()
+
+
 def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     """Resolve ONE named plate/sheet for a non-character entity.
 
@@ -1181,7 +1270,8 @@ def entity_block(cid: str, derived: str | None, bake: str | None,
 
 
 def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
-    """Return (ref_paths, block) for a setting, from its WHOLE contract.
+    """Return (ref_paths, block) for a setting, from its WHOLE contract, minus the
+    parts of that contract that were written for a human author rather than a model.
 
     THE GEOMETRY FIELDS USED TO BE DROPPED. This built the block from
     `contract.dressing` alone, so `map`, `blocking` and `scale` never reached the
@@ -1262,7 +1352,8 @@ def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
     if pcfg.get("includeBlocking") is False:
         keys.remove("blocking")
     parts = [con.get(k) for k in keys]
-    parts = [p.strip() for p in parts if isinstance(p, str) and p.strip()]
+    parts = [strip_authoring_notes(p) for p in parts if isinstance(p, str) and p.strip()]
+    parts = [p for p in parts if p]
     note = pcfg.get("note")
     if isinstance(note, str) and note.strip():
         parts.append(note.strip())
