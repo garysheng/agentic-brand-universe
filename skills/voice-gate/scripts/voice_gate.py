@@ -395,9 +395,29 @@ def main(argv: list[str] | None = None) -> int:
     advisory = [f for f in open_f if f.severity == ADVISORY]
 
     if args.emit_waivers:
-        print(json.dumps({"waived": [
+        # WRITE the stubs, never merely print them. Printing looks helpful and is a
+        # trap: the obvious next move is `--emit-waivers > <the waivers path>`, and
+        # the shell truncates that file BEFORE this process runs, so load_waivers()
+        # above reads an empty file and the whole run dies on a JSONDecodeError with
+        # the operator's real waivers destroyed. Earned 2026-08-04 on
+        # learning-serpent-wisdom, where it cost two round trips and a rewrite of
+        # five adjudicated reasons.
+        stubs = {"waived": [
             {"rule": f.rule, "match": f.match.strip(), "line": f.line,
-             "reason": "TODO: why this one stays"} for f in review]}, indent=2))
+             "reason": "TODO: why this one stays"} for f in review]}
+        blob = json.dumps(stubs, indent=2) + "\n"
+        if wpath.exists():
+            existing = wpath.read_text(encoding="utf-8")
+            if '"TODO: why this one stays"' not in existing:
+                print(f"REFUSE: {wpath.name} already exists and carries adjudicated "
+                      f"reasons.\n  Emitting would overwrite them. Merge the "
+                      f"{len(review)} open review item(s) in by hand, or delete the "
+                      f"file first if you mean to start over.")
+                print(blob)
+                return 2
+        wpath.write_text(blob, encoding="utf-8")
+        print(f"wrote {len(review)} waiver stub(s) -> {wpath}")
+        print("  Fill every `reason` before re-running the gate; a TODO reason does not waive.")
         return 0
 
     print(f"voice-gate: rules from {SPEC_URL} [{spec.origin}]"

@@ -25,7 +25,7 @@ Useful flags:
 
 | Flag | For |
 |---|---|
-| `--emit-waivers` | print waiver stubs for every open REVIEW, ready to annotate |
+| `--emit-waivers` | WRITE waiver stubs for every open REVIEW into the waivers file, ready to annotate. Do NOT redirect it with `>`: it writes the file itself, and it refuses rather than clobbering reasons you already adjudicated |
 | `--waivers PATH` | a waiver file somewhere other than `<manuscript>.voice-waivers.json` |
 | `--offline` | skip the spec fetch (checks against the vendored copy) |
 | `--adopt-spec` | re-vendor the published spec, AFTER reading the diff and porting new rules |

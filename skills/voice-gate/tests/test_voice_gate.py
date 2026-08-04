@@ -130,7 +130,13 @@ class VoiceGate(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("STALE WAIVERS", out)
 
-    def test_emit_waivers_produces_parseable_stubs(self):
+    def test_emit_waivers_writes_the_file_rather_than_printing_it(self):
+        """It must WRITE, because printing invites `--emit-waivers > <waivers path>`.
+
+        The shell truncates the redirect target BEFORE this process runs, so the gate
+        loads an empty waivers file, dies on a JSONDecodeError, and takes the
+        operator's already-adjudicated reasons with it. Earned 2026-08-04.
+        """
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
             (tmp / "universe.json").write_text('{"identity":{"voice":{}}}')
@@ -139,9 +145,28 @@ class VoiceGate(unittest.TestCase):
             p = subprocess.run([sys.executable, str(SCRIPT), "--offline", str(tmp),
                                 str(man), "--emit-waivers"], capture_output=True, text=True)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-            stubs = json.loads(p.stdout)["waived"]
+            wpath = tmp / "story.voice-waivers.json"
+            self.assertTrue(wpath.exists(), "stubs were printed instead of written")
+            stubs = json.loads(wpath.read_text())["waived"]
             self.assertTrue(stubs)
             self.assertEqual(stubs[0]["rule"], "totalizing-emphasis")
+
+    def test_emit_waivers_refuses_to_clobber_adjudicated_reasons(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            (tmp / "universe.json").write_text('{"identity":{"voice":{}}}')
+            man = tmp / "story.manuscript.md"
+            man.write_text("That is the whole point of it.")
+            wpath = tmp / "story.voice-waivers.json"
+            mine = {"waived": [{"rule": "totalizing-emphasis", "match": "the whole point",
+                                "line": "That is the whole point of it.",
+                                "reason": "an adjudicated reason a human wrote"}]}
+            wpath.write_text(json.dumps(mine))
+            p = subprocess.run([sys.executable, str(SCRIPT), "--offline", str(tmp),
+                                str(man), "--emit-waivers"], capture_output=True, text=True)
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertIn("REFUSE", p.stdout)
+            self.assertEqual(json.loads(wpath.read_text()), mine)
 
     # --- universe-local oneWord terms ----------------------------------------
 

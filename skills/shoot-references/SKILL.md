@@ -94,6 +94,29 @@ next run cannot reproduce the shot and the entity's own art has no recorded inte
 So: write the shot bodies into `prompts.md` first, then shoot with `chain_matrix.py`. If a
 shot needs something the file cannot express, fix the file format, not the workflow.
 
+**DO NOT TYPE THE FIRST DRAFT. COMPOSE IT FROM THE ENTITY:**
+
+```bash
+python3 scripts/compose_prompts.py <universe> <entity-id> --all            # every sheet key
+python3 scripts/compose_prompts.py <universe> <entity-id> queen=queen:1024x1536
+```
+
+It builds each body out of the entity's own strings: `structured.render.always` becomes
+WHO, the selected pose's `bake` becomes POSE, and `structured.invariants` become the
+binding rules, verbatim. That is the point, and it is not about saving typing. A
+hand-typed prompt paraphrases the invariants slightly, and read-back then checks the art
+against the OTHER wording; a composed prompt cannot diverge from the rule it will be
+judged by, because it is the same string. It never touches a body that already exists (a
+human's words always win), it is idempotent, and it refuses on an unknown sheet, an
+unknown pose, a missing `render.always` or an entity with no invariants rather than
+guessing.
+
+Then READ what it wrote before shooting. Every sentence came from canon, so a sentence
+that is wrong in the prompt is wrong in the entity, and the entity is where you fix it.
+
+This is the complement of `backfill_prompts.py` below: compose is for an entity with no
+art yet, backfill is for art that already exists. Neither invents.
+
 ## Cross-entity refs: name the SHEETS when the required set is not the right set
 
 A shot body declares the other canon entities it shows, so they are conditioned on their
