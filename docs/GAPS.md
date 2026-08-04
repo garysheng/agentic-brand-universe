@@ -117,6 +117,36 @@ class is closed by data instead of by adding a fifth literal.
 **Still open because.** It is an engine + SPEC change (a new contract field), which is the
 heaviest kind, and it wants doing once for the whole alias class rather than four times.
 
+### G5. Nothing protects the framework repo's single CHECKOUT from concurrent paves
+
+**What.** `land-work` classifies a target BRANCH as free/idle/busy so a merge never moves
+one out from under a live sibling worktree. Nothing does the equivalent for the working copy
+itself. The framework repo has ONE checkout and no worktrees, so two `pave-the-path` runs
+firing at once share a HEAD: one session can create a branch, commit, `reset`, and re-commit
+while another is mid-edit in the same files, and the second session's commit silently lands
+on top of the first session's feature branch instead of where it meant to go.
+
+**Evidence.** 2026-08-04. A sibling session created `fix/prompt-prose-hygiene`, committed,
+reset to `HEAD~1`, and re-committed as `773e618`, all inside another session's build of
+v0.33. The v0.33 commit therefore has `773e618` as its parent and sits on a branch it never
+chose, sharing two files with work that is not its own. Nothing errored, nothing warned, and
+the collision was only visible because the committing session read `git log` afterwards.
+
+**Next invocation.** Immediate and recurring: a fleet of book runs ends in `pave-the-path`,
+and `make-a-book` wires that in as the last step of every book. Seven sessions were live in
+nation-of-fire the day this was found.
+
+**Would close it.** `evolve-abu` → `land-work` (or a small sibling of it) gains a
+START-OF-PAVE claim on the framework repo: report the current branch and any uncommitted
+sibling work BEFORE editing, take a worktree per pave rather than sharing the checkout, and
+refuse to commit onto a branch this session did not create. The framework already owns the
+right primitive for this; it is simply pointed at the universe repo and not at itself.
+
+**Still open because.** It wants designing with the parallel fleet in mind rather than
+patching mid-fleet, and the wrong version of it (an over-eager refusal) would stop paves
+outright. Recorded the day it bit, with the exact commit ids, so the design starts from
+evidence.
+
 ---
 
 ## Filing a gap here
