@@ -22,9 +22,75 @@ Usage:
   conform_cover.py <render.png> <out.png> --aspect 3:4 [--mode crop|pad]
 """
 import argparse
+import hashlib
+import json
+import pathlib
 import sys
 
 from PIL import Image, ImageDraw, ImageFilter
+
+
+def _sha16(p: "pathlib.Path") -> str:
+    return hashlib.sha256(p.read_bytes()).hexdigest()[:16]
+
+
+def _write_derivative_recipe(args, src_size, out_size) -> "pathlib.Path | None":
+    """Write `<out>.recipe.json` recording this conform as a DERIVATIVE.
+
+    EVERY GENERATED ASSET CARRIES ITS PROVENANCE RECIPE is a framework-wide rule, and
+    this script was breaking it for the one asset a reader actually sees. `cover.png` is
+    what the platform ships; `cover-raw.png` is the model output nobody looks at. Only
+    the raw got a recipe, from the provider adapter, so `book-doctor` reported
+    "provenance cover.png: no recipe.json beside the asset" and FAILED every book that
+    conformed a cover. Two separate book runs hand-wrote the missing file rather than
+    fixing the tool (Why We Are the Luckiest Generation, 2026-08-04, wrote it twice in
+    one session because the cover was re-rolled), and at least one shipped book has the
+    hole still open.
+
+    The recipe is honest about being a derivative rather than a generation: model is
+    explicitly none, prompt is null, and `derivedFrom` names the source plus its own
+    recipe and hash. It carries `spec`/`universe`/`story` forward from the source recipe
+    when there is one, so the chain back to the canon that made the art is unbroken.
+    """
+    out = pathlib.Path(args.out)
+    src = pathlib.Path(args.src)
+    src_recipe = src.with_name(src.name + ".recipe.json")
+    carried = {}
+    if src_recipe.exists():
+        try:
+            s = json.loads(src_recipe.read_text())
+            carried = {k: s[k] for k in ("spec", "universe", "story") if k in s}
+        except (json.JSONDecodeError, OSError):
+            carried = {}
+    rec = {
+        "asset": str(out),
+        "model": "none (deterministic image transform, no model call)",
+        "mode": "derive",
+        "tool": "abu:cover/scripts/conform_cover.py",
+        "args": {"aspect": args.aspect, "mode": args.mode, "inset": args.inset,
+                 "blur": args.blur, "keyline": args.keyline},
+        "prompt": None,
+        "transform": f"{src_size[0]}x{src_size[1]} -> {out_size[0]}x{out_size[1]}",
+        "inputs": [{"path": str(src), "sha256_16": _sha16(src), "role": "source render"}],
+        "sha256_16": _sha16(out),
+        "derivedFrom": {
+            "path": str(src),
+            "recipe": str(src_recipe) if src_recipe.exists() else None,
+            "sha256_16": _sha16(src),
+        },
+        "note": ("DERIVATIVE, not a generation. The cover was conformed to the reader "
+                 "platform's page aspect by conform_cover.py. No image model was called "
+                 "and no pixels of the sharp art were repainted; see derivedFrom for the "
+                 "recipe of the render this came from."),
+        **carried,
+    }
+    try:
+        out.with_name(out.name + ".recipe.json").write_text(
+            json.dumps(rec, indent=2) + "\n")
+    except OSError as e:
+        print(f"WARNING: could not write provenance beside {out}: {e}", file=sys.stderr)
+        return None
+    return out.with_name(out.name + ".recipe.json")
 
 
 def _bleed(im, cw, ch, blur):
@@ -96,7 +162,10 @@ def main() -> int:
     if abs((ow / oh) - target) / target >= 0.005:
         print(f"ASSERT FAIL: output {ow}x{oh} is not {args.aspect}", file=sys.stderr)
         return 1
+    recipe = _write_derivative_recipe(args, (w, h), (ow, oh))
     print(f"OK conform {w}x{h} -> {ow}x{oh} ({args.aspect}, {args.mode}): {args.out}")
+    if recipe:
+        print(f"   provenance: {recipe}")
     return 0
 
 

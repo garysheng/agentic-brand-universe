@@ -322,8 +322,40 @@ Then `abu:render-readback` every image.
   while the negatives say "no people in this image" resolves by DELETING the required subject.
   State the subject positively and at size, and scope the negative.
 - **Cast by POSITIVE description; naming a thing to exclude plants it.** Describe who IS in frame.
-- **Negate the anchor's own subject on a bare spread.** A dry-run showing only one ref is casting
-  nothing but the anchor.
+  **To keep a SYMBOL out of a frame, over-specify the geometry instead of naming the symbol.** A
+  sand tray asked for "a geometry proof" came back with a five-pointed star; the second roll, now
+  carrying "no pentagram, no five-pointed star, no pentacle, no hexagram", drew it again. Naming it
+  planted it. What worked was leaving no room for it: name the exact figure ("one right-angled
+  triangle with a square drawn outward from each of its three sides"), give the COUNT of shapes, and
+  rule out the family by geometry rather than by name ("nothing is curved, nothing radiates from a
+  centre, nothing is enclosed in a circle"). The same run's Latin-cross-instead-of-star pendant had
+  the same cause and the same fix: state where the rays MEET and how they taper, and delete the word
+  "cross" from the negatives.
+- **THE FIRST SENTENCE OF A SCENE DECIDES WHETHER THE PEOPLE EXIST.** A scene that opens by
+  describing a PLACE comes back as that place, beautifully, and unpopulated, however clearly the
+  figures are named in a later clause. This happened FIVE times in one book: a crowd at a high
+  place, seven philosophers on a portico, a scribe at his desk, a visitor at a museum case, and a
+  crowded road, each returning as empty scenery under a caption about people. Open with a sentence
+  that says the figures ARE the subject, give an explicit COUNT and how much of the frame they fill,
+  describe the environment after them, and add the negative that names the failure directly ("if the
+  portico is empty of people the image is wrong").
+- **A cast plate's COMPOSITION wins over prose, so an override must be explicit.** A locked plate is
+  honoured for figure scale and placement as well as for content. Two rolls of "five people walk it,
+  and they are the ones laughing" came back as a lovely empty path because the entity's own master
+  plate composes its walkers as small distant specks: the model was obeying the reference. It landed
+  once the scene said so out loud ("IGNORE THE SIZE AND PLACEMENT OF THE FIGURES IN THE REFERENCE
+  PLATE: there they are small and far away, and here they are NEAR"), fixed the nearest figure's
+  head height as a fraction of the frame, and described each person individually.
+- **BEFORE calling a canon-cast render defective, LOOK AT THE PLATE that was passed to it.** A
+  glowing open doorway on a horizon was nearly re-rolled as a violation of the entity's
+  "no-gate-no-guard-no-wall" invariant; the entity's own approved master plate contains that
+  doorway, and the invariant is about EXCLUSION rather than about doors. The book's negative was
+  fighting canon's locked art, so the negative was wrong and the render was right.
+- **The anchor's own subject is negated for you when the register declares `anchorSubject`** (SPEC
+  4.6, v0.30). Do not hand-write "no oil lamp, no clay jar" into every spread's negatives; if you
+  find yourself doing that, the field is missing from `identity.register` and belongs there once
+  rather than in N spreads. On a spread that legitimately WANTS that subject matter, ask for it by
+  name in the scene text and the guard's carve-out allows it.
 - **A multi-state entity needs a per-spread `bake` naming ONE state**, plus "render exactly one
   state and no other". Handed the entity's whole rules, the model draws a chart of all of them.
 - **An emotion the caption depends on must be stated as a negative too.** "Quietly asking a hard

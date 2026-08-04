@@ -8,6 +8,7 @@ path — the refusals are the load-bearing feature.
 
 Run:  python3 -m unittest discover -s tests -v   (from the cover skill dir)
 """
+import hashlib
 import json
 import subprocess
 import sys
@@ -423,6 +424,86 @@ class TestAnchorSubjectNegation(unittest.TestCase):
         r = run_compile(self.u, "--anchor-ref", str(alt))
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("an ancient oil lamp", json.loads(r.stdout)["prompt"])
+
+
+class TestConformWritesProvenance(unittest.TestCase):
+    """The conformed cover is the asset the PLATFORM ships, so it needs a recipe.
+
+    `cover-raw.png` gets one from the provider adapter; `cover.png` got none, so
+    `book-doctor` reported "provenance cover.png: no recipe.json beside the asset" and
+    FAILED every book that conformed a cover. Two book runs hand-wrote the missing file
+    rather than fixing the tool (Why We Are the Luckiest Generation, 2026-08-04, wrote it
+    twice in one session because the cover was re-rolled).
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def conform(self, src, out, *args):
+        return subprocess.run(
+            [sys.executable, str(CONFORM), str(src), str(self.dir / out), *args],
+            capture_output=True, text=True)
+
+    def test_a_recipe_lands_beside_the_output(self):
+        src = self.dir / "cover-raw.png"
+        png(src, (1024, 1536))
+        r = self.conform(src, "cover.png", "--aspect", "3:4", "--mode", "pad")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec_path = self.dir / "cover.png.recipe.json"
+        self.assertTrue(rec_path.exists(), "no provenance beside the conformed cover")
+        rec = json.loads(rec_path.read_text())
+        self.assertEqual(rec["mode"], "derive")
+        self.assertIsNone(rec["prompt"], "a conform is not a generation")
+        self.assertIn("none", rec["model"], "the model field must not imply a model ran")
+        self.assertEqual(rec["derivedFrom"]["path"], str(src))
+        self.assertEqual(rec["args"]["mode"], "pad")
+        self.assertIn("1024x1536 -> ", rec["transform"])
+
+    def test_it_carries_spec_universe_and_story_from_the_source_recipe(self):
+        """The chain back to the canon that made the art must not break at the conform."""
+        src = self.dir / "cover-raw.png"
+        png(src, (1024, 1536))
+        (self.dir / "cover-raw.png.recipe.json").write_text(json.dumps({
+            "asset": str(src), "model": "gpt-image-2", "prompt": "...",
+            "spec": {"framework": "agenticstory", "version": "0.10"},
+            "universe": "u", "story": "s"}))
+        r = self.conform(src, "cover.png", "--aspect", "3:4", "--mode", "pad")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads((self.dir / "cover.png.recipe.json").read_text())
+        self.assertEqual(rec["universe"], "u")
+        self.assertEqual(rec["story"], "s")
+        self.assertEqual(rec["spec"]["version"], "0.10")
+        self.assertTrue(rec["derivedFrom"]["recipe"].endswith("cover-raw.png.recipe.json"))
+
+    def test_a_missing_source_recipe_is_not_fatal(self):
+        """An older cover with no recipe beside it still gets provenance for the output."""
+        src = self.dir / "loose.png"
+        png(src, (1024, 1536))
+        r = self.conform(src, "cover.png", "--aspect", "3:4", "--mode", "pad")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads((self.dir / "cover.png.recipe.json").read_text())
+        self.assertIsNone(rec["derivedFrom"]["recipe"])
+        self.assertNotIn("universe", rec)
+
+    def test_crop_mode_records_its_own_mode(self):
+        src = self.dir / "cover-raw.png"
+        png(src, (1024, 1536))
+        r = self.conform(src, "cover.png", "--aspect", "3:4", "--mode", "crop")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads((self.dir / "cover.png.recipe.json").read_text())
+        self.assertEqual(rec["args"]["mode"], "crop")
+
+    def test_the_recorded_hash_matches_the_file_on_disk(self):
+        src = self.dir / "cover-raw.png"
+        png(src, (1024, 1536))
+        self.conform(src, "cover.png", "--aspect", "3:4", "--mode", "pad")
+        rec = json.loads((self.dir / "cover.png.recipe.json").read_text())
+        actual = hashlib.sha256((self.dir / "cover.png").read_bytes()).hexdigest()[:16]
+        self.assertEqual(rec["sha256_16"], actual)
 
 
 if __name__ == "__main__":

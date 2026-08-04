@@ -58,6 +58,41 @@ ANCHOR_STYLE_GUARD = (
     "scene description below asks for them by name."
 )
 
+
+def anchor_subject_guard(subject) -> str:
+    """Name what the register anchor DEPICTS, and ban it, on every spread.
+
+    THE GENERIC GUARD ABOVE IS NOT ENOUGH ON ITS OWN, because a general negative loses
+    to a concrete picture. `identity.register.anchorSubject` exists to say what the
+    anchor actually shows so it can be banned SPECIFICALLY, and both sibling compilers
+    have read it for a while: `shoot-references/chain_matrix.py` since v0.29, and
+    `cover/compile_cover.py` after an oil lamp from the anchor was painted onto a
+    finished cover (eleventh-hour-heroes, 2026-08-02).
+
+    THIS COMPILER, the one that renders the interiors, was the last one not reading it,
+    which is the worst place for the hole to be: it handles every spread of every book
+    rather than one plate. The cost was silent and paid per book. On Why We Are the
+    Luckiest Generation (2026-08-04) all 27 spreads hand-wrote "No ancient oil lamp, no
+    clay oil jar or flask, no terracotta oil vessel, no tabletop pottery still life"
+    into their own negatives, and the book's authoring notes recorded that as a quirk of
+    the book rather than as a missing feature. The Nation of Fire cartridge had gone
+    further and stated outright that "the compiler injects the negation", which was true
+    of a retired universe-local fork and false of this one; nothing checked the claim.
+
+    The carve-out is deliberate and load-bearing: a scene that ASKS for the anchor's
+    subject matter by name still gets it. That is what lets a book whose whole first
+    movement is legitimately ancient and Near-Eastern coexist with an anchor that is an
+    ancient oil lamp.
+    """
+    if not subject:
+        return ""
+    return (
+        "SPECIFICALLY, NONE OF THE FOLLOWING FROM THAT FIRST STYLE-ANCHOR REFERENCE MAY APPEAR "
+        "ANYWHERE IN THIS IMAGE, on any table, shelf, floor, sill, wall or surface, or in any "
+        f"figure's hands: {subject}. If the scene description does not ask for them by name, they "
+        "are not in this picture at all."
+    )
+
 # A MULTI-PANEL REFERENCE MAKES A MULTI-PANEL SPREAD.
 # Promoted from the Nation of Fire fork 2026-07-25 (earned on why-do-i-get-to-meet-them).
 # Several canon references are legitimately study sheets: a character turnaround, a
@@ -996,6 +1031,47 @@ def _selector_bake_guard(c: dict, ent: dict, spread_id: str) -> None:
     )
 
 
+def _pose_without_look_guard(c: dict, ent: dict, spread_id: str) -> None:
+    """Refuse `pose: X` when the entity also declares `altLooks[X]` and `look` is unset.
+
+    THE SILENT DEFECT. `pose` selects a render block; `look` is what resolves
+    `structured.altLooks[<key>]`, and therefore what PASSES that look's own sheets and
+    applies its `dropSheets`. When an entity declares BOTH a pose and an alt-look under
+    the same key, which is how every wardrobe capsule is wired, setting only `pose`
+    assembles cleanly and renders the wrong clothes: the pose's `bake` says "matching
+    FIGURE 2 FROM THE LEFT on the supplied capsule reference sheet" while the capsule
+    sheet is not among the refs, so the model is told to match a picture it was never
+    shown and falls back to the entity's DEFAULT wardrobe.
+
+    Earned 2026-08-04 on Why We Are the Luckiest Generation. Seven spreads cast
+    `jerry-man` with `pose: "ql-cardigan"` and no `look`, and the dry run reported
+    refs=[anchor, man, face, pendant] with the capsule absent. Nothing errored. Two
+    spreads had already been paid for before a crop-zoom showed the pendant had come
+    back as a plain Latin cross, which is a canon violation the passed-but-unread
+    capsule sheet would have prevented.
+
+    Fails CLOSED, and the signal is unambiguous: an entity that declares an alt-look
+    named exactly like the pose is telling you the two belong together. `allowPoseOnly`
+    on the cast entry is the escape hatch for the rare case where a pose deliberately
+    wants the default look's body.
+    """
+    pose = c.get("pose")
+    if not pose or c.get("look") or c.get("allowPoseOnly"):
+        return
+    st = ent.get("structured") or {}
+    if pose not in (st.get("altLooks") or {}):
+        return
+    raise Refuse(
+        f"POSE SET WITHOUT ITS LOOK ({spread_id}, cast '{c['id']}'): pose={pose!r} but no "
+        f"`look`, and this entity declares altLooks[{pose!r}]. `pose` picks the render "
+        f"block; `look` is what passes that look's own sheets and applies its dropSheets. "
+        f"Left alone the look's reference art is never passed, the pose's bake describes a "
+        f"sheet the model cannot see, and the entity's DEFAULT wardrobe renders instead, "
+        f"with no error. Fix: add \"look\": {pose!r} beside the pose. If the default look's "
+        f"body is genuinely wanted here, set allowPoseOnly on this cast entry."
+    )
+
+
 def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     """Resolve ONE named plate/sheet for a non-character entity.
 
@@ -1222,6 +1298,12 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     if not anchor:
         raise Refuse("no anchor: identity.register.anchor is null and render-spec has no anchorRef")
 
+    # `anchorRef` REPLACES the image passed first, so identity.register.anchorSubject no
+    # longer describes what that first reference depicts, and negating it would ban
+    # content the override may legitimately want. Same reasoning, same shape, as
+    # compile_cover.py and chain_matrix.py, which both suppress the guard on an override.
+    anchor_subject = "" if eff.get("anchorRef") else reg.get("anchorSubject")
+
     refs: list[str] = [anchor]
     ent_blocks: list[str] = []
     qa: list[str] = []
@@ -1302,6 +1384,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         ent = load_entity(uroot, c["id"])
         kind = ent.get("kind")
         _selector_bake_guard(c, ent, spread_id)
+        _pose_without_look_guard(c, ent, spread_id)
         # PRE-SPEND ERA GATE. Runs before any ref is resolved, so a wrong-era
         # selection costs nothing instead of costing a whole spread.
         if kind == "character":
@@ -1623,6 +1706,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         for x in [
             f"Picture-book spread painted in the {reg.get('name', 'locked')} register of the FIRST reference image.",
             ANCHOR_STYLE_GUARD,
+            anchor_subject_guard(anchor_subject),
             style,
             ("SCENE: " + scene) if scene else "",
             *ent_blocks,

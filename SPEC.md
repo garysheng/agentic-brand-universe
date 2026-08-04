@@ -1,10 +1,29 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.31 — 2026-08-04.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.32 — 2026-08-04.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.32 changelog — three compilers passed the same anchor and only two obeyed the same
+> law.** Paved out of the *Why We Are the Luckiest Generation* run (nation-of-fire). **(1)**
+> `compose-spread` now reads `identity.register.anchorSubject` and bans the anchor's own subject
+> concretely on every spread, with the carve-out that a scene may ask for that subject BY NAME
+> (§4.6, anchor-subject guard). It was the last of the three anchor-passing compilers not reading
+> the field, which is the worst place for the hole because it handles every interior of every book;
+> the gap had been FOUND AND FILED in this repo's own save log two days earlier and declined, and
+> the next book paid for it by hand-negating an oil lamp and a clay jar in all 27 of its spreads.
+> **(2)** A cast entry setting `pose: X` where the entity also declares `altLooks[X]`, without
+> `look`, is now REFUSED (§4.6, pose-without-look refusal): the pose's bake described a capsule
+> sheet the refs did not contain, so the render silently fell back to the default wardrobe and put
+> a plain Latin cross on a character whose locked invariant forbids one. `allowPoseOnly` overrides.
+> **(3)** A deterministic in-repo TRANSFORM now writes its own `.recipe.json`, a third honest way
+> to get one beside generating and importing (§3.2): `conform_cover.py` produces the cover the
+> platform actually ships and wrote no provenance, so `book-doctor` failed every book that ran it
+> and two book runs hand-wrote the sidecar instead of fixing the tool. Backward compatible:
+> universes conforming to 0.31 remain valid, and every addition is a new guard, a new refusal or a
+> new sidecar rather than a change to an existing contract.
 
 > **v0.31 changelog — the `visual-metaphor` was a second-class kind, and four surfaces
 > proved it in one book run.** *What a Relief*, nation-of-fire, 2026-08-03. SPEC 12 has
@@ -629,9 +648,20 @@ it, sorted. `agenticstory.refs.expand_ref` is the one implementation; `refs.phot
 does not resolve, or a directory holding no images, is a hard error rather than an empty list: a ref
 that silently resolves to nothing is a silent downgrade to "invent it from prose".
 
-**Every asset carries a `.recipe.json` sidecar, and there are exactly two honest ways to get one.**
+**Every asset carries a `.recipe.json` sidecar, and there are exactly three honest ways to get one.**
 The provider adapter writes one as a side effect of GENERATING. `abu import-asset` writes one as a
-side effect of COPYING an asset in from outside. Nothing else writes a recipe by hand.
+side effect of COPYING an asset in from outside. **A deterministic in-repo TRANSFORM writes one as a
+side effect of transforming (v0.32)**, with `mode: "derive"`, a null `prompt`, a `model` that says no
+model ran, and `derivedFrom` naming the source path, its own recipe and its hash. Nothing else writes
+a recipe by hand.
+
+That third way was missing and the gap fell on the most-seen asset in a book. `conform_cover.py`
+turns the model's producible 2:3 render into the reader's 3:4 page, so `cover.png` is what the
+platform actually ships and `cover-raw.png` is the render nobody looks at; only the raw got a recipe,
+from the adapter. `book-doctor` therefore reported `provenance cover.png: no recipe.json beside the
+asset` and FAILED every book that conformed a cover, and two book runs hand-wrote the missing file
+rather than fixing the tool. A transform that produces a shipped asset owns its provenance, exactly
+as a generator does.
 
     abu import-asset <universe> <dest-rel> --from <src> \
       --from-repo <repo> --from-path <path-in-repo> --from-sha <sha> \
@@ -963,6 +993,22 @@ removes that step.
     full of period strangers holding the anchor's own props. Every other spread survived only
     because setting plates and character sheets outweighed it, which is why this looked safe for
     months.
+  - **Anchor-subject guard** (v0.32). When the register declares `identity.register.anchorSubject`,
+    the prompt additionally names what the anchor DEPICTS and bans it specifically, on every render,
+    with one carve-out: content the scene description asks for BY NAME is still allowed. The generic
+    anchor-style guard above is not sufficient on its own, because a general negative loses to a
+    concrete picture: an oil-lamp anchor put its own lamp and clay jar onto a spread that was already
+    carrying eight references, simply because the scene contained a table. `anchorSubject` was added
+    for exactly that and was then read by only two of the three compilers that pass an anchor first
+    (`chain_matrix.py` since v0.29, `compile_cover.py` after a lamp was painted onto a finished
+    cover). The interior compiler was the last one blind to it, which is the worst place for the
+    hole: it handles every spread of every book. The cost was silent and paid per book, one book
+    hand-writing "no ancient oil lamp, no clay oil jar or flask, no terracotta oil vessel" into all
+    27 of its spreads' negatives and recording that in its authoring notes as a quirk of the book.
+    A universe whose own cartridge asserted "the compiler injects the negation" was describing a
+    retired local fork, and nothing checked the claim. Suppressed when a spread or book sets
+    `anchorRef`, because an override replaces the image passed first and the declared subject no
+    longer describes it.
   - **Single-image guard.** Emitted by default: one continuous full-bleed image, never a grid,
     contact sheet, comic page or panelled study. Canon legitimately supplies multi-panel references
     (a character turnaround, a visual-metaphor's states sheet) and the model copies their layout.
@@ -1010,6 +1056,18 @@ removes that step.
     shoulder is a person. `allowUncast` overrides when the mention is genuinely not in frame. Name
     tokens already covered by a cast entity do not fire (`chief-of-*` and `apostle-*` ids share a
     head token).
+  - **Pose-without-look refusal** (v0.32). Before any spend, a cast entry setting `pose: X` on an
+    entity that ALSO declares `structured.altLooks[X]`, without setting `look`, is REFUSED.
+    `pose` selects a render block; `look` is what resolves the alt look, and therefore what passes
+    that look's own sheets and applies its `dropSheets`. When both are keyed the same, which is how
+    every wardrobe capsule is wired, setting only `pose` assembles cleanly and renders the entity's
+    DEFAULT wardrobe: the pose's bake says "matching FIGURE 2 FROM THE LEFT on the supplied capsule
+    reference sheet" while that capsule sheet is not among the refs at all, so the model is told to
+    match a picture it has never been shown. Earned where seven spreads cast a character in a
+    knitwear look with no `look` key and two were paid for before a crop-zoom found the render had
+    fallen back to his default jewellery, violating a locked invariant the unread sheet exists to
+    hold. `allowPoseOnly` on the cast entry overrides, for the rare beat that genuinely wants the
+    default look's body under a named pose.
   - **Per-spread preamble override.** A book may carry more than one visual register when the change
     is DIEGETIC. A spread may override `style`, `negatives`, `guardedNegatives`, `anchorRef`, `size`,
     `allowMultiPanel` and `allowUncast`; anything it does not name falls back to the book preamble.
