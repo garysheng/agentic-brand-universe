@@ -308,6 +308,44 @@ class TestRefSheetSelector(unittest.TestCase):
         with self.assertRaises(self.cm.Refuse):
             self.cm.entity_ref_images(self.root, "mark@ghost")
 
+    def test_a_required_sheet_not_yet_shot_is_dropped_not_refused(self):
+        # The blueprint-seeded chain make-a-book prescribes for a multi-state object:
+        # the blueprint is on disk, every state plate is what the shoot is about to
+        # create, and requiredForRender legitimately names one of those states. Before
+        # this, the seed shot refused, and the only way past it was to temporarily
+        # rewrite requiredForRender, which is lying about the entity's render gate.
+        ent = self.root / "canon" / "entities" / "mark.json"
+        d = json.loads(ent.read_text())
+        d["structured"]["sheets"]["blueprint"] = "reference/mark/blueprint.png"
+        d["structured"]["requiredForRender"] = ["master"]
+        d["structured"]["sheets"]["master"] = "reference/mark/master.png"  # declared, unshot
+        ent.write_text(json.dumps(d))
+        png(self.root / "reference" / "mark" / "blueprint.png")
+        got = self.cm.entity_ref_images(self.root, "mark@blueprint")
+        self.assertEqual([r["sheet"] for r in got], ["blueprint"])
+
+    def test_an_explicitly_selected_sheet_not_on_disk_still_refuses(self):
+        # The asymmetry is the point: dropping a REQUIRED plate the shoot has not made
+        # yet is normal; silently dropping one the author NAMED would send the shoot off
+        # with exactly the reference they were trying to add.
+        ent = self.root / "canon" / "entities" / "mark.json"
+        d = json.loads(ent.read_text())
+        d["structured"]["sheets"]["ghost"] = "reference/mark/ghost.png"
+        ent.write_text(json.dumps(d))
+        with self.assertRaises(self.cm.Refuse) as e:
+            self.cm.entity_ref_images(self.root, "mark@ghost")
+        self.assertIn("NOT ON DISK", str(e.exception))
+
+    def test_refuses_when_dropping_would_leave_no_refs_at_all(self):
+        ent = self.root / "canon" / "entities" / "mark.json"
+        d = json.loads(ent.read_text())
+        d["structured"]["sheets"] = {"master": "reference/mark/master.png"}
+        d["structured"]["requiredForRender"] = ["master"]
+        ent.write_text(json.dumps(d))
+        with self.assertRaises(self.cm.Refuse) as e:
+            self.cm.entity_ref_images(self.root, "mark")
+        self.assertIn("on disk yet", str(e.exception))
+
     def test_header_and_per_shot_tokens_merge_by_entity_not_by_string(self):
         (self.root / "reference" / "room" / "prompts.md").write_text(
             "# room\n\n**Refs (every shot):** mark\n\n"

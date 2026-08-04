@@ -247,6 +247,50 @@ def lint(root):
     # wardrobe; a reference is.
     #
     # Flag a character that RECURS (has locked sheets and a render block) but has no pose
+    # A LOCKED entity whose art is reachable ONLY through `contract`, with no
+    # `structured.sheets` at all, cannot have a plate resolved for it.
+    #
+    # `contract.turnaround` / `blueprint` / `emptyPlates` describe the art; `sheets` is
+    # what the RESOLVER reads. An entity that fills the first and not the second looks
+    # completely finished: it is `status: locked`, its files are on disk, and every one
+    # of them carries provenance. It fails much later and somewhere else, as
+    # `compose-spec` reporting `available: NONE` for a setting the author has already
+    # written into a beat, at which point the plate is simply never passed and the spread
+    # renders off the style anchor alone.
+    #
+    # Earned 2026-08-03 (nation-of-fire, he-is-a-jealous-god): `the-great-stage` had been
+    # locked since 2026-07-19 with four plates and full contract prose, and had never once
+    # been cast through the framework compiler. Ten more entities in the same universe
+    # were in the identical state, including two heavily-used settings.
+    #
+    # WARNING, never an error: the entity predates the resolver and its art is real. The
+    # repair is deterministic, so the finding prints it rather than describing it.
+    if ents_dir.exists():
+        for ef in sorted(ents_dir.glob("*.json")):
+            e = jload(ef) or {}
+            if e.get("status") != "locked":
+                continue
+            eid = e.get("id", ef.stem)
+            if (e.get("structured") or {}).get("sheets"):
+                continue
+            con = e.get("contract") or {}
+            repair = {}
+            for k in ("turnaround", "blueprint", "scalePlate", "blockingPlate"):
+                if isinstance(con.get(k), str) and con[k]:
+                    repair[k] = con[k]
+            for p in con.get("emptyPlates") or []:
+                if isinstance(p, str) and p:
+                    repair.setdefault(p.rsplit("/", 1)[-1].rsplit(".", 1)[0], p)
+            if not repair:
+                continue
+            pairs = ", ".join(f'"{k}": "{v}"' for k, v in repair.items())
+            warn("LOCKED-BUT-NO-SHEETS",
+                 f"{eid}: is locked and declares {len(repair)} contract plate(s), but has no "
+                 f"`structured.sheets`, so the compiler can resolve NO plate for it and "
+                 f"compose-spec will report 'available: NONE'. Repair (additive, invents "
+                 f"nothing): set structured.sheets = {{{pairs}}} and pick a "
+                 f"requiredForRender from those keys.")
+
     # carrying a wardrobe-ish sheet. WARNING, never an error: a character who appears once
     # does not need a capsule.
     if ents_dir.exists():

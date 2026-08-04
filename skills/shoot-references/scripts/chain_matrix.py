@@ -451,15 +451,46 @@ def entity_ref_images(uroot: Path, token: str) -> list[dict]:
             if _path_of(k):
                 required = [k]
                 break
+    # A REQUIRED sheet that is not on disk YET is dropped; an EXPLICITLY SELECTED one
+    # still refuses. The asymmetry is the whole point, and it is what makes an entity
+    # able to condition a shoot on its OWN already-made art.
+    #
+    # The case that earned it (2026-08-03, nation-of-fire he-is-a-jealous-god): the
+    # blueprint-seeded chain that `make-a-book` explicitly prescribes for a multi-state
+    # object. `the-aimed-mirror` had a code-drawn `blueprint.png` on disk and four state
+    # plates yet to be shot, and its seed shot said `REFS: the-aimed-mirror@blueprint`.
+    # That refused, because `requiredForRender` named `master`, whose art the shoot was
+    # about to create: `_path_of` is truthy for a DECLARED path, so the missing plate
+    # reached the existence check and killed the run. The only way past it was to
+    # temporarily rewrite `requiredForRender` to `["blueprint"]`, shoot, and put it back
+    # after locking, which is the author lying about the entity's own render gate to get
+    # past a check about something else entirely.
+    #
+    # Dropping is safe here in a way it is NOT at render time: `requiredForRender` is the
+    # gate on RENDERING a spread, and `assert-story` / `compose-spread` still enforce it
+    # in full. This function only assembles conditioning for a REFERENCE SHOOT, where a
+    # not-yet-existing plate is the normal state of the world rather than an error.
     wanted = selected + [s for s in required if s not in selected]
     if not wanted:
         raise Refuse(f"REFS names '{eid}', which has no locked reference art to pass")
-    out = []
+    out, dropped = [], []
     for s in wanted:
         p = (uroot / _path_of(s)).resolve()
         if not p.exists():
-            raise Refuse(f"REFS '{eid}.{s}' -> {p} (NOT ON DISK)")
+            if s in selected:
+                raise Refuse(f"REFS '{eid}.{s}' -> {p} (NOT ON DISK)")
+            dropped.append(s)
+            continue
         out.append({"sheet": s, "path": str(p)})
+    if not out:
+        raise Refuse(
+            f"REFS names '{eid}', but none of its wanted sheets are on disk yet "
+            f"({', '.join(wanted)}). Shoot or lock at least one before conditioning on it.")
+    if dropped:
+        # Never silent: a quietly smaller ref set is exactly the class of defect this
+        # file's other guards exist to surface.
+        print(f"  [refs] {eid}: not on disk yet, dropped from conditioning: "
+              f"{', '.join(dropped)}", file=sys.stderr)
     return out
 
 

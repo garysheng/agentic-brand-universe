@@ -123,6 +123,64 @@ class TestLinter(unittest.TestCase):
             self.assertIn(lint.main(), (0, 1), "clean or warn-only must not exit 2")
 
 
+class TestLockedButNoSheets(unittest.TestCase):
+    """A locked entity whose art hangs off `contract` alone cannot have a plate resolved.
+
+    Earned 2026-08-03 (nation-of-fire): the-great-stage was locked with four plates and
+    full contract prose since July and had never been cast through the framework
+    compiler. It surfaced only as compose-spec printing `available: NONE` mid-book, with
+    ten sibling entities in the identical state.
+    """
+
+    def lint_with(self, entity):
+        with tempfile.TemporaryDirectory() as t:
+            return run(build(t, entity=entity, projections={"p": {
+                "id": "p", "slots": [OK_SLOT], "generators": [OK_GEN],
+                "invariants": OK_INV}}))
+
+    def test_locked_with_contract_art_and_no_sheets_warns(self):
+        _, warns = self.lint_with({
+            "id": "stage", "kind": "setting", "status": "locked",
+            "contract": {"turnaround": "reference/stage/turnaround.png",
+                         "emptyPlates": ["reference/stage/empty-c1.png"]}})
+        self.assertIn("LOCKED-BUT-NO-SHEETS", warns)
+
+    def test_it_is_a_warning_and_never_an_error(self):
+        errs, _ = self.lint_with({
+            "id": "stage", "kind": "setting", "status": "locked",
+            "contract": {"turnaround": "reference/stage/turnaround.png"}})
+        self.assertNotIn("LOCKED-BUT-NO-SHEETS", errs)
+
+    def test_a_correctly_wired_entity_is_silent(self):
+        _, warns = self.lint_with({
+            "id": "stage", "kind": "setting", "status": "locked",
+            "structured": {"sheets": {"turnaround": "reference/stage/turnaround.png"}},
+            "contract": {"turnaround": "reference/stage/turnaround.png"}})
+        self.assertNotIn("LOCKED-BUT-NO-SHEETS", warns)
+
+    def test_an_unlocked_entity_is_not_flagged(self):
+        # add-setting scaffolds exactly this shape and it is CORRECT until shoot-references
+        # fills the plates. Flagging it would fire on every entity the moment it is created.
+        _, warns = self.lint_with({
+            "id": "stage", "kind": "setting", "status": "unlocked",
+            "contract": {"turnaround": "reference/stage/turnaround.png"}})
+        self.assertNotIn("LOCKED-BUT-NO-SHEETS", warns)
+
+    def test_the_finding_prints_the_deterministic_repair(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = build(t, entity={
+                "id": "stage", "kind": "setting", "status": "locked",
+                "contract": {"turnaround": "reference/stage/turnaround.png",
+                             "emptyPlates": ["reference/stage/empty-c1.png"]}},
+                projections={"p": {"id": "p", "slots": [OK_SLOT],
+                                   "generators": [OK_GEN], "invariants": OK_INV}})
+            lint.E.clear(); lint.W.clear(); lint.lint(str(root))
+            msg = next(m for c, m in lint.W if c == "LOCKED-BUT-NO-SHEETS")
+        # the exact keys an author can paste, not a description of them
+        self.assertIn('"turnaround": "reference/stage/turnaround.png"', msg)
+        self.assertIn('"empty-c1": "reference/stage/empty-c1.png"', msg)
+
+
 class TestGoldenProvenance(unittest.TestCase):
     """A golden is Gary's approved answer of record. An approval that recorded only a
     path could not say what it was approved AGAINST, so the taste corpus was

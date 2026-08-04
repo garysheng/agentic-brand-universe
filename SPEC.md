@@ -1,10 +1,23 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.29 — 2026-08-02.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.30 — 2026-08-03.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.30 changelog — two checks that fired at the wrong time, both from one book run.** *He Is
+> a Jealous God*, nation-of-fire, 2026-08-03. **(1)** A REFS selector could not condition a
+> reference shoot on the entity's OWN already-made art, because `requiredForRender` named a plate
+> the shoot was about to create and the existence check refused on it. The blueprint-seeded chain
+> this spec prescribes for a multi-state object was therefore unreachable without temporarily
+> rewriting `requiredForRender`, which is an author falsifying canon to satisfy a guard about
+> something else. A required sheet not on disk yet is now DROPPED; an explicitly selected one still
+> refuses, and dropping everything is still a refusal. **(2)** `lint-universe` now warns
+> `LOCKED-BUT-NO-SHEETS`: a LOCKED entity whose art hangs off `contract` alone with no
+> `structured.sheets` can have NO plate resolved for it, and it fails silently at compose time as
+> `available: NONE` rather than at lock time. Eleven entities in one universe were in that state,
+> including two heavily-used settings, all of them looking finished.
 
 > **v0.29 changelog — five checks that were lying, all earned in one book run.** *The Tithe Is a
 > Test* (nation-of-fire, shipped 2026-08-02) walked the whole chain and every defect it surfaced has
@@ -1520,6 +1533,26 @@ naming a sheet the entity does not declare, or declares with no art on disk, is 
 rather than a shrug, because silently ignoring a mistyped selector sends the render off with
 exactly the plate set the author was trying to add to.
 
+**A REQUIRED sheet that is not on disk YET is DROPPED; a SELECTED one still refuses (v0.30).**
+The two halves of the wanted set are held to different standards on purpose. A sheet the
+author NAMED in the token must exist, for the reason just given. A sheet that arrived only
+because it sits in `requiredForRender` is silently skipped when its art has not been made
+yet, and the shoot proceeds on whatever remains; if nothing remains, that is a refusal.
+
+This applies during a REFERENCE SHOOT only, where a not-yet-existing plate is the normal
+state of the world rather than an error. `requiredForRender` is the gate on RENDERING a
+spread, and `assert-story` and the compiler still enforce it in full there.
+
+The defect that earned it (2026-08-03, nation-of-fire `he-is-a-jealous-god`): the
+blueprint-seeded chain this spec and `make-a-book` both prescribe for a multi-state object.
+`the-aimed-mirror` had a code-drawn `blueprint.png` on disk and four state plates yet to be
+shot, so its seed shot said `REFS: the-aimed-mirror@blueprint`. That refused, because
+`requiredForRender` named `master`, whose art the shoot was about to create. The only way
+past it was to temporarily rewrite `requiredForRender` to a sheet that already existed,
+shoot, and put it back after locking, which is an author falsifying an entity's own render
+gate to satisfy a check about something else. A guard that can only be cleared by lying
+about canon is a guard that teaches people to edit canon.
+
 Tokens are merged by ENTITY, not by string, so a header `Refs` and a per-shot `REFS` naming
 one entity resolve it once. Each ref is recorded in the shot's `.recipe.json` under
 `crossEntityRefs` with its `sheet` name as well as its path and hash: once two shots can
@@ -1718,6 +1751,19 @@ Default measured reference, when a universe declares no `identity.scaleReference
     hand-editing the engine exists to remove. All three now call one predicate,
     `model.setting_contract_gaps`, and `lint-universe` warns `SETTING-LOCKED-BUT-GATE-REFUSES` on
     older canon whose recorded status the gate contradicts (six such entities in nation-of-fire).
+  - **`contract` DESCRIBES the art; `structured.sheets` is what the RESOLVER READS (v0.30).**
+    An entity that fills the first and leaves the second empty looks completely finished:
+    `status: locked`, files on disk, every one carrying provenance. It fails much later and
+    somewhere else, as `compose-spec` printing `available: NONE` for a place the author has
+    already written into a beat, at which point no plate is passed and the spread renders off
+    the style anchor alone. `lint-universe` now warns `LOCKED-BUT-NO-SHEETS` on any LOCKED
+    entity that declares contract plates and no `sheets`, and prints the deterministic repair
+    (`contract.turnaround` -> `sheets.turnaround`, `blueprint` -> `sheets.blueprint`, each
+    `emptyPlates` entry -> its basename) as pasteable JSON rather than as a description of it.
+    Unlocked entities are never flagged: `add-setting` scaffolds exactly that shape and it is
+    correct until `shoot-references` fills the plates. Earned 2026-08-03 (nation-of-fire
+    `he-is-a-jealous-god`) on `the-great-stage`, locked since 2026-07-19 with four plates and
+    never once cast through the framework compiler, with ten sibling entities in the same state.
   - **`contract.emptyPlatesExpected` (v0.29, optional int) — the declared COUNT.** Without it the
     gate can only ask whether the list is non-empty, so a setting that genuinely needs four cameras
     is promoted to `locked` on the second and the two nobody shot are improvised at render time,
