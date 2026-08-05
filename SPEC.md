@@ -1687,6 +1687,17 @@ encoded) is paid for once and reused by every future property and universe.
 >   `scale`, `blocking` and `master`): **the vocabulary the scaffolder hands the author is not the
 >   vocabulary the locker accepts.** When adding a slot name anywhere, add it to the locker's map
 >   in the same edit.
+> - **AND THE FALL-THROUGH IS NO LONGER SILENT, which is the fix for the CLASS rather than for
+>   instance four.** Every one of those four was a silence and not a wrong answer: the plate
+>   landed in `contract.emptyPlates`, the contract field stayed null, `status` never promoted,
+>   the tool reported success, and the only way out was hand-editing the JSON. `lock_shot` now
+>   prints a NOTE naming the accepted aliases whenever a contract-shaped entity locks a slot that
+>   is neither a contract field nor an `empty`-prefixed plate. A note rather than a refusal,
+>   deliberately: a populated camera plate under a custom name (`frontglass`, `backseat`,
+>   `singleRuss` on nation-of-fire's vehicles) is a legitimate use of that branch, and refusing
+>   would break shipped universes. The rule generalizes past this file: **when a defect recurs,
+>   ask whether the instances share a silence, and make the silence loud instead of patching the
+>   Nth case.**
 > - **`contract.scalePlateWaiver` — a declared, reasoned decline of the scale plate.** A scale
 >   plate IS anonymous figures, so an entity whose own invariants forbid figures in every plate
 >   cannot have one, and `lint-universe` and `universe-doctor` used to ding it forever for a gap

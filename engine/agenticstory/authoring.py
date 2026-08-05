@@ -7,6 +7,8 @@ step (shoot-references) fills paths and promotes the required set.
 """
 from __future__ import annotations
 
+import sys
+
 import datetime as _dt
 import hashlib
 import json
@@ -346,6 +348,26 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         if slot in ("turnaround", "blueprint", "scalePlate", "blockingPlate"):
             c[slot] = path
         else:
+            # EVERY INSTANCE OF THIS DEFECT WAS A SILENCE, NOT A WRONG ANSWER (v0.34).
+            # Four times now (`scale`, `blocking`, `master`, `seating`) an author locked a
+            # plate under a reasonable name, the name was not in the map above, the plate
+            # fell through to `emptyPlates`, the contract field stayed null, `status` never
+            # flipped, and the ONLY way out was hand-editing the JSON. Each time the tool
+            # reported success. The fix for instance N is a map entry; the fix for the CLASS
+            # is that the fall-through stops being quiet.
+            #
+            # A warning rather than a refusal, deliberately: a populated camera plate under
+            # a custom name (`frontglass`, `backseat`, `singleRuss` on nation-of-fire's
+            # vehicles) is a legitimate use of this branch, and refusing would break shipped
+            # universes. `empty`-prefixed names are the documented idiom and stay silent.
+            if not shot.startswith("empty"):
+                print(f"NOTE: {entity.get('id')}: '{shot}' is not a contract slot name, so it "
+                      f"was filed under contract.emptyPlates. If this plate IS the "
+                      f"turnaround / blueprint / scale plate / blocking plate, lock it under "
+                      f"that name (or a known alias: scale, scale-plate, blocking, "
+                      f"blocking-plate, seating, seating-chart, master) so the contract field "
+                      f"is set and `status` can promote. If it is genuinely another plate, "
+                      f"ignore this.", file=sys.stderr)
             plates = c.setdefault("emptyPlates", [])
             if path not in plates:
                 plates.append(path)

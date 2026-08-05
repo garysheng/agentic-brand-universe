@@ -68,6 +68,30 @@ class TestLockShotSettingContract(unittest.TestCase):
             self.assertNotIn("reference/a-school/seating.png",
                              e["contract"].get("emptyPlates") or [])
 
+    def test_unknown_contract_slot_is_never_silent(self):
+        """The CLASS fix (v0.34): four instances of one defect were all silences.
+
+        `scale`, `blocking`, `master` and `seating` each fell through to emptyPlates,
+        left the contract field null, never promoted `status`, and reported success.
+        Instance N gets a map entry; the class gets a fall-through that says so.
+        """
+        import io, contextlib
+        e = _setting()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            lock_shot(e, "seatng", "reference/a-school/typo.png")   # a plausible typo
+        self.assertIn("not a contract slot name", err.getvalue())
+        self.assertIn("seating", err.getvalue())   # names the aliases that would work
+
+    def test_empty_prefixed_plates_stay_quiet(self):
+        """`empty-*` is the documented idiom for this branch and must not nag."""
+        import io, contextlib
+        e = _setting()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            lock_shot(e, "empty-a1-yard", "reference/a-school/a1.png")
+        self.assertEqual(err.getvalue(), "")
+
     def test_partial_art_never_opens_the_gate(self):
         e = _setting()
         lock_shot(e, "turnaround", "reference/a-school/turnaround.png")
