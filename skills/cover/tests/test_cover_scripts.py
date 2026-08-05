@@ -618,5 +618,50 @@ class TestBylineFromCanon(unittest.TestCase):
         self.assertIn("contradictory", r.stderr)
 
 
+class TextRoomIsCompiled(unittest.TestCase):
+    """The compiled prompt must reserve ROOM for the lettering, not just name it.
+
+    Four of twelve Nation of Fire covers came back with the title alone on
+    2026-08-05, byline and series mark silently dropped, because the prompt asked
+    for text and never asked for anywhere to put it; a scene composing edge to edge
+    simply won. One book took three attempts, its lower third filled by a lit lamp
+    exactly where the series mark belongs.
+
+    The first fix was hand-typed into that one book's scene. Gary: "why is the
+    prompt hand rolled though". This is the rule living in the generator instead.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def compiled(self, *extra):
+        r = run_compile(self.u, *extra)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_prompt_demands_room_for_the_lettering(self):
+        p = self.compiled("--author", "Gary Sheng")["prompt"]
+        self.assertIn("ROOM FOR THEM", p)
+        self.assertIn("uncluttered", p)
+
+    def test_prompt_names_the_failure_so_it_cannot_be_ignored(self):
+        p = self.compiled("--author", "Gary Sheng")["prompt"]
+        self.assertIn("IF ANY OF THESE LINES IS MISSING", p)
+
+    def test_prompt_counts_the_required_lines(self):
+        """title + subtitle + byline + mark = 4 in the test universe."""
+        p = self.compiled("--author", "Gary Sheng")["prompt"]
+        self.assertIn("CARRIES 4 LINE(S)", p)
+
+    def test_no_text_mode_does_not_reserve_room_for_text_it_forbids(self):
+        p = self.compiled("--no-text")["prompt"]
+        self.assertIn("ART ONLY", p)
+        self.assertNotIn("ROOM FOR THEM", p)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

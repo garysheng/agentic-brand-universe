@@ -278,9 +278,30 @@ def main() -> int:
             "the upper third of the frame calm, uncluttered background with nothing that must be read"
         )
     else:
+        # RESERVE THE ROOM, NOT JUST THE WORDS.
+        #
+        # The block used to say only "bake these lines" and never told the model to
+        # leave anywhere to put them. A scene that composes edge to edge then wins,
+        # and the lettering is silently dropped: on 2026-08-05, four of twelve Nation
+        # of Fire covers came back carrying the title alone, and the worst of them
+        # took THREE attempts because its scene filled the lower third with a lit lamp,
+        # which is exactly where the series mark goes.
+        #
+        # The first fix for that was typed by hand into one book's scene text. Gary:
+        # "why is the prompt hand rolled though". Right: "leave a calm band for the
+        # lettering" is true of EVERY cover, so it belongs in the compiled prompt where
+        # every cover inherits it, not in a scene somebody remembered to write.
+        n = len(text_lines)
         text_block = (
-            "Bake these text lines by hand-lettering, spelled EXACTLY, and NO other text anywhere: "
+            f"THIS COVER CARRIES {n} LINE(S) OF HAND-LETTERED TEXT AND EVERY ONE IS REQUIRED. "
+            "Bake them spelled EXACTLY, and NO other text anywhere: "
             + " | ".join(f'"{t}"' for t in text_lines)
+            + ". COMPOSE THE ART SO THERE IS ROOM FOR THEM: keep an uncluttered, quiet, "
+            "low-detail area behind every line so each one reads clearly, with the first "
+            "line(s) toward the top of the frame and the last line small along the bottom. "
+            "Busy detail, faces, bright highlights and hard edges must not sit under any "
+            "line of lettering. IF ANY OF THESE LINES IS MISSING FROM THE FINISHED IMAGE "
+            "THE IMAGE IS WRONG, however good the art is"
         )
 
     # `--anchor-ref` replaces the image passed first, so the register's declared
