@@ -313,9 +313,17 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # therefore filed the plate under emptyPlates and left contract.scalePlate null.
         # Earned 2026-08-02 on the-lit-pulpit, where it was diagnosed by hand and patched
         # with a throwaway script.
+        # `seating` is the same defect a FOURTH time (2026-08-05, nation-of-fire
+        # `russes-cadillac`). A seating chart IS the blocking plate for a vehicle or a
+        # table: SPEC v0.19 calls it "the seating chart as a picture", and a book that
+        # needs fixed places (who drives, who rides, who sits where) shoots it under
+        # that name because that is what it is. Unmapped, it filed the chart into
+        # `emptyPlates`, left `contract.blockingPlate` null, and the operator curated
+        # the list by hand and declared a `sheetAliases` entry to get past lint.
         slot = {"scale-plate": "scalePlate", "scale": "scalePlate",
                 "blocking-plate": "blockingPlate",
-                "blocking": "blockingPlate"}.get(shot, shot)
+                "blocking": "blockingPlate",
+                "seating": "blockingPlate", "seating-chart": "blockingPlate"}.get(shot, shot)
         # `master` IS a visual-metaphor's turnaround (v0.31). SPEC 12 defines the kind's
         # matrix as "a locked master plus `state` plates", so `master` is the anchor plate
         # this contract calls `turnaround` -- and it was absent from the map above, so

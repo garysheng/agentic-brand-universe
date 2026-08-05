@@ -52,6 +52,22 @@ class TestLockShotSettingContract(unittest.TestCase):
         lock_shot(e, "scale-plate", "reference/a-school/scale.png")
         self.assertEqual(e["contract"]["scalePlate"], "reference/a-school/scale.png")
 
+    def test_seating_alias_maps_to_blockingPlate(self):
+        """A seating chart IS the blocking plate (v0.34, fourth instance of this defect).
+
+        Unmapped, `abu lock-shot <u> <setting> seating <path>` filed the chart into
+        emptyPlates and left contract.blockingPlate null, so the operator hand-curated
+        the list and declared a sheetAliases entry to get past lint. Earned on
+        nation-of-fire `russes-cadillac`, whose whole point is fixed places.
+        """
+        for shot in ("seating", "seating-chart"):
+            e = _setting()
+            lock_shot(e, shot, "reference/a-school/seating.png")
+            self.assertEqual(e["contract"]["blockingPlate"],
+                             "reference/a-school/seating.png")
+            self.assertNotIn("reference/a-school/seating.png",
+                             e["contract"].get("emptyPlates") or [])
+
     def test_partial_art_never_opens_the_gate(self):
         e = _setting()
         lock_shot(e, "turnaround", "reference/a-school/turnaround.png")

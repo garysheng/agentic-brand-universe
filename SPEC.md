@@ -1679,6 +1679,14 @@ encoded) is paid for once and reused by every future property and universe.
 > **v0.34 additions, all three earned in one book run (nation-of-fire, *Cast Out, Torn Down*,
 > 2026-08-05).**
 >
+> - **`seating` and `seating-chart` lock to `contract.blockingPlate`.** A seating chart IS the
+>   blocking plate for a vehicle or a table, and SPEC v0.19 already calls it "the seating chart as
+>   a picture". Unmapped, `abu lock-shot <u> <setting> seating <path>` filed it into `emptyPlates`
+>   and left `blockingPlate` null, so the operator hand-curated the list and declared a
+>   `sheetAliases` entry to get past lint. This is the FOURTH instance of one defect (after
+>   `scale`, `blocking` and `master`): **the vocabulary the scaffolder hands the author is not the
+>   vocabulary the locker accepts.** When adding a slot name anywhere, add it to the locker's map
+>   in the same edit.
 > - **`contract.scalePlateWaiver` — a declared, reasoned decline of the scale plate.** A scale
 >   plate IS anonymous figures, so an entity whose own invariants forbid figures in every plate
 >   cannot have one, and `lint-universe` and `universe-doctor` used to ding it forever for a gap
