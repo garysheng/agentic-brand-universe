@@ -663,5 +663,34 @@ class TextRoomIsCompiled(unittest.TestCase):
         self.assertNotIn("ROOM FOR THEM", p)
 
 
+class TextBlockComesLast(unittest.TestCase):
+    """A long, prescriptive scene must not be able to bury the text requirement.
+
+    the-king-is-coming dropped its byline and series mark on four consecutive
+    attempts. Its scene is 4,400 characters and assigns the lower third of the
+    frame to a lit lamp, which is exactly where the series mark goes; the text
+    requirement was emitted above it and lost.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_text_requirement_is_after_the_scene(self):
+        r = run_compile(self.u, "--author", "Gary Sheng",
+                        "--scene", "A VERY SPECIFIC COMPOSITION filling every inch of the frame.")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        p = json.loads(r.stdout)["prompt"]
+        self.assertLess(p.index("A VERY SPECIFIC COMPOSITION"), p.index("LINE(S) OF HAND-LETTERED"),
+                        "the scene must come first; the text requirement must arrive after it")
+
+    def test_negatives_still_close_the_prompt(self):
+        p = json.loads(run_compile(self.u, "--author", "Gary Sheng").stdout)["prompt"]
+        self.assertLess(p.index("LINE(S) OF HAND-LETTERED"), p.index("NEGATIVES:"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
