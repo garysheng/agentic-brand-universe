@@ -38,6 +38,45 @@ construction.
 
 2026-07-25 · 7c78193 · Plugin 0.7.2. Story TYPES became validated data. A story's spine and genre were free-text prose that nothing checked, so a typo, a near-duplicate (teaching-testimony vs testimony-teaching), or prose stuffed into the genre field passed silently. The SPEC (section 13) already models these as craft-canon records; lint-universe now ties every story back to that registry and warns (STORY-SPINE-UNREGISTERED / STORY-GENRE-UNREGISTERED) on any unregistered value, so "where are this universe's story types" is answerable by data. Advisory, not a hard validate error, so a universe mid-normalization still composes. Seeded the clean NoF spines (thesis, primer, testimony, blessing) and the new faithful-prophetic-realistic-fiction genre as craft records; the messy back-catalog genres now surface as normalization warnings. Also fixed a pre-existing linter crash on a golden recipe whose inputs entry is a bare path string. Engine and SPEC contract untouched, so no spec bump. 249 tests green (lint 30 to 35).
 
+## 2026-08-05 — v0.35 / plugin 0.98.0: the DECLARED SHOT, because a talking book renders as one picture
+
+nation-of-fire's Bless You More shipped fifteen consecutive spreads of the same
+three people at the same table. Gary: "It's the same image again and again and
+again and again." The cause was structural, not authorial. A cast plate's
+COMPOSITION wins over scene prose, so a setting that declares one conversation
+camera hands every spread that selects it the same wide three-shot; every scene
+politely asked for "closer, chest up" and every one lost to the plate. Nothing
+refused, because each spread was individually valid, well-referenced and correct.
+
+Promoted:
+
+- `engine/agenticstory/shots.py` — a closed SHOT vocabulary (wide, two-shot,
+  close, over-shoulder, insert, reverse, thought-bubble, imagined) in ONE place,
+  read by the composer, the auditor and the spec's generated table.
+- `assemble_prompt.py` — reads `shot`, REFUSES an unknown one, and injects the
+  shot's framing AFTER the scene and BEFORE the entity blocks, so a close-up's
+  explicit "IGNORE THE CAMERA DISTANCE IN THE SUPPLIED REFERENCE PLATE" outranks
+  the plate block carrying the wide composition. A shot that cannot contain the
+  room also drops the room-wide blocking law, hoisting the existing per-plate
+  `includeBlocking` scoping to the shot. Absent `shot` assembles byte-identically,
+  which matters because 200+ shipped books declare none.
+- `skills/compose-spec/scripts/audit_spec_shots.py` — a free static audit that
+  refuses a monotonous spec BEFORE any render: R1 a run of 4+ identical spreads,
+  R2 one composition over half the book, R3 a talking book with no relief shot.
+  Pose is deliberately excluded from the signature: a pose is expression, not
+  composition, and including it made the first version report a run of four where
+  the real run was fifteen.
+- `compose_spec.py` — suggests a shot rhythm on every new spread, restarting at
+  each change of place, so a scaffolded book is varied by construction. `shot`
+  joined CHOSEN, so a re-sync never clobbers an author's pick.
+- SPEC 4.13 with a generated shot table; make-a-book names the audit at the
+  render step, which is the file an agent actually reads mid-run.
+
+The relief set (thought-bubble, imagined, insert) is the opinionated part: a
+teaching book's argument lives in what is SAID, and without relief every picture
+draws the saying instead of the said.
+
+
 ## 2026-07-25 — cover-conform convention (self-bleed default, flat bars banned)
 Promoted a hand-roll: make-a-hyperagent-book was padding covers with a FLAT CREAM bar to hit the reader's 3:4 from the producible 2:3, which seams visibly against the art and looks unintentional (Gary: "very not a fan of the white left-right padding"). The framework already owned the fix (cover skill's conform_cover.py --mode pad = blurred self-bleed) and it was ignored. Changes: SPEC v0.6 -> v0.7 adds the normative cover-conform default (§ producible-vs-surface aspect): conform by blurred self-bleed, never a flat bar, never crop of load-bearing content; keyline is a per-universe opt-in, not the default. conform_cover.py docstring self-documents the default + the flat-fill ban. make-a-hyperagent-book step 5 now calls conform_cover.py --mode pad and bans flat padding. Both live books (a-book-to-live-by, the-narrow-path) re-fit and redeployed. Known remaining hand-roll to retire later: ~10 NoF book repos carry duplicated pad-cover.py copies (blurred self-bleed + gold keyline); fold into conform_cover.py and delete the copies. SPEC_VERSION -> 0.7, plugin 0.7.2 -> 0.8.0. 249 engine tests green.
 

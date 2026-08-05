@@ -1219,6 +1219,25 @@ def _abu_root(start=None):
     return None
 
 
+def _shots():
+    """The SHOT vocabulary, loaded from the engine.
+
+    Kept in `agenticstory.shots` rather than here because the AUDITOR and the
+    SPEC's generated table read the same dict; three copies of a vocabulary is
+    three things to drift.
+    """
+    root = _abu_root()
+    if root is None:
+        raise Refuse(
+            "a spread declares `shot` but the ABU engine could not be located to "
+            "resolve the shot vocabulary. Reinstall the plugin.")
+    eng = str(root / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.shots import SHOTS
+    return SHOTS
+
+
 def _resolve_nesting(uroot: Path, ent: dict) -> dict:
     """Fold every ancestor's law into `ent`. Refuses loudly on a bad chain."""
     root = _abu_root()
@@ -1292,7 +1311,8 @@ def entity_block(cid: str, derived: str | None, bake: str | None,
     return out
 
 
-def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
+def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None,
+                    drops_blocking: bool = False):
     """Return (ref_paths, block) for a setting, from its WHOLE contract, minus the
     parts of that contract that were written for a human author rather than a model.
 
@@ -1350,6 +1370,7 @@ def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
     # propless (lint-universe warns SETTING-DRESSING-NAMES-HELD-PROP); this is the escape
     # hatch for the spread in front of you.
     pcfg = ((con.get("plates") or {}).get(plate) or {}) if plate else {}
+    drops_blocking = bool(drops_blocking)
     bp = con.get("blockingPlate")
     if entry.get("blockingPlate") is False or pcfg.get("includeBlockingPlate") is False:
         bp = None
@@ -1372,7 +1393,12 @@ def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
     # blocking law, which is exactly what a close-up needs. Absent config, behaviour
     # is unchanged, so every existing universe renders byte-identically.
     keys = ["map", "blocking", "dressing", "scale"]
-    if pcfg.get("includeBlocking") is False:
+    # A SHOT THAT CANNOT CONTAIN THE ROOM DROPS THE ROOM-WIDE BLOCKING LAW.
+    # Same reasoning as `contract.plates[...].includeBlocking`, hoisted to the shot
+    # so an author gets it by declaring the framing instead of by configuring every
+    # plate: a close-up told "sixteen guests are seated in the tiers" re-invents
+    # sixteen guests, differently, on every render.
+    if pcfg.get("includeBlocking") is False or drops_blocking:
         keys.remove("blocking")
     parts = [con.get(k) for k in keys]
     parts = [strip_authoring_notes(p) for p in parts if isinstance(p, str) and p.strip()]
@@ -1489,6 +1515,23 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
 
     # WHEN this spread happens: a year, or a beat index. Whatever scale the
     # universe uses, the gate only ever compares numbers.
+    # THE DECLARED SHOT (SPEC 4.13). Optional and absent-by-default, so every book
+    # written before it renders byte-identically; when present it is validated here
+    # rather than silently ignored, because a typo'd shot that quietly does nothing
+    # is exactly the class of silent failure this field exists to end.
+    shot = sp.get("shot")
+    drops_blocking = False
+    shot_framing = ""
+    if shot is not None:
+        _S = _shots()
+        if shot not in _S:
+            raise Refuse(
+                f"unknown shot {shot!r} on {spread_id}. A shot is a declared framing and "
+                f"the vocabulary is closed, so an unrecognised one would render as no "
+                f"framing at all. Valid: {', '.join(_S)}.")
+        drops_blocking = bool(_S[shot].get("dropsBlocking"))
+        shot_framing = _S[shot]["framing"]
+
     when = sp.get("when")
     if when is not None and not isinstance(when, (int, float)):
         raise Refuse(f"{spread_id}: `when` must be a number (a year or a beat "
@@ -1573,7 +1616,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                 f"other kind reads them, so this entry would silently render the default. "
                 f"Available plates: {_avail or 'none'}.")
         if kind in ("setting", "visual-metaphor"):
-            r, block = resolve_setting(ent, c.get("plate"), c)
+            r, block = resolve_setting(ent, c.get("plate"), c, drops_blocking)
             add_refs(r)
             block = entity_block(c["id"], block, c.get("bake"), kind, c.get("bakeMode"), setting_rule, warnings)
             if block:
@@ -1823,6 +1866,10 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             anchor_subject_guard(anchor_subject),
             style,
             ("SCENE: " + scene) if scene else "",
+            # AFTER the scene and BEFORE the entity blocks on purpose: the framing has to
+            # beat the cast plates' own composition, and a plate's block is what carries
+            # that composition into the prompt.
+            shot_framing,
             *ent_blocks,
             disambig or "",
             scale_block or "",

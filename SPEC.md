@@ -1,6 +1,6 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.34 — 2026-08-05.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.35 — 2026-08-05.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
@@ -1496,6 +1496,61 @@ framework-shaped work, so the framework owns it.
 Generators are the counterpart to Style Packs (§4.7): a pack governs what a MODEL should produce,
 a generator replaces the model entirely where the answer is computable. When an asset can be
 expressed either way, prefer the generator, because it is reproducible, reviewable, and free.
+
+
+### 4.13 Shot (the DECLARED framing of a spread) — v0.35
+
+A spread may declare `shot`, one value from a closed vocabulary, saying how the
+picture is FRAMED. It is optional and absent by default, so every book written
+before v0.35 assembles byte-identically; an unrecognised value REFUSES rather
+than rendering as no framing at all.
+
+<!-- BEGIN GENERATED: shots -->
+| shot | what it frames | drops room-wide blocking |
+| --- | --- | --- |
+| `wide` | The establishing view: the whole place, figures small inside it. | no |
+| `two-shot` | Two figures together, waist up, the space soft behind them. | no |
+| `close` | One face, chest up, filling the frame; the plate's camera distance is overridden. | yes |
+| `over-shoulder` | From behind one figure onto the other; the near shoulder frames the far face. | yes |
+| `insert` | Hands, an object, a surface. No faces, no whole figures. | yes |
+| `reverse` | The opposite camera on the same locked geometry, so handedness mirrors on purpose. | no |
+| `thought-bubble` | The speaker small at one edge; a large soft-edged bubble holds what they are describing. | yes |
+| `imagined` | The frame IS what is being described; the speakers are not in it at all. | yes |
+
+RELIEF set (leave the conversation, draw the thing being talked about): `imagined`, `insert`, `thought-bubble`.
+<!-- END GENERATED: shots -->
+
+**The defect it exists for.** A cast plate's COMPOSITION wins over scene prose
+(§4.6). A setting that declares one conversation camera therefore hands every
+spread that selects it the same wide three-shot, no matter what the scene text
+asks for. A book whose beats are a conversation then renders as one picture
+repeated: nation-of-fire's *Bless You More* shipped fifteen consecutive spreads
+sharing one setting, one plate and one cast, each scene politely requesting
+"closer, chest up" and each losing to the plate. Nothing refused, because every
+spread was individually valid.
+
+**What declaring it changes.** Three things, and the third is the point:
+
+1. The composer injects the shot's `framing` text **after the SCENE and before
+   the entity blocks**, so a close-up's explicit "IGNORE THE CAMERA DISTANCE IN
+   THE SUPPLIED REFERENCE PLATE" outranks the plate block that would otherwise
+   carry the wide composition into the prompt.
+2. A shot that cannot contain the room (`close`, `insert`, `over-shoulder`,
+   `thought-bubble`, `imagined`) drops the room-wide `contract.blocking` law,
+   the same scoping `contract.plates[...].includeBlocking` already offers per
+   plate. A close-up told "sixteen guests are seated in the tiers" re-invents
+   sixteen guests, differently, on every render.
+3. It makes variety MEASURABLE and therefore THINKABLE. `audit_spec_shots.py`
+   reads the declared shot and refuses a monotonous spec before a single render
+   is paid for; `compose_spec.py` suggests a shot rhythm on every new spread, so
+   a scaffolded book is varied by construction rather than by inspiration.
+
+**The relief shots.** `thought-bubble`, `imagined` and `insert` are grouped as
+the RELIEF set because they leave the conversation and draw the thing being
+talked ABOUT. A teaching book's argument lives in what is said, and without
+relief every picture draws the saying instead of the said. The auditor requires
+at least one relief shot per eight spreads in any book where a single setting
+carries more than 60% of it.
 
 
 ## 5. Evolution & versioning

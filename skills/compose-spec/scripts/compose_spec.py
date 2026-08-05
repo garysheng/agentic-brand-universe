@@ -26,7 +26,25 @@ import argparse, json, os, sys
 DERIVED = ("id", "setting")
 AUTHORED = ("scene", "negatives", "size", "style", "anchorRef", "settingRule",
             "allowUncast", "allowMultiPanel", "allowPlatelessSetting", "allowIdentityOverride")
-CHOSEN = ("plate", "pose", "look", "bake")
+CHOSEN = ("plate", "pose", "look", "bake", "shot")
+
+
+# THE SHOT RHYTHM. A book scaffolded with no shots renders as one picture per
+# setting, because the plate's composition wins over scene prose. Rather than
+# leave variety to whether the author happens to think of it, a NEW spread is
+# given a suggested `shot` from this rhythm, restarted at each change of place so
+# every location opens on a `wide` that establishes it.
+#
+# These are SUGGESTIONS the author overrides freely; `shot` is in CHOSEN, so a
+# re-sync never clobbers a human's pick. Earned 2026-08-05: fifteen consecutive
+# identical spreads shipped before anyone looked.
+SHOT_RHYTHM = ("wide", "two-shot", "close", "thought-bubble", "close",
+               "over-shoulder", "insert", "two-shot", "imagined", "close")
+
+
+def suggest_shot(i_in_run: int) -> str:
+    return SHOT_RHYTHM[i_in_run % len(SHOT_RHYTHM)]
+
 
 def _engine_on_path():
     """Make the engine importable, found by walking UP for a marker.
@@ -119,6 +137,7 @@ def main() -> int:
     by_id = {s.get("id"): s for s in prior.get("spreads", []) if isinstance(s, dict)}
 
     spreads, created, refreshed, notes = [], [], [], []
+    _run = {'setting': None, 'i': 0}
     for b in beats:
         sid = f"spread-{int(b['n']):02d}"
         old = {} if a.force else dict(by_id.get(sid) or {})
@@ -209,6 +228,19 @@ def main() -> int:
         sp.setdefault("scene", "")
         if not sp["scene"]:
             notes.append(f"{sid}: scene is empty and must be authored")
+
+        # SUGGEST A SHOT. Only when the spread does not already carry one, so an
+        # author's pick (preserved via CHOSEN) always wins. The rhythm restarts at
+        # each change of place, so every location opens on the `wide` that
+        # establishes it and then varies away from it.
+        if not sp.get("shot"):
+            here = sp.get("setting") or "-"
+            if here != _run["setting"]:
+                _run["setting"], _run["i"] = here, 0
+            sp["shot"] = suggest_shot(_run["i"])
+            _run["i"] += 1
+        else:
+            _run["setting"], _run["i"] = (sp.get("setting") or "-"), _run["i"] + 1
         if not a.no_hints:
             sp["_caption"] = b.get("text", "")
 

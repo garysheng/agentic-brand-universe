@@ -313,6 +313,30 @@ Then `abu:render-readback` every image.
   captions is the invariant. Two runs have now done this sync by hand (nof-universe commit
   "story: re-sync beat text from the blessed manuscript"; eleventh-hour-heroes, 2026-08-02).
 
+**Shot variety, because a talking book renders as ONE PICTURE by default:**
+- **Declare a `shot` on every spread (SPEC 4.13), and audit the spec before rendering:**
+  ```bash
+  python3 <abu>/skills/compose-spec/scripts/audit_spec_shots.py "$U" <render-spec>
+  ```
+  It is free, static, and it refuses a monotonous spec before a single render is
+  paid for: a run of 4+ identical spreads, one composition over half the book, or a
+  talking book with no relief shot.
+- **Why this needs a field and not good intentions.** A cast plate's COMPOSITION wins
+  over scene prose, so a setting with one conversation camera hands every spread that
+  selects it the same wide three-shot. Writing "closer, chest up" into the scene loses,
+  silently, every time. `shot: "close"` injects an explicit "IGNORE THE CAMERA DISTANCE
+  IN THE SUPPLIED REFERENCE PLATE" ahead of the plate block, which is what actually
+  moves the camera.
+- **A conversation is not a picture of people talking.** The argument of a teaching
+  book lives in what is SAID, so draw the said thing: `thought-bubble` (the speaker
+  small at one edge, a large soft painted bubble holding what they describe),
+  `imagined` (the frame IS the thing described, nobody in it), `insert` (hands, an
+  object, the notepad). Earned 2026-08-05 on Bless You More, which shipped fifteen
+  consecutive spreads of the same three people at the same table before anyone looked.
+- **`compose_spec.py` now suggests a rhythm** on every new spread, restarting at each
+  change of place. Take the suggestion or override it; do not delete it and leave the
+  field empty.
+
 **Prompt and spec discipline:**
 - **NEVER write a blanket no-text negative.** In-art text is a first-class design element; a
   blanket ban renders a real book or sign as a blank slab. Forbid **stray or invented** text only

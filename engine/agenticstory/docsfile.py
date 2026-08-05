@@ -363,9 +363,30 @@ def render_scale_plate_contract(root: Path) -> list[str]:
     return out
 
 
+def render_shots(root: Path) -> list[str]:
+    """The shot vocabulary, read off `agenticstory.shots` itself.
+
+    Same split as `render_guards`: the LIST is enumerable and lives in one place,
+    so SPEC 4.13 projects it and cannot drift, while the JUDGEMENT beneath it (why
+    a close-up must override the plate, why the relief set exists) stays
+    hand-written. A vocabulary restated by hand in the spec is a vocabulary that
+    disagrees with the compiler within two releases.
+    """
+    from agenticstory import shots as _shots
+    out = ["| shot | what it frames | drops room-wide blocking |",
+           "| --- | --- | --- |"]
+    for name, cfg in _shots.SHOTS.items():
+        out.append(f"| `{name}` | {cfg['summary']} | "
+                   f"{'yes' if cfg.get('dropsBlocking') else 'no'} |")
+    out += ["", "RELIEF set (leave the conversation, draw the thing being talked about): "
+            + ", ".join(f"`{s}`" for s in sorted(_shots.RELIEF_SHOTS)) + "."]
+    return out
+
+
 BLOCKS = {
     "README.md": {"status": render_status},
     "SPEC.md": {"guards": render_guards,
+                "shots": render_shots,
                 "scale-plate-contract": render_scale_plate_contract},
     "docs/REFERENCE.md": {
         "skills": render_skills,
