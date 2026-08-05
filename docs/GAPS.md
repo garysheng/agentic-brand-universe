@@ -402,3 +402,36 @@ naming the available plates, exactly as `_selector_bake_guard` does.
 
 **Still open because.** Cover path change during a live fleet; sits naturally with G10, which
 is the other pair of render_cover expressiveness gaps.
+
+---
+
+### G16. A setting cannot declare WHO may be cast into it
+
+**What.** A setting entity can declare its geometry, its dressing and its house rules, but it
+cannot declare its OCCUPANTS. Nothing refuses a spread that stages an unrelated character in
+a named real person's home. The failure is silent and it is worse than a normal miscast,
+because the room is dressed with a specific family's belongings, so the render contradicts
+its own reference plate while looking perfectly competent.
+
+**Evidence.** 2026-08-05, keep-god-out-of-the-state spread 9: `wade-unseen`, canon's white
+American everyman, and an anonymous wife were staged in `vegas-home`, which canon describes
+as the "REAL FAMILY HOME of real living people" and dresses with a Chinese brush-painting
+scroll, terracotta rice bowls and chopsticks. It rendered cleanly, passed book-doctor, and
+shipped. Gary caught it on the published book: "preserve the Sheng household only for the
+Sheng family... this is also not an Asian family being depicted, so spread nine is
+ridiculous." The guard now lives as prose in the entity's invariants, which is exactly the
+"prose does not bind, refusals bind" failure mode make-a-book already names.
+
+**Next invocation.** Every universe with a real person's home in canon, which is every
+universe that has done a testimony book. nation-of-fire alone has vegas-home, reyes-home,
+daniels-house, shibata-rose-farm, miriams-household, kenzies-denver-apartment,
+humming-heart-homestead and colins-apartment.
+
+**Would close it.** `structured.occupants` on a setting: a list of entity ids plus an
+`allowGuests` flag. `audit_spec_refs.py` refuses a spread casting anyone outside it, naming
+the setting's declared occupants, in the same pass that already catches the plate/pose split.
+A story that legitimately shows a visitor sets `allowGuests` or lists them.
+
+**Still open because.** Same shared-checkout window as G5/G9/G13; filed the day it was found,
+with the prose guard landed in the universe meanwhile so the specific case cannot repeat.
+
