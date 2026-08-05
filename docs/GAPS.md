@@ -324,33 +324,6 @@ close it / Still open because**). If you cannot write the **Next invocation** li
 file it. If you cannot write **Still open because**, you are not filing a gap — you are
 deferring work, and the honest move is to build it.
 
----
-
-### G13. `canon/properties/<id>.json` has readers but no WRITER
-
-**What.** `canonfile.py` has `load_properties`, `parse_property_rows` and `render_properties`,
-and `abu build-canon` regenerates CANON.md from the records, but nothing WRITES a record. The
-record is mechanical: id, order, property, form, home, and a cast index derived from the
-story plus the render-spec. Because writing it is manual, it is the step that gets skipped,
-and a story with no record is INVISIBLE TO CASTING SWEEPS, which silently defeats
-reuse-first casting for every later book.
-
-**Evidence.** 2026-08-05, keep-god-out-of-the-state. `universe-doctor` scored this the single
-highest-impact item in nation-of-fire at +8, naming five full stories with no record. The
-book's own record was hand-written in a scratchpad heredoc at ship time; four others are
-still open (god-does-not-need-our-help, god-had-him-call-first, he-is-a-jealous-god,
-learning-serpent-wisdom).
-
-**Next invocation.** Every book, in every universe, at ship time. Plus four already-open
-cases in nation-of-fire alone.
-
-**Would close it.** `abu record-property <universe> <story> [--book DIR]`: derive order from
-max(existing)+1, cast from the render-spec's cast + settings union, form from genre + spread
-and beat counts, and refuse if the story is not `status: full`. Then `build-canon`. It is a
-natural last substep of `make-a-book`'s land/pave phase, and `universe-doctor` should point
-at the verb instead of at prose.
-
-**Still open because.** Same shared-checkout window as G9 and G5.
 
 ---
 
