@@ -373,11 +373,9 @@ def render_shots(root: Path) -> list[str]:
     disagrees with the compiler within two releases.
     """
     from agenticstory import shots as _shots
-    out = ["| shot | what it frames | drops room-wide blocking |",
-           "| --- | --- | --- |"]
+    out = ["| shot | what it frames |", "| --- | --- |"]
     for name, cfg in _shots.SHOTS.items():
-        out.append(f"| `{name}` | {cfg['summary']} | "
-                   f"{'yes' if cfg.get('dropsBlocking') else 'no'} |")
+        out.append(f"| `{name}` | {cfg['summary']} |")
     out += ["", "RELIEF set (leave the conversation, draw the thing being talked about): "
             + ", ".join(f"`{s}`" for s in sorted(_shots.RELIEF_SHOTS)) + "."]
     return out

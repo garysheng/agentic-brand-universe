@@ -1506,17 +1506,17 @@ before v0.35 assembles byte-identically; an unrecognised value REFUSES rather
 than rendering as no framing at all.
 
 <!-- BEGIN GENERATED: shots -->
-| shot | what it frames | drops room-wide blocking |
-| --- | --- | --- |
-| `wide` | The establishing view: the whole place, figures small inside it. | no |
-| `two-shot` | Two figures together, waist up, the space soft behind them. | no |
-| `group` | Three or more figures together, waist up, closer than an establishing view. | no |
-| `close` | One face, chest up, filling the frame; the plate's camera distance is overridden. | yes |
-| `over-shoulder` | From behind one figure onto the other; the near shoulder frames the far face. | yes |
-| `insert` | Hands, an object, a surface. No faces, no whole figures. | yes |
-| `reverse` | The opposite camera on the same locked geometry, so handedness mirrors on purpose. | no |
-| `thought-bubble` | The speaker small at one edge; a large soft-edged bubble holds what they are describing. | yes |
-| `imagined` | The frame IS what is being described; the speakers are not in it at all. | yes |
+| shot | what it frames |
+| --- | --- |
+| `wide` | The establishing view: the whole place, figures small inside it. |
+| `two-shot` | Two figures together, waist up, the space soft behind them. |
+| `group` | Three or more figures together, waist up, closer than an establishing view. |
+| `close` | One face, chest up, filling the frame; the plate's camera distance is overridden. |
+| `over-shoulder` | From behind one figure onto the other; the near shoulder frames the far face. |
+| `insert` | Hands, an object, a surface. No faces, no whole figures. |
+| `reverse` | The opposite camera on the same locked geometry, so handedness mirrors on purpose. |
+| `thought-bubble` | The speaker small at one edge; a large soft-edged bubble holds what they are describing. |
+| `imagined` | The frame IS what is being described; the speakers are not in it at all. |
 
 RELIEF set (leave the conversation, draw the thing being talked about): `imagined`, `insert`, `thought-bubble`.
 <!-- END GENERATED: shots -->
@@ -1536,15 +1536,33 @@ spread was individually valid.
    the entity blocks**, so a close-up's explicit "IGNORE THE CAMERA DISTANCE IN
    THE SUPPLIED REFERENCE PLATE" outranks the plate block that would otherwise
    carry the wide composition into the prompt.
-2. A shot that cannot contain the room (`close`, `insert`, `over-shoulder`,
-   `thought-bubble`, `imagined`) drops the room-wide `contract.blocking` law,
-   the same scoping `contract.plates[...].includeBlocking` already offers per
-   plate. A close-up told "sixteen guests are seated in the tiers" re-invents
-   sixteen guests, differently, on every render.
-3. It makes variety MEASURABLE and therefore THINKABLE. `audit_spec_shots.py`
+2. Every framing is prefixed with a CONTINUITY clause: the camera moves and
+   nothing else does. A shot never moves a person out of their seat, never
+   empties a chair, never removes the furniture the subject is sitting at, and
+   never deletes the other people in the room. **This was got wrong first.**
+   Shots briefly carried a `dropsBlocking` flag that suppressed the setting's
+   room-wide `contract.blocking` on close framings; because `blocking` carries
+   SEATING AND HANDEDNESS, that swapped a husband and wife across their own
+   table and rendered empty chairs beside them. The blocking law now holds at
+   every camera distance, and only the narrow per-plate
+   `contract.plates[...].includeBlocking` opt-out remains, where a human decides
+   one plate has crowd content a close-up genuinely cannot contain.
+3. A setting whose `contract.blockingPlate` is a drawn seating chart has that
+   plate passed on every render, and the framing names it as the authority on
+   who sits where. Prose cannot deliver a seating chart; a picture of lettered
+   dummies with facing wedges can.
+4. It makes variety MEASURABLE and therefore THINKABLE. `audit_spec_shots.py`
    reads the declared shot and refuses a monotonous spec before a single render
-   is paid for; `compose_spec.py` suggests a shot rhythm on every new spread, so
-   a scaffolded book is varied by construction rather than by inspiration.
+   is paid for (R1 sameness run, R2 dominant shape, R3 no relief, R4 vanishing
+   cast); `compose_spec.py` suggests a shot rhythm on every new spread, so a
+   scaffolded book is varied by construction rather than by inspiration.
+
+**Cast is who is IN FRAME, not who the spread is about.** Cutting a spread's
+cast down to its subject reads as tidy and is a deletion: the compiler's cast
+closure states "THE ONLY CHARACTERS IN THIS IMAGE ARE ...", so a third person
+at the same table is actively removed and his chair renders empty. R4 catches
+it by looking for a person present on both sides of a spread but dropped from
+its own cast, at an unchanged setting AND an unchanged plate.
 
 **The relief shots.** `thought-bubble`, `imagined` and `insert` are grouped as
 the RELIEF set because they leave the conversation and draw the thing being

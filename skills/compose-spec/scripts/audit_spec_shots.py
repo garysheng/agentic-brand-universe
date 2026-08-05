@@ -22,6 +22,8 @@ setting/plate/cast, so this is static, free, and runnable before spending:
   R3 NO RELIEF        a TALKING BOOK (one setting carrying most of it) with no
                       relief shot: nothing that leaves the room and shows what
                       is being talked about instead of the people talking.
+  R4 VANISHING CAST   a person present on both sides of a spread but dropped
+                      from ITS cast, in the same place, with no exit written.
 
 R3 is the one with an opinion in it. A book can be perfectly varied in camera
 and still be a wall of two people at a table, because the argument of a
@@ -149,6 +151,36 @@ def main() -> int:
                 f"{len(relief)} of them leave the room to show what is being talked about "
                 f"(want at least {want}). A teaching book's argument is in what is SAID, and "
                 f"these pictures all draw the saying. Use {', '.join(sorted(RELIEF_SHOTS))}.")
+
+    # ---- R4 vanishing cast -------------------------------------------------
+    # CAST IS WHO IS IN FRAME, NOT WHO THE SPREAD IS ABOUT. Cutting it to the
+    # subject looks tidy and is a deletion: the compiler's cast closure says "THE
+    # ONLY CHARACTERS IN THIS IMAGE ARE ...", so a third person at the same table
+    # is actively removed and his chair renders empty. Earned 2026-08-05 on Bless
+    # You More's second pass, where Jerry vanished from a meal he never left.
+    for i in range(1, len(spreads) - 1):
+        prev, here, nxt = spreads[i - 1], spreads[i], spreads[i + 1]
+        # SAME PLACE **AND** SAME CAMERA. A plate change means the camera moved to
+        # a different part of the setting, where a person can be genuinely out of
+        # frame without having gone anywhere: the two men walk to the wall and the
+        # wife is still at the table, off camera. Requiring the plate to match too
+        # keeps R4 pointed at the real defect, which is a person deleted from a
+        # camera that never moved.
+        if not (prev.get("setting") == here.get("setting") == nxt.get("setting")):
+            continue
+        if not (prev.get("plate") == here.get("plate") == nxt.get("plate")):
+            continue
+        if here.get("shot") in ("insert", "imagined"):
+            continue  # these legitimately hold no people at all
+        ids = lambda sp: {c.get("id") for c in (sp.get("cast") or []) if isinstance(c, dict)}
+        gone = (ids(prev) & ids(nxt)) - ids(here)
+        if gone:
+            problems.append(
+                f"R4 VANISHING CAST ({here['id']}): {', '.join(sorted(gone))} is present in "
+                f"{prev['id']} and again in {nxt['id']}, in the same place, but is not cast "
+                f"here. The cast closure will DELETE them and leave their seat empty. Cast "
+                f"is who is IN FRAME, not who the spread is about; a background person who "
+                f"is merely out of focus is still cast.")
 
     if a.json:
         print(json.dumps({"problems": problems, "notes": notes}, indent=2))

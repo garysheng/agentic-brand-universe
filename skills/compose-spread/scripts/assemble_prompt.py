@@ -1311,8 +1311,7 @@ def entity_block(cid: str, derived: str | None, bake: str | None,
     return out
 
 
-def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None,
-                    drops_blocking: bool = False):
+def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None):
     """Return (ref_paths, block) for a setting, from its WHOLE contract, minus the
     parts of that contract that were written for a human author rather than a model.
 
@@ -1370,7 +1369,6 @@ def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None,
     # propless (lint-universe warns SETTING-DRESSING-NAMES-HELD-PROP); this is the escape
     # hatch for the spread in front of you.
     pcfg = ((con.get("plates") or {}).get(plate) or {}) if plate else {}
-    drops_blocking = bool(drops_blocking)
     bp = con.get("blockingPlate")
     if entry.get("blockingPlate") is False or pcfg.get("includeBlockingPlate") is False:
         bp = None
@@ -1393,12 +1391,13 @@ def resolve_setting(ent: dict, plate: str | None, entry: dict | None = None,
     # blocking law, which is exactly what a close-up needs. Absent config, behaviour
     # is unchanged, so every existing universe renders byte-identically.
     keys = ["map", "blocking", "dressing", "scale"]
-    # A SHOT THAT CANNOT CONTAIN THE ROOM DROPS THE ROOM-WIDE BLOCKING LAW.
-    # Same reasoning as `contract.plates[...].includeBlocking`, hoisted to the shot
-    # so an author gets it by declaring the framing instead of by configuring every
-    # plate: a close-up told "sixteen guests are seated in the tiers" re-invents
-    # sixteen guests, differently, on every render.
-    if pcfg.get("includeBlocking") is False or drops_blocking:
+    # THE BLOCKING LAW HOLDS AT EVERY CAMERA DISTANCE. A shot briefly carried a
+    # `dropsBlocking` flag that suppressed this on every close framing; `blocking`
+    # carries SEATING AND HANDEDNESS, so that swapped a husband and wife across
+    # their own table in the close-ups of the very book it shipped in. Only the
+    # narrow per-plate opt-out survives, where a human decided one plate has crowd
+    # content a close-up cannot contain.
+    if pcfg.get("includeBlocking") is False:
         keys.remove("blocking")
     parts = [con.get(k) for k in keys]
     parts = [strip_authoring_notes(p) for p in parts if isinstance(p, str) and p.strip()]
@@ -1520,7 +1519,6 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # rather than silently ignored, because a typo'd shot that quietly does nothing
     # is exactly the class of silent failure this field exists to end.
     shot = sp.get("shot")
-    drops_blocking = False
     shot_framing = ""
     if shot is not None:
         _S = _shots()
@@ -1529,7 +1527,6 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                 f"unknown shot {shot!r} on {spread_id}. A shot is a declared framing and "
                 f"the vocabulary is closed, so an unrecognised one would render as no "
                 f"framing at all. Valid: {', '.join(_S)}.")
-        drops_blocking = bool(_S[shot].get("dropsBlocking"))
         shot_framing = _S[shot]["framing"]
 
     when = sp.get("when")
@@ -1616,7 +1613,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
                 f"other kind reads them, so this entry would silently render the default. "
                 f"Available plates: {_avail or 'none'}.")
         if kind in ("setting", "visual-metaphor"):
-            r, block = resolve_setting(ent, c.get("plate"), c, drops_blocking)
+            r, block = resolve_setting(ent, c.get("plate"), c)
             add_refs(r)
             block = entity_block(c["id"], block, c.get("bake"), kind, c.get("bakeMode"), setting_rule, warnings)
             if block:

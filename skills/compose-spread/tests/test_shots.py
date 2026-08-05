@@ -59,7 +59,7 @@ def _assemble(u: Path, spec: dict):
 class ShotVocabularyTest(unittest.TestCase):
     def test_every_shot_declares_the_fields_both_consumers_read(self):
         for name, cfg in SHOTS.items():
-            for key in ("summary", "framing", "dropsBlocking", "peopleInFrame"):
+            for key in ("summary", "framing", "peopleInFrame"):
                 self.assertIn(key, cfg, f"{name} is missing {key}")
             self.assertTrue(cfg["framing"].strip(), name)
 
@@ -67,10 +67,20 @@ class ShotVocabularyTest(unittest.TestCase):
         for s in RELIEF_SHOTS:
             self.assertIn(s, SHOTS)
 
-    def test_relief_shots_all_drop_blocking(self):
-        # A relief shot leaves the room, so the room-wide blocking law cannot apply.
-        for s in RELIEF_SHOTS:
-            self.assertTrue(SHOTS[s]["dropsBlocking"], s)
+    def test_no_shot_can_suppress_the_blocking_law(self):
+        """`dropsBlocking` was a mistake and must not come back.
+
+        It suppressed `contract.blocking` on every close framing. Because blocking
+        carries SEATING AND HANDEDNESS, that swapped a husband and wife across
+        their own table in the close-ups of the book it shipped in.
+        """
+        for name, cfg in SHOTS.items():
+            self.assertNotIn("dropsBlocking", cfg, name)
+
+    def test_every_framing_carries_the_continuity_clause(self):
+        for name, cfg in SHOTS.items():
+            self.assertIn("THE CAMERA MOVES; NOTHING ELSE DOES", cfg["framing"], name)
+            self.assertIn("NO seat empties", cfg["framing"], name)
 
 
 class ShotAssemblyTest(unittest.TestCase):
@@ -100,9 +110,14 @@ class ShotAssemblyTest(unittest.TestCase):
         self.assertIn("FRAMING, CLOSE-UP", out["prompt"])
         self.assertIn("IGNORE THE CAMERA DISTANCE", out["prompt"])
 
-    def test_close_drops_the_room_wide_blocking_law(self):
+    def test_close_KEEPS_the_room_wide_blocking_law(self):
+        """The seating chart must survive the camera walking in."""
         out = json.loads(_assemble(self.u, _spec("close")).stdout)
-        self.assertNotIn("SIXTEEN GUESTS", out["prompt"])
+        self.assertIn("SIXTEEN GUESTS", out["prompt"])
+
+    def test_close_keeps_the_subject_at_their_furniture(self):
+        out = json.loads(_assemble(self.u, _spec("close")).stdout)
+        self.assertIn("NEAR EDGE OF THAT TABLE", out["prompt"])
 
     def test_wide_keeps_the_blocking_law(self):
         out = json.loads(_assemble(self.u, _spec("wide")).stdout)
@@ -170,6 +185,25 @@ class ShotAuditTest(unittest.TestCase):
             s["shot"] = ["wide", "two-shot", "close", "thought-bubble"][i % 4]
         code, probs = self._run(sp)
         self.assertFalse(any("R1 SAMENESS RUN" in p for p in probs), probs)
+
+    def test_a_person_dropped_from_an_unchanged_camera_is_refused(self):
+        sp = self._talk(5)
+        sp[2]["cast"] = [{"id": "a"}]          # b silently deleted mid-conversation
+        for i, s in enumerate(sp):
+            s["shot"] = ["wide", "two-shot", "close", "thought-bubble", "insert"][i]
+        code, probs = self._run(sp)
+        self.assertEqual(code, 2)
+        self.assertTrue(any("R4 VANISHING CAST" in p for p in probs), probs)
+
+    def test_a_person_out_of_frame_at_a_DIFFERENT_camera_is_fine(self):
+        """The camera moved to another part of the place; she did not leave it."""
+        sp = self._talk(5)
+        for i, s in enumerate(sp):
+            s["shot"] = ["wide", "two-shot", "close", "thought-bubble", "insert"][i]
+        sp[2]["plate"] = "other"
+        sp[2]["cast"] = [{"id": "a"}]
+        code, probs = self._run(sp)
+        self.assertFalse(any("R4 VANISHING CAST" in p for p in probs), probs)
 
     def test_a_talking_book_with_no_relief_is_refused(self):
         sp = self._talk(12)
