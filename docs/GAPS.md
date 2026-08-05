@@ -223,8 +223,23 @@ job was title + mark + `## n` + beat text + closing verse.
 **Would close it.** `compose-spec/scripts/sync_manuscript.py <universe> <story>`: emit the
 manuscript from the StorySpec deterministically; `--check` mode for book-doctor parity.
 
+**DIRECTION CORRECTION, 2026-08-05 (keep-god-out-of-the-state, fourth occurrence).** The
+proposed fix above emits the MANUSCRIPT FROM THE BEATS, and that is backwards for a book
+written manuscript-first. voice-gate blesses the MANUSCRIPT, so the manuscript is the
+authority and the beats are the derivative; generating the manuscript from beats would mean
+the blessed artifact is regenerated from an unblessed one. That run built the arrow the other
+way (`build_story.py`: parse `## n` sections out of the blessed manuscript, emit beat `text`
+verbatim, so beats == manuscript by CONSTRUCTION rather than by care) and it worked first try.
+
+**So the closing verb needs BOTH directions and a declared authority**, not one:
+`sync_beats.py --from-manuscript` (manuscript-first books, the common case) and
+`--from-beats` (beats-first books), plus `--check` for book-doctor parity. Building only the
+filed direction would have shipped a tool this run could not have used.
+
 **Still open because.** Filed during a live seven-session fleet under G5; building it means
-touching the shared checkout, so it is queued for the next quiet window.
+touching the shared checkout, so it is queued for the next quiet window. Re-confirmed open
+2026-08-05 for the same reason: a sibling session was committing to nof-universe minutes
+before this entry was written.
 
 ---
 
@@ -308,3 +323,82 @@ Append an entry with the five headings above (**What / Evidence / Next invocatio
 close it / Still open because**). If you cannot write the **Next invocation** line, do not
 file it. If you cannot write **Still open because**, you are not filing a gap — you are
 deferring work, and the honest move is to build it.
+
+---
+
+### G13. `canon/properties/<id>.json` has readers but no WRITER
+
+**What.** `canonfile.py` has `load_properties`, `parse_property_rows` and `render_properties`,
+and `abu build-canon` regenerates CANON.md from the records, but nothing WRITES a record. The
+record is mechanical: id, order, property, form, home, and a cast index derived from the
+story plus the render-spec. Because writing it is manual, it is the step that gets skipped,
+and a story with no record is INVISIBLE TO CASTING SWEEPS, which silently defeats
+reuse-first casting for every later book.
+
+**Evidence.** 2026-08-05, keep-god-out-of-the-state. `universe-doctor` scored this the single
+highest-impact item in nation-of-fire at +8, naming five full stories with no record. The
+book's own record was hand-written in a scratchpad heredoc at ship time; four others are
+still open (god-does-not-need-our-help, god-had-him-call-first, he-is-a-jealous-god,
+learning-serpent-wisdom).
+
+**Next invocation.** Every book, in every universe, at ship time. Plus four already-open
+cases in nation-of-fire alone.
+
+**Would close it.** `abu record-property <universe> <story> [--book DIR]`: derive order from
+max(existing)+1, cast from the render-spec's cast + settings union, form from genre + spread
+and beat counts, and refuse if the story is not `status: full`. Then `build-canon`. It is a
+natural last substep of `make-a-book`'s land/pave phase, and `universe-doctor` should point
+at the verb instead of at prose.
+
+**Still open because.** Same shared-checkout window as G9 and G5.
+
+---
+
+### G14. The uncast-name guard false-positives on common English words that are also entity given-names
+
+**What.** `_cast_name_tokens` matches a CAST entity's name tokens against scene text, but an
+entity whose id contains an ordinary English word makes that word un-writable in any scene.
+`miss-odessa` makes "impossible to MISS" a refusal; `roman-witness` makes "Roman capitals" and
+"a Roman ruler's head" a refusal. The guard is right to be conservative and its escape hatch
+(`allowUncast`) works, but the escape is per-spread and blanket: it disables the whole check
+for that spread, including the real uncast-person case it exists to catch.
+
+**Evidence.** 2026-08-05, keep-god-out-of-the-state: three spreads (23, 25, 29) needed
+`allowUncast` purely for this, and two of them cost a refused render batch to discover. Note
+the cartridge's own standing lesson: when a tool's false positive becomes a WRITING rule, the
+universe has started working for the tooling.
+
+**Next invocation.** Any universe with an entity named after a common word, which is most of
+them (`the-boy`, `charon`, `victory`, `selah`, `josh`, `drew`, `abbie`).
+
+**Would close it.** Require a match on a DISTINCTIVE token rather than any token: skip tokens
+that are common English words unless the full multi-token name matches, or gate single-token
+matches on capitalisation in the source text. Failing that, a scoped
+`allowUncast: ["miss-odessa"]` list so one false positive does not disarm the whole guard.
+
+**Still open because.** Touches a load-bearing refusal that several live books depend on;
+wants doing once for the class, with tests, not patched per book.
+
+---
+
+### G15. `render_cover.py --hero-pose` is silently ignored when the hero is not a character
+
+**What.** A cover can name any entity as `--hero`. If that entity is a visual-metaphor or a
+prop, `--hero-pose` is accepted without complaint and the DEFAULT plate is passed instead of
+the named one. This is the same `plate`-vs-`pose` selector split that `audit_spec_refs.py`
+REFUSES on for spreads (SPEC 12), except the cover path neither refuses nor honours it.
+
+**Evidence.** 2026-08-05, keep-god-out-of-the-state: `--hero the-house-of-three-rooms
+--hero-pose the-sealed-roof` printed `Editing with ... the-house-of-three-rooms/as-built.png`
+and rendered the wrong state. It cost one cover render to notice, and it was only noticed
+because the ref list is printed; a book whose two states look similar would ship the wrong one.
+
+**Next invocation.** Any cover whose hero is a multi-state spine object, which is the normal
+shape of a thesis book.
+
+**Would close it.** Give `render_cover.py` the same selector guard the spread compiler already
+has: honour `--hero-plate` for non-characters, and REFUSE `--hero-pose` on a non-character
+naming the available plates, exactly as `_selector_bake_guard` does.
+
+**Still open because.** Cover path change during a live fleet; sits naturally with G10, which
+is the other pair of render_cover expressiveness gaps.
