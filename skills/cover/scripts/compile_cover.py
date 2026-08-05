@@ -64,6 +64,12 @@ def load(p: Path):
         return json.load(f)
 
 
+def split_extra(spec: str):
+    """`id` or `id=pose` -> (id, pose or None)."""
+    eid, _, pose = spec.partition("=")
+    return eid.strip(), (pose.strip() or None)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("universe")
@@ -76,7 +82,13 @@ def main() -> int:
                          "A hero seen from BEHIND on a cover is 'back', and needs this: a pose "
                          "is a wardrobe selector, so the wrong one bakes front-only markings "
                          "onto a back view.")
-    ap.add_argument("--with", dest="extras", action="append", default=[])
+    ap.add_argument("--with", dest="extras", action="append", default=[],
+                    help="another canon entity on the cover, as `id` or `id=pose`. A COMPANION "
+                         "IS NOT FRONT-FACING BY DEFINITION either: this used to hardcode 'front' "
+                         "for every non-hero, so a companion whose canon has no 'front' pose could "
+                         "not appear on a cover at all, and one whose right pose was anything else "
+                         "silently got the wrong wardrobe. Same reasoning that gave --hero-pose its "
+                         "own flag; the hero was fixed on 2026-08-04 and the companions were not.")
     ap.add_argument("--platform-aspect", default="3:4")
     ap.add_argument("--scene", default=None,
                     help="the composition ACTION (the only free text; identity comes from canon)")
@@ -128,7 +140,18 @@ def main() -> int:
     refs = [anchor]
     qa: list[str] = []
     ent_blocks: list[str] = []
-    for spec in [hero_id] + args.extras:
+    # `--with <id>=<pose>` for a CHARACTER companion, alongside the `<id>:<plate>`
+    # form below for a non-character. Parsed once, before the plate split, so the
+    # two selectors cannot be confused for each other.
+    extra_poses = {}
+    specs = [hero_id]
+    for spec in args.extras:
+        eid_only, pose = split_extra(spec.split(":", 1)[0])
+        if pose:
+            extra_poses[eid_only] = pose
+            spec = spec.replace(f"={pose}", "", 1)
+        specs.append(spec)
+    for spec in specs:
         # "<id>" or "<id>:<plate>" — the same plate selection compose-spread's
         # descriptor already supports. Without it a multi-state visual-metaphor
         # always contributed emptyPlates[0], so a cover of the metaphor's LIT
@@ -204,7 +227,7 @@ def main() -> int:
         if r.get("always"):
             render_parts.append(r["always"])
         poses = r.get("poses") or {}
-        want_pose = args.hero_pose if eid == hero_id else "front"
+        want_pose = args.hero_pose if eid == hero_id else extra_poses.get(eid, "front")
         if poses and want_pose not in poses:
             print(f"REFUSE: '{eid}' has no pose {want_pose!r} "
                   f"(available: {', '.join(sorted(poses))})", file=sys.stderr)
