@@ -247,6 +247,61 @@ window.
 
 ---
 
+### G11. `compose_prompts --all` deletes the code-drawn section that `chain_matrix`'s detection is keyed on
+
+**What.** `compose_prompts.py` prints "code-drawn, not composed (deterministic art): blueprint"
+and writes a prompts.md with NO `## blueprint` section — but `chain_matrix.py` builds its
+code-drawn set from the shots parsed out of prompts.md sections (`code_drawn_shots(refdir,
+shots)`), so a blueprint with a perfect `agenticstory.elevation` recipe on disk is simply not
+in the plan: not printed, not passed, no refusal anywhere. The v0.31 promise ("found and
+passed automatically... you do not pre-declare anything") holds only while the scaffolder's
+section survives, and the compose step removes it. Same family as G7/G8 (the two scripts
+disagree about what prompts.md means), but this variant loses the geometry ENTIRELY on the
+seed too.
+
+**Evidence.** 2026-08-05, nation-of-fire `the-liberty-bell`: fresh scaffold, `abu elevation`
+blueprint with recipe, `compose_prompts --all`, then `--print-plan` showed no code-drawn line
+and both shots conditioned on anchor/seed only. Hand-restored the `## blueprint` heading with
+a fallback body and the plan immediately carried the blueprint on every shot.
+
+**Next invocation.** Every blueprint-seeded visual-metaphor or prop whose prompts are
+composed rather than hand-typed — which is the recommended flow for both.
+
+**Would close it.** Either detect code-drawn assets from `contract.states` /
+`structured.sheets` + recipes on disk (not from prompts.md sections), or have
+compose_prompts KEEP the section with a generated "code-drawn, never generated" body.
+
+**Still open because.** Sits in the same two scripts as the G7/G8 refactor; filed to be
+closed with them in one deliberate change.
+
+---
+
+### G12. `--bless-seed` hardcodes `blessedBy: "human"`, so a delegated agent-readback blessing must falsify or hand-amend the marker
+
+**What.** `chain_matrix.py --bless-seed` writes `master.golden.json` with `"blessedBy":
+"human"` unconditionally. A supervised chain run by an agent under an operator's direction
+(the normal make-a-book / steward-subagent case, and the exact case the-sealed-spring's
+authority note records) has no way to record what actually happened; the tool writes a false
+attestation on its behalf. That is the class the framework's own provenance invariants name:
+"when a record can state either what canon SAYS or what the run DID, and they can differ, it
+must say which one it is saying."
+
+**Evidence.** 2026-08-05, nation-of-fire `the-liberty-bell`: seed blessed after a crop-zoom
+readback pass by the steward subagent; the marker's `blessedBy` was hand-amended to honest
+attribution because the alternative was an attestation claiming a person looked at it.
+
+**Next invocation.** Every autonomous or fleet book run that shoots a new entity (crank-blessing-book
+runs seed blessings on every new spine-object).
+
+**Would close it.** `--bless-seed <shot> --by "<who>"` (default remains "human"), written
+verbatim into the marker; optionally a distinct `agent-readback` value the chain still
+accepts, since the gate's existence check is unchanged.
+
+**Still open because.** One-flag change, but the blessing gate's semantics (what counts as a
+golden) deserve a deliberate SPEC sentence, not a drive-by; queued for evolve-abu.
+
+---
+
 ## Filing a gap here
 
 Append an entry with the five headings above (**What / Evidence / Next invocation / Would
