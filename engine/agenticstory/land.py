@@ -172,6 +172,24 @@ def is_dirty(repo: Path, *, include_untracked: bool = False) -> bool:
     return bool(git(repo, *args))
 
 
+def dirty_paths(repo: Path) -> set[str]:
+    """Repo-relative paths with staged or unstaged TRACKED changes in this tree.
+
+    Exists so a `busy` refusal can NAME what is blocking it. A reason a human
+    cannot act on is a reason that gets ignored.
+
+    Uses `diff --name-only HEAD` rather than parsing `status --porcelain` by column:
+    the shared git() helper strips the output, which eats porcelain's leading status
+    space and shifts every path by one character ("tracked.txt" -> "racked.txt").
+    A column offset that depends on whitespace nobody promised to preserve is a bug
+    waiting for its first test, and this one found it immediately. `diff HEAD` also
+    excludes untracked files for free, which is the behaviour we want: stray scratch
+    output must never be reported as a merge blocker.
+    """
+    out = git(repo, "diff", "--name-only", "HEAD")
+    return {l.strip() for l in out.splitlines() if l.strip()}
+
+
 def operation_in_progress(repo: Path) -> str | None:
     """Name any half-finished git operation in this worktree."""
     gitdir = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-dir"))
@@ -240,9 +258,24 @@ def plan(repo: Path, branch: str, onto: str) -> Plan:
                     f"{onto} is checked out at {holder.path} with {op} in progress",
                     holder.path, bw.path if bw else None)
     if is_dirty(holder.path):
+        # NAME THE BLOCKER. "has uncommitted changes" is true and useless: it does not
+        # say WHICH files, so nobody can act on it, and the queue's own message promises
+        # "the next land run will finish it", which is FALSE for as long as the tree stays
+        # dirty. Observed 2026-08-05 on nation-of-fire: TEN book branches sat queued for a
+        # whole session behind ONE stray modified SKILL.md that nobody knew about, and
+        # every drain run cheerfully re-queued them.
+        #
+        # Path-precision does NOT work here and was tried: git refuses to merge into a
+        # tree with a dirty index at all, whether or not the merge touches those paths,
+        # so intersecting the merge's files with the dirty ones only turns a safe queue
+        # into a conflict. Blocking is correct. Being vague about it is the defect.
+        blockers = sorted(dirty_paths(holder.path))
+        shown = ", ".join(blockers[:4]) + ("..." if len(blockers) > 4 else "")
         return Plan(repo, branch, onto, "busy",
-                    f"{onto} is checked out at {holder.path} and that tree has uncommitted changes, "
-                    f"so moving the branch would corrupt that session's view",
+                    f"{onto} is checked out at {holder.path} and that tree has uncommitted "
+                    f"changes ({shown}), so moving the branch would corrupt that session's "
+                    f"view. This will NOT clear on its own: commit or stash those file(s) "
+                    f"and re-run `land --drain-only`",
                     holder.path, bw.path if bw else None)
     return Plan(repo, branch, onto, "idle",
                 f"{onto} is checked out at {holder.path} and that tree is clean, "
