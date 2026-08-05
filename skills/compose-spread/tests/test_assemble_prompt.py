@@ -32,7 +32,8 @@ def png(path: Path, size=(8, 8)):
 def build_universe(root: Path):
     (root / "canon" / "entities").mkdir(parents=True)
     for p in ["register/anchor", "clean/full", "clean/face",
-              "stache/full", "stache/face", "stache/alt-photo", "home/kitchen"]:
+              "stache/full", "stache/face", "stache/alt-photo", "home/kitchen",
+              "lord/full", "jv/full"]:
         png(root / "reference" / (p + ".png"))
     (root / "universe.json").write_text(json.dumps({
         "name": "testverse", "assetRoot": ".",
@@ -101,6 +102,20 @@ def build_universe(root: Path):
                 },
             },
         },
+    }))
+    # The real nation-of-fire collision, in miniature: an entity whose id LEADS with a
+    # stopword, and a different real person who merely shares one of its name words.
+    (root / "canon" / "entities" / "the-lord-jesus-christ.json").write_text(json.dumps({
+        "id": "the-lord-jesus-christ", "kind": "character",
+        "structured": {"sheets": {"forward-fullbody": "reference/lord/full.png"},
+                       "requiredForRender": ["forward-fullbody"],
+                       "invariants": ["awe-not-horror"]},
+    }))
+    (root / "canon" / "entities" / "jesus-villavicencio.json").write_text(json.dumps({
+        "id": "jesus-villavicencio", "kind": "character",
+        "structured": {"sheets": {"forward-fullbody": "reference/jv/full.png"},
+                       "requiredForRender": ["forward-fullbody"],
+                       "invariants": ["real-person-depicted-with-dignity"]},
     }))
     (root / "canon" / "entities" / "home.json").write_text(json.dumps({
         "id": "home", "kind": "setting", "status": "locked",
@@ -467,6 +482,42 @@ class TestPromotedGuards(unittest.TestCase):
         out = self.out([{"id": "s1", "cast": [{"id": "clean"}],
                          "scene": "clean holds a book whose cover reads 'stache' in gold capitals"}])
         self.assertIn("SCENE:", out["prompt"])
+
+    def test_a_cast_entity_accounts_for_its_own_name(self):
+        """Casting the Lord must license writing "Jesus" in the scene.
+
+        `_name_tokens` took only the HEAD token, so `the-lord-jesus-christ` yielded
+        nothing at all ("the" is three letters) and casting Him contributed zero
+        tokens. "Jesus" in the prose then matched `jesus-villavicencio`, a different
+        real person who shares the given name, and the spread was REFUSED. The
+        universe absorbed that as a writing rule -- "say THE LORD, never JESUS" --
+        which is a human working around a tool bug. Gary, 2026-08-05: "you can write
+        Jesus. Dumb ass rule."
+        """
+        out = self.out([{"id": "s1", "cast": [{"id": "the-lord-jesus-christ"}],
+                         "scene": "Jesus stands on the shore at dawn"}])
+        self.assertIn("SCENE:", out["prompt"])
+
+    def test_the_shared_name_still_refuses_when_nobody_is_cast(self):
+        """The guard must not go blind: uncast + named is still the expensive defect."""
+        err = self.refuse([{"id": "s1", "cast": [{"id": "clean"}],
+                            "scene": "clean waits while Jesus walks up the beach"}])
+        self.assertIn("UNCAST CHARACTERS", err)
+
+    def test_detection_stays_conservative_on_qualifier_tokens(self):
+        """Generosity applies to what a CAST id covers, never to detection.
+
+        A common noun that happens to be an id's qualifier must still not summon a
+        character, which is why `_name_tokens` keeps the head-only rule.
+        """
+        import importlib.util, pathlib
+        _p = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "assemble_prompt.py"
+        _spec = importlib.util.spec_from_file_location("_ap", _p)
+        _ap = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_ap)
+        _name_tokens, _cast_name_tokens = _ap._name_tokens, _ap._cast_name_tokens
+        self.assertEqual(_name_tokens("silas-driver"), {"silas"})
+        self.assertEqual(_cast_name_tokens("the-lord-jesus-christ"),
+                         {"lord", "jesus", "christ"})
 
     def test_uncast_still_flags_an_unquoted_mention_next_to_designed_text(self):
         """The quote-stripping must not blind the guard to a real body in frame."""
