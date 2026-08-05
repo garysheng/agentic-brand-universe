@@ -210,5 +210,45 @@ class TestWhen(unittest.TestCase):
                 self.assertNotIn("when", sp)
 
 
+class TestPoseIsCharacterOnly(unittest.TestCase):
+    """compose-spec must not advertise a selector compose-spread will REFUSE.
+
+    `pose` is a character selector. assemble_prompt.py raises Refuse on a pose
+    given to any other kind ("A POSE ON A NON-CHARACTER SELECTS NOTHING"), a
+    guard that exists because nine spreads of a real book shipped showing the
+    wrong state on 2026-08-03.
+
+    poses_for() read structured.render.poses off ANY kind, so a `group` that
+    declares poses was told to pick one, and the resulting spec was refused by
+    the compiler. Two shipped tools contradicting each other. Earned 2026-08-04
+    on You Didn't Have To (jerry-and-selahs-kids, a group declaring the-three /
+    the-growing-brood).
+    """
+
+    def setUp(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        import compose_spec
+        self.poses_for = compose_spec.poses_for
+
+    def _ent(self, kind):
+        return {"id": "x", "kind": kind,
+                "structured": {"render": {"poses": {"a": {}, "b": {}}}}}
+
+    def test_character_poses_are_offered(self):
+        self.assertEqual(sorted(self.poses_for(self._ent("character"))), ["a", "b"])
+
+    def test_group_poses_are_not_offered(self):
+        """A group selects with `plate`; offering its poses authors a refused spec."""
+        self.assertEqual(self.poses_for(self._ent("group")), [])
+
+    def test_other_kinds_are_not_offered(self):
+        for kind in ("prop", "motif", "setting", "visual-metaphor"):
+            with self.subTest(kind=kind):
+                self.assertEqual(self.poses_for(self._ent(kind)), [])
+
+    def test_missing_entity_is_still_empty(self):
+        self.assertEqual(self.poses_for(None), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
