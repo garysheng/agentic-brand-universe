@@ -56,10 +56,32 @@ def _write_derivative_recipe(args, src_size, out_size) -> "pathlib.Path | None":
     src = pathlib.Path(args.src)
     src_recipe = src.with_name(src.name + ".recipe.json")
     carried = {}
+    generation = {}
     if src_recipe.exists():
         try:
             s = json.loads(src_recipe.read_text())
             carried = {k: s[k] for k in ("spec", "universe", "story") if k in s}
+            # THE GENERATION RECORD MUST SURVIVE THE CONFORM.
+            #
+            # render_cover conforms IN PLACE (`conform_cover.py <out> <out>`), so this
+            # file is about to overwrite the very recipe it derives from. Before this
+            # block existed, that destroyed the prompt, the refs, the provider and the
+            # model for EVERY cover, and left `derivedFrom.recipe` pointing at itself.
+            # On nation-of-fire, 30 of 39 cover recipes had lost their generation prompt
+            # and 25 were self-referential loops (measured 2026-08-05). The cost was
+            # concrete: rebuilding 28 covers to add a byline meant reconstructing each
+            # composition by LOOKING at the art, because the scene that made it was gone.
+            #
+            # So carry the generation forward under `sourceRender`. It is not this
+            # asset's own generation and must never be presented as one -- `prompt` and
+            # `model` at the top level stay honest about being a derivative -- but the
+            # record of what made the pixels is preserved rather than deleted.
+            gen = {k: s[k] for k in ("prompt", "refs", "provider", "model", "size",
+                                     "quality", "textLines", "qa", "descriptor",
+                                     "generatedBy", "universeCommit", "book", "spread")
+                   if k in s and s[k] is not None}
+            if gen.get("prompt"):
+                generation = gen
         except (json.JSONDecodeError, OSError):
             carried = {}
     rec = {
@@ -70,12 +92,21 @@ def _write_derivative_recipe(args, src_size, out_size) -> "pathlib.Path | None":
         "args": {"aspect": args.aspect, "mode": args.mode, "inset": args.inset,
                  "blur": args.blur, "keyline": args.keyline},
         "prompt": None,
+        # The generation this was conformed from, preserved verbatim. Present only when
+        # the source recipe actually recorded a generation.
+        **({"sourceRender": generation} if generation else {}),
         "transform": f"{src_size[0]}x{src_size[1]} -> {out_size[0]}x{out_size[1]}",
         "inputs": [{"path": str(src), "sha256_16": _sha16(src), "role": "source render"}],
         "sha256_16": _sha16(out),
         "derivedFrom": {
             "path": str(src),
-            "recipe": str(src_recipe) if src_recipe.exists() else None,
+            # A self-referential pointer is worse than none: it reads like a chain and
+            # leads nowhere. When the conform is in place, the source recipe IS this
+            # file, so say so by omitting it and rely on `sourceRender` below.
+            "recipe": (str(src_recipe)
+                       if src_recipe.exists()
+                       and src_recipe.resolve() != out.with_name(out.name + ".recipe.json").resolve()
+                       else None),
             "sha256_16": _sha16(src),
         },
         "note": ("DERIVATIVE, not a generation. The cover was conformed to the reader "
