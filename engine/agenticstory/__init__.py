@@ -18,7 +18,7 @@ __version__ = "0.0.1"
 # universe the engine scaffolded claimed conformance to a spec two releases old.
 # `lint-universe` now checks a universe's pin against this value, so the two can no
 # longer disagree quietly.
-SPEC_VERSION = "0.33"
+SPEC_VERSION = "0.34"
 SPEC_WIKI = "https://agenticbranduniverse.com"
 # The spec URL must RESOLVE. agenticstory.wiki was cited as the authority in every
 # universe manifest and served nothing (parked DNS, no HTTP response), and its

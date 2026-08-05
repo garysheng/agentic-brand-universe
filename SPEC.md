@@ -1,6 +1,6 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.33 — 2026-08-04.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.34 — 2026-08-05.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
@@ -1676,6 +1676,36 @@ encoded) is paid for once and reused by every future property and universe.
 
 ## 12. Reference-matrix standard (v0.4)
 
+> **v0.34 additions, all three earned in one book run (nation-of-fire, *Cast Out, Torn Down*,
+> 2026-08-05).**
+>
+> - **`contract.scalePlateWaiver` — a declared, reasoned decline of the scale plate.** A scale
+>   plate IS anonymous figures, so an entity whose own invariants forbid figures in every plate
+>   cannot have one, and `lint-universe` and `universe-doctor` used to ding it forever for a gap
+>   it is not allowed to close. A non-empty sentence in `contract.scalePlateWaiver` says why, and
+>   both surfaces then treat the slot as satisfied. `contract.scale` becomes mandatory in that
+>   case (lint raises `SETTING-SCALE-WAIVER-WITHOUT-SCALE` otherwise): declining the PLATE is
+>   allowed, declining to state the SIZE is not. A dimensioned code-drawn blueprint plus a scale
+>   descriptor is strictly stronger evidence than a painted plate, because it survives a re-render.
+> - **AN ENTITY'S ID IS NOT A PROMISE ABOUT WHERE ITS ART LIVES.** `refs.entity_ref_dir()` reads
+>   the reference folder off the paths the entity itself declares and falls back to the id only
+>   when it declares none. `audit_spec_refs` learned this in v0.33 and kept a private copy;
+>   `shoot-references` did not, so an entity whose art is deliberately re-foldered (the Apostle is
+>   one man in one folder by universe law, id `apostle-lee`, art under
+>   `apostle-delmar-lee-coward-jr/`) REFUSED with "no prompts.md" and could only be shot after a
+>   symlink was hand-made inside the universe. A universe symlinking around the framework is the
+>   defect, not the fix. One rule, one implementation, every surface.
+> - **`compose_prompts` composes the entity it was given, not a character-shaped guess.** For
+>   `setting` and `visual-metaphor` it now uses a place template with no body-framing line and no
+>   "plain soft warm neutral studio field" background (that word `warm` was being injected into an
+>   entity whose central invariant is that it carries no gold), defaults to LANDSCAPE `1536x1024`
+>   rather than portrait, writes the conventional target path for a sheet still scaffolded as
+>   `null` instead of the literal string `None`, SKIPS any slot whose recipe marks it
+>   deterministic (a code-drawn blueprint is computed geometry and must never be re-prompted), and
+>   treats a `TODO(author)` stub as UNAUTHORED so it fills the file it exists to fill, replacing
+>   the stub section rather than appending a second heading for the same shot.
+
+
 "Locked" must mean something checkable per kind. The reference matrix is the canonical set of
 reference shots an entity needs before it is fully renderable, so tooling can report
 under-referenced entities the way the gate reports missing files.
@@ -1783,6 +1813,20 @@ its inputs), and the topology in `method`.
     engine computes the gate (`lock-shot` promotion and `lock-level`). It may only ADD to the kind
     minimum, never drop below it, because a kind's minimum is what makes "locked" mean something.
     Omit it to accept the kind default, which is the common case.
+
+    **THE GATE AND THE ALWAYS-PASS SET ARE TWO DIFFERENT LISTS, AND A MULTI-STATE ENTITY
+    NEEDS THEM TO DIFFER (v0.34).** `requiredForRender` answers "what is passed to the
+    model as a reference on EVERY render of this entity"; `requiredForRenderOnLock`
+    answers "what must exist on disk before any render is allowed at all". For a
+    single-state entity they can be the same list and usually are. For an object argued
+    across STATES they must not be: `the-stronghold` (nation-of-fire, 2026-08-05) is one
+    wall in four states, and putting `built` in `requiredForRender` would have passed the
+    standing wall into the `fallen` spread and stood it back up, while leaving the gate
+    empty would have let the book render against states that were never shot. The correct
+    shape is an EMPTY `requiredForRender` (the per-spread `plate`/`pose` selector supplies
+    the one state that belongs in that frame) and a FULL `requiredForRenderOnLock` naming
+    every state, so the existence gate is total and the reference pollution is zero.
+    Reach for this whenever passing one plate would contradict another.
   - **`structured.scale` (v0.10) — relative height is canon, not a per-spread guess.** `{ "height":
     "5 ft 8 in", "relativeTo": { "<entity-id>": "several inches shorter than" }, "scalePlate":
     "reference/<id>/scale-two-up.png" }`. Every entity in the matrix is described ALONE, so two

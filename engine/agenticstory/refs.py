@@ -47,6 +47,43 @@ def expand_ref(root: Path, p: str) -> list[str]:
     raise FileNotFoundError(f"ref does not resolve on disk: {p}")
 
 
+def entity_ref_dir(entity_raw: dict, eid: str) -> str:
+    """The reference FOLDER an entity's art actually lives in, never assumed from its id.
+
+    AN ENTITY'S ID IS NOT A PROMISE ABOUT WHERE ITS ART LIVES (SPEC v0.34). Read the
+    folder off the paths the entity itself declares, and fall back to the id only when
+    it declares none, which is the freshly-scaffolded case.
+
+    Earned twice on nation-of-fire's Apostle, who is one man in one folder by explicit
+    universe law: all his art is under `reference/apostle-delmar-lee-coward-jr/` while
+    the canon id every story casts stays `apostle-lee`. `audit_spec_refs` learned this
+    in v0.33 and grew its own private copy; `shoot-references` did not, so shooting his
+    matrix REFUSED with "no prompts.md" until a symlink was hand-made in the universe.
+    A symlink is a universe working around the framework, which is the thing this
+    function exists to stop. One rule, one implementation, every surface.
+    """
+    st = (entity_raw.get("structured") or {})
+    paths = []
+    sheets = st.get("sheets") or {}
+    for v in sheets.values():
+        if isinstance(v, str):
+            paths.append(v)
+        elif isinstance(v, dict) and isinstance(v.get("path"), str):
+            paths.append(v["path"])
+    for v in (entity_raw.get("contract") or {}).values():
+        if isinstance(v, str) and "reference/" in v:
+            paths.append(v)
+        elif isinstance(v, list):
+            paths += [x for x in v if isinstance(x, str)]
+    for p in paths:
+        parts = Path(str(p)).parts
+        if "reference" in parts:
+            i = parts.index("reference")
+            if len(parts) > i + 1:
+                return parts[i + 1]
+    return eid
+
+
 def photo_stack(entity_raw: dict, root: Path) -> list[str]:
     """A real person's photographs: EXPANDED first, then capped by `realPerson.photoLimit`.
 

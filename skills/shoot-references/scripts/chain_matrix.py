@@ -727,7 +727,14 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
 
     ent = load(uroot / "canon" / "entities" / f"{eid}.json")
     kind = ent.get("kind", "character")
-    refdir = uroot / "reference" / eid
+    # THE FOLDER COMES FROM THE ENTITY, NOT FROM ITS ID (SPEC v0.34). An entity whose
+    # art is deliberately re-foldered (nation-of-fire's Apostle is one man in one folder
+    # by universe law, id `apostle-lee`, art under `apostle-delmar-lee-coward-jr/`) used
+    # to REFUSE here with "no prompts.md" and could only be shot by hand-making a symlink
+    # inside the universe. A universe symlinking around the framework is the defect.
+    _engine_on_path()
+    from agenticstory.refs import entity_ref_dir
+    refdir = uroot / "reference" / entity_ref_dir(ent, eid)
     base_sheets = dict((ent.get("structured") or {}).get("sheets") or {})
     if look:
         declared_looks = (ent.get("structured") or {}).get("altLooks") or {}

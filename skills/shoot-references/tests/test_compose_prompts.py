@@ -124,5 +124,72 @@ class ComposePrompts(unittest.TestCase):
         self.assertIn("## master (1536x1024)", self.md.read_text())
 
 
+class MultiStateScaffold(unittest.TestCase):
+    """SPEC v0.34: compose the entity you were given, not a character-shaped guess.
+
+    Earned 2026-08-05 on nation-of-fire's `the-stronghold`, where the composer emitted
+    `-> None` for scaffolded sheets, defaulted a landscape site plate to portrait, wrote
+    "Full body, standing" and a "warm neutral studio field" into a stone wall whose
+    central invariant is that it carries no gold, composed the code-drawn blueprint, and
+    treated `add-entity`'s own TODO stubs as authored so it filled nothing.
+    """
+
+    def _uni(self, tmp, folder="real-folder"):
+        root = Path(tmp)
+        (root / "canon" / "entities").mkdir(parents=True)
+        (root / "reference" / folder).mkdir(parents=True)
+        ent = {"id": "wall", "kind": "visual-metaphor", "structured": {
+            "sheets": {"blueprint": f"reference/{folder}/blueprint.png",
+                       "built": None, "fallen": None},
+            "invariants": ["no gold anywhere"],
+            "render": {"always": "A dark stone wall on a mound.",
+                       "poses": {"built": {"bake": "The wall whole."},
+                                 "fallen": {"bake": "Now rubble."}}}}}
+        (root / "canon" / "entities" / "wall.json").write_text(json.dumps(ent))
+        (root / "reference" / folder / "blueprint.png.recipe.json").write_text(
+            json.dumps({"deterministic": True, "generator": "agenticstory.massing"}))
+        return root, root / "reference" / folder / "prompts.md"
+
+    def test_scaffolded_null_sheet_gets_a_real_target_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, prompts = self._uni(tmp)
+            run(root, "wall", "--all")
+            body = prompts.read_text()
+            self.assertNotIn("-> None", body)
+            self.assertIn("-> reference/real-folder/built.png", body)
+
+    def test_place_kinds_are_landscape_and_carry_no_body_or_studio_boilerplate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, prompts = self._uni(tmp)
+            run(root, "wall", "--all")
+            body = prompts.read_text()
+            self.assertIn("(1536x1024)", body)
+            self.assertNotIn("1024x1536", body)
+            self.assertNotIn("Full body, standing", body)
+            self.assertNotIn("studio field", body)
+
+    def test_code_drawn_slots_are_never_composed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, prompts = self._uni(tmp)
+            run(root, "wall", "--all")
+            self.assertNotIn("## blueprint", prompts.read_text())
+
+    def test_todo_stub_is_unauthored_and_is_replaced_not_duplicated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, prompts = self._uni(tmp)
+            prompts.write_text("# wall\n\n## built\nTODO(author): replace each body below.\n")
+            run(root, "wall", "--all")
+            body = prompts.read_text()
+            self.assertEqual(body.count("## built"), 1)
+            self.assertNotIn("TODO(author)", body)
+
+    def test_folder_comes_from_the_entity_not_its_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, prompts = self._uni(tmp, folder="deliberately-other")
+            run(root, "wall", "--all")
+            self.assertTrue(prompts.exists())
+            self.assertFalse((root / "reference" / "wall" / "prompts.md").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

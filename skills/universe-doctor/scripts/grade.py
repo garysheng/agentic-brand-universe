@@ -258,6 +258,14 @@ def entity_completeness(root, e):
     else:  # setting / visual-metaphor
         c = e.get("contract") or {}
         for k in ("turnaround", "blueprint", "scalePlate"):
+            # A declared, reasoned scalePlate decline counts as satisfied (SPEC v0.34):
+            # an entity whose invariants forbid figures in every plate cannot hold a
+            # plate made of figures, and a dimensioned blueprint plus a scale descriptor
+            # proves size more durably than a painting does.
+            if k == "scalePlate" and (c.get("scalePlateWaiver") or "").strip() \
+                    and (c.get("scale") or "").strip():
+                slots.append((k, True))
+                continue
             slots.append((k, resolves(root, c.get(k))))
         plates = c.get("emptyPlates") or []
         slots.append(("emptyPlates", bool(plates) and all(resolves(root, p) for p in plates)))

@@ -170,5 +170,34 @@ class TestGrader(unittest.TestCase):
     def test_rubric_still_totals_one_hundred(self):
         self.assertEqual(sum(m for _k, _l, m in grade.RUBRIC), 100)
 
+class ScalePlateWaiver(unittest.TestCase):
+    """SPEC v0.34: a declared, reasoned decline is not a gap.
+
+    A scale plate IS anonymous figures, so an entity whose own invariants forbid figures
+    in every plate cannot hold one, and dinging it forever trains the operator to ignore
+    an otherwise load-bearing check. Earned on nation-of-fire's `the-stronghold`.
+    """
+
+    def _ent(self, **contract):
+        base = {"turnaround": "t.png", "blueprint": "b.png", "emptyPlates": ["e.png"],
+                "map": "m", "blocking": "bl", "dressing": "d", "scale": "22 ft high"}
+        base.update(contract)
+        return {"id": "wall", "kind": "visual-metaphor", "contract": base}
+
+    def test_waiver_with_scale_satisfies_the_slot(self):
+        e = self._ent(scalePlateWaiver="Every plate of this entity forbids figures.")
+        _, gaps = grade.entity_completeness(Path("/nonexistent"), e)
+        self.assertNotIn("scalePlate", gaps)
+
+    def test_waiver_without_scale_does_not_satisfy_it(self):
+        e = self._ent(scalePlateWaiver="because", scale="")
+        _, gaps = grade.entity_completeness(Path("/nonexistent"), e)
+        self.assertIn("scalePlate", gaps)
+
+    def test_no_waiver_still_reports_the_gap(self):
+        _, gaps = grade.entity_completeness(Path("/nonexistent"), self._ent())
+        self.assertIn("scalePlate", gaps)
+
+
 if __name__ == "__main__":
     unittest.main()

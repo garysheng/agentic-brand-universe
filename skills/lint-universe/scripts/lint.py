@@ -377,7 +377,23 @@ def lint(root):
             con = e.get("contract") or {}
             eid = e.get("id", ef.stem)
             sp = con.get("scalePlate")
-            if not sp:
+            # A REASONED DECLINE IS NOT A GAP (SPEC v0.34). A scale plate IS anonymous
+            # figures, so an entity whose own invariants forbid figures in every plate
+            # cannot have one, and warning it forever trains the operator to ignore a
+            # check that is otherwise load-bearing. `contract.scalePlateWaiver` is the
+            # declared, reasoned decline: a non-empty sentence saying why, which a human
+            # wrote and a reader can argue with. Size must still be carried some other
+            # way (a dimensioned code-drawn blueprint plus contract.scale is strictly
+            # stronger evidence than a painted plate, because it survives a re-render).
+            # Earned 2026-08-05 on nation-of-fire's `the-stronghold`.
+            waiver = (con.get("scalePlateWaiver") or "").strip()
+            if waiver and not sp:
+                if not (con.get("scale") or "").strip():
+                    warn("SETTING-SCALE-WAIVER-WITHOUT-SCALE",
+                         f"{eid}: contract.scalePlateWaiver is declared but contract.scale is "
+                         f"empty. Declining the plate is allowed; declining to state the size "
+                         f"at all is not. Write the dimensions in contract.scale.")
+            elif not sp:
                 warn("SETTING-NO-SCALE-PLATE",
                      f"{eid}: no contract.scalePlate. Its emptyPlates are people-free, so nothing "
                      f"in this setting proves how big it is and every render silently inherits the "
