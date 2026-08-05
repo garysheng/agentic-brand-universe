@@ -246,5 +246,37 @@ class LandTestCase(unittest.TestCase):
         self.assertEqual(land.read_queue(self.repo), [])
 
 
+
+class BlockerIsNamed(LandTestCase):
+    """A `busy` refusal must name the files blocking it and say it will not self-clear.
+
+    Ten book branches sat queued for an entire session on nation-of-fire behind one
+    stray modified SKILL.md, because the refusal said only "has uncommitted changes"
+    and the queue said "the next land run will finish it" (false while dirty).
+    """
+
+    def test_reason_names_the_dirty_file_and_denies_self_healing(self):
+        self.make_work_branch()
+        write(self.repo, "their-file.txt", "in-flight\n")
+        git(self.repo, "add", "their-file.txt")
+
+        res = land.land(self.repo, "work")
+
+        self.assertEqual(res.outcome, "queued", res.detail)
+        self.assertIn("their-file.txt", res.detail,
+                      "the refusal must name what is blocking it")
+        self.assertIn("will NOT clear on its own", res.detail)
+
+    def test_dirty_paths_reports_tracked_modifications(self):
+        write(self.repo, "tracked.txt", "one\n")
+        git(self.repo, "add", "tracked.txt"); git(self.repo, "commit", "-m", "add tracked")
+        write(self.repo, "tracked.txt", "two\n")
+        write(self.repo, "untracked.txt", "scratch\n")
+        paths = land.dirty_paths(self.repo)
+        self.assertIn("tracked.txt", paths)
+        self.assertNotIn("untracked.txt", paths,
+                         "untracked scratch must never be reported as a merge blocker")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
