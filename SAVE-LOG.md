@@ -38,6 +38,29 @@ construction.
 
 2026-07-25 · 7c78193 · Plugin 0.7.2. Story TYPES became validated data. A story's spine and genre were free-text prose that nothing checked, so a typo, a near-duplicate (teaching-testimony vs testimony-teaching), or prose stuffed into the genre field passed silently. The SPEC (section 13) already models these as craft-canon records; lint-universe now ties every story back to that registry and warns (STORY-SPINE-UNREGISTERED / STORY-GENRE-UNREGISTERED) on any unregistered value, so "where are this universe's story types" is answerable by data. Advisory, not a hard validate error, so a universe mid-normalization still composes. Seeded the clean NoF spines (thesis, primer, testimony, blessing) and the new faithful-prophetic-realistic-fiction genre as craft records; the messy back-catalog genres now surface as normalization warnings. Also fixed a pre-existing linter crash on a golden recipe whose inputs entry is a bare path string. Engine and SPEC contract untouched, so no spec bump. 249 tests green (lint 30 to 35).
 
+## 2026-08-05 — plugin 0.98.1: a camera move is not a scene change (v0.35 corrections)
+
+The shot system shipped three hours earlier with three bugs, all the same
+mistake in different clothes. Gary caught every one by looking at the book:
+"why did the husband and wife swap seats", "why is Jerry missing", "if you're
+doing a close-up of Jerry you can't have the table in the background because
+Jerry's at the table".
+
+- `dropsBlocking` REMOVED. It suppressed the setting's room-wide blocking on
+  every close framing. The precedent was real but `blocking` carries SEATING AND
+  HANDEDNESS, which are continuity and must hold at every distance.
+- A CONTINUITY clause now prefixes every framing: the camera moves and nothing
+  else does, nobody leaves their seat, no chair empties, the furniture stays.
+- The `close` framing no longer says "most of the room is OUTSIDE this picture".
+- Audit R4 VANISHING CAST: cast is who is IN FRAME, not who the spread is about.
+
+Also: nation-of-fire's the-rhodes-back-garden gained a CRASH-DUMMY blocking
+plate (code-drawn, three lettered dummies, nose wedges, three cameras) wired to
+contract.blockingPlate, which the compiler already passed on every render and
+which nothing was using. Prose cannot deliver a seating chart; that lesson was
+already in the universe on russes-cadillac and had to be paid for twice.
+
+
 ## 2026-08-05 — v0.35 / plugin 0.98.0: the DECLARED SHOT, because a talking book renders as one picture
 
 nation-of-fire's Bless You More shipped fifteen consecutive spreads of the same
