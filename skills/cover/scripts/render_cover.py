@@ -39,9 +39,16 @@ def main() -> int:
     ap.add_argument("--subtitle", default=None)
     ap.add_argument("--author", default=None)
     ap.add_argument("--hero", default=None)
+    ap.add_argument("--hero-pose", dest="hero_pose", default=None,
+                    help="which of the hero's poses the cover composes (compile_cover defaults "
+                         "to 'front'). A hero seen from BEHIND needs 'back': a pose is a "
+                         "wardrobe selector, so the wrong one bakes front-only markings onto a "
+                         "back view. Earned 2026-08-04 on You Didn't Have To.")
     ap.add_argument("--with", dest="with_", action="append", default=[])
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-mark", action="store_true")
+    ap.add_argument("--no-author", action="store_true",
+                    help="omit the byline even when the universe declares identity.author")
     ap.add_argument("--print-prompt", action="store_true")
     # compile_cover.py has accepted --scene and --anchor-ref since it was written, and this
     # wrapper silently dropped both. A cover therefore could not state its own composition,
@@ -58,6 +65,7 @@ def main() -> int:
     cmd = [sys.executable, str(HERE / "compile_cover.py"), a.universe, a.story,
            "--title", a.title]
     for flag, val in (("--subtitle", a.subtitle), ("--author", a.author), ("--hero", a.hero),
+                      ("--hero-pose", a.hero_pose),
                       ("--scene", a.scene), ("--anchor-ref", a.anchor_ref)):
         if val:
             cmd += [flag, val]
@@ -65,6 +73,8 @@ def main() -> int:
         cmd += ["--with", w]
     if a.no_mark:
         cmd += ["--no-mark"]
+    if a.no_author:
+        cmd += ["--no-author"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         sys.stderr.write(r.stderr)

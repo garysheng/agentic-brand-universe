@@ -35,6 +35,7 @@ def build_universe(root: Path):
     png(root / "reference" / "register" / "style-anchor.png")
     png(root / "reference" / "hero" / "fullbody.png")
     png(root / "reference" / "hero" / "face.png")
+    png(root / "reference" / "hero" / "back.png")
     png(root / "reference" / "isle" / "c1.png")
     (root / "universe.json").write_text(json.dumps({
         "name": "testverse", "assetRoot": ".",
@@ -51,14 +52,17 @@ def build_universe(root: Path):
         "id": "hero", "kind": "character",
         "structured": {
             "sheets": {"forward-fullbody": "reference/hero/fullbody.png",
-                       "face-neutral": "reference/hero/face.png"},
+                       "face-neutral": "reference/hero/face.png",
+                       "back-fullbody": "reference/hero/back.png"},
             "requiredForRender": ["forward-fullbody", "face-neutral"],
             "invariants": ["always wears the test hat"],
             # PRESCRIBED PROMPT-CRAFT: wording an invariant slug cannot carry.
             "render": {
                 "always": "HERO carries the copper compass, a four-point STAR, never a plain cross.",
                 "poses": {"front": {"sheets": ["forward-fullbody"],
-                                    "bake": "FRONT: both chest badges clearly visible."}},
+                                    "bake": "FRONT: both chest badges clearly visible."},
+                          "back": {"sheets": ["back-fullbody"],
+                                   "bake": "BACK: the shoulder mark, and NO chest badges."}},
             },
         },
     }))
@@ -506,5 +510,113 @@ class TestConformWritesProvenance(unittest.TestCase):
         self.assertEqual(rec["sha256_16"], actual)
 
 
+
+
+class TestHeroPose(unittest.TestCase):
+    """A pose is a WARDROBE SELECTOR, so the cover must be able to pick one.
+
+    compile_cover hardcoded poses["front"], on the assumption that covers are
+    front-facing by definition. make-a-book says the opposite in as many words:
+    "A character seen from behind on a cover is a `back` pose, with its sheet."
+    Earned 2026-08-04 on You Didn't Have To, whose behind-the-hero cover came
+    back wearing the FRONT chest patches on his back. One paid re-roll.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def compiled(self, *extra):
+        r = run_compile(self.u, *extra)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_defaults_to_front(self):
+        """Unchanged behaviour: no flag means the front pose, bake and sheet."""
+        d = self.compiled("--hero", "hero")
+        self.assertIn("both chest badges", d["prompt"])
+        self.assertNotIn("NO chest badges", d["prompt"])
+        self.assertTrue(any(r.endswith("hero/fullbody.png") for r in d["refs"]), d["refs"])
+
+    def test_back_pose_selects_its_own_bake_and_sheet(self):
+        """--hero-pose back must pass the BACK sheet and the BACK bake, and must
+        NOT leak the front bake, which is the sentence that actually steers the
+        model and is what put chest patches on a back view.
+
+        The pose's own sheets are what the selector controls. `requiredForRender`
+        is the identity FLOOR and is passed whatever the pose is, so the front
+        fullbody sheet legitimately stays in refs; asserting its absence here
+        would be asserting against the identity contract, not the pose.
+        """
+        d = self.compiled("--hero", "hero", "--hero-pose", "back")
+        self.assertIn("NO chest badges", d["prompt"])
+        self.assertNotIn("both chest badges", d["prompt"])
+        self.assertTrue(any(r.endswith("hero/back.png") for r in d["refs"]), d["refs"])
+
+    def test_unknown_pose_refuses_and_lists_what_exists(self):
+        """A typo in a selector is a REFUSAL, matching compose-spread. Silently
+        falling back to the default is how the wrong wardrobe ships."""
+        r = run_compile(self.u, "--hero", "hero", "--hero-pose", "sideways")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("no pose", r.stderr)
+        self.assertIn("back", r.stderr)
+        self.assertIn("front", r.stderr)
+
+
+class TestBylineFromCanon(unittest.TestCase):
+    """A byline must not depend on the operator remembering a flag.
+
+    `--author` was optional with no default, so every cover relied on somebody
+    typing the author's name. You Didn't Have To shipped a cover with no byline
+    on 2026-08-04 for exactly that reason. identity.author now supplies it, the
+    same way identity.mark already did.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def _declare_author(self, name="Gary Sheng"):
+        f = self.u / "universe.json"
+        d = json.loads(f.read_text())
+        d["identity"]["author"] = name
+        f.write_text(json.dumps(d))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_identity_author_is_baked_without_the_flag(self):
+        self._declare_author()
+        r = run_compile(self.u)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = json.loads(r.stdout)
+        self.assertIn("by Gary Sheng", d["textLines"])
+
+    def test_explicit_author_overrides_canon(self):
+        self._declare_author()
+        d = json.loads(run_compile(self.u, "--author", "Someone Else").stdout)
+        self.assertIn("by Someone Else", d["textLines"])
+        self.assertNotIn("by Gary Sheng", d["textLines"])
+
+    def test_no_author_opts_out_deliberately(self):
+        self._declare_author()
+        d = json.loads(run_compile(self.u, "--no-author").stdout)
+        self.assertFalse([t for t in d["textLines"] if t.startswith("by ")], d["textLines"])
+
+    def test_universe_without_an_author_is_unchanged(self):
+        """Back-compatible: declaring no author still yields no byline."""
+        d = json.loads(run_compile(self.u).stdout)
+        self.assertFalse([t for t in d["textLines"] if t.startswith("by ")], d["textLines"])
+
+    def test_author_and_no_author_together_refuse(self):
+        self._declare_author()
+        r = run_compile(self.u, "--author", "X", "--no-author")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("contradictory", r.stderr)
+
+
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)

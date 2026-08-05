@@ -71,12 +71,22 @@ def main() -> int:
     ap.add_argument("--title", required=True)
     ap.add_argument("--subtitle", default=None)
     ap.add_argument("--hero", default=None)
+    ap.add_argument("--hero-pose", dest="hero_pose", default="front",
+                    help="which of the hero's poses the cover composes (default 'front'). "
+                         "A hero seen from BEHIND on a cover is 'back', and needs this: a pose "
+                         "is a wardrobe selector, so the wrong one bakes front-only markings "
+                         "onto a back view.")
     ap.add_argument("--with", dest="extras", action="append", default=[])
     ap.add_argument("--platform-aspect", default="3:4")
     ap.add_argument("--scene", default=None,
                     help="the composition ACTION (the only free text; identity comes from canon)")
     ap.add_argument("--author", default=None,
-                    help="author/byline baked on the cover as 'by <author>' (e.g. two co-authors)")
+                    help="author/byline baked on the cover as 'by <author>' (e.g. two co-authors). "
+                         "DEFAULTS TO identity.author when the universe declares one, so a byline "
+                         "cannot be forgotten; pass --no-author to deliberately omit it.")
+    ap.add_argument("--no-author", action="store_true",
+                    help="omit the byline even when the universe declares identity.author "
+                         "(an anthology piece, or a cover that carries the byline elsewhere)")
     ap.add_argument("--no-mark", action="store_true",
                     help="omit identity.mark from the cover (a book that opts out of the universe byline)")
     ap.add_argument("--no-text", action="store_true",
@@ -176,16 +186,33 @@ def main() -> int:
         # compose-spread's assembler. An invariant is a kebab QA key and cannot
         # carry the sentence that steers the model, so a cover that used only the
         # slugs lost signature wardrobe and star-vs-crucifix pendant wording that
-        # canon had already spelled out. Covers are front-facing by definition.
+        # canon had already spelled out.
+        #
+        # A COVER IS NOT FRONT-FACING BY DEFINITION, WHICH THIS BLOCK USED TO ASSUME.
+        # It hardcoded poses["front"] with no way to ask for another, while make-a-book
+        # says in as many words: "A character seen from behind on a cover is a `back`
+        # pose, with its sheet." A pose is a WARDROBE SELECTOR, so the assumption does
+        # not merely pick a camera, it bakes the wrong markings: nation-of-fire's Jerry
+        # carries chest patches on `front` and an upper-back patch on `back`.
+        #
+        # Earned 2026-08-04 on You Didn't Have To, whose cover is a man seen from behind
+        # with his arms open on a hilltop. It came back wearing the FRONT chest patches
+        # on his back, and the only way out with the tool as it stood was to re-compose
+        # the whole cover front-facing. One paid re-roll.
         r = st.get("render") or {}
         render_parts = []
         if r.get("always"):
             render_parts.append(r["always"])
         poses = r.get("poses") or {}
-        if "front" in poses:
-            if poses["front"].get("bake"):
-                render_parts.append(poses["front"]["bake"])
-            for key in poses["front"].get("sheets") or []:
+        want_pose = args.hero_pose if eid == hero_id else "front"
+        if poses and want_pose not in poses:
+            print(f"REFUSE: '{eid}' has no pose {want_pose!r} "
+                  f"(available: {', '.join(sorted(poses))})", file=sys.stderr)
+            return 2
+        if want_pose in poses:
+            if poses[want_pose].get("bake"):
+                render_parts.append(poses[want_pose]["bake"])
+            for key in poses[want_pose].get("sheets") or []:
                 p = sheets.get(key)
                 if p and p not in refs:
                     refs.append(p)
@@ -220,9 +247,26 @@ def main() -> int:
     negatives = list(reg.get("rejectedPoles", []))
     negatives += ["extra words", "gibberish lettering", "text touching the frame edges"]
 
+    # THE BYLINE COMES FROM CANON, SO IT CANNOT BE FORGOTTEN.
+    #
+    # `--author` was an optional flag with no default, which meant every cover
+    # depended on the operator remembering to type the author's name. That is the
+    # same shape as any rule that lives only in prose, and it failed exactly that
+    # way: You Didn't Have To shipped a cover with no byline on 2026-08-04, because
+    # the flag simply was not passed and nothing anywhere noticed.
+    #
+    # A universe that declares `identity.author` now gets it automatically, next to
+    # `identity.mark`, which was already automatic. Universes that declare no author
+    # are unchanged, so this is back-compatible. Omitting a byline is still possible
+    # but must now be DELIBERATE (--no-author) rather than accidental.
+    author = args.author or (ident.get("author") if not args.no_author else None)
+    if args.no_author and args.author:
+        print("REFUSE: --author and --no-author are contradictory", file=sys.stderr)
+        return 2
+
     text_lines = [args.title] + ([args.subtitle] if args.subtitle else [])
-    if args.author:
-        text_lines.append(f"by {args.author}")
+    if author:
+        text_lines.append(f"by {author}")
     if not args.no_mark:
         text_lines.append(mark)
     if args.no_text:
