@@ -692,5 +692,74 @@ class TextBlockComesLast(unittest.TestCase):
         self.assertLess(p.index("LINE(S) OF HAND-LETTERED"), p.index("NEGATIVES:"))
 
 
+class ConformPreservesTheGeneration(unittest.TestCase):
+    """An in-place conform must not delete the record of what made the pixels.
+
+    render_cover conforms IN PLACE, so the derivative recipe overwrites the
+    generation recipe at the same path. Measured on nation-of-fire 2026-08-05:
+    30 of 39 cover recipes had lost their generation prompt and 25 had a
+    derivedFrom pointer looping back to themselves. The cost was concrete --
+    rebuilding 28 covers to add a byline meant reconstructing each composition by
+    looking at the art, because the scene that made it no longer existed anywhere.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = Path(self.tmp.name)
+        self.img = self.d / "cover-raw.png"
+        png(self.img, size=(1024, 1536))
+        Path(str(self.img) + ".recipe.json").write_text(json.dumps({
+            "prompt": "PORTRAIT COVER. the scene that made this art",
+            "refs": [{"path": "/x/anchor.png"}],
+            "provider": "gpt-image-2", "model": "gpt-image-2",
+            "textLines": ["A Title", "by Gary Sheng"],
+            "universe": "testverse", "story": "tale",
+        }))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def conform_in_place(self):
+        return subprocess.run(
+            [sys.executable, str(CONFORM), str(self.img), str(self.img),
+             "--aspect", "3:4", "--mode", "pad"], capture_output=True, text=True)
+
+    def test_generation_prompt_survives_an_in_place_conform(self):
+        r = self.conform_in_place()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertIn("sourceRender", rec, "the generation record was destroyed")
+        self.assertIn("the scene that made this art", rec["sourceRender"]["prompt"])
+        self.assertEqual(rec["sourceRender"]["refs"], [{"path": "/x/anchor.png"}])
+
+    def test_the_derivative_is_still_honest_about_itself(self):
+        """Preserving the generation must not make the conform claim to BE one."""
+        self.conform_in_place()
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertIsNone(rec["prompt"])
+        self.assertIn("no model call", rec["model"])
+
+    def test_no_self_referential_derivedFrom(self):
+        self.conform_in_place()
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertIsNone(rec["derivedFrom"]["recipe"],
+                          "an in-place conform must not point derivedFrom at itself")
+
+    def test_a_two_path_conform_still_links_to_the_source_recipe(self):
+        out = self.d / "cover.png"
+        r = subprocess.run([sys.executable, str(CONFORM), str(self.img), str(out),
+                            "--aspect", "3:4", "--mode", "pad"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads(Path(str(out) + ".recipe.json").read_text())
+        self.assertTrue(rec["derivedFrom"]["recipe"].endswith("cover-raw.png.recipe.json"))
+        self.assertIn("sourceRender", rec)
+
+    def test_a_source_with_no_generation_adds_no_sourceRender(self):
+        Path(str(self.img) + ".recipe.json").write_text(json.dumps({"universe": "testverse"}))
+        self.conform_in_place()
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertNotIn("sourceRender", rec)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
