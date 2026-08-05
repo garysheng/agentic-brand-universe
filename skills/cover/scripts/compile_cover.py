@@ -313,11 +313,25 @@ def main() -> int:
     prompt = " ".join(
         x for x in [
             f"PORTRAIT picture-book COVER in the {reg.get('name', 'locked register')} style of the FIRST reference image.",
-            text_block + ".",
             *ent_blocks,
             *( [args.scene] if args.scene else [] ),
             subject_guard,
             SAFE_MARGIN_BLOCK,
+            # THE TEXT REQUIREMENT GOES LAST, AFTER THE SCENE.
+            #
+            # It used to be emitted second, before the scene. A book's scene is often
+            # long and highly prescriptive about composition -- the-king-is-coming runs
+            # 4,400 characters and assigns the lower third to a lit lamp and the upper
+            # half to sky -- and a specific instruction that arrives later reliably beats
+            # a general one that arrived first. That cover dropped its byline and series
+            # mark on FOUR consecutive attempts, including one after the text block had
+            # been taught to demand room, because the demand was buried above the scene
+            # that contradicted it.
+            #
+            # Putting it last costs nothing when the scene is short and is the whole
+            # difference when the scene is long. Same shape as every other fix in this
+            # file: the rule has to arrive where it can still win.
+            text_block + ".",
             "NEGATIVES: " + ", ".join(negatives) + ".",
         ] if x
     )
