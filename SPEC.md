@@ -1021,6 +1021,7 @@ removes that step.
 | `BEDCLOTHES_GUARD`   | conditional  | `_in_bed()`              |
 | `BED_LENGTH_GUARD`   | conditional  | `_person_lying_on_bed()` |
 | `CROWD_MEMBER_GUARD` | conditional  | `_cast_inside_crowd()`   |
+| `HANDS_GUARD`        | conditional  | `_has_hands()`           |
 | `MOTION_GUARD`       | conditional  | `_has_motion()`          |
 | `SINGLE_IMAGE_GUARD` | every render | unconditional            |
 <!-- END GENERATED: guards -->
@@ -1041,6 +1042,16 @@ removes that step.
   **The list below is asserted by a test** (`GuardsDocumentedTest`): every `*_GUARD` constant in
   `assemble_prompt.py` must be named here, because this section already drifted once when
   `MOTION_GUARD` shipped 2026-07-28 and was never documented.
+  - **Hands guard (v0.35).** Fires when the scene text puts a hand, finger, thumb, wrist or a
+    hand verb (holding, pointing, reaching, writing, clasped) anywhere in the picture. It states
+    the count out loud: exactly four fingers and one thumb per hand, exactly two hands per person,
+    two nearby hands staying separate rather than fusing into one mass, each hand joined to a
+    believable wrist and forearm, sized to its owner, and making real contact with the thing it
+    rests ON. Earned 2026-08-05 across one book: a man's two hands merged into a six-fingered mass
+    on the table, and a hand on a trellis came back with an extra digit, a wire-thin wrist and its
+    palm pressed on the brick beside the wood rather than the wood. Hands are the most reliable
+    hallucination in this pipeline and the only one a reader spots instantly, so the guard states
+    the anatomy as a count rather than asking for "correct hands".
   - **Anchor-style guard.** Whenever a register anchor is passed, the prompt states that ref[0] is a
     style sample only: match its medium, brushwork, palette and light, take NO subject from it. The
     anchor leads every render, so on a spread that casts no setting and no characters it is one of

@@ -328,6 +328,35 @@ def _cast_inside_crowd(scene: str) -> bool:
             and any(t in low for t in CROWD_MEMBERSHIP_TOKENS))
 
 
+HANDS_GUARD = (
+    "HANDS. Every hand in this image has EXACTLY FOUR FINGERS AND ONE THUMB, five digits and "
+    "no more and no fewer, and every person has exactly TWO hands and TWO arms. No sixth "
+    "finger, no extra thumb, no duplicated or spare limb, and no hand emerging from a place "
+    "no arm reaches. Two hands that come near each other stay SEPARATE and readable as two "
+    "hands: they never merge into one mass, never share fingers and never fuse at the "
+    "knuckles. Each hand is joined to a wrist of believable thickness, the wrist to a forearm, "
+    "and the forearm to the shoulder of the person it belongs to. Hands are sized to their "
+    "owner: never oversized, never doll-small. A hand resting ON something makes real contact "
+    "with THAT thing, with the fingers following its actual surface and not floating above it "
+    "or sinking into it."
+)
+
+
+def _has_hands(scene: str) -> bool:
+    """Fires when the scene puts a hand somewhere the reader will look.
+
+    Not on every render: this is a real cost in prompt length, and a spread with no
+    hand in it does not need it. But hands are the single most reliable
+    hallucination in this pipeline, and three separate spreads of one book shipped
+    with six digits, merged hands and a hand pressed on the wrong object before
+    anything checked (2026-08-05, Bless You More).
+    """
+    return bool(re.search(
+        r"\b(hand|hands|hand's|finger|fingers|fingertip|thumb|palm|palms|wrist|wrists|"
+        r"knuckle|knuckles|pointing|points|holding|holds|gripping|grips|clasped|"
+        r"folded|reaching|reaches|touching|touches|writing|writes)\b", scene, re.I))
+
+
 SINGLE_IMAGE_GUARD = (
     "ONE SINGLE CONTINUOUS FULL-BLEED PAINTING that fills the entire canvas edge to edge. This is "
     "NEVER a grid, NEVER a multi-panel layout, NEVER a comic page, NEVER a contact sheet, NEVER a "
@@ -1881,6 +1910,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             BEDCLOTHES_GUARD if _in_bed(scene) else "",
             BED_LENGTH_GUARD if _person_lying_on_bed(scene) else "",
             CROWD_MEMBER_GUARD if _cast_inside_crowd(scene) else "",
+            HANDS_GUARD if _has_hands(scene) else "",
         ]
         if x
     )

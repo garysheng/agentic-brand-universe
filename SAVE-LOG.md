@@ -38,6 +38,26 @@ construction.
 
 2026-07-25 · 7c78193 · Plugin 0.7.2. Story TYPES became validated data. A story's spine and genre were free-text prose that nothing checked, so a typo, a near-duplicate (teaching-testimony vs testimony-teaching), or prose stuffed into the genre field passed silently. The SPEC (section 13) already models these as craft-canon records; lint-universe now ties every story back to that registry and warns (STORY-SPINE-UNREGISTERED / STORY-GENRE-UNREGISTERED) on any unregistered value, so "where are this universe's story types" is answerable by data. Advisory, not a hard validate error, so a universe mid-normalization still composes. Seeded the clean NoF spines (thesis, primer, testimony, blessing) and the new faithful-prophetic-realistic-fiction genre as craft records; the messy back-catalog genres now surface as normalization warnings. Also fixed a pre-existing linter crash on a golden recipe whose inputs entry is a bare path string. Engine and SPEC contract untouched, so no spec bump. 249 tests green (lint 30 to 35).
 
+## 2026-08-05 — v0.35 / plugin 0.99.0: HANDS_GUARD
+
+Gary, reviewing the corrected book: "spread 6, spread 26" and nothing else,
+which is the right way to ask. Both were hands. Nathaniel's two hands had
+merged into a six-fingered mass on the table; Jerry's hand on the trellis had
+an extra digit, a wire-thin wrist, and was pressed on the brick beside the
+wood instead of the wood. The second one is worse than the first: that spread
+had ALREADY been re-rendered once for the same defect and I confirmed it clean,
+then re-rendered it again for an unrelated fix and never re-checked the hand.
+
+HANDS_GUARD fires when a scene mentions a hand, finger, thumb, wrist or a hand
+verb. It states the anatomy as a COUNT (four fingers and one thumb, two hands
+per person, two nearby hands staying separate, wrist to forearm to shoulder,
+sized to its owner, real contact with the thing it rests ON) rather than asking
+for correct hands, which is not an instruction.
+
+Standing lesson worth more than the guard: A RE-RENDER RESETS EVERY READ-BACK.
+A spread re-rolled for reason B has not inherited its pass on defect A.
+
+
 ## 2026-08-05 — plugin 0.98.1: a camera move is not a scene change (v0.35 corrections)
 
 The shot system shipped three hours earlier with three bugs, all the same
