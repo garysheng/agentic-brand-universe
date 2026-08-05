@@ -71,12 +71,22 @@ def main() -> int:
     ap.add_argument("--title", required=True)
     ap.add_argument("--subtitle", default=None)
     ap.add_argument("--hero", default=None)
+    ap.add_argument("--hero-pose", dest="hero_pose", default="front",
+                    help="which of the hero's poses the cover composes (default 'front'). "
+                         "A hero seen from BEHIND on a cover is 'back', and needs this: a pose "
+                         "is a wardrobe selector, so the wrong one bakes front-only markings "
+                         "onto a back view.")
     ap.add_argument("--with", dest="extras", action="append", default=[])
     ap.add_argument("--platform-aspect", default="3:4")
     ap.add_argument("--scene", default=None,
                     help="the composition ACTION (the only free text; identity comes from canon)")
     ap.add_argument("--author", default=None,
-                    help="author/byline baked on the cover as 'by <author>' (e.g. two co-authors)")
+                    help="author/byline baked on the cover as 'by <author>' (e.g. two co-authors). "
+                         "DEFAULTS TO identity.author when the universe declares one, so a byline "
+                         "cannot be forgotten; pass --no-author to deliberately omit it.")
+    ap.add_argument("--no-author", action="store_true",
+                    help="omit the byline even when the universe declares identity.author "
+                         "(an anthology piece, or a cover that carries the byline elsewhere)")
     ap.add_argument("--no-mark", action="store_true",
                     help="omit identity.mark from the cover (a book that opts out of the universe byline)")
     ap.add_argument("--no-text", action="store_true",
@@ -176,16 +186,33 @@ def main() -> int:
         # compose-spread's assembler. An invariant is a kebab QA key and cannot
         # carry the sentence that steers the model, so a cover that used only the
         # slugs lost signature wardrobe and star-vs-crucifix pendant wording that
-        # canon had already spelled out. Covers are front-facing by definition.
+        # canon had already spelled out.
+        #
+        # A COVER IS NOT FRONT-FACING BY DEFINITION, WHICH THIS BLOCK USED TO ASSUME.
+        # It hardcoded poses["front"] with no way to ask for another, while make-a-book
+        # says in as many words: "A character seen from behind on a cover is a `back`
+        # pose, with its sheet." A pose is a WARDROBE SELECTOR, so the assumption does
+        # not merely pick a camera, it bakes the wrong markings: nation-of-fire's Jerry
+        # carries chest patches on `front` and an upper-back patch on `back`.
+        #
+        # Earned 2026-08-04 on You Didn't Have To, whose cover is a man seen from behind
+        # with his arms open on a hilltop. It came back wearing the FRONT chest patches
+        # on his back, and the only way out with the tool as it stood was to re-compose
+        # the whole cover front-facing. One paid re-roll.
         r = st.get("render") or {}
         render_parts = []
         if r.get("always"):
             render_parts.append(r["always"])
         poses = r.get("poses") or {}
-        if "front" in poses:
-            if poses["front"].get("bake"):
-                render_parts.append(poses["front"]["bake"])
-            for key in poses["front"].get("sheets") or []:
+        want_pose = args.hero_pose if eid == hero_id else "front"
+        if poses and want_pose not in poses:
+            print(f"REFUSE: '{eid}' has no pose {want_pose!r} "
+                  f"(available: {', '.join(sorted(poses))})", file=sys.stderr)
+            return 2
+        if want_pose in poses:
+            if poses[want_pose].get("bake"):
+                render_parts.append(poses[want_pose]["bake"])
+            for key in poses[want_pose].get("sheets") or []:
                 p = sheets.get(key)
                 if p and p not in refs:
                     refs.append(p)
@@ -220,9 +247,26 @@ def main() -> int:
     negatives = list(reg.get("rejectedPoles", []))
     negatives += ["extra words", "gibberish lettering", "text touching the frame edges"]
 
+    # THE BYLINE COMES FROM CANON, SO IT CANNOT BE FORGOTTEN.
+    #
+    # `--author` was an optional flag with no default, which meant every cover
+    # depended on the operator remembering to type the author's name. That is the
+    # same shape as any rule that lives only in prose, and it failed exactly that
+    # way: You Didn't Have To shipped a cover with no byline on 2026-08-04, because
+    # the flag simply was not passed and nothing anywhere noticed.
+    #
+    # A universe that declares `identity.author` now gets it automatically, next to
+    # `identity.mark`, which was already automatic. Universes that declare no author
+    # are unchanged, so this is back-compatible. Omitting a byline is still possible
+    # but must now be DELIBERATE (--no-author) rather than accidental.
+    author = args.author or (ident.get("author") if not args.no_author else None)
+    if args.no_author and args.author:
+        print("REFUSE: --author and --no-author are contradictory", file=sys.stderr)
+        return 2
+
     text_lines = [args.title] + ([args.subtitle] if args.subtitle else [])
-    if args.author:
-        text_lines.append(f"by {args.author}")
+    if author:
+        text_lines.append(f"by {author}")
     if not args.no_mark:
         text_lines.append(mark)
     if args.no_text:
@@ -234,9 +278,30 @@ def main() -> int:
             "the upper third of the frame calm, uncluttered background with nothing that must be read"
         )
     else:
+        # RESERVE THE ROOM, NOT JUST THE WORDS.
+        #
+        # The block used to say only "bake these lines" and never told the model to
+        # leave anywhere to put them. A scene that composes edge to edge then wins,
+        # and the lettering is silently dropped: on 2026-08-05, four of twelve Nation
+        # of Fire covers came back carrying the title alone, and the worst of them
+        # took THREE attempts because its scene filled the lower third with a lit lamp,
+        # which is exactly where the series mark goes.
+        #
+        # The first fix for that was typed by hand into one book's scene text. Gary:
+        # "why is the prompt hand rolled though". Right: "leave a calm band for the
+        # lettering" is true of EVERY cover, so it belongs in the compiled prompt where
+        # every cover inherits it, not in a scene somebody remembered to write.
+        n = len(text_lines)
         text_block = (
-            "Bake these text lines by hand-lettering, spelled EXACTLY, and NO other text anywhere: "
+            f"THIS COVER CARRIES {n} LINE(S) OF HAND-LETTERED TEXT AND EVERY ONE IS REQUIRED. "
+            "Bake them spelled EXACTLY, and NO other text anywhere: "
             + " | ".join(f'"{t}"' for t in text_lines)
+            + ". COMPOSE THE ART SO THERE IS ROOM FOR THEM: keep an uncluttered, quiet, "
+            "low-detail area behind every line so each one reads clearly, with the first "
+            "line(s) toward the top of the frame and the last line small along the bottom. "
+            "Busy detail, faces, bright highlights and hard edges must not sit under any "
+            "line of lettering. IF ANY OF THESE LINES IS MISSING FROM THE FINISHED IMAGE "
+            "THE IMAGE IS WRONG, however good the art is"
         )
 
     # `--anchor-ref` replaces the image passed first, so the register's declared
@@ -248,11 +313,25 @@ def main() -> int:
     prompt = " ".join(
         x for x in [
             f"PORTRAIT picture-book COVER in the {reg.get('name', 'locked register')} style of the FIRST reference image.",
-            text_block + ".",
             *ent_blocks,
             *( [args.scene] if args.scene else [] ),
             subject_guard,
             SAFE_MARGIN_BLOCK,
+            # THE TEXT REQUIREMENT GOES LAST, AFTER THE SCENE.
+            #
+            # It used to be emitted second, before the scene. A book's scene is often
+            # long and highly prescriptive about composition -- the-king-is-coming runs
+            # 4,400 characters and assigns the lower third to a lit lamp and the upper
+            # half to sky -- and a specific instruction that arrives later reliably beats
+            # a general one that arrived first. That cover dropped its byline and series
+            # mark on FOUR consecutive attempts, including one after the text block had
+            # been taught to demand room, because the demand was buried above the scene
+            # that contradicted it.
+            #
+            # Putting it last costs nothing when the scene is short and is the whole
+            # difference when the scene is long. Same shape as every other fix in this
+            # file: the rule has to arrive where it can still win.
+            text_block + ".",
             "NEGATIVES: " + ", ".join(negatives) + ".",
         ] if x
     )

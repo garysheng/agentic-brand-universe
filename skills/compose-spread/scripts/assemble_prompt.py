@@ -367,6 +367,29 @@ def _name_tokens(eid: str) -> set[str]:
     return {head} if len(head) > 3 else set()
 
 
+_ID_STOPWORDS = {"the", "a", "an", "of", "and", "de", "la", "el"}
+
+
+def _cast_name_tokens(eid: str) -> set[str]:
+    """EVERY meaningful name word a CAST entity legitimately accounts for.
+
+    Deliberately more generous than `_name_tokens`, and the asymmetry is the point.
+    Detection stays conservative (first token only, so the common noun "driver" never
+    flags `silas-driver`); but once an entity IS cast, any word of its own name that
+    appears in the prose refers to it, and flagging that is always a false positive.
+
+    Earned 2026-08-05. `the-lord-jesus-christ` yielded NO tokens at all, because
+    `_name_tokens` takes only the head and "the" is three letters. So a spread that
+    cast the Lord and wrote "Jesus" in its scene was refused, on the grounds that it
+    had not cast `jesus-villavicencio` — a different, real person who merely shares
+    the given name. The universe's cartridge had absorbed this as a WRITING RULE
+    ("write THE LORD in scene text, never JESUS"), which is a human working around a
+    tool bug. Gary, bluntly and correctly: "you can write Jesus. Dumb ass rule."
+    Fix the guard, delete the rule.
+    """
+    return {t for t in eid.split("-") if len(t) > 3 and t not in _ID_STOPWORDS}
+
+
 def uncast_characters(uroot: Path, scene: str, cast_ids: set[str]) -> list[tuple[str, str]]:
     """Character entities NAMED in the scene text but never CAST in this spread.
 
@@ -400,7 +423,7 @@ def uncast_characters(uroot: Path, scene: str, cast_ids: set[str]) -> list[tuple
     # refers to the entity that IS cast, whose refs the model is already given.
     cast_tokens: set[str] = set()
     for cid in cast_ids:
-        cast_tokens |= _name_tokens(cid)
+        cast_tokens |= _cast_name_tokens(cid)
 
     missing: list[tuple[str, str]] = []
     for path in sorted(ents.glob("*.json")):

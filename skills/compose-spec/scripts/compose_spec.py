@@ -75,7 +75,23 @@ def plates_for(ent):
     return [k for k in sheets if k not in ("blueprint", "scalePlate", "blockingPlate", "turnaround")]
 
 def poses_for(ent):
-    if not ent:
+    # POSE IS A CHARACTER SELECTOR, AND ONLY compose-spread GETS TO SAY SO.
+    #
+    # This used to read structured.render.poses off ANY kind. A `group`, `prop` or
+    # `motif` that happens to declare poses was therefore told "has N poses and none
+    # selected", the operator dutifully wrote {"id": ..., "pose": "the-three"}, and
+    # compose-spread REFUSED it: only characters read pose, every other kind selects
+    # with `plate` (assemble_prompt.py, "A POSE ON A NON-CHARACTER SELECTS NOTHING").
+    # Two shipped tools contradicting each other, with the scaffolder advertising the
+    # selector the compiler rejects.
+    #
+    # Earned 2026-08-04 on You Didn't Have To: jerry-and-selahs-kids is a group that
+    # declares the-three / the-growing-brood, compose-spec demanded a pose for it, and
+    # the pre-render audit refused the spec. Costless there because the audit catches
+    # it, but the scaffolder should not be authoring specs its own compiler will reject.
+    #
+    # Non-characters still get their variants enumerated: plates_for() already does it.
+    if not ent or (ent.get("kind") or "") != "character":
         return []
     return list((((ent.get("structured") or {}).get("render") or {}).get("poses") or {}).keys())
 

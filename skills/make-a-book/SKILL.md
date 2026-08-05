@@ -373,7 +373,12 @@ Then `abu:render-readback` every image.
 - **A POSE IS A WARDROBE SELECTOR, so it must match the camera you will get.** Any scene reading
   as "walking away", "climbing", or "being turned around" WILL render as a back view, and a front
   pose then bakes front-only markings onto a back. Decide the camera first, then the pose.
-- **A character seen from behind on a cover is a `back` pose**, with its sheet.
+- **A character seen from behind on a cover is a `back` pose**, with its sheet. Pass it:
+  `render_cover.py ... --hero-pose back`. This line was prose the tool could not honour
+  until 2026-08-04: `compile_cover.py` hardcoded `poses["front"]`, so a behind-the-hero
+  cover silently baked the FRONT wardrobe onto a back view (nation-of-fire's Jerry wears
+  chest patches on `front` and an upper-back patch on `back`). An unknown pose now REFUSES
+  and lists what exists, rather than falling back to the default.
 - **Re-framing a two-person scene can silently swap the blocking.** Name the furniture beside each
   person, not viewer-left/right.
 

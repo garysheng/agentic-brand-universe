@@ -35,6 +35,7 @@ def build_universe(root: Path):
     png(root / "reference" / "register" / "style-anchor.png")
     png(root / "reference" / "hero" / "fullbody.png")
     png(root / "reference" / "hero" / "face.png")
+    png(root / "reference" / "hero" / "back.png")
     png(root / "reference" / "isle" / "c1.png")
     (root / "universe.json").write_text(json.dumps({
         "name": "testverse", "assetRoot": ".",
@@ -51,14 +52,17 @@ def build_universe(root: Path):
         "id": "hero", "kind": "character",
         "structured": {
             "sheets": {"forward-fullbody": "reference/hero/fullbody.png",
-                       "face-neutral": "reference/hero/face.png"},
+                       "face-neutral": "reference/hero/face.png",
+                       "back-fullbody": "reference/hero/back.png"},
             "requiredForRender": ["forward-fullbody", "face-neutral"],
             "invariants": ["always wears the test hat"],
             # PRESCRIBED PROMPT-CRAFT: wording an invariant slug cannot carry.
             "render": {
                 "always": "HERO carries the copper compass, a four-point STAR, never a plain cross.",
                 "poses": {"front": {"sheets": ["forward-fullbody"],
-                                    "bake": "FRONT: both chest badges clearly visible."}},
+                                    "bake": "FRONT: both chest badges clearly visible."},
+                          "back": {"sheets": ["back-fullbody"],
+                                   "bake": "BACK: the shoulder mark, and NO chest badges."}},
             },
         },
     }))
@@ -506,5 +510,256 @@ class TestConformWritesProvenance(unittest.TestCase):
         self.assertEqual(rec["sha256_16"], actual)
 
 
+
+
+class TestHeroPose(unittest.TestCase):
+    """A pose is a WARDROBE SELECTOR, so the cover must be able to pick one.
+
+    compile_cover hardcoded poses["front"], on the assumption that covers are
+    front-facing by definition. make-a-book says the opposite in as many words:
+    "A character seen from behind on a cover is a `back` pose, with its sheet."
+    Earned 2026-08-04 on You Didn't Have To, whose behind-the-hero cover came
+    back wearing the FRONT chest patches on his back. One paid re-roll.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def compiled(self, *extra):
+        r = run_compile(self.u, *extra)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_defaults_to_front(self):
+        """Unchanged behaviour: no flag means the front pose, bake and sheet."""
+        d = self.compiled("--hero", "hero")
+        self.assertIn("both chest badges", d["prompt"])
+        self.assertNotIn("NO chest badges", d["prompt"])
+        self.assertTrue(any(r.endswith("hero/fullbody.png") for r in d["refs"]), d["refs"])
+
+    def test_back_pose_selects_its_own_bake_and_sheet(self):
+        """--hero-pose back must pass the BACK sheet and the BACK bake, and must
+        NOT leak the front bake, which is the sentence that actually steers the
+        model and is what put chest patches on a back view.
+
+        The pose's own sheets are what the selector controls. `requiredForRender`
+        is the identity FLOOR and is passed whatever the pose is, so the front
+        fullbody sheet legitimately stays in refs; asserting its absence here
+        would be asserting against the identity contract, not the pose.
+        """
+        d = self.compiled("--hero", "hero", "--hero-pose", "back")
+        self.assertIn("NO chest badges", d["prompt"])
+        self.assertNotIn("both chest badges", d["prompt"])
+        self.assertTrue(any(r.endswith("hero/back.png") for r in d["refs"]), d["refs"])
+
+    def test_unknown_pose_refuses_and_lists_what_exists(self):
+        """A typo in a selector is a REFUSAL, matching compose-spread. Silently
+        falling back to the default is how the wrong wardrobe ships."""
+        r = run_compile(self.u, "--hero", "hero", "--hero-pose", "sideways")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("no pose", r.stderr)
+        self.assertIn("back", r.stderr)
+        self.assertIn("front", r.stderr)
+
+
+class TestBylineFromCanon(unittest.TestCase):
+    """A byline must not depend on the operator remembering a flag.
+
+    `--author` was optional with no default, so every cover relied on somebody
+    typing the author's name. You Didn't Have To shipped a cover with no byline
+    on 2026-08-04 for exactly that reason. identity.author now supplies it, the
+    same way identity.mark already did.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def _declare_author(self, name="Gary Sheng"):
+        f = self.u / "universe.json"
+        d = json.loads(f.read_text())
+        d["identity"]["author"] = name
+        f.write_text(json.dumps(d))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_identity_author_is_baked_without_the_flag(self):
+        self._declare_author()
+        r = run_compile(self.u)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = json.loads(r.stdout)
+        self.assertIn("by Gary Sheng", d["textLines"])
+
+    def test_explicit_author_overrides_canon(self):
+        self._declare_author()
+        d = json.loads(run_compile(self.u, "--author", "Someone Else").stdout)
+        self.assertIn("by Someone Else", d["textLines"])
+        self.assertNotIn("by Gary Sheng", d["textLines"])
+
+    def test_no_author_opts_out_deliberately(self):
+        self._declare_author()
+        d = json.loads(run_compile(self.u, "--no-author").stdout)
+        self.assertFalse([t for t in d["textLines"] if t.startswith("by ")], d["textLines"])
+
+    def test_universe_without_an_author_is_unchanged(self):
+        """Back-compatible: declaring no author still yields no byline."""
+        d = json.loads(run_compile(self.u).stdout)
+        self.assertFalse([t for t in d["textLines"] if t.startswith("by ")], d["textLines"])
+
+    def test_author_and_no_author_together_refuse(self):
+        self._declare_author()
+        r = run_compile(self.u, "--author", "X", "--no-author")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("contradictory", r.stderr)
+
+
+class TextRoomIsCompiled(unittest.TestCase):
+    """The compiled prompt must reserve ROOM for the lettering, not just name it.
+
+    Four of twelve Nation of Fire covers came back with the title alone on
+    2026-08-05, byline and series mark silently dropped, because the prompt asked
+    for text and never asked for anywhere to put it; a scene composing edge to edge
+    simply won. One book took three attempts, its lower third filled by a lit lamp
+    exactly where the series mark belongs.
+
+    The first fix was hand-typed into that one book's scene. Gary: "why is the
+    prompt hand rolled though". This is the rule living in the generator instead.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def compiled(self, *extra):
+        r = run_compile(self.u, *extra)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_prompt_demands_room_for_the_lettering(self):
+        p = self.compiled("--author", "Gary Sheng")["prompt"]
+        self.assertIn("ROOM FOR THEM", p)
+        self.assertIn("uncluttered", p)
+
+    def test_prompt_names_the_failure_so_it_cannot_be_ignored(self):
+        p = self.compiled("--author", "Gary Sheng")["prompt"]
+        self.assertIn("IF ANY OF THESE LINES IS MISSING", p)
+
+    def test_prompt_counts_the_required_lines(self):
+        """title + subtitle + byline + mark = 4 in the test universe."""
+        p = self.compiled("--author", "Gary Sheng")["prompt"]
+        self.assertIn("CARRIES 4 LINE(S)", p)
+
+    def test_no_text_mode_does_not_reserve_room_for_text_it_forbids(self):
+        p = self.compiled("--no-text")["prompt"]
+        self.assertIn("ART ONLY", p)
+        self.assertNotIn("ROOM FOR THEM", p)
+
+
+class TextBlockComesLast(unittest.TestCase):
+    """A long, prescriptive scene must not be able to bury the text requirement.
+
+    the-king-is-coming dropped its byline and series mark on four consecutive
+    attempts. Its scene is 4,400 characters and assigns the lower third of the
+    frame to a lit lamp, which is exactly where the series mark goes; the text
+    requirement was emitted above it and lost.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.u = build_universe(Path(self.tmp.name))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_text_requirement_is_after_the_scene(self):
+        r = run_compile(self.u, "--author", "Gary Sheng",
+                        "--scene", "A VERY SPECIFIC COMPOSITION filling every inch of the frame.")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        p = json.loads(r.stdout)["prompt"]
+        self.assertLess(p.index("A VERY SPECIFIC COMPOSITION"), p.index("LINE(S) OF HAND-LETTERED"),
+                        "the scene must come first; the text requirement must arrive after it")
+
+    def test_negatives_still_close_the_prompt(self):
+        p = json.loads(run_compile(self.u, "--author", "Gary Sheng").stdout)["prompt"]
+        self.assertLess(p.index("LINE(S) OF HAND-LETTERED"), p.index("NEGATIVES:"))
+
+
+class ConformPreservesTheGeneration(unittest.TestCase):
+    """An in-place conform must not delete the record of what made the pixels.
+
+    render_cover conforms IN PLACE, so the derivative recipe overwrites the
+    generation recipe at the same path. Measured on nation-of-fire 2026-08-05:
+    30 of 39 cover recipes had lost their generation prompt and 25 had a
+    derivedFrom pointer looping back to themselves. The cost was concrete --
+    rebuilding 28 covers to add a byline meant reconstructing each composition by
+    looking at the art, because the scene that made it no longer existed anywhere.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = Path(self.tmp.name)
+        self.img = self.d / "cover-raw.png"
+        png(self.img, size=(1024, 1536))
+        Path(str(self.img) + ".recipe.json").write_text(json.dumps({
+            "prompt": "PORTRAIT COVER. the scene that made this art",
+            "refs": [{"path": "/x/anchor.png"}],
+            "provider": "gpt-image-2", "model": "gpt-image-2",
+            "textLines": ["A Title", "by Gary Sheng"],
+            "universe": "testverse", "story": "tale",
+        }))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def conform_in_place(self):
+        return subprocess.run(
+            [sys.executable, str(CONFORM), str(self.img), str(self.img),
+             "--aspect", "3:4", "--mode", "pad"], capture_output=True, text=True)
+
+    def test_generation_prompt_survives_an_in_place_conform(self):
+        r = self.conform_in_place()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertIn("sourceRender", rec, "the generation record was destroyed")
+        self.assertIn("the scene that made this art", rec["sourceRender"]["prompt"])
+        self.assertEqual(rec["sourceRender"]["refs"], [{"path": "/x/anchor.png"}])
+
+    def test_the_derivative_is_still_honest_about_itself(self):
+        """Preserving the generation must not make the conform claim to BE one."""
+        self.conform_in_place()
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertIsNone(rec["prompt"])
+        self.assertIn("no model call", rec["model"])
+
+    def test_no_self_referential_derivedFrom(self):
+        self.conform_in_place()
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertIsNone(rec["derivedFrom"]["recipe"],
+                          "an in-place conform must not point derivedFrom at itself")
+
+    def test_a_two_path_conform_still_links_to_the_source_recipe(self):
+        out = self.d / "cover.png"
+        r = subprocess.run([sys.executable, str(CONFORM), str(self.img), str(out),
+                            "--aspect", "3:4", "--mode", "pad"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads(Path(str(out) + ".recipe.json").read_text())
+        self.assertTrue(rec["derivedFrom"]["recipe"].endswith("cover-raw.png.recipe.json"))
+        self.assertIn("sourceRender", rec)
+
+    def test_a_source_with_no_generation_adds_no_sourceRender(self):
+        Path(str(self.img) + ".recipe.json").write_text(json.dumps({"universe": "testverse"}))
+        self.conform_in_place()
+        rec = json.loads(Path(str(self.img) + ".recipe.json").read_text())
+        self.assertNotIn("sourceRender", rec)
+
+
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)

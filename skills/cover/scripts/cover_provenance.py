@@ -41,11 +41,29 @@ def write_derivative_recipe(out, src, *, tool: str, args: dict, transform: str,
     """
     out, src = pathlib.Path(out), pathlib.Path(src)
     src_recipe = src.with_name(src.name + ".recipe.json")
-    carried = {}
+    carried, generation = {}, {}
     if src_recipe.exists():
         try:
             s = json.loads(src_recipe.read_text())
             carried = {k: s[k] for k in CARRY if k in s}
+            # THE GENERATION RECORD MUST SURVIVE THE DERIVE (merged from master,
+            # 2026-08-05). `render_cover` conforms IN PLACE, so this function is often
+            # about to overwrite the very recipe it derives from. Before this existed
+            # that destroyed the prompt, the refs, the provider and the model for EVERY
+            # cover: on nation-of-fire, 30 of 39 cover recipes had lost their generation
+            # prompt and 25 pointed at themselves. The cost was concrete, because
+            # rebuilding 28 covers to add a byline meant reconstructing each composition
+            # by LOOKING at the art, the scene that made it being gone.
+            #
+            # Carry it forward under `sourceRender`. It is NOT this asset's own
+            # generation and is never presented as one: top-level `prompt` and `model`
+            # stay honest about being a derivative.
+            gen = {k: s[k] for k in ("prompt", "refs", "provider", "model", "size",
+                                     "quality", "textLines", "qa", "descriptor",
+                                     "generatedBy", "universeCommit", "book", "spread")
+                   if k in s and s[k] is not None}
+            if gen.get("prompt"):
+                generation = gen
         except (json.JSONDecodeError, OSError):
             carried = {}
     rec = {
@@ -55,12 +73,22 @@ def write_derivative_recipe(out, src, *, tool: str, args: dict, transform: str,
         "tool": tool,
         "args": args,
         "prompt": None,
+        # The generation this was derived from, verbatim. Present only when the source
+        # recipe actually recorded one.
+        **({"sourceRender": generation} if generation else {}),
         "transform": transform,
         "inputs": [{"path": str(src), "sha256_16": sha16(src), "role": role}],
         "sha256_16": sha16(out),
         "derivedFrom": {
             "path": str(src),
-            "recipe": str(src_recipe) if src_recipe.exists() else None,
+            # A SELF-REFERENTIAL POINTER IS WORSE THAN NONE: it reads like a chain and
+            # leads nowhere. When the derive is in place, the source recipe IS this
+            # sidecar, so omit it and rely on `sourceRender`.
+            "recipe": (str(src_recipe)
+                       if src_recipe.exists()
+                       and src_recipe.resolve()
+                       != out.with_name(out.name + ".recipe.json").resolve()
+                       else None),
             "sha256_16": sha16(src),
         },
         "note": note,
