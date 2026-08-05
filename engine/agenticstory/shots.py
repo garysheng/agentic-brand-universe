@@ -57,6 +57,17 @@ SHOTS: dict[str, dict] = {
             "focus, present but never competing with them."
         ),
     },
+    "group": {
+        "summary": "Three or more figures together, waist up, closer than an establishing view.",
+        "dropsBlocking": False,
+        "peopleInFrame": "many",
+        "framing": (
+            "FRAMING, GROUP: THREE OR MORE figures fill the middle of the frame from the "
+            "waist up and are the subject of the picture, close enough that every face "
+            "reads. The camera is nearer than an establishing view and the place is "
+            "present behind them without competing."
+        ),
+    },
     "close": {
         "summary": "One face, chest up, filling the frame; the plate's camera distance is overridden.",
         "dropsBlocking": True,

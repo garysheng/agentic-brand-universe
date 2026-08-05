@@ -1510,6 +1510,7 @@ than rendering as no framing at all.
 | --- | --- | --- |
 | `wide` | The establishing view: the whole place, figures small inside it. | no |
 | `two-shot` | Two figures together, waist up, the space soft behind them. | no |
+| `group` | Three or more figures together, waist up, closer than an establishing view. | no |
 | `close` | One face, chest up, filling the frame; the plate's camera distance is overridden. | yes |
 | `over-shoulder` | From behind one figure onto the other; the near shoulder frames the far face. | yes |
 | `insert` | Hands, an object, a surface. No faces, no whole figures. | yes |
