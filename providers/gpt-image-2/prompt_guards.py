@@ -63,6 +63,22 @@ _SEATED_WORDS = (
     "chair", "stool", "pew", "booth", "lap",
 )
 
+# A TWO-HANDER AT A TABLE is the commonest scene in a picture book and it has two failures
+# that arrive in sequence, because the fix for the first walks straight into the second.
+# Both were earned on he-kept-the-appointment spreads 17 and 19, both by operator correction:
+#   round 1  both men staged WHOLE, side-on, same distance, flat to the lens. The near man was
+#            painted growing out of the tabletop. "Josh is stuck in the table."
+#   round 2  near man moved to profile, but his CHEST stayed square to the camera with his head
+#            swivelled ninety degrees. "Why do you feel like the chest needs to be facing the
+#            camera? How awkward is that first shot?"
+# Naming the shot `over-shoulder` in the render-spec did NOT prevent either one. Stating the
+# anatomy did. So it is stated here, where every render passes.
+_TWO_PERSON_CUES = (
+    "each other", "across the table", "across from", "opposite him", "opposite her",
+    "two men", "two women", "two people", "two figures", "both men", "both women",
+    "both of them", "facing him", "facing her", "the other man", "the other woman",
+)
+
 _GUARD_DEVICE = (
     "DEVICE ANATOMY, NON-NEGOTIABLE: any phone, laptop, tablet or monitor is anatomically correct. "
     "The GLOWING DISPLAY is on the SCREEN side, and that side FACES ITS USER. A person looking at a "
@@ -71,6 +87,21 @@ _GUARD_DEVICE = (
     "laptop's outer lid, or on a monitor's rear. NEVER show a screen facing the camera while the "
     "person using it looks at the opposite side. If both the user's face and the screen content must "
     "be visible, shoot it over the user's shoulder."
+)
+
+_GUARD_TWO_HANDER = (
+    "TWO-HANDER STAGING, NON-NEGOTIABLE: two people at one table are NEVER staged as two equal whole "
+    "figures at the same distance, flat and side-on to the lens. That is a line-up, not a camera "
+    "position. ONE OF THEM IS NEAR AND ONE IS FAR. The NEAR figure sits at the OUTER EDGE of their "
+    "seat closest to the camera, is LARGE in the frame, is CROPPED by the frame edge, is softly OUT "
+    "OF FOCUS, and is very often seen FROM BEHIND; their lap, legs and feet fall outside the picture "
+    "and are not drawn. The FAR figure is the SHARP SUBJECT, seen from the waist up. "
+    "AND THE TORSO FOLLOWS THE HEAD: each person is turned toward the other, so a near figure whose "
+    "HEAD is turned across the table has their CHEST turned across the table too, away from the lens. "
+    "The camera behind them therefore sees the BACK AND OUTER SIDE of one shoulder, the back of the "
+    "head, and at most a sliver of cheek; that person's CHEST AND SHIRT FRONT ARE NOT IN FRAME. NEVER "
+    "rotate a head ninety degrees on a chest that is still square to the camera. No relaxed person "
+    "holds that posture and it reads as wrong instantly."
 )
 
 _GUARD_SEATED = (
@@ -153,6 +184,7 @@ _SURFACE_PROBES = ("readable surfaces are oriented for their reader",)
 _TRAVEL_PROBES = ("travel direction must match the story",)
 _UI_PROBES = ("no user interface anywhere:",)
 _SEATED_PROBES = ("seated anatomy at a table",)
+_TWO_HANDER_PROBES = ("two-hander staging, non-negotiable",)
 
 
 def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[str]]:
@@ -170,13 +202,14 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if not enabled:
         return prompt, []
     scan = prompt.lower()
-    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI, _GUARD_SEATED):
+    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI, _GUARD_SEATED, _GUARD_TWO_HANDER):
         scan = scan.replace(block.lower(), " ")
     added: list[str] = []
     has_device = any(w in scan for w in _DEVICE_WORDS)
     has_surface = any(w in scan for w in _SURFACE_WORDS)
     has_travel = any(w in scan for w in _TRAVEL_WORDS)
     has_seated = any(w in scan for w in _TABLE_WORDS) and any(w in scan for w in _SEATED_WORDS)
+    has_two_hander = has_seated and any(w in scan for w in _TWO_PERSON_CUES)
     low = prompt.lower()   # probes look at the WHOLE prompt, guard text included
 
     if has_device and not any(p in low for p in _DEVICE_PROBES):
@@ -188,6 +221,9 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if has_travel and not any(p in low for p in _TRAVEL_PROBES):
         prompt += "\n\n" + _GUARD_TRAVEL
         added.append("travel-direction")
+    if has_two_hander and not any(p in low for p in _TWO_HANDER_PROBES):
+        prompt += "\n\n" + _GUARD_TWO_HANDER
+        added.append("two-hander-staging")
     if has_seated and not any(p in low for p in _SEATED_PROBES):
         prompt += "\n\n" + _GUARD_SEATED
         added.append("seated-at-table")

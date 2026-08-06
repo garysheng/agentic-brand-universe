@@ -88,6 +88,60 @@ class TestSeatedAtTable(unittest.TestCase):
         self.assertNotIn("SEATED ANATOMY", out)
 
 
+class TestTwoHanderStaging(unittest.TestCase):
+    """Two failures, in sequence, because the fix for the first causes the second.
+    Both earned on he-kept-the-appointment spreads 17 and 19, both by operator correction.
+    Naming the shot `over-shoulder` in the render-spec prevented neither."""
+
+    # This is the shape of the ROUND-ONE prompt, the one that produced a man growing out
+    # of the tabletop. The guard has to fire on THIS, not merely on prompts that already
+    # say "over-the-shoulder" -- a scene that already knew the answer never needed a guard.
+    ROUND_ONE = ("Two men sit facing each other across a laminate table in a restaurant booth, "
+                 "both seen from the waist up, side-on to the camera at seated eye height.")
+
+    def test_fires_on_the_prompt_shape_that_actually_failed(self):
+        out, added = pg.apply_prompt_guards(self.ROUND_ONE)
+        self.assertIn("two-hander-staging", added)
+        self.assertIn("ONE OF THEM IS NEAR AND ONE IS FAR", out)
+
+    def test_states_the_near_far_split(self):
+        out, _ = pg.apply_prompt_guards(self.ROUND_ONE)
+        low = out.lower()
+        self.assertIn("cropped by the frame edge", low)
+        self.assertIn("out of focus", low)
+        self.assertIn("sharp subject", low)
+
+    def test_states_the_torso_follows_the_head(self):
+        """Round two: head swivelled ninety degrees on a chest still square to the lens."""
+        out, _ = pg.apply_prompt_guards(self.ROUND_ONE)
+        low = out.lower()
+        self.assertIn("torso follows the head", low)
+        self.assertIn("chest and shirt front are not in frame", low)
+        self.assertIn("ninety degrees", low)
+
+    def test_quiet_on_a_lone_person_at_a_table(self):
+        """A solo scene has no near/far split to make, so the guard must stay out of it."""
+        _, added = pg.apply_prompt_guards(
+            "A young man sits alone at a desk at night, bent over a spiral notebook.")
+        self.assertNotIn("two-hander-staging", added)
+
+    def test_quiet_on_two_people_with_no_table(self):
+        _, added = pg.apply_prompt_guards(
+            "Two men stand facing each other in a wide empty forecourt.")
+        self.assertNotIn("two-hander-staging", added)
+
+    def test_seated_guard_still_fires_alongside_it(self):
+        _, added = pg.apply_prompt_guards(self.ROUND_ONE)
+        self.assertIn("seated-at-table", added)
+
+    def test_idempotent(self):
+        once, a1 = pg.apply_prompt_guards(self.ROUND_ONE)
+        twice, a2 = pg.apply_prompt_guards(once)
+        self.assertIn("two-hander-staging", a1)
+        self.assertEqual(a2, [], f"a second pass added {a2}")
+        self.assertEqual(twice.count("TWO-HANDER STAGING"), 1)
+
+
 class TestExistingGuardsStillFire(unittest.TestCase):
     """Regression net: the new guard must not disturb the ones already shipped."""
 
