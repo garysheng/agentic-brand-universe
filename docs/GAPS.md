@@ -408,3 +408,68 @@ A story that legitimately shows a visitor sets `allowGuests` or lists them.
 **Still open because.** Same shared-checkout window as G5/G9/G13; filed the day it was found,
 with the prose guard landed in the universe meanwhile so the specific case cannot repeat.
 
+
+### G17. `add-entity character` births an entity its own linter hard-ERRORs on
+
+**What.** `add-entity <u> character <id>` writes no `structured.render` block, and
+`lint-universe` immediately reports `ERROR [CAST-UNRENDERABLE] <id>.json: kind 'character' has
+no structured.render block, so the render compiler cannot cast it at all.` v0.31 fixed exactly
+this for `visual-metaphor` (the scaffolder emits one pose per declared state) and did not
+generalize to `character`. Every character in every universe is born failing its own lint.
+
+**Evidence.** 2026-08-06, nation-of-fire: `josh-howerton`, `jana-howerton` and `bob-russell`
+all three ERRORed the moment they were scaffolded, before an author had touched them. Not
+blocking, because the author was about to write the render blocks anyway, but the linter's
+signal is worthless on a fresh entity and an author who trusts it learns to ignore it.
+
+**Next invocation.** Every `add-character` in every universe.
+
+**Would close it.** Emit `structured.render: {"always": "", "poses": {}}` as a stub, and
+downgrade the lint to a WARNING while `always` is empty. The ERROR should mean "this entity is
+cast in a story and cannot render", not "this entity is new".
+
+### G18. There is no verb that AUTHORS an altLook; every age era is hand-edited JSON
+
+**What.** `structured.altLooks` (with `supersedes`, `dropSheets`, `keepSheets`, `anchorPhoto`,
+`validFor`) is fully specified in SPEC §12 and fully load-bearing in the compiler, and both of
+its consumers REFUSE to create one. `lock-shot --look` raises "has no altLook <key>. Author the
+look first"; `chain_matrix --look` shoots into an existing look only. There is no `abu add-look`
+and no `--look` on `add-entity`. `add-character` step 4b's instruction is literally "add
+`structured.altLooks.era-<year>`", i.e. edit the JSON by hand.
+
+This matters more than it looks because the shape has a known inverted trap the spec spends four
+paragraphs on: an era look chained off a photo stack auto-drops the base face sheets, so without
+`keepSheets`/`keepPhotos` you render a stranger with the right build. A hand-editor gets no
+scaffolder to get that right, and nothing checks the SHOOT ORDER either (the era with
+photographs must be shot first and the others chained off it).
+
+**Evidence.** 2026-08-06, nation-of-fire's `josh-howerton`: three age eras (sixteen, eighteen,
+mid-twenties) over a present-day photo stack, all three hand-authored, including a hand-set
+`anchorPhoto` so `sixteen` chains off `eighteen` rather than off the forty-three-year-old face.
+SPEC §12 names the documented-past case (Kenneth Hagin at fifteen, no photograph) as identical
+in shape, so this is at least the second universe to hand-roll it.
+
+**Would close it.** `abu add-look <universe> <id> <key> [--era FROM-TO] [--chain-from <look>]
+[--keep-sheets ...] [--supersedes ...]`, emitting the correct-by-construction shape plus the
+look's own `prompts.md` skeleton, and a lint check that a look with an `anchorPhoto` pointing
+into a sibling look is shot after it.
+
+### G19. A "NOT USED" stub heading in prompts.md is a LIVE SHOT that renders garbage
+
+**What.** A code-drawn plate (`abu elevation` / `abu massing`) has no business being prompted,
+and the scaffolder's own prompts.md says the blueprint section "is never used". That is only
+true while the file already exists on disk: `--skip-existing` skips it. Delete or never create
+the PNG and the chain happily sends the stub body to the model. A two-sentence stub plus the
+style anchor is precisely the alias-clobber failure the parser's own comments describe, and it
+returns a confident finished picture that is not a blueprint.
+
+**Evidence.** 2026-08-06, nation-of-fire's `the-lunch-booth`. Its prompts.md carried
+`## blueprint -> .../blueprint.png` with the body "NOT USED. Code-drawn by `abu elevation`...".
+No blueprint.png existed (the code-drawn plan was written to `dummies.png`), so the chain
+rendered the stub and produced a full painted restaurant-booth scene with two invented people
+in it, filed as the setting's geometry blueprint. It was caught by eye, not by any check.
+
+**Would close it.** Two moves. (1) `add-entity` should not scaffold a heading for a slot it
+documents as code-drawn. (2) `parse_prompts_full` should REFUSE a shot body shorter than N
+characters or matching /^NOT USED/i, on the same reasoning as the existing TODO(author)
+refusal: a body that says it is not a prompt is not a prompt.
