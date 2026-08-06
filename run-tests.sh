@@ -53,6 +53,17 @@ for tf in skills/*/tests/test*.py; do
   run "$skill/$(basename "$tf")" "$skill" python3 "tests/$(basename "$tf")"
 done
 
+# Every PROVIDER that has a tests/ directory. Added 2026-08-06: `providers/` was not
+# discovered at all, so providers/*/prompt_guards.py -- the chokepoint every single render
+# passes through, and the declared single home of the standing rules -- had zero tests and
+# two byte-identical copies nobody was comparing.
+for tf in providers/*/tests/test*.py; do
+  [ -e "$tf" ] || continue
+  files=$((files + 1))
+  prov=$(dirname "$(dirname "$tf")")
+  run "$prov/$(basename "$tf")" "$prov" python3 "tests/$(basename "$tf")"
+done
+
 # The derived docs. Prose rots silently while the thing it describes keeps moving, so
 # staleness is a FAILING TEST rather than something a reader discovers months later.
 # (This is also covered by engine/tests/test_docsfile.py; it runs here too so the fix

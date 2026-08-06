@@ -47,6 +47,22 @@ _TRAVEL_WORDS = (
     "walks out", "exiting", "exits", "turns back", "on the threshold", "at the door",
 )
 
+# A person seated AT A TABLE is the commonest two-hander in a picture book and it has a
+# specific, ugly failure: the torso is painted emerging straight out of the tabletop, with
+# no waist, no lap and no seat under it, so the figure reads as part of the furniture.
+# Earned 2026-08-06 on he-kept-the-appointment spreads 17 and 19 (a restaurant booth), where
+# it survived a contact-sheet read-back, a per-spread negatives list that already named the
+# seating, book-doctor, and shipping. Gary caught it on the published book: "Josh is stuck in
+# the table." The guard fires only when a TABLE word and a SEATING word are BOTH present, so
+# it stays quiet on a standing scene or a bare still life of a table.
+_TABLE_WORDS = (
+    "table", "tabletop", "table top", "desk", "counter", "booth", "banquette", "bar top",
+)
+_SEATED_WORDS = (
+    "seat", "seated", "sits", "sitting", "sat at", "sat down", "bench", "banquette",
+    "chair", "stool", "pew", "booth", "lap",
+)
+
 _GUARD_DEVICE = (
     "DEVICE ANATOMY, NON-NEGOTIABLE: any phone, laptop, tablet or monitor is anatomically correct. "
     "The GLOWING DISPLAY is on the SCREEN side, and that side FACES ITS USER. A person looking at a "
@@ -55,6 +71,19 @@ _GUARD_DEVICE = (
     "laptop's outer lid, or on a monitor's rear. NEVER show a screen facing the camera while the "
     "person using it looks at the opposite side. If both the user's face and the screen content must "
     "be visible, shoot it over the user's shoulder."
+)
+
+_GUARD_SEATED = (
+    "SEATED ANATOMY AT A TABLE, NON-NEGOTIABLE: a seated person is a WHOLE BODY resting ON a seat, "
+    "and the table passes IN FRONT OF them, never THROUGH them. Their SHOULDERS AND CHEST are ABOVE "
+    "the tabletop, their WAIST, LAP AND THIGHS are BELOW it and IN FRONT of the seat, and the trunk "
+    "continues DOWN BEHIND the near edge of the table to that seat. There is a VISIBLE GAP between "
+    "the front edge of the table and the person's chest and stomach. NEVER paint a torso emerging "
+    "directly out of a tabletop with no waist, no lap and no seat beneath it. NEVER let the table's "
+    "edge, apron or slab cut across a body as though the body were part of the furniture, and never "
+    "let a thigh, hip or knee merge into the table. If the camera cannot see the seat itself, the "
+    "body must still read as supported by one. Every seated figure has somewhere to sit and that "
+    "seat is under them."
 )
 
 # REWRITTEN 2026-07-29 because the previous version CONTRADICTED ITSELF on the commonest
@@ -123,6 +152,7 @@ _DEVICE_PROBES = ("the glowing display is on the screen side",)
 _SURFACE_PROBES = ("readable surfaces are oriented for their reader",)
 _TRAVEL_PROBES = ("travel direction must match the story",)
 _UI_PROBES = ("no user interface anywhere:",)
+_SEATED_PROBES = ("seated anatomy at a table",)
 
 
 def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[str]]:
@@ -140,12 +170,13 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if not enabled:
         return prompt, []
     scan = prompt.lower()
-    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI):
+    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI, _GUARD_SEATED):
         scan = scan.replace(block.lower(), " ")
     added: list[str] = []
     has_device = any(w in scan for w in _DEVICE_WORDS)
     has_surface = any(w in scan for w in _SURFACE_WORDS)
     has_travel = any(w in scan for w in _TRAVEL_WORDS)
+    has_seated = any(w in scan for w in _TABLE_WORDS) and any(w in scan for w in _SEATED_WORDS)
     low = prompt.lower()   # probes look at the WHOLE prompt, guard text included
 
     if has_device and not any(p in low for p in _DEVICE_PROBES):
@@ -157,6 +188,9 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if has_travel and not any(p in low for p in _TRAVEL_PROBES):
         prompt += "\n\n" + _GUARD_TRAVEL
         added.append("travel-direction")
+    if has_seated and not any(p in low for p in _SEATED_PROBES):
+        prompt += "\n\n" + _GUARD_SEATED
+        added.append("seated-at-table")
     if (has_device or has_surface) and not any(p in low for p in _UI_PROBES):
         prompt += "\n\n" + _GUARD_UI
         added.append("no-ui-chrome")
