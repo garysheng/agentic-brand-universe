@@ -931,6 +931,41 @@ ROLE_INSTRUCTION = {
 }
 
 
+def register_neutral_line(ent: dict, cast_id: str) -> str | None:
+    """The one instruction a REGISTER-NEUTRAL entity owes the render that casts it.
+
+    Both the declaration reader and the sentence live in `agenticstory.matrix`, not
+    here: `shoot-references` reads the same function to decide that no anchor is
+    passed, and a contract whose two ends are implemented twice is a contract that
+    disagrees with itself within two releases (the v0.33 `stylePack` defect exactly).
+
+    Refuses rather than shrugging when the engine cannot be found AND the entity
+    declares the field, because silently skipping this line renders a photoreal master
+    into a painted book with nothing telling the model to drop its medium. An entity
+    that declares nothing is unaffected either way, which is why the guard is inside
+    the branch.
+    """
+    st = (ent.get("structured") or {})
+    if not st.get("registerNeutral"):
+        return None
+    root = _abu_root()
+    if root is None:
+        raise Refuse(
+            f"'{cast_id}' declares structured.registerNeutral but the ABU engine could "
+            "not be located to read it. Reinstall the plugin; rendering a "
+            "register-neutral master with no instruction to drop its medium is the "
+            "defect that declaration exists to prevent.")
+    eng = str(root / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.matrix import register_neutral, REGISTER_NEUTRAL_CONSUMPTION
+    try:
+        rn = register_neutral(ent)
+    except ValueError as e:
+        raise Refuse(str(e))
+    return REGISTER_NEUTRAL_CONSUMPTION.format(id=cast_id, medium=rn["medium"]) if rn else None
+
+
 def role_lines(ent: dict, look: str | None = None) -> list[str]:
     """One instruction per TYPED slot, so a ref cannot contribute more than it should.
 
@@ -1718,6 +1753,22 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         rl = role_lines(ent, c.get("look"))
         if rl:
             ent_blocks.append("REFERENCE ROLES, obey exactly: " + " ".join(rl))
+        # THE CONSUMPTION HALF OF A REGISTER-NEUTRAL MATRIX (SPEC 12, v0.37).
+        #
+        # `shoot-references` makes such a plate with no register in it; this is the other
+        # end of that contract, and without it the guarantee is worthless. A photoreal
+        # identity master is passed into a render whose medium it deliberately does not
+        # share, and a reference image outranks a word, so its medium arrives with its
+        # likeness unless something says otherwise. The per-slot `role` vocabulary says
+        # this for a TYPED slot and nothing at all for an untyped one; this says it once
+        # for the whole entity, which is the only level at which "these plates belong to
+        # no register" is even a true statement.
+        #
+        # It is emitted only for an entity that DECLARES the field, so no existing
+        # universe's prompt changes by a character.
+        rn_line = register_neutral_line(ent, c["id"])
+        if rn_line:
+            ent_blocks.append(rn_line)
         qa += [f"{c['id']}: {i}" for i in inv]
         char_invsets[c["id"]] = inv
         char_scales[c["id"]] = (ent.get("structured") or {}).get("scale") or {}

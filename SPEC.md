@@ -1,10 +1,34 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.36 — 2026-08-06.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.37 — 2026-08-06.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.37 changelog - the identity master could not be shot until a register existed, and it
+> must be.** Paved out of Proof of Vibes (Russ Ballard's brand, 2026-08-06, subject consenting),
+> whose architecture is one photoreal master with N register conversions derived from it. The
+> shooter refused unconditionally on a null `identity.register.anchor`, and the two escapes beside
+> it (`--register`, `--no-style-pack`) both choose WHICH anchor to pass, so neither could say
+> none. That is an ordering deadlock: the register gates the master, and the master is exactly the
+> artefact the register is later derived from. The framework's own vocabulary had held the concept
+> since v0.21 (`face-neutral-color`, documented in `matrix.py` as "a full-colour, REGISTER-NEUTRAL
+> face plate") and no code honoured it, so the universe wrote the rule into its own prompts.md and
+> could obey it only by leaving the framework. `structured.registerNeutral` (§12) declares it in
+> CANON rather than at the command line, because a flag cannot refuse a re-shoot it is not passed;
+> neutral means NO ANCHOR IS PASSED rather than "an anchor is not required", so an anchor reaching
+> this matrix is a refusal; the null-anchor refusal now names the route with the JSON to paste;
+> and the existing per-slot `role` vocabulary is the consumption half, wired in rather than
+> duplicated (`compose-spread` emits one entity-level line, `validate` refuses `role: "medium"`
+> here, lint warns on untyped slots). `REGISTER-UNLOCKED` stays an ERROR because every render
+> genuinely still refuses; only its totalizing wording changed. Backward compatible: an entity
+> that declares nothing shoots and renders byte-identically. **Found while writing that lint
+> check, and fixed in the same pass:** a TYPED sheet slot (`{"path", "role"}`, legal since v0.23)
+> crashed the WHOLE linter with `TypeError: unhashable type: 'dict'`, because the duplicate-alias
+> scan used the slot as a dict key and the goldens loop divided a Path by it. The one slot form
+> the spec recommends for constraining what a plate contributes was the form that made the free
+> pre-render check impossible to run.
 
 > **v0.33 changelog — three surfaces that each assumed a name meant a thing.** Paved out of
 > the *An Amazing Sex Life* run (nation-of-fire, 2026-08-04). **(1)** No check may infer an
@@ -2022,6 +2046,78 @@ Default measured reference, when a universe declares no `identity.scaleReference
     so the model is told what each reference is for instead of weighing them all equally. Earned
     on two watercolour costume plates that were admissible as matrix slots on a hyperreal
     character because their sidecars said "garment design only" in prose no gate could read.
+  - **`structured.registerNeutral` (v0.37) — a matrix shot in NO REGISTER AT ALL.** `{ "medium":
+    "hyper-realistic documentary photography", "why": "one photoreal master; every register is a
+    conversion of it" }`. Both fields are required and `validate` refuses a declaration missing
+    either. It applies to ONE case and it is a narrow one: an entity whose reference matrix is an
+    **identity master** that every register rendition is later DERIVED from, rather than a plate
+    set belonging to any register. A real person's photoreal digital twin is the case this was
+    built for. Everything else keeps shooting anchor-first, unchanged.
+
+    **The defect.** `chain_matrix.resolve_register` refused unconditionally on a null
+    `identity.register.anchor` ("the universe style is not locked; do not generate"), and the two
+    escapes beside it (`--register`, `--no-style-pack`) both choose WHICH anchor to pass, so
+    neither could say none. That is an ordering deadlock for every universe built around a real
+    person: the register gates the master, and the master is precisely the artefact that owes the
+    register nothing. The framework's own vocabulary had carried the concept since v0.21, where
+    `face-neutral-color` is documented in `matrix.py` as "a full-colour, REGISTER-NEUTRAL face
+    plate", and nothing honoured it. Proof of Vibes (2026-08-06, Russ Ballard's brand, subject
+    consenting) stated the architecture out loud and then could not bootstrap it: its
+    `reference/russ-ballard/prompts.md` already read "deliberately refuses the anchor-first rule
+    ... a master shot inside a register can only ever serve that register", which is a rule that
+    could only be obeyed by leaving the framework.
+
+    **It is CANON, not a flag.** Neutrality is a property of the matrix, not of one invocation. A
+    flag would let the next operator re-shoot the master in-register with nothing complaining,
+    which is the same failure the declaration exists to prevent, one person later. No ad-hoc flag
+    was added for this reason.
+
+    **NEUTRAL MEANS NO ANCHOR IS PASSED, not "an anchor is not required".** This is the
+    non-obvious half. Once the universe finally blesses a register, a re-shoot would otherwise
+    silently bake that register into the one asset whose whole job is to be medium-free, and a
+    reference image outranks a word every time (the physics `dropSheets` and `--star` were both
+    earned by). So an anchor reaching this matrix is a REFUSAL, never a warning: by the time
+    anyone looks at the plate, the register is in it and no prompt takes it back out. What the
+    shoot guarantees:
+
+    <!-- BEGIN GENERATED: register-neutral-contract -->
+- the register anchor IMAGE is not passed as a reference on any shot of this matrix
+- the register's style line is not prepended; the entity's declared `medium` leads instead
+- the register's `rejectedPoles` are not baked as negatives, because a pole is the opposite of a medium this matrix is not being shot in (the entity's own `structured.negatives` and its prompts.md negatives still are)
+- the anchor-subject guard is not emitted, because no anchor's subject is in play
+- `--register` and `--no-style-pack` are REFUSED, because both of them name WHICH anchor to pass and neither can name none
+- every shot's recipe records `registerNeutral` and a null `anchor`, so a later reader can tell a deliberate absence from a forgotten input
+<!-- END GENERATED: register-neutral-contract -->
+
+    **The refusal teaches the route.** The null-anchor refusal above now names this path with the
+    JSON to paste, the way the sibling `stylePack` refusal names `--register` and
+    `--no-style-pack`. A refusal that dead-ends an operator who is doing something legal is how a
+    framework gets routed around.
+
+    **`role` is the other end of the same contract, and they compose.** Register-neutral is how
+    the plate is MADE; a slot's `role` is how it is CONSUMED, and four of the five role
+    instructions already say "Ignore its ... medium". `compose-spread` emits one entity-level line
+    for a declared register-neutral cast entry (`REGISTER-NEUTRAL MASTER: <id>'s reference plates
+    are <medium> and are NOT a style reference ... render <id> fully in this image's declared
+    style"), because "these plates belong to no register" is only true of the SET, and per-slot
+    roles then say what each plate contributes. `validate` refuses `role: "medium"` on a
+    register-neutral entity as a contradiction in terms, and `lint-universe` warns
+    `REGISTER-NEUTRAL-UNTYPED-SLOT` on slots that declare no role at all. No second vocabulary was
+    added.
+
+    **`REGISTER-UNLOCKED` stays an ERROR and only its wording changed.** A null
+    `identity.register.anchor` still means every RENDER refuses, because `compose-spread` and the
+    cover compiler both require it, so a universe in this state genuinely cannot make a spread, a
+    cover or a book. What was false was the totalizing word "generation". The finding now names
+    the one thing that IS legal, listing the universe's declared register-neutral entities by id.
+    Downgrading it so a bootstrapping universe could go green would have weakened a check that is
+    telling the truth.
+
+    **Not covered: PER-SLOT neutrality.** `face-neutral-color` is a single neutral plate inside an
+    otherwise in-register matrix, and this declaration is whole-matrix only. That is deliberate:
+    the chain conditions each shot on its accepted siblings, so a half-neutral matrix walks the
+    anchor into the neutral plates through the golden chain regardless of what the flagging says.
+    A genuinely neutral single plate wants its own matrix. Filed in `docs/GAPS.md`.
   - **`structured.sheetAliases: {newKey: oldKey}` (2026-08-02) — a DECLARED sheet alias.** The
     add-keys-never-remove pattern (a camera slot renamed without breaking every story or spec that
     names the old key: retired-hearthRotunda precedent; the-park-bench and apostle-lee-study camera

@@ -386,10 +386,32 @@ def render_shots(root: Path) -> list[str]:
     return out
 
 
+def render_register_neutral_contract(root: Path) -> list[str]:
+    """What a register-neutral shoot guarantees, read off `matrix` itself.
+
+    Same split as `render_guards` and `render_scale_plate_contract`: the GUARANTEES
+    are enumerable and the shooter reads the same module, so the spec projects them
+    rather than restating them. The judgement beneath stays hand-written: why the
+    declaration lives in canon instead of on the command line, and why an anchor
+    reaching this matrix is a refusal rather than a warning.
+    """
+    src = (root / "engine/agenticstory/matrix.py").read_text()
+    m = re.search(r"REGISTER_NEUTRAL_CONTRACT:\s*list\[str\]\s*=\s*\[(.*?)\n\]", src, re.S)
+    if not m:
+        return []
+    # Entries are python string literals, adjacent-concatenated across lines; join each
+    # entry's pieces before emitting so a wrapped sentence is one bullet, not three.
+    out = []
+    for entry in re.findall(r'((?:\s*"[^"]*"\s*)+),', m.group(1)):
+        out.append("- " + re.sub(r"\s+", " ", "".join(re.findall(r'"([^"]*)"', entry))).strip())
+    return out
+
+
 BLOCKS = {
     "README.md": {"status": render_status},
     "SPEC.md": {"guards": render_guards,
                 "shots": render_shots,
+                "register-neutral-contract": render_register_neutral_contract,
                 "scale-plate-contract": render_scale_plate_contract},
     "docs/REFERENCE.md": {
         "skills": render_skills,

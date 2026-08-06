@@ -110,6 +110,27 @@ def style_line(register_name: str | None, poles) -> str:
     return out
 
 
+def neutral_style_line(medium: str) -> str:
+    """The style line for a REGISTER-NEUTRAL matrix (SPEC 12, v0.37).
+
+    `style_line` above names the universe's register and is passed alongside the
+    anchor image. This one is passed INSTEAD of both, and it exists for the same
+    reason: naming the medium positively in the body is what actually moves a model,
+    and a shoot with no style instruction at all returns whatever the base model
+    prefers, which for "character reference sheet" is a strong photographic prior.
+
+    It also says out loud that no style reference is present, because the references
+    that DO arrive on a neutral shoot (a real person's photographs, and later the
+    blessed siblings) are the only thing the model can read a treatment off, and on a
+    non-photographic neutral medium that would be exactly the wrong source.
+    """
+    return (
+        "MEDIUM, AND IT OVERRIDES ANY OTHER READING OF THE REFERENCE IMAGES: render this "
+        f"as {medium}. This plate is REGISTER-NEUTRAL: no style anchor is passed with it "
+        "and none is implied. Take likeness, geometry and markings from the references; "
+        "take no stylistic treatment from anything.")
+
+
 def anchor_subject_guard(subject) -> str:
     """Name what the register anchor DEPICTS, and ban it, on every matrix shot.
 
@@ -707,7 +728,19 @@ def resolve_register(uroot: Path, uni: dict, override=None, no_style_pack=False)
     if not anchor:
         raise Refuse(
             "identity.register.anchor is null: the universe style is not locked; "
-            "do not generate")
+            "do not generate.\n"
+            "UNLESS THIS MATRIX IS DELIBERATELY REGISTER-NEUTRAL. A photoreal identity "
+            "master (a real person's digital twin, from which every register rendition is "
+            "later DERIVED) owes the register nothing, and cannot wait for it: the master "
+            "is the thing the register conversions are made FROM. Declare it on the entity "
+            "and re-run:\n"
+            "  \"structured\": { \"registerNeutral\": {\n"
+            "      \"medium\": \"hyper-realistic documentary photography\",\n"
+            "      \"why\": \"one photoreal master; every register is a conversion of it\"\n"
+            "  } }\n"
+            "The shoot then passes NO anchor at all (SPEC 12, register-neutral matrix). It "
+            "is canon and not a flag on purpose: the next operator's re-shoot must refuse "
+            "too, and a flag cannot refuse anything it is not passed.")
     return (anchor, list(reg.get("rejectedPoles", [])), reg.get("name"),
             reg.get("anchorSubject"))
 
@@ -735,11 +768,52 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         and passing it drags the old body into the new one.
     """
     uni = load(uroot / "universe.json")
-    anchor, poles, register_id, anchor_subject = resolve_register(
-        uroot, uni, register_override, no_style_pack=no_style_pack)
 
-    ent = load(uroot / "canon" / "entities" / f"{eid}.json")
+    # THE ENTITY IS READ BEFORE THE REGISTER IS RESOLVED (v0.37), because the entity is
+    # what decides whether a register applies to this matrix at all. Reversing these two
+    # lines is what made the register-neutral case unreachable: the anchor refusal fired
+    # before anything had looked at the entity that is exempt from it.
+    entfile = uroot / "canon" / "entities" / f"{eid}.json"
+    if not entfile.is_file():
+        raise Refuse(f"no such entity: {entfile}")
+    ent = load(entfile)
     kind = ent.get("kind", "character")
+
+    _engine_on_path()
+    from agenticstory.matrix import register_neutral as _register_neutral
+    try:
+        neutral = _register_neutral(ent)
+    except ValueError as e:
+        raise Refuse(str(e))
+
+    if neutral:
+        # NEUTRAL MEANS NO ANCHOR IS PASSED, NOT "AN ANCHOR IS NOT REQUIRED".
+        #
+        # `--register` and `--no-style-pack` both answer the question "WHICH anchor",
+        # and on this matrix the answer is none. Honouring either would bake a register
+        # into the one asset whose whole job is to be medium-free, and it would do it
+        # silently, months later, on a re-shoot, once the universe finally has a
+        # register to bake. That is a refusal rather than a warning for the reason a
+        # reference image always outranks a word: by the time anyone sees the plate, the
+        # register is IN it and no prompt can take it back out.
+        if register_override or no_style_pack:
+            raise Refuse(
+                f"{eid}'s matrix is declared REGISTER-NEUTRAL "
+                f"(structured.registerNeutral: {neutral.get('why')}), and "
+                f"{'--register' if register_override else '--no-style-pack'} names an "
+                f"anchor to pass. A register-neutral matrix passes NO anchor at all.\n"
+                f"  medium: {neutral['medium']}\n"
+                "To shoot this matrix inside a register, remove the declaration from "
+                "canon first, deliberately: that is a decision about what the master IS, "
+                "not about one invocation. To shoot a register RENDITION of an already-"
+                "locked master, derive it from the master's plates rather than re-shooting "
+                "the matrix; two independent shoots of one subject produce two subjects.")
+        anchor, poles, register_id, anchor_subject = None, [], None, None
+        style = neutral_style_line(neutral["medium"])
+    else:
+        anchor, poles, register_id, anchor_subject = resolve_register(
+            uroot, uni, register_override, no_style_pack=no_style_pack)
+        style = style_line(register_id, poles)
     # THE FOLDER COMES FROM THE ENTITY, NOT FROM ITS ID (SPEC v0.34). An entity whose
     # art is deliberately re-foldered (nation-of-fire's Apostle is one man in one folder
     # by universe law, id `apostle-lee`, art under `apostle-delmar-lee-coward-jr/`) used
@@ -897,6 +971,10 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         # calls the normal one.
         "codeDrawn": drawn,
         "register": register_id, "anchorSubject": anchor_subject,
+        # The composed style instruction, decided ONCE where the register decision is
+        # made rather than re-derived in `_shoot`. A register-neutral matrix and an
+        # in-register one differ in exactly this line and in whether `anchor` is None.
+        "registerNeutral": neutral, "styleLine": style,
         "look": look, "lookRefs": look_refs,
         "photos": photos,
         "seed": seed, "order": [seed] + rest, "prompts": prompts,
@@ -980,7 +1058,7 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     # STYLE FIRST. The register leads every shot body, because the medium is
     # the thing a reference sheet drifts off first and the anchor image alone
     # does not hold it. See style_line().
-    prompt = " ".join(x for x in [style_line(plan["register"], plan["poles"]),
+    prompt = " ".join(x for x in [plan["styleLine"],
                                   plan["prompts"][shot], SAME_SUBJECT,
                                   REAL_PERSON if plan["photos"] else "",
                                   anchor_subject_guard(plan.get("anchorSubject")),
@@ -1001,8 +1079,13 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     elif args.max_conditioning and len(goldens) > args.max_conditioning:
         cond = [goldens[0]] + goldens[-(args.max_conditioning - 1):]
     cmd = ["uv", "run", _provider_script(), "--prompt", prompt, "--filename", str(out),
-           "--size", shot_size, "--quality", "high", "--no-open",
-           "--input-image", anchor_abs]
+           "--size", shot_size, "--quality", "high", "--no-open"]
+    # THE ANCHOR IS AN OPTIONAL INPUT NOW, AND ONLY HERE (v0.37). A register-neutral
+    # matrix passes none: `anchor_abs` is None and no `--input-image` for it is emitted,
+    # so the photographs become the first reference, which is exactly what an identity
+    # master should be built from.
+    if anchor_abs:
+        cmd += ["--input-image", anchor_abs]
     # photographs BEFORE the painted goldens: the likeness is the thing the
     # chain must not drift on, and later references carry more weight.
     for ph in plan["photos"]:
@@ -1061,7 +1144,14 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
     recipe.update({
         "shot": shot, "entity": plan["entity"], "kind": plan["kind"],
         "model": "gpt-image-2", "size": shot_size, "prompt": prompt,
-        "anchor": {"path": plan["anchor"], "sha256_16": sha(Path(anchor_abs))},
+        # A DELIBERATE ABSENCE IS RECORDED, NEVER OMITTED. `anchor: null` alone reads
+        # exactly like a forgotten input; `registerNeutral` beside it is the record that
+        # nothing was forgotten, and it carries the medium the shoot was steered by, so a
+        # later reader can reproduce a plate whose style line came from canon rather than
+        # from any pack.
+        "anchor": ({"path": plan["anchor"], "sha256_16": sha(Path(anchor_abs))}
+                   if anchor_abs else None),
+        "registerNeutral": plan.get("registerNeutral"),
         "photoStack": [{"path": p, "sha256_16": sha(Path(p))} for p in plan["photos"]],
         "conditionedOn": [{"path": g, "sha256_16": sha(Path(g))} for g in cond],
         # CROSS-ENTITY REFS BELONG IN THE RECIPE, not only on the command line.
@@ -1210,8 +1300,15 @@ def _main() -> int:
 
     if args.print_plan or args.dry_run:
       try:
-        print(f"entity={plan['entity']} kind={plan['kind']} "
-              f"register={plan['register'] or '(universe default)'}")
+        if plan.get("registerNeutral"):
+            rn = plan["registerNeutral"]
+            print(f"entity={plan['entity']} kind={plan['kind']} "
+                  f"register=REGISTER-NEUTRAL (no anchor is passed on any shot)")
+            print(f"medium = {rn['medium']}")
+            print(f"why    = {rn['why']}")
+        else:
+            print(f"entity={plan['entity']} kind={plan['kind']} "
+                  f"register={plan['register'] or '(universe default)'}")
         print(f"seed (hero) = {seed}")
         print("topology = " + ("STAR (every shot off the seed, no sibling chaining)"
                                if args.star else "CUMULATIVE (seed + recent siblings)"))
@@ -1226,8 +1323,13 @@ def _main() -> int:
                 prior = prior[:1]            # the seed, and no sibling
             elif args.max_conditioning and len(prior) > args.max_conditioning:
                 prior = [prior[0], "..."] + prior[-(args.max_conditioning - 1):]
+            # A REGISTER-NEUTRAL PLAN MAY NOT SAY "anchor". The plan is the only thing an
+            # operator reads before spending, and the whole point of this matrix is that
+            # no anchor is passed; printing the word would advertise the input the
+            # declaration exists to remove.
+            lead = "no anchor (register-neutral)" if plan.get("registerNeutral") else "anchor"
             cond = "HUMAN-BLESSED SEED" if i == 0 else \
-                   "anchor + " + ", ".join(prior)
+                   lead + " + " + ", ".join(prior)
             # Code-drawn geometry is passed to every shot including the seed, so it is
             # named on every line: a plan that omits an input the run will pass is the
             # same defect as one that advertises conditioning it will not perform.
@@ -1269,7 +1371,7 @@ def _main() -> int:
         return 2
 
     neg = ("NEGATIVES: " + ", ".join(plan["negatives"]) + ".") if plan["negatives"] else ""
-    anchor_abs = str((uroot / plan["anchor"]).resolve())
+    anchor_abs = str((uroot / plan["anchor"]).resolve()) if plan["anchor"] else None
 
     if args.shoot_seed:
         # No goldens. The seed is the first painted thing this entity has, so it is

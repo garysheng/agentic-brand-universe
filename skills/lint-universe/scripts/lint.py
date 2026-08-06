@@ -35,6 +35,21 @@ def _sha16(path):
     except Exception:
         return None
 
+def _sheet_path(v):
+    """The PATH out of a sheet slot, whichever form it takes.
+
+    A slot is a bare path or a typed `{"path", "role"}` object (SPEC 12, v0.23), and
+    this linter only ever handled the first form. A typed slot reached
+    `seen.setdefault(v, ...)` as a dict key and crashed the WHOLE run with
+    `TypeError: unhashable type: 'dict'`, and reached `root/pth` as a dict and crashed
+    it again. So the one slot form the spec recommends for a plate whose contribution
+    must be constrained was the form that made the free pre-render check impossible to
+    run. Found 2026-08-06 while adding REGISTER-NEUTRAL-UNTYPED-SLOT, which is the
+    check that tells authors to use exactly this shape.
+    """
+    return (v or {}).get("path") if isinstance(v, dict) else v
+
+
 def _lint_windows(eid, kind_word, variants: dict):
     """Static checks on a variant set's `validFor` windows (SPEC v0.18).
 
@@ -111,10 +126,12 @@ def lint(root):
     _root = next((c for c in [_here, *_here.parents]
                   if (c / "engine" / "agenticstory").is_dir()), None)
     _gaps = None
+    _rn_untyped = None
     if _root is not None:
         try:
             sys.path.insert(0, str(_root / "engine"))
             from agenticstory.model import setting_contract_gaps as _gaps
+            from agenticstory.matrix import register_neutral_untyped_slots as _rn_untyped
         except Exception:
             _gaps = None
 
@@ -198,9 +215,10 @@ def lint(root):
             eid = e.get("id", ef.stem)
             st = e.get("structured") or {}
             sheets = st.get("sheets") or {}
-            wired = {str(v) for v in sheets.values()}
+            paths = [_sheet_path(v) for v in sheets.values()]
+            wired = {str(v) for v in paths}
             # Match on BASENAME too: prose legitimately writes a shorthand path.
-            wired |= {str(v).rsplit("/", 1)[-1] for v in sheets.values()}
+            wired |= {str(v).rsplit("/", 1)[-1] for v in paths}
             # These contract keys ARE path fields, consumed directly rather than via
             # `sheets`. Scanning them would flag every correctly-wired setting in every
             # universe, and a rule that cries wolf is a rule everyone learns to skip.
@@ -643,7 +661,7 @@ def lint(root):
             # does not depict) finally applied to people.
             sc = st.get("scale") or {}
             declared_h = (sc.get("height") or "").strip()
-            plate = (st.get("sheets") or {}).get("scale-plate")
+            plate = _sheet_path((st.get("sheets") or {}).get("scale-plate"))
             if plate and not (root/plate).exists():
                 warn("CHARACTER-SCALE-PLATE-MISSING",
                      f"{eid}: sheets['scale-plate'] -> {plate} (NOT ON DISK)")
@@ -755,7 +773,33 @@ def lint(root):
 
     reg = u.get("identity", {}).get("register", {})
     if not reg.get("anchor"):
-        err("REGISTER-UNLOCKED", "identity.register.anchor is null; generation should refuse")
+        # STILL AN ERROR, AND DELIBERATELY SO (v0.37). Register-neutral matrices made
+        # the old MESSAGE false without making the finding false. `compose-spread` and
+        # `render_cover` both refuse outright on a null `identity.register.anchor`
+        # ("no anchor: identity.register.anchor is null and render-spec has no
+        # anchorRef"), so a universe in this state genuinely cannot render a spread, a
+        # cover, or a book. Downgrading to a warning to let a bootstrapping universe go
+        # green would weaken a check that is telling the truth.
+        #
+        # What WAS wrong was the totalizing word "generation". Exactly one thing is now
+        # legal here, and it is the thing an operator in this state is usually trying to
+        # do: shoot a declared register-neutral identity master. So the finding names it
+        # rather than dead-ending, which is the same fix the shooter's own refusal got.
+        neutral_ids = sorted(
+            (e.get("id") or ej.stem)
+            for ej in (root/"canon"/"entities").glob("*.json")
+            for e in [jload(ej) or {}]
+            if (e.get("structured") or {}).get("registerNeutral"))
+        extra = ""
+        if neutral_ids:
+            extra = (f" REGISTER-NEUTRAL matrices are exempt and may be shot now: "
+                     f"{', '.join(neutral_ids)}. Everything else still refuses.")
+        err("REGISTER-UNLOCKED",
+            "identity.register.anchor is null, so every RENDER refuses: compose-spread "
+            "and the cover compiler both require it and there is nothing to pass first."
+            + (extra or " A register-neutral reference shoot (an identity master every "
+                        "register is later derived from) is the one exception, and it "
+                        "must be declared on the entity: structured.registerNeutral."))
     elif not (root/reg["anchor"]).exists():
         err("REGISTER-MISSING", f"register anchor does not resolve: {reg['anchor']}")
 
@@ -802,7 +846,17 @@ def lint(root):
         seen = {}
         for k, v in sheets.items():
             if not v: continue
-            seen.setdefault(v, []).append(k)
+            # A SLOT IS A PATH OR A TYPED OBJECT (SPEC 12, v0.23), and this loop only
+            # ever handled the first form: a `{"path", "role"}` slot reached
+            # `seen.setdefault(v, ...)` as a dict key and crashed the WHOLE LINTER with
+            # `TypeError: unhashable type: 'dict'`. So the one form the spec recommends
+            # for a plate whose contribution must be constrained was the form that made
+            # the pre-render check impossible to run. Found 2026-08-06 while adding the
+            # register-neutral role warning immediately below, which is the check that
+            # tells authors to use exactly this shape.
+            path = _sheet_path(v)
+            if not path: continue
+            seen.setdefault(path, []).append(k)
         for path, keys in seen.items():
             if len(keys) > 1:
                 req = [k for k in (st.get("requiredForRender") or []) if k in keys]
@@ -819,6 +873,24 @@ def lint(root):
                          f"one is a dead alias. If the duplicate is INTENTIONAL (a renamed "
                          f"key kept for back-compat), declare it: "
                          f"structured.sheetAliases = {{\"<newKey>\": \"<oldKey>\"}}.")
+        # A REGISTER-NEUTRAL PLATE IS PASSED INTO RENDERS WHOSE MEDIUM IT DOES NOT SHARE.
+        #
+        # The entity-level line `compose-spread` emits says "take no medium from these
+        # plates" once, for the whole cast entry. `role` says it PER PLATE, and four of
+        # the five role instructions carry "Ignore its ... medium" for exactly this
+        # reason. An untyped slot emits nothing at all, so on a photoreal master headed
+        # into a painted book it is the loudest unlabelled reference in the request.
+        # Warning rather than error: the entity-level line is already in force, so this
+        # is defence in depth, not a broken render.
+        if _rn_untyped and st.get("registerNeutral"):
+            untyped = _rn_untyped(e)
+            if untyped:
+                warn("REGISTER-NEUTRAL-UNTYPED-SLOT",
+                     f"{ej.name}: register-neutral entity has untyped sheet(s) "
+                     f"{untyped}. Declare a role so each plate is told what it "
+                     f"contributes and what to ignore: "
+                     f"\"{untyped[0]}\": {{\"path\": ..., \"role\": \"identity\"}} "
+                     f"(identity | geometry | garment | scale; never 'medium' here).")
         # The scaffolder writes `lockedBy: "TODO-you"` and nothing ever forces it to be filled,
         # so an entity can carry locked art, frozen provenance and a full pose set while its
         # record of WHO approved it is still a placeholder. Found on 5 nation-of-fire entities
@@ -907,14 +979,15 @@ def lint(root):
         # Render-correctness: every REQUIRED sheet resolves. Scoped to requiredForRender
         # because that is what the render gate depends on.
         for name in (st.get("requiredForRender") or []):
-            pth = sheets.get(name)
+            pth = _sheet_path(sheets.get(name))
             if not pth: err("GOLDEN-UNDECLARED", f"{ej.name}: requires '{name}' but no sheet path")
             elif not (root/pth).exists(): err("GOLDEN-MISSING", f"{ej.name}: {name} -> {pth} missing")
 
         # Auditability: every LOCKED sheet carries provenance, required or not. A golden
         # is Gary's approved answer of record regardless of whether the render gate needs
         # it, so every approved asset must be able to enter a divergence check.
-        for name, pth in sheets.items():
+        for name, _slot in sheets.items():
+            pth = _sheet_path(_slot)
             if not pth or not (root/pth).exists(): continue    # unlocked/missing: other checks own it
             sidecar = (root/pth).with_name((root/pth).name + ".recipe.json")
             if not sidecar.exists():

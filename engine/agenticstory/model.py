@@ -527,6 +527,31 @@ class Entity:
             if role is not None and role not in SHEET_ROLES:
                 p.append(f"{self.id}: sheets['{k}'].role '{role}' is not a known role "
                          f"(allowed: {sorted(SHEET_ROLES)})")
+        # REGISTER-NEUTRAL (v0.37): the declaration must be readable, because the shoot
+        # FAILS CLOSED on it. A malformed one is not a cosmetic problem: `matrix.
+        # register_neutral` raises rather than returning None precisely so that a
+        # half-written declaration cannot degrade into an in-register shoot of the one
+        # plate set that must never carry a register.
+        from .matrix import register_neutral
+        try:
+            rn = register_neutral(self.raw)
+        except ValueError as e:
+            rn = None
+            p.append(str(e))
+        if rn:
+            # `role: "medium"` says "this plate supplies the paint language". On a
+            # register-neutral entity that is a contradiction in terms: the entity has
+            # declared that its plates belong to no register, so passing one AS the
+            # medium imports the master's medium into every render that casts it, which
+            # is the precise failure the declaration exists to prevent.
+            for k, v in (self.structured.get("sheets") or {}).items():
+                if isinstance(v, dict) and v.get("role") == "medium":
+                    p.append(
+                        f"{self.id}: sheets['{k}'].role is 'medium' on a REGISTER-NEUTRAL "
+                        f"entity. This entity declares that its plates carry no register, "
+                        f"so no plate of it may be passed as the medium. Use 'identity', "
+                        f"'geometry', 'garment' or 'scale' (each of which tells the model "
+                        f"to ignore the plate's medium), or drop the role.")
         # structured.render is PROMPT-CRAFT and it is what actually steers the model, so a
         # malformed one is worse than a missing one: nothing here refused it before, and the
         # first thing that read it was the spread assembler, at render time, with an

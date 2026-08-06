@@ -11,7 +11,7 @@ Turn a scaffolded entity's empty matrix slots into locked reference shots. This 
 
 ## Inputs
 - The target universe (a path with `universe.json`) and the entity id.
-- Read `identity.register` (anchor + rejectedPoles). If `register.anchor` is null, STOP: the universe's style is not locked. Point the operator at the start-universe style-lock step and do not generate.
+- Read `identity.register` (anchor + rejectedPoles). If `register.anchor` is null, STOP: the universe's style is not locked. Point the operator at the start-universe style-lock step and do not generate. **Unless the entity declares `structured.registerNeutral`** — see below.
 - **Read `identity.register.stylePack` too, and read the notes beside it.** A universe that declares a pack usually declares it BECAUSE its inline anchor misbehaved, and the note says how.
 
 ### A declared `stylePack` is not a decoration (v0.33)
@@ -27,6 +27,43 @@ A reference shoot is the sparsest render there is: one subject, no scene, and of
 Earned 2026-08-04 in nation-of-fire, which declares both. Its own `stylePackNote` records two renders that came back as the anchor's oil lamp and clay jar; the shoot that afternoon made a third, a seed that returned fully PHOTOREAL, that register's top rejected pole. Passing `--register nof-soft-painterly` was right on the first re-shot. The refusal is free and fires before any generation; a wrong seed is a paid image, and a blessed wrong seed is a whole matrix.
 
 **Before answering the refusal, read the register's `anchorNote` / `stylePackNote`.** A universe that wrote one has usually already recorded which anchor leaked, when, and into what.
+
+### The identity master: a matrix shot in NO register (v0.37)
+
+One case legitimately owes the register nothing: a **photoreal identity master**, from
+which every register rendition is later DERIVED. A real person's digital twin is the case
+this exists for. It cannot wait for a blessed register, because it is the thing the
+register conversions are made FROM, and a master shot inside a register can only ever
+serve that register.
+
+Declare it ON THE ENTITY, never at the command line:
+
+```json
+"structured": { "registerNeutral": {
+    "medium": "hyper-realistic documentary photography",
+    "why": "one photoreal master; every register is a conversion of it" } }
+```
+
+Then `chain_matrix.py` shoots with **no anchor at all**: no anchor image, no register
+style line (the `medium` leads instead), no register poles as negatives, and a recipe that
+records `registerNeutral` beside a null `anchor` so the absence is a statement rather than
+an omission. `--register` and `--no-style-pack` are **REFUSED** here: both name WHICH
+anchor to pass, and the answer is none.
+
+Two things to hold onto:
+
+- **It is canon and not a flag on purpose.** A flag cannot refuse a re-shoot it is not
+  passed. Once the universe finally blesses a register, an in-register re-shoot would bake
+  that register into the one asset whose job is to be medium-free, and a plate cannot be
+  un-baked.
+- **Shoot the RENDITIONS from the master, never from the photographs again.** Two
+  independent shoots of one subject produce two subjects. Renditions live beside the master
+  (`reference/<id>/renditions/<register-id>/`) with a recipe naming the master plate.
+
+At render time `compose-spread` emits one line per register-neutral cast entry telling the
+model to take likeness and geometry from those plates and no medium. Give each slot a
+`role` too (`identity` / `geometry` / `garment` / `scale`, never `medium`), which says the
+same thing per plate; `lint-universe` warns `REGISTER-NEUTRAL-UNTYPED-SLOT` if you do not.
 
 ### Multi-register universes: `--register <pack-id>`
 

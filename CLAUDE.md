@@ -32,6 +32,7 @@ would use at the moment you need it.
 | **add / insert / renumber a spread** | `update-book/scripts/insert_spread.py` |
 | **recast one entity as another across a story** | `update-book/scripts/recast_story.py` |
 | **chain an entity's matrix shots** | `shoot-references/scripts/chain_matrix.py` — if the universe declares `identity.register.stylePack` AND an inline `anchor`, it REFUSES until you say which (`--register <pack>` / `--no-style-pack`). A shoot is sparse enough that the anchor's own subject comes back whole; nation-of-fire's seed came back photoreal off the inline anchor on 2026-08-04. |
+| **shoot a PHOTOREAL IDENTITY MASTER before the register exists** | Same script, but declare `structured.registerNeutral: {"medium", "why"}` on the entity FIRST (SPEC 12, v0.37). The matrix then passes NO anchor at all, and `--register` / `--no-style-pack` are refused. This is the answer to "the universe style is not locked; do not generate" when the thing you are shooting is the master every register is later derived FROM. It is canon, never a flag: a flag cannot refuse the in-register re-shoot six months from now. |
 | **backfill prompts onto old plates** | `shoot-references/scripts/backfill_prompts.py` |
 | **judge a slot against its golden** | `judge-slot/scripts/judge.py` |
 | **voice-check a manuscript before locking** | `voice-gate/scripts/voice_gate.py <universe> <manuscript.md>` — rules fetched from https://garysheng.com/voice.md; fails on unadjudicated findings, waivable with a written reason |

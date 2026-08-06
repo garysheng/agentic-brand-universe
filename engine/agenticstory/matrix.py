@@ -59,6 +59,121 @@ REFERENCE_MATRIX: dict[str, dict] = {
 }
 
 
+# SPEC v0.37 §12: a matrix shot with NO REGISTER AT ALL.
+#
+# The framework's own vocabulary has carried the concept since `face-neutral-color`
+# was documented above as "a full-colour, REGISTER-NEUTRAL face plate", and nothing
+# honoured it: `chain_matrix.resolve_register` refused unconditionally on a null
+# `identity.register.anchor` ("the universe style is not locked; do not generate"),
+# and the two escapes beside it (`--register`, `--no-style-pack`) both choose WHICH
+# anchor to pass and neither can say NONE.
+#
+# That is an ordering deadlock for any universe built around a real person. The
+# architecture Proof of Vibes states out loud (Gary, 2026-08-06: "we want to create a
+# hyper realistic character of Russ, and then we can create variations that are in
+# different registers") is one photoreal identity master with N register conversions
+# DERIVED from it. The master must be shot before any register is blessed, because the
+# master is the thing every register is later derived FROM. Under the old refusal it
+# could never be shot at all: the register gates the master, and the master is exactly
+# the artefact that owes the register nothing.
+#
+# So neutrality is DECLARED IN CANON (`structured.registerNeutral`), not chosen per
+# invocation. A flag would let the next operator re-shoot the master in-register with
+# nothing complaining; a durable declaration on the entity is what makes the second
+# shoot refuse.
+#
+# THE HARD HALF: neutral means NO ANCHOR IS PASSED, not "an anchor is not required".
+# Once a register IS blessed, a re-shoot would otherwise silently bake that register
+# into the one asset whose entire job is to be medium-free, and a reference image
+# outranks a word every time (the physics `dropSheets` and `--star` were both earned
+# by). An anchor reaching a register-neutral shoot is therefore a REFUSAL.
+REGISTER_NEUTRAL_CONTRACT: list[str] = [
+    "the register anchor IMAGE is not passed as a reference on any shot of this matrix",
+    "the register's style line is not prepended; the entity's declared `medium` leads instead",
+    "the register's `rejectedPoles` are not baked as negatives, because a pole is the "
+    "opposite of a medium this matrix is not being shot in (the entity's own "
+    "`structured.negatives` and its prompts.md negatives still are)",
+    "the anchor-subject guard is not emitted, because no anchor's subject is in play",
+    "`--register` and `--no-style-pack` are REFUSED, because both of them name WHICH "
+    "anchor to pass and neither can name none",
+    "every shot's recipe records `registerNeutral` and a null `anchor`, so a later "
+    "reader can tell a deliberate absence from a forgotten input",
+]
+
+# The one instruction a register-neutral plate owes every render that later consumes it.
+# The MAKING half is the contract above; this is the CONSUMPTION half, and it composes
+# with the per-slot `role` vocabulary (SPEC §12, v0.23) rather than replacing it: a role
+# says what ONE plate contributes, this says what the whole entity's plate set is FOR.
+REGISTER_NEUTRAL_CONSUMPTION = (
+    "REGISTER-NEUTRAL MASTER: {id}'s reference plates are {medium} and are NOT a style "
+    "reference. Take likeness, geometry, proportion and markings from them exactly. Take "
+    "NO medium, paint language, lighting, surface treatment or colour grading from them: "
+    "render {id} fully in this image's declared style."
+)
+
+
+def register_neutral(entity: dict) -> dict | None:
+    """The entity's register-neutral declaration, or None.
+
+    Raises ValueError when one is DECLARED MALFORMED, and that is the load-bearing
+    half. Returning None on a half-written declaration would silently fall back to
+    passing the register anchor, which is the exact outcome the declaration exists to
+    forbid, so this fails closed: an unreadable declaration stops the shoot rather
+    than downgrading it to an in-register one.
+
+    `medium` is required because it REPLACES the register's style line in the prompt.
+    Naming the medium positively is what actually moves a model (see
+    `chain_matrix.style_line`); a neutral shoot with no medium named is a shoot with no
+    style instruction at all, which returns whatever the base model prefers.
+
+    `why` is required because this field says a matrix deliberately disobeys the
+    anchor-first rule the rest of the framework enforces, and a standing exemption with
+    no recorded reason is the thing the next author deletes or copies blindly.
+    """
+    rn = (entity.get("structured") or {}).get("registerNeutral")
+    if rn is None or rn is False:
+        return None
+    eid = entity.get("id") or "<entity>"
+    if not isinstance(rn, dict):
+        raise ValueError(
+            f"{eid}: structured.registerNeutral must be an OBJECT declaring `medium` and "
+            f"`why`, not {type(rn).__name__}. A bare true cannot say what the master IS, "
+            f"and the medium is what replaces the register's style line in the prompt.")
+    if not str(rn.get("medium") or "").strip():
+        raise ValueError(
+            f"{eid}: structured.registerNeutral declares no `medium`. Say what this matrix "
+            f"IS in one line (\"hyper-realistic documentary photography\"): it is passed as "
+            f"the shoot's style line in place of the register, and a neutral shoot with no "
+            f"medium named has no style instruction at all.")
+    if not str(rn.get("why") or "").strip():
+        raise ValueError(
+            f"{eid}: structured.registerNeutral declares no `why`. This field exempts one "
+            f"matrix from the anchor-first rule every other shoot in the universe obeys; "
+            f"record why in one line (\"one photoreal master, every register derived from "
+            f"it\") so the exemption is auditable.")
+    return rn
+
+
+def register_neutral_untyped_slots(entity: dict) -> list[str]:
+    """Sheet keys on a register-neutral entity that declare no `role`. Advisory.
+
+    A register-neutral plate is passed into renders whose medium it deliberately does
+    not share, and an UNTYPED slot emits no per-ref instruction at all (`role_lines`),
+    so its medium reaches the model as loudly as its likeness. `role` is the existing
+    hook for exactly this ("Ignore its ... medium" appears in four of the five role
+    instructions), which is why this composes with roles instead of inventing a second
+    vocabulary.
+    """
+    try:
+        if not register_neutral(entity):
+            return []
+    except ValueError:
+        return []
+    sheets = (entity.get("structured") or {}).get("sheets") or {}
+    return sorted(k for k, v in sheets.items()
+                  if v and not (isinstance(v, dict) and v.get("role")))
+
+
 # What a scale plate must satisfy to be worth shooting, independent of register.
 # The framework fixes the GEOMETRY (these); a universe supplies the TREATMENT via
 # `identity.scaleReference`, so a luminous symbolic universe is not forced to render

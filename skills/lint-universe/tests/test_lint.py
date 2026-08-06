@@ -1014,5 +1014,42 @@ class TestValidityWindows(unittest.TestCase):
         self.assertNotIn("VALIDFOR-PARTIAL", warns)
 
 
+class TestTypedSheetSlots(unittest.TestCase):
+    """A TYPED slot (`{"path", "role"}`, SPEC 12 v0.23) crashed the whole linter.
+
+    `seen.setdefault(v, ...)` used the slot as a dict key (`TypeError: unhashable type:
+    'dict'`) and `root/pth` divided a Path by a dict. So the one slot form the spec
+    recommends for a plate whose contribution must be constrained was the form that made
+    the free pre-render check impossible to run at all. Found 2026-08-06.
+    """
+
+    def universe(self, tmp, slot):
+        root = build(tmp, entity={
+            "id": "e", "kind": "character", "authority": {"lockedBy": "gary"},
+            "structured": {"sheets": {"master": slot},
+                           "requiredForRender": ["master"],
+                           "render": {"always": "a man", "poses": {"p": {}}}}})
+        (root / "reference" / "e").mkdir(parents=True, exist_ok=True)
+        (root / "reference" / "e" / "master.png").write_bytes(b"\x89PNG")
+        (root / "reference" / "e" / "master.png.recipe.json").write_text(json.dumps(
+            {"asset": "reference/e/master.png"}))
+        return root
+
+    def test_a_typed_slot_lints_without_crashing(self):
+        with tempfile.TemporaryDirectory() as t:
+            errs, _ = run(self.universe(t, {"path": "reference/e/master.png",
+                                            "role": "identity"}))
+        self.assertNotIn("GOLDEN-MISSING", errs)
+        self.assertNotIn("GOLDEN-UNDECLARED", errs)
+
+    def test_a_typed_slot_and_a_bare_slot_lint_the_same(self):
+        with tempfile.TemporaryDirectory() as t:
+            bare, _ = run(self.universe(t, "reference/e/master.png"))
+        with tempfile.TemporaryDirectory() as t:
+            typed, _ = run(self.universe(t, {"path": "reference/e/master.png",
+                                             "role": "identity"}))
+        self.assertEqual(bare, typed)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

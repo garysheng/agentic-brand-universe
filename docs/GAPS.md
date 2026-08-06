@@ -317,6 +317,97 @@ golden) deserve a deliberate SPEC sentence, not a drive-by; queued for evolve-ab
 
 ---
 
+### G20. There is no `renditions` axis: a register conversion of a locked master cannot be declared
+
+**What.** SPEC v0.37 gives an entity a register-neutral MASTER matrix. It gives it nothing for
+the other half of that architecture: the per-register CONVERSIONS derived from the master. There
+is no field saying "this plate set is `<master sheets>` rendered in `<style pack>`", no selector
+that picks a rendition per render, and no check that a rendition was derived from the master
+rather than re-shot from the source photographs. The one layer that CAN express the derivation
+today is the recipe sidecar's `derivedFrom`, which no compiler reads.
+
+The consequence is not cosmetic. A rendition added to `structured.sheets` lands in
+`requiredForRender` and is then passed on EVERY render of that entity, which is the reference
+pollution SPEC v0.34 documents for `the-stronghold`; keeping renditions OUT of `sheets` means
+canon cannot name them at all, so choosing one per render is a hand-typed path.
+
+**Evidence.** 2026-08-06, proof-of-vibes `russ-ballard`. Its own
+`structured.renditionPolicyNote` already writes the wanted shape out in prose and opens with
+"PROPOSED SHAPE, READ BY NOTHING TODAY": `structured.renditions.<register-id> = {derivedFrom:
+[<master sheet keys>], sheets: {...}, medium: <style-pack-id>}`, selected per render, never in
+`requiredForRender`, face sheets KEPT by default (the inverse of `altLooks`, which auto-drops
+them). A universe writing the framework's next field into a note is the same signal that earned
+v0.37 itself: `reference/russ-ballard/prompts.md` had written the register-neutral rule in prose
+first.
+
+**Next invocation.** The first Proof of Vibes work that renders Russ: a field-log editorial
+plate, a halftone-pop flyer, a cutout sticker. That is the moment a rendition must be selected,
+and today it is selected by typing a path.
+
+**Would close it.** `evolve-abu` → `structured.renditions` on an entity + a `@rendition`
+selector in the cast entry, resolving like `altLooks` but keeping the face sheets, plus a
+`shoot-references` mode that derives a rendition FROM the master's plates (never from the photo
+stack again, because two independent shoots of one subject produce two subjects).
+
+**Still open because.** v0.37 deliberately shipped the half that was BLOCKING work (the master
+could not be shot at all) and not the half that is merely inconvenient (a rendition can be made
+by hand with `on-brand-image --entity` and a recipe). The renditions axis wants designing against
+two real universes rather than one, and Proof of Vibes has not yet rendered its first work.
+
+### G21. Register-neutrality is whole-matrix only, so `face-neutral-color` still has no home
+
+**What.** `structured.registerNeutral` (v0.37) declares that an entity's WHOLE matrix carries no
+register. The framework's own vocabulary also contains a PER-SLOT version of the same idea and
+has since v0.21: `matrix.py` documents `face-neutral-color` as "a full-colour, register-neutral
+face plate", an optional slot that exists because a face sheet in a non-photographic medium
+carries facial architecture and no complexion. That slot sits inside an otherwise in-register
+matrix, and nothing declares it neutral, so it is shot against the register anchor like every
+other shot and the thing it exists to supply (a real complexion) is exactly what the anchor
+overrides.
+
+**Evidence.** The comment itself records the cost: seven render batches on gary-sheng-art's
+`jesus` (2026-07-27) before anyone opened the plates and saw they were monochrome. v0.37 did not
+touch that case.
+
+**Next invocation.** The next character defined from non-photographic references whose renders
+come back with the wrong complexion, which is every character in every non-photoreal universe
+that has a real skin tone to get right.
+
+**Would close it.** Not by adding a per-slot flag to the same declaration. The chain conditions
+each shot on its accepted siblings, so a half-neutral matrix walks the anchor into the neutral
+plates through the golden chain regardless of what the flagging says. The honest shape is a
+SECOND small matrix (a look, or its own prompts.md folder) shot register-neutral and locked back
+onto the entity, which is the same move `--look` already makes for an era.
+
+**Still open because.** It needs the chain topology question answered (a neutral sub-matrix is a
+separate chain, not a flagged shot inside one), and v0.37 was scoped to the deadlock that was
+blocking a live universe.
+
+### G22. A register declaring only a `stylePack` can be SHOT but not RENDERED
+
+**What.** SPEC v0.33 made `identity.register.stylePack` load-bearing in the reference shooter: a
+register declaring a pack and no inline `anchor` resolves from the pack. No render path learned
+the same thing. `assemble_prompt` raises "no anchor: identity.register.anchor is null and
+render-spec has no anchorRef", and the cover compiler is the same. So a universe can shoot its
+entire reference matrix against its declared pack and then be unable to render a single spread.
+
+**Evidence.** Read directly off the two files, 2026-08-06 (`chain_matrix.resolve_register` vs
+`assemble_prompt` line 1467). Not yet paid for by a run, because every universe that declares a
+pack today also declares an inline anchor.
+
+**Next invocation.** proof-of-vibes, and its own `stylePackNote` names the date: "When register
+A's images exist and Gary has blessed them, set `identity.register.stylePack` to the pack id ...
+so the anchor moves INTO the pack rather than sitting beside it." The first spread rendered after
+that move refuses.
+
+**Would close it.** `evolve-abu` → one shared register resolver both the shooter and the spread
+compiler call, instead of two implementations that already disagree.
+
+**Still open because.** Filed the day it was found, with no run behind it yet; it wants landing
+with the resolver extracted once rather than patched into the compiler as a second copy.
+
+---
+
 ## Filing a gap here
 
 Append an entry with the five headings above (**What / Evidence / Next invocation / Would
