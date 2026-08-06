@@ -233,6 +233,33 @@ class TestNegativesAndCrossRefs(unittest.TestCase):
         self.assertEqual(parsed["prompts"]["c1-wide"], "Wide view.")
         self.assertEqual(parsed["prompts"]["c2-work"], "Work view.")
 
+    def test_alt_look_nested_paths_parse_and_strip_their_size(self):
+        """An ALT-LOOK's plates live one directory deeper, at
+        `reference/<id>/<look>/<shot>.png`. The heading pattern used to allow exactly
+        ONE path segment, so every alt-look heading failed to match, fell through to the
+        `->` split, and produced a shot name with its "(WxH)" size still glued on. The
+        chain then refused against the entity's declared sheets and blamed the author's
+        headings for a file that was correct. Earned 2026-08-06 on nation-of-fire's
+        josh-howerton, whose three age eras all refused."""
+        self._locked_other()
+        self._write_prompts(
+            "# room @ era\n\n"
+            # heading TEXT deliberately differs from the FILENAME, because a shot is
+            # keyed by the file it writes. Only the path branch can get this right;
+            # the `->` fallback would key these as "era wide" and "era work".
+            "## era wide (1024x1536)  -> reference/room/era/c1-wide.png\nWide view.\n\n"
+            "## era work (1536x1024)  -> reference/room/era/c2-work.png\nWork view.\n")
+        from importlib import util
+        spec = util.spec_from_file_location("cm", CHAIN)
+        cm = util.module_from_spec(spec); spec.loader.exec_module(cm)
+        parsed = cm.parse_prompts_full(self.root / "reference" / "room" / "prompts.md")
+        # keyed by the BARE shot name, with no size suffix
+        self.assertEqual(sorted(parsed["prompts"]), ["c1-wide", "c2-work"])
+        self.assertEqual(parsed["prompts"]["c1-wide"], "Wide view.")
+        # and the size is still read into its own channel
+        self.assertEqual(parsed["sizes"]["c1-wide"], "1024x1536")
+        self.assertEqual(parsed["sizes"]["c2-work"], "1536x1024")
+
     def test_header_refs_apply_to_every_shot(self):
         self._locked_other()
         self._write_prompts(

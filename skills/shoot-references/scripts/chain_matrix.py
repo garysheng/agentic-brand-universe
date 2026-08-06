@@ -434,7 +434,15 @@ def parse_prompts_full(md: Path) -> dict:
                 out[cur] = " ".join(buf).strip()
                 refs[cur] = list(dict.fromkeys(header_refs + cur_refs))
             head = m.group(1)
-            path = re.search(r"reference/[^/]+/([A-Za-z0-9._-]+)\.png", head)
+            # NESTED PATHS ARE REAL: an ALT-LOOK's plates live at
+            # `reference/<id>/<look>/<shot>.png`, one directory deeper than the default
+            # matrix. A pattern allowing exactly ONE segment silently failed to match
+            # every alt-look heading, fell through to the `->` split below, and returned
+            # the shot name WITH its "(WxH)" size still attached, so the heading never
+            # matched a declared sheet and every era shoot refused with a message that
+            # blamed the author's headings. Earned 2026-08-06 on nation-of-fire's
+            # josh-howerton, whose three age eras all refused against correct files.
+            path = re.search(r"reference/(?:[^/\s)]+/)+([A-Za-z0-9._-]+)\.png", head)
             # A SHOT HEADING NAMES AN OUTPUT. A `##` section that does not point at
             # one is prose (a rationale, a note to the next author), and treating it
             # as a shot invents a shot named after a sentence, silently lengthens the
@@ -446,6 +454,11 @@ def parse_prompts_full(md: Path) -> dict:
                 cur, buf, cur_refs = None, [], []
                 continue
             cur = path.group(1) if path else head.split("—")[0].split("->")[0].strip()
+            # Belt and braces for the fallback branch: a heading that declares a size
+            # but whose target path this parser could not read must still yield a bare
+            # shot name. Leaving "(WxH)" glued to the name is how the nested-path bug
+            # above expressed itself, and the size is parsed separately just below.
+            cur = re.sub(r"\s*\(\s*\d{3,5}\s*[xX×]\s*\d{3,5}\s*\)\s*", "", cur).strip()
             _claim(cur, head)
             # PER-SHOT SIZE, declared in the heading as "(WxH)". A reference matrix
             # legitimately MIXES aspects: full-body and profiles want portrait, while
