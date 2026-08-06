@@ -370,6 +370,36 @@ Then `abu:render-readback` every image.
   once the scene said so out loud ("IGNORE THE SIZE AND PLACEMENT OF THE FIGURES IN THE REFERENCE
   PLATE: there they are small and far away, and here they are NEAR"), fixed the nearest figure's
   head height as a fraction of the frame, and described each person individually.
+- **STOP COMPOSING EVERY CAST FIGURE AS A WHOLE VISIBLE BODY. Frame what the camera actually sees.**
+  The default instinct is to fit each cast person entirely into the picture, and passing a
+  `forward-fullbody` plate reinforces it, so the model happily obliges: everyone whole, everyone
+  at the same distance, everyone flat and side-on to the lens. That is not a camera position, it
+  is a line-up, and it produces the awkwardness before it produces any nameable defect.
+  **In a two-hander the NEAR figure is close to the lens, CROPPED by the frame, softly out of
+  focus, and frequently seen FROM BEHIND; the FAR figure is the sharp subject.** Say which is
+  which, say where the frame cuts the near one, and say that their lap and legs are outside the
+  picture and are not drawn.
+  Earned 2026-08-06 on he-kept-the-appointment spreads 17 and 19 (two men in a restaurant booth).
+  The first pass staged both men whole and side-on and painted the near man's torso emerging out
+  of the tabletop with no lap and no seat; the operator's words were "Josh is stuck in the table."
+  **Fixing the anatomy did not fix the picture**, because the anatomy was a symptom: the real
+  fault was trying to show a whole body that the camera had no business seeing. It only came right
+  once the near man was moved to the outer edge of his seat, close to the lens, and cropped.
+
+- **THE TORSO FOLLOWS THE HEAD. A seated person is TURNED TOWARD whoever they are talking to.**
+  This is the specific anatomical twist that "near figure in profile" invites, and it is worth its
+  own line because the fix for the previous bullet walks straight into it. Ask for a profile and
+  you get a head rotated ninety degrees on a chest that is still square to the camera, which is a
+  posture no relaxed person holds. **If the near figure's head is turned across the table, their
+  chest points across the table too**, so the camera behind them sees the BACK and OUTER SIDE of
+  one shoulder, the back of the head, and at most a sliver of cheek: their chest and the front of
+  their shirt are NOT in frame at all. Same run, same two spreads, second re-roll: the operator's
+  words were "why do you feel like the chest needs to be facing the camera?"
+  State it as anatomy, not as a camera name: naming the shot `over-shoulder` did NOT prevent it.
+  The wording that worked was "HIS TORSO IS TURNED AWAY FROM THE CAMERA and squared to the table;
+  head and body point the SAME WAY", plus the negative "his chest is not visible and the front of
+  his shirt is not visible."
+
 - **BEFORE calling a canon-cast render defective, LOOK AT THE PLATE that was passed to it.** A
   glowing open doorway on a horizon was nearly re-rolled as a violation of the entity's
   "no-gate-no-guard-no-wall" invariant; the entity's own approved master plate contains that
