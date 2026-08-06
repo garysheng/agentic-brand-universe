@@ -232,7 +232,12 @@ def forms(root: Path) -> list[dict]:
 def test_counts(root: Path) -> dict:
     """Counted statically. Executing the suite to document it would make the doc
     build slow, network-shy and recursive; `def test_` is the same number."""
-    files = sorted(root.glob("engine/tests/test*.py")) + sorted(root.glob("skills/*/tests/test*.py"))
+    # providers/ was missing here for the same reason it was missing from run-tests.sh:
+    # nobody looked. The README therefore under-reported the suite and would have gone on
+    # under-reporting every provider test forever. Added 2026-08-06 alongside the runner fix.
+    files = (sorted(root.glob("engine/tests/test*.py"))
+             + sorted(root.glob("skills/*/tests/test*.py"))
+             + sorted(root.glob("providers/*/tests/test*.py")))
     n = 0
     for f in files:
         n += len(re.findall(r"^\s*def test_[A-Za-z0-9_]+", f.read_text(), re.M))
