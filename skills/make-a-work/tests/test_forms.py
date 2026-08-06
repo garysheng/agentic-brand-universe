@@ -90,6 +90,71 @@ class TestSurvey(unittest.TestCase):
         self.assertEqual([f["id"] for f in forms.survey(self.u)], ["apple", "moose", "zebra"])
 
 
+class TestListJson(unittest.TestCase):
+    """`list --json` is the contract a GUI consumer reads.
+
+    The reason this exists at all: without it a consumer regex-scrapes the human
+    output, which is the hand-rolling the forms-are-data rule exists to prevent. So
+    the tests are about the output being PARSEABLE in every state, especially the
+    empty one, which is the state every brand-new cartridge starts in.
+    """
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory(); self.tmp = self._t.name
+        self.u = universe(self.tmp)
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def _list(self, as_json):
+        ns = type("N", (), {"universe": str(self.u), "json": as_json})
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = forms.cmd_list(ns)
+        return rc, buf.getvalue()
+
+    def test_an_empty_universe_emits_an_empty_ARRAY_not_prose(self):
+        rc, out = self._list(True)
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out), [])
+
+    def test_the_empty_case_still_reads_as_prose_without_the_flag(self):
+        rc, out = self._list(False)
+        self.assertEqual(rc, 0)
+        self.assertIn("no forms declared", out)
+        with self.assertRaises(json.JSONDecodeError):
+            json.loads(out)
+
+    def test_json_carries_every_field_a_consumer_decides_on(self):
+        form(self.u, "flyer", evals=("thumbnail.py",), status="STATUS: ONE-INSTANCE-DERIVED.")
+        _, out = self._list(True)
+        rec = json.loads(out)[0]
+        self.assertEqual(rec["id"], "flyer")
+        self.assertTrue(rec["usable"])
+        self.assertEqual(rec["missing"], [])
+        self.assertEqual(rec["evals"], ["thumbnail.py"])
+        self.assertFalse(rec["retiredEncodingOnly"])
+        self.assertIn("ONE-INSTANCE-DERIVED", rec["status"])
+
+    def test_json_reports_a_retired_encoding_form_as_unusable(self):
+        form(self.u, "scrolling-diorama", form_md=False, prompt_md=False, form_json=True)
+        rec = json.loads(self._list(True)[1])[0]
+        self.assertFalse(rec["usable"])
+        self.assertTrue(rec["retiredEncodingOnly"])
+
+    def test_json_reports_a_form_missing_its_method_as_unusable(self):
+        form(self.u, "half-built", prompt_md=False)
+        rec = json.loads(self._list(True)[1])[0]
+        self.assertFalse(rec["usable"])
+        self.assertIn("PROMPT.md", rec["missing"])
+
+    def test_json_holds_the_same_stable_order_as_the_human_listing(self):
+        for fid in ("zebra", "apple", "moose"):
+            form(self.u, fid)
+        self.assertEqual([r["id"] for r in json.loads(self._list(True)[1])],
+                         ["apple", "moose", "zebra"])
+
+
 class TestRefusals(unittest.TestCase):
     def setUp(self):
         self._t = tempfile.TemporaryDirectory(); self.tmp = self._t.name

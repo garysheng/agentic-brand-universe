@@ -23,7 +23,7 @@ would use at the moment you need it.
 | **grade a universe** | `universe-doctor/scripts/grade.py` |
 | **grade a rendered book** | `book-doctor/scripts/book_doctor.py` |
 | **static-check before rendering** (free, no API calls) | `lint-universe/scripts/lint.py` |
-| **list what a universe can MAKE** | `make-a-work/scripts/forms.py list <universe>` |
+| **list what a universe can MAKE** | `make-a-work/scripts/forms.py list <universe>` (add `--json` for the machine path; emits `[]` for a universe with no forms yet, so a consumer never parses prose to learn "none") |
 | **scaffold a style pack / lookbook** | `create-style-pack/scripts/scaffold.py`, `create-lookbook/scripts/scaffold.py` |
 | **scaffold a new form** (a new KIND of work) | `create-form/scripts/scaffold.py` (refuses on zero evidence works; the method lives in the create-form SKILL) |
 | **assemble a spread prompt from canon** | `compose-spread/scripts/assemble_prompt.py` |

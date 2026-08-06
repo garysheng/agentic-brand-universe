@@ -16,6 +16,7 @@ form, it is a note about one: nothing can be made from it, and offering it in a 
 would send an agent looking for a method that does not exist.
 
     forms.py list <universe>            every form, with status and what it is missing
+    forms.py list <universe> --json     the same survey, machine-readable ([] when none)
     forms.py resolve <universe> <id>    paths + the status warning, or a refusal
 
 Legacy note: `forms/<id>/form.json` in the SPEC 4.8 slot encoding was RETIRED in v0.17.
@@ -69,6 +70,13 @@ def survey(root):
 
 def cmd_list(a):
     forms = survey(_universe(a.universe))
+    if getattr(a, "json", False):
+        # A universe with no forms emits [], never the prose below. A brand-new
+        # cartridge legitimately declares zero forms, and that is the FIRST thing a
+        # GUI consumer sees; making it parse prose to learn "none yet" would push it
+        # straight back into regex-scraping this tool's console output.
+        print(json.dumps(forms, indent=2))
+        return 0
     if not forms:
         print("no forms declared. A form is a folder at forms/<id>/ holding FORM.md + PROMPT.md.")
         return 0
@@ -104,7 +112,10 @@ def cmd_resolve(a):
 def main():
     ap = argparse.ArgumentParser(description="Discover the forms a universe declares.")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("list"); p.add_argument("universe"); p.set_defaults(fn=cmd_list)
+    p = sub.add_parser("list"); p.add_argument("universe")
+    p.add_argument("--json", action="store_true",
+                   help="machine-readable: the full survey records, [] when none are declared")
+    p.set_defaults(fn=cmd_list)
     p = sub.add_parser("resolve"); p.add_argument("universe"); p.add_argument("form")
     p.set_defaults(fn=cmd_resolve)
     a = ap.parse_args()
