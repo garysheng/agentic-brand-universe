@@ -251,6 +251,15 @@ shots. Idempotent, so a re-run only shoots what is missing.
   state. A reference image outranks any number of words, so the thing that is supposed to be gone
   comes back. Negate the missing thing by name.
 
+**RUN `abu:lint-universe` AFTER LOCKING, BEFORE YOU CAST ANYTHING OLD.** It already checks
+things nothing else does, and the one that bit hardest is `authority.lockedBy` still reading
+`TODO-you`: the scaffolder writes that placeholder and nothing forces it to be filled, so an
+entity can be locked, have art on disk, pass `validate` AND pass `assert-story`, and still have
+no recorded approver. Come Look (2026-08-06) cast four such entities without noticing, all locked
+2026-07-28 for a story that was never written. **This is a discovery problem rather than a missing
+check**: the lint exists and nobody ran it, which is why the pointer lives here, in the step where
+locking happens, instead of in a catalog read at session start.
+
 ### 4. Words + render -> `abu:render-book` (per spread: `compose-spread`)
 
 **Words-before-art. RUN THE SCRIPT on the manuscript before anything renders:**

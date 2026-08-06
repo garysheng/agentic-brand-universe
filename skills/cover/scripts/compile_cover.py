@@ -77,6 +77,22 @@ def main() -> int:
     ap.add_argument("--title", required=True)
     ap.add_argument("--subtitle", default=None)
     ap.add_argument("--hero", default=None)
+    ap.add_argument("--no-cast", dest="no_cast", action="store_true",
+                    help="compose this plate with NO character at all. A closing plate is "
+                         "often an empty room, and without this the compiler auto-selects a "
+                         "hero from story.features and refuses when it finds none, so an "
+                         "unpeopled endcap was impossible to ask for and no amount of scene "
+                         "text could override it. Earned on Come Look (hyperagentic-age, "
+                         "2026-08-06): three paid re-rolls asked for an empty room and got a "
+                         "full-length figure dead centre, filling the lower half of the frame "
+                         "that the closing verse is overlaid onto.")
+    ap.add_argument("--negative", dest="negatives", action="append", default=[],
+                    help="an extra negative for THIS plate, repeatable. Register poles and the "
+                         "standard lettering negatives always apply; this adds to them. Without "
+                         "it, a canon violation on a cover could only be fought in free-text "
+                         "scene prose, which is the weakest place to put a prohibition: a "
+                         "denominational cross appeared on a cover against the hero's own "
+                         "locked 'nothing denominational' rule and took a re-roll to remove.")
     ap.add_argument("--hero-pose", dest="hero_pose", default="front",
                     help="which of the hero's poses the cover composes (default 'front'). "
                          "A hero seen from BEHIND on a cover is 'back', and needs this: a pose "
@@ -127,14 +143,18 @@ def main() -> int:
     story = load(uroot / "stories" / f"{args.story}.json")
     features = story.get("features", [])
     hero_id = args.hero
-    if not hero_id:
+    if args.no_cast and args.hero:
+        print("REFUSE: --no-cast and --hero contradict each other; pass one.", file=sys.stderr)
+        return 2
+    if not hero_id and not args.no_cast:
         for eid in features:
             ent = load(uroot / "canon" / "entities" / f"{eid}.json")
             if ent.get("kind") == "character":
                 hero_id = eid
                 break
-    if not hero_id:
-        print("REFUSE: no hero character in story features; pass --hero", file=sys.stderr)
+    if not hero_id and not args.no_cast:
+        print("REFUSE: no hero character in story features; pass --hero, or --no-cast "
+              "if this plate is deliberately unpeopled.", file=sys.stderr)
         return 2
 
     refs = [anchor]
@@ -144,7 +164,7 @@ def main() -> int:
     # form below for a non-character. Parsed once, before the plate split, so the
     # two selectors cannot be confused for each other.
     extra_poses = {}
-    specs = [hero_id]
+    specs = [hero_id] if hero_id else []
     for spec in args.extras:
         eid_only, pose = split_extra(spec.split(":", 1)[0])
         if pose:
@@ -269,6 +289,12 @@ def main() -> int:
 
     negatives = list(reg.get("rejectedPoles", []))
     negatives += ["extra words", "gibberish lettering", "text touching the frame edges"]
+    # PER-PLATE NEGATIVES, so a prohibition can be stated where it binds rather than
+    # buried in scene prose. Additive by construction: register poles and the lettering
+    # negatives above always apply and cannot be switched off from the command line.
+    negatives += list(args.negatives or [])
+    if args.no_cast:
+        negatives += ["any person", "any human figure", "anyone standing in the room"]
 
     # THE BYLINE COMES FROM CANON, SO IT CANNOT BE FORGOTTEN.
     #

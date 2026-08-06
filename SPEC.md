@@ -1,6 +1,6 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.35 — 2026-08-05.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.36 — 2026-08-06.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
@@ -1508,6 +1508,39 @@ Generators are the counterpart to Style Packs (§4.7): a pack governs what a MOD
 a generator replaces the model entirely where the answer is computable. When an asset can be
 expressed either way, prefer the generator, because it is reproducible, reviewable, and free.
 
+
+### 4.14 Endcap composition (the cover and the closing plate) — v0.36
+
+The two portrait endcaps are compiled by `cover/compile_cover.py`, which resolves identity from
+canon exactly as the interior compiler does. Two selectors govern what appears on them.
+
+**`--no-cast`: a plate may be deliberately unpeopled.** The compiler auto-selects a hero from
+`story.features` when `--hero` is absent, and previously REFUSED when the story cast no character.
+That is right for a front cover and wrong for a closing plate, which is frequently an empty room
+with the closing verse overlaid on it. There was no way to express "nobody is in this one", so the
+hero was bound regardless and no amount of scene text overrode it: a reference image outranks
+prose, which is a law stated elsewhere in this spec and applies to itself here.
+
+`--no-cast` composes with no character, and additionally emits `any person, any human figure,
+anyone standing in the room` as negatives, because the absence has to be argued rather than merely
+omitted. It contradicts `--hero` and the two together REFUSE rather than resolving a precedence.
+
+*Earned on Come Look (hyperagentic-age, 2026-08-06). Three paid re-rolls asked for an empty room
+and each returned a full-length figure standing dead centre, occupying the lower half of the frame
+that the closing verse is drawn into.*
+
+**`--negative`: per-plate prohibitions, repeatable.** Register `rejectedPoles` and the standard
+lettering negatives always apply and cannot be switched off from the command line; this flag ADDS
+to them. Without it, a prohibition specific to one plate could only be written into the free-text
+scene, which is the weakest available place to put one, since the scene is read as a description of
+what to draw rather than as a constraint.
+
+*Earned in the same run: a denominational cross and candle appeared on a cover, against the hero
+entity's own locked rule that nothing denominational may appear, and could only be removed by
+re-rolling with the prohibition restated inside the scene prose.*
+
+**Neither flag weakens an existing guard.** Both are additive: `--no-cast` removes a binding the
+operator never asked for, and `--negative` can only lengthen the negative list.
 
 ### 4.13 Shot (the DECLARED framing of a spread) — v0.35
 
