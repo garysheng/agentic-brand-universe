@@ -60,11 +60,11 @@ retired and why, and [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the layer
 | Spec | v0.37 | `SPEC.md`, dated 2026-08-06 |
 | Engine conforms to | v0.37 | `engine/agenticstory/__init__.py` |
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
-| Skills | 34 | `skills/*/SKILL.md` |
+| Skills | 35 | `skills/*/SKILL.md` |
 | CLI verbs | 24 | `abu --help` |
 | Agents | 1 | `agents/*.md` |
 | Commands | 1 | `commands/*.md` |
-| Tests | 1358 | across 71 files; `./run-tests.sh` |
+| Tests | 1384 | across 73 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,
@@ -88,6 +88,27 @@ python3 -m agenticstory.cli assert-story ../../nation-of-fire/nof-universe not-e
 
 Next: graduated craft-canon checks, migrate the standalone `nof-universe/canon/resolve_gabr.py` onto
 this engine, `agenticbranduniverse.com`.
+
+## Plugin currency on hosted runtimes
+
+A hosted agent does not notice a framework release. Locally, shipping a change is
+commit + push + a `version` bump in `.claude-plugin/plugin.json` + `/plugin update`
+(the repo IS the marketplace, `source: "."`; the old `sync-plugin.sh` is a retired
+signpost). A **Managed Agent or any other hosted runtime consuming this framework has
+no `/plugin update` moment**, so its copy of the skills goes stale silently: it keeps
+rendering with last month's guards and none of the new refusals, and nothing errors.
+Stale-plugin drift on a hosted agent is invisible by construction — the failure class
+this whole framework exists to kill.
+
+Two deployment requirements, both non-negotiable:
+
+1. **Attach skills with version `"latest"`** (the `agents.update` pattern), never a
+   pinned snapshot, so a redeploy picks up the current framework rather than the one
+   that happened to be installed the day the agent was created.
+2. **Re-deliver on every framework release.** Any release (any bump of
+   `.claude-plugin/plugin.json` `version`) must be followed by re-attaching/redeploying
+   the hosted agents that consume it, in the same pass as the release itself, not on a
+   someday list. A release step that skips the hosted agents has shipped to nobody.
 
 ## License
 

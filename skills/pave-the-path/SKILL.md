@@ -234,3 +234,21 @@ Treat every finding as a GAP, never as a scolding. Each one means the verb does 
 or it exists and was harder to reach than writing the script. Both are the framework's
 problem to fix, and both route to `evolve-abu`.
 
+## Score the run itself, not only what it wrote
+
+When the run left a transcript (`runs/<id>/transcript.jsonl`, stream-json), score HOW it
+spent its calls before deciding what to pave:
+
+```
+python3 <skill>/scripts/review_run.py runs/<id> [--json]
+```
+
+Total tool calls, per-tool histogram, the first call that TOUCHED the render machinery
+versus the first that EXECUTED a generation (a `--help` on a render script is
+orientation, not work), duration, cost, and a one-line verdict. An **orientation-heavy**
+verdict ("71/85 calls before the first generation") is itself a finding: the run spent
+its budget reconstructing context, so the gap to pave is usually a missing DIRECT ROUTE
+to the answer, not a missing capability. That exact verdict on the 2026-08-07
+closing-plate run is what earned `reroll-slot`: the reproduction context sat in the
+slot's own `.recipe.json` the whole time and no verb read it back.
+

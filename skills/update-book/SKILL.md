@@ -13,6 +13,26 @@ For changing a book that already exists: words blessed, art on disk, usually alr
 
 ## Procedure
 
+0. **FIRST: is this an art-only re-roll? Then the recipe already holds everything, and
+   the route is ONE command.** If the edit changes no text, no cast, no look, no setting
+   and no register — "re-roll the closing plate", "same cover but warmer light", "run
+   spread 12 again without the lettering" — do NOT re-orient on canon. The complete
+   reproduction context (model, full prompt, every ref path, the conform/publish steps)
+   sits in the slot's own `.recipe.json`, and this script reads it back:
+
+   ```bash
+   python3 skills/reroll-slot/scripts/reroll_from_recipe.py \
+     <book>/closing-plate.png --note "identical, slightly warmer light"
+   ```
+
+   It regenerates through the provider adapter (provenance by construction), replays the
+   recorded `conform_cover.py` args and platform publish for endcaps, backs up the prior
+   roll, and prints the render-readback reminder. Then read the result back and you are
+   DONE — none of the steps below apply. This step exists because a real run spent 71 of
+   85 tool calls re-reading the framework and canon to reconstruct what the recipe
+   already said (hyperagentic-age, 2026-08-07). The moment the edit touches words, cast,
+   a look or a setting, the recipe is a snapshot of stale truth: fall through to step 1.
+
 1. **Load the story + the edit.** Read `stories/<id>.json` (its `beats`, `spine`, `genre`, `register` override if any) and whatever asset manifest the target renderer/platform uses for this book. Identify exactly which beats/spreads the edit touches; leave everything else alone.
 
 2. **Re-run the sweeps the book was BUILT with. A revision is not a small edit, it is a new build against canon that has moved since the book shipped.** All three of these were skipped on a real revision because it felt like a text tweak:

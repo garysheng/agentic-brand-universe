@@ -58,6 +58,7 @@ or a set of page heroes without ever declaring canon.
 | `pave-the-path` | The retrospective sweep at the END of a chain run. | yes |
 | `render-book` | Render a story from an Agentic Brand Universe into a picture book. |  |
 | `render-readback` | After EVERY render in an Agentic Brand Universe, read the image back and crop-zoom each of the in-frame entity's invariants, returning a per-invariant PASS or DEFECT verdict. | yes |
+| `reroll-slot` | Re-roll ONE already-rendered slot (a spread, cover, closing plate, or any asset with a .recipe.json beside it) EXACTLY as its recipe records — same model, same prompt, same refs — with an optional one-line delta, in one command and one image call, reading ZERO canon. | yes |
 | `shoot-references` | SHOOT an entity's reference matrix in an Agentic Brand Universe: make the art that gives a scaffolded entity a body. | yes |
 | `start-new-story-universe` | Stand up a brand-new story universe on the Agentic Brand Universe framework — a typed, git-versioned canon with a load-bearing pre-render gate, conforming to a named spec version. |  |
 | `universe-doctor` | Grade how COMPLETE and how HIGH-QUALITY an Agentic Brand Universe is, then work the punch-list. | yes |
