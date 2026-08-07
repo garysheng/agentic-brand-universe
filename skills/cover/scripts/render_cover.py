@@ -114,6 +114,18 @@ def main() -> int:
                     help="the composition ACTION for the cover (identity still comes from canon)")
     ap.add_argument("--anchor-ref", dest="anchor_ref", default=None,
                     help="override the register anchor passed first (e.g. a second diegetic register)")
+    # compile_cover.py accepts --no-cast, --no-text and --negative, and this wrapper dropped
+    # all three, so a CLOSING PLATE (title-free art, often unpeopled) could not be rendered
+    # end to end: every book chained compile_cover -> provider -> conform_cover by hand and
+    # wrote the platform copy's provenance itself. That hand chain is recorded verbatim in
+    # two books' closing-plate recipes (the-smoke-test and nobody-labeled-the-door, both
+    # hyperagentic-age 2026-08-07); the recurrence is what paved this.
+    ap.add_argument("--no-cast", dest="no_cast", action="store_true",
+                    help="compose the plate with NO character at all (closing plates, empty rooms)")
+    ap.add_argument("--no-text", dest="no_text", action="store_true",
+                    help="render ART ONLY with no baked lettering: the closing-plate mode")
+    ap.add_argument("--negative", dest="negatives", action="append", default=[],
+                    help="extra negative for THIS plate, repeatable (forwarded to compile_cover)")
     a = ap.parse_args()
 
     cmd = [sys.executable, str(HERE / "compile_cover.py"), a.universe, a.story,
@@ -129,6 +141,12 @@ def main() -> int:
         cmd += ["--no-mark"]
     if a.no_author:
         cmd += ["--no-author"]
+    if a.no_cast:
+        cmd += ["--no-cast"]
+    if a.no_text:
+        cmd += ["--no-text"]
+    for n in a.negatives:
+        cmd += ["--negative", n]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         sys.stderr.write(r.stderr)

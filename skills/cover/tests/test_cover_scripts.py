@@ -761,5 +761,23 @@ class ConformPreservesTheGeneration(unittest.TestCase):
         self.assertNotIn("sourceRender", rec)
 
 
+class RenderWrapperForwardsClosingPlateFlags(unittest.TestCase):
+    """render_cover.py must expose --no-cast/--no-text/--negative, the closing-plate mode.
+
+    compile_cover accepted all three and the wrapper dropped them, so every closing plate
+    was hand-chained (compile -> provider -> conform -> provenance) and two books' recipes
+    record that chain verbatim (the-smoke-test and nobody-labeled-the-door, hyperagentic-age
+    2026-08-07). A --help probe is deliberate: no network, no provider, and it fails the
+    moment a refactor drops the wiring.
+    """
+
+    def test_help_lists_the_forwarded_flags(self):
+        r = subprocess.run([sys.executable, str(RENDER), "--help"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for flag in ("--no-cast", "--no-text", "--negative"):
+            self.assertIn(flag, r.stdout, f"render_cover.py --help no longer lists {flag}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
