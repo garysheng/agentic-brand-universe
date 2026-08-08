@@ -1736,8 +1736,12 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             (((ent.get("structured") or {}).get("altLooks") or {}).get(c.get("look")) or {}).get("dropSheets")
             or []
         )
-        add_refs([sheets_map[k] for k in pose_sheets
-                  if sheets_map.get(k) and k not in look_dropped])
+        # _sheet_path, NOT the raw slot: a typed slot ({"path", "role"}, legal since
+        # v0.23) is a dict, and the raw form crashed resolve_ref with a TypeError
+        # (the-introducer, 2026-08-08). Same failure class as the v0.37 linter crash:
+        # the slot form the spec recommends must never be the form that breaks a path.
+        add_refs([p for k in pose_sheets if k not in look_dropped
+                  for p in [_sheet_path(sheets_map.get(k))] if p])
         derived = (
             f"{c['id']} rendered exactly per the supplied reference images: "
             + "; ".join(deslug(i) for i in inv)
