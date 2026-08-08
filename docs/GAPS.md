@@ -564,3 +564,54 @@ in it, filed as the setting's geometry blueprint. It was caught by eye, not by a
 documents as code-drawn. (2) `parse_prompts_full` should REFUSE a shot body shorter than N
 characters or matching /^NOT USED/i, on the same reasoning as the existing TODO(author)
 refusal: a body that says it is not a prompt is not a prompt.
+
+### G23. Commission photos pasted in chat have no route onto disk
+
+**What.** A real-person entity needs a `photoStack` of on-disk files, and the photos routinely
+arrive as images PASTED INTO THE CONVERSATION, which no framework verb can reach. The
+workaround that worked: parse the harness session transcript JSONL and base64-decode the image
+blocks into `reference/<id>/photos/`.
+
+**Evidence.** the-introducer, 2026-08-08: five photos of David Kobrosky arrived inside the
+commission message. Hand-rolled a JSONL extractor twice in one session; the second run silently
+grabbed a STALE image because mid-turn pastes append to the transcript only after the turn ends,
+and the "new" anchor extracted was byte-identical to an already-saved photo (caught by size).
+
+**Next invocation.** The next commissioned book about a real person whose photos arrive as chat
+pastes, which is how every commission so far has arrived.
+
+**Would close it.** A small `shoot-references/scripts/extract_chat_photos.py <session-jsonl>
+<universe> <entity>` that decodes image blocks, dedupes by hash against the existing stack,
+names files by order, and REFUSES (or warns) when the newest paste is not yet in the transcript.
+
+### G24. The ABU book layout and the platform stager disagree about names
+
+**What.** `render_spread.py --out-dir` writes `spreads/spread-01..NN.png` beside `cover.png` and
+`closing-plate.png`; garysheng-books' `stage-book-assets.py` expects composer naming
+(`cover-0.png`, `spread-0..N-1.png`, `plate-0.png`). Every publish hand-builds a `.stage-in/`
+bridge dir of renamed copies.
+
+**Evidence.** the-introducer, 2026-08-08 (17-file rename bridge). The same bridge is implied by
+every prior hyperagentic-age publish.
+
+**Next invocation.** The next ABU book published to books.garysheng.com.
+
+**Would close it.** Teach `stage-book-assets.py` to detect the ABU layout (it lives in the
+platform repo, so coordinate there), or give the book chain a `stage` substep that emits
+composer naming directly.
+
+### G25. The closing plate has no platform-copy publisher; the cover does
+
+**What.** `render_cover.py` publishes `cover-raw.png -> cover.png` with a derived recipe
+(v0.33) precisely because the hand copy kept failing book-doctor provenance. The closing plate
+has the same shape (gen -> conform -> platform copy) and no equivalent, so the final copy +
+recipe is hand-written per book.
+
+**Evidence.** the-introducer, 2026-08-08: hand-authored `closing-plate.png.recipe.json`.
+nobody-labeled-the-door's copy was written by reroll-slot's replay, which only exists after a
+first hand-rolled publish.
+
+**Next invocation.** Every book, at the closing-plate step.
+
+**Would close it.** A `--closing-plate` mode (or sibling script) in the cover skill that runs
+conform + platform copy + recipe in one verb, mirroring `render_cover.py`'s publish step.
