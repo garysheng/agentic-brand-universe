@@ -123,6 +123,13 @@ def grade_universe(udir):
     else:
         clean = 0
         for e in settings:
+            # A visual-metaphor's non-standard plates are its STATES (A0..A6 of a
+            # flower bud), which are the entire point of the kind, not rooms crammed
+            # into one entity. Counting them as rooms flagged the-flower-bud as a
+            # building on 2026-08-07; states never need houseRules. Exempt the kind.
+            if e.get("kind") == "visual-metaphor":
+                clean += 1
+                continue
             st = e.get("structured") or {}
             plate_keys = set(st.get("sheets") or {})
             # exclusivity marker, not a bare prefix; and count ROOMS, not contract slots.
@@ -130,8 +137,16 @@ def grade_universe(udir):
             scoped = [i for i in st.get("invariants") or []
                       if isinstance(i, str)
                       and any(re.match(rf"^{re.escape(k)}\s+ONLY\b", i) for k in plate_keys)]
-            rooms = plate_keys - {"turnaround", "blueprint", "scalePlate",
-                                  "blockingPlate", "master"}
+            # Standard matrix slots are not rooms: scale/blocking/gabr are the
+            # framework's own slot names, empty-* plates are the mandated
+            # verified-empty pattern, and exterior/establishing shots are cameras.
+            # The loose set counted encounter-church's camera list as nine rooms
+            # (2026-08-07): fromAisle/altarApron/fromBack are angles on ONE hall.
+            rooms = {k for k in plate_keys
+                     if k not in {"turnaround", "blueprint", "scalePlate",
+                                  "blockingPlate", "master", "scale", "blocking",
+                                  "gabr", "exterior"}
+                     and not k.lower().startswith("empty")}
             crammed = len(rooms) >= 8 and not (st.get("houseRules") or {})
             if not scoped and not crammed:
                 clean += 1

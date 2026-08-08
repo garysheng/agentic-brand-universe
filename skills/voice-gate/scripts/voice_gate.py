@@ -62,7 +62,7 @@ VENDORED_SPEC = Path(__file__).resolve().parent.parent / "data" / "voice.md"
 
 # sha256 of the published spec this rule table was derived from. Bump it with
 # `--adopt-spec` AFTER reading the diff and porting any new hard rule into RULES.
-RULES_DERIVED_FROM = "4993b2fb7122f60d43380c1ae7f52c498f8e44d6c7e26bd6e4c9250358330a06"
+RULES_DERIVED_FROM = "727b8e792b130643522c879ca2c1028a78ca1de7581a7db09f7eff53c7721216"
 
 BLOCK, REVIEW, ADVISORY = "BLOCK", "REVIEW", "ADVISORY"
 
@@ -119,6 +119,12 @@ def one_word_split(term: str) -> str:
     return rf"\b(?:{alts})\b"
 
 
+# Spec 2026-08-07 added a hard rule: "Technical education: every title and header is a
+# plain sentence, and clever earns zero" (decks, talks, wiki concept pages). Like the
+# quotable-lines and recap rules, it is a judgment call with no mechanical form: a regex
+# cannot tell a plain-sentence header from a clever fragment. It is deliberately NOT in
+# this table; reviewers carry it. Recorded here so the adopt-spec bump is an audited
+# decision rather than a silent skip. (Ported 2026-08-07 during the-spotters-trap run.)
 RULES: tuple[Rule, ...] = (
     # --- BLOCK: no judgment call exists. -----------------------------------------
     Rule("em-dash", BLOCK, re.compile(r"[—–]"),
@@ -372,8 +378,23 @@ def main(argv: list[str] | None = None) -> int:
         VENDORED_SPEC.parent.mkdir(parents=True, exist_ok=True)
         VENDORED_SPEC.write_text(spec.text, encoding="utf-8")
         print(f"re-vendored {SPEC_URL} -> {VENDORED_SPEC}")
-        print(f'now set RULES_DERIVED_FROM = "{spec.sha256}" in {Path(__file__).name}')
-        print("  and port any NEW hard rule in that diff into RULES, or you have only "
+        # Rewrite RULES_DERIVED_FROM in place. This used to be printed as an instruction
+        # ("now set RULES_DERIVED_FROM = ..."), and the mechanical edit was left to whoever
+        # ran the command, who could mistype it or skip it and leave the gate failing.
+        # Paved 2026-08-07 (the-spotters-trap run): the hash bump is mechanical, so the
+        # tool does it; the JUDGMENT (porting new rules into RULES) stays human and the
+        # reminder below stays loud.
+        me = Path(__file__)
+        src = me.read_text(encoding="utf-8")
+        marker = 'RULES_DERIVED_FROM = "'
+        start = src.index(marker) + len(marker)
+        end = src.index('"', start)
+        if src[start:end] != spec.sha256:
+            me.write_text(src[:start] + spec.sha256 + src[end:], encoding="utf-8")
+            print(f'RULES_DERIVED_FROM updated -> "{spec.sha256}" in {me.name}')
+        else:
+            print(f"RULES_DERIVED_FROM already current in {me.name}")
+        print("  now port any NEW hard rule in that diff into RULES, or you have only "
               "silenced the alarm.")
         return 0
 
