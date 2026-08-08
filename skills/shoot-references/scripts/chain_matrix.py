@@ -416,6 +416,22 @@ def parse_prompts_full(md: Path) -> dict:
             "failure this refusal exists to catch, and it loses the prompt the moment "
             "the session ends."
         )
+    # A DEFERRAL NOTE IS NOT A PROMPT. Authors mark slots they decided not to shoot yet
+    # with bodies like "NOT SHOT for <story>. Left null deliberately." A heading is a
+    # LIVE SHOT, so the chain used to send those very words to the model and get back a
+    # confident finished picture: charon's four deferred slots (2026-08-07) each rendered
+    # as a frontal portrait whose prompt was literally the sentence saying not to shoot
+    # it. Refuse the marker; the remedy is to DELETE the heading (the deferral lives fine
+    # as a level-3 note or in the entity's authority note) or write a real prompt.
+    _DEFER = re.compile(r"NOT SHOT\b|[Ll]eft null deliberately|[Dd]eliberately null")
+    m = _DEFER.search(bodies)
+    if m:
+        raise Refuse(
+            f"{md} has a shot body that is a deferral note, not a prompt "
+            f"({m.group(0)!r}). A heading is a live shot and the model will happily "
+            "paint the deferral sentence. Delete the heading (keep the deferral as a "
+            "level-3 note or in authority.note), or author a real prompt body."
+        )
 
     negatives = [n.rstrip(".") for n in _header_block(text, "Negatives")]
     header_refs = _split_ids(", ".join(_header_block(text, "Refs")))
