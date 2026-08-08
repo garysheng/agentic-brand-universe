@@ -143,6 +143,44 @@ def _has_motion(scene: str) -> bool:
     return not any(t in low for t in FACING_TOKENS)
 
 
+DEVICE_USE_GUARD = (
+    "DEVICE GEOMETRY. A device a person is USING is genuinely IN FRONT OF ITS USER: the "
+    "screen faces the USER'S eyes, the keyboard sits under THEIR hands, at a distance a "
+    "person actually works at. NEVER rotate a screen away from its user so the camera can "
+    "see it: a person typing on a keyboard that faces away from them, or reading a screen "
+    "turned toward the viewer, is a physics defect. When the screen's content must be "
+    "visible to the VIEWER as well as the user, the correct camera is OVER THE USER'S "
+    "SHOULDER: the back of their head and one shoulder soft in the near frame, the screen "
+    "face sharp beyond it. The over-the-shoulder shot is legal and encouraged; a rotated "
+    "device is not."
+)
+
+DEVICE_NOUNS = ("laptop", "keyboard", "computer", "monitor", "tablet", "phone in", "screen")
+DEVICE_USE_TOKENS = (
+    "typing", "types", "at the keys", "on the keys", "near the keys", "hand on the key",
+    "reading the screen", "reads the screen", "scrolling", "scrolls", "working at",
+    "works at", "sits at the", "seated at the", "using the", "on her laptop",
+    "on his laptop", "at his laptop", "at her laptop",
+)
+
+
+def _has_device_use(scene: str) -> bool:
+    """True when a person in the scene is actively using a screened device.
+
+    Earned 2026-08-08 on the-introducer spread 05, both ways in one day: the first
+    roll satisfied the user and hid the screen from the viewer (back of the lid to
+    camera), and the corrected roll satisfied the VIEWER by angling the laptop
+    toward the lens, leaving its user's hand on a keyboard he could not see.
+    The operator named the missing rule and its resolution: check the device is
+    genuinely in front of the person, and remember over-the-shoulder shots are OK.
+    A device merely PRESENT (on a desk, beside an empty chair) does not fire this;
+    the pairing of a device noun with a use signal does.
+    """
+    low = (scene or "").lower()
+    return (any(n in low for n in DEVICE_NOUNS)
+            and any(t in low for t in DEVICE_USE_TOKENS))
+
+
 EYE_CONTACT_GUARD = (
     "EYE CONTACT. People in conversation LOOK AT EACH OTHER: every speaker's and "
     "listener's eyes are on the person (or being) they are talking with, faces angled "
@@ -2009,6 +2047,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
             MOTION_GUARD if _has_motion(scene) else "",
             EYE_CONTACT_GUARD if _has_conversation(scene) else "",
+            DEVICE_USE_GUARD if _has_device_use(scene) else "",
             ADDRESSING_GUARD if _has_audience(scene) else "",
             BEDCLOTHES_GUARD if _in_bed(scene) else "",
             BED_LENGTH_GUARD if _person_lying_on_bed(scene) else "",

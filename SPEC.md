@@ -1057,6 +1057,7 @@ removes that step.
 | `BEDCLOTHES_GUARD`   | conditional  | `_in_bed()`              |
 | `BED_LENGTH_GUARD`   | conditional  | `_person_lying_on_bed()` |
 | `CROWD_MEMBER_GUARD` | conditional  | `_cast_inside_crowd()`   |
+| `DEVICE_USE_GUARD`   | conditional  | `_has_device_use()`      |
 | `EYE_CONTACT_GUARD`  | conditional  | `_has_conversation()`    |
 | `HANDS_GUARD`        | conditional  | `_has_hands()`           |
 | `MOTION_GUARD`       | conditional  | `_has_motion()`          |
@@ -1103,6 +1104,16 @@ removes that step.
     the camera is not representing your interlocutor's eyes, why are you looking at it?" The
     readback half lives in `render-readback`: a conversation scene where a participant's eyes
     are on the camera or the middle distance is a DEFECT to re-roll from scratch.
+  - **Device-use guard (v0.38, `DEVICE_USE_GUARD`).** Fires when the scene pairs a screened-device
+    noun with a use signal (`_has_device_use()`: typing, at the keys, reading the screen, working
+    at, sits at the …). It states the physics: a device someone is USING faces its user, screen to
+    their eyes and keyboard under their hands, and a screen rotated toward the camera while its
+    user types blind is a defect. It then names the resolution rather than only the ban: when the
+    screen's content must reach the VIEWER too, the correct camera is OVER THE USER'S SHOULDER,
+    which is legal and encouraged. Earned 2026-08-08 on the-introducer spread 05, which failed
+    both ways in one day: the first roll hid the screen from the viewer, and the correction rotated
+    the laptop toward the lens so the man was typing on a keyboard he could not see. A device
+    merely PRESENT (sitting on a desk, beside an empty chair) does not fire the guard.
   - **Anchor-style guard.** Whenever a register anchor is passed, the prompt states that ref[0] is a
     style sample only: match its medium, brushwork, palette and light, take NO subject from it. The
     anchor leads every render, so on a spread that casts no setting and no characters it is one of

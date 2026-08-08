@@ -59,6 +59,19 @@ def anchor_subject_guard(subject) -> str:
     )
 
 
+def _sheet_path(v):
+    """A sheet slot is a bare path or {path, role} (SPEC v0.23). Give me the path.
+
+    Mirrors compose-spread's helper. Every read of a slot goes through here, or a
+    typed slot resolves to a dict, gets appended as a "path", and the render dies
+    far from the cause (the-introducer cover, 2026-08-08 — the second compiler
+    caught passing raw slots minutes after the first was fixed).
+    """
+    if isinstance(v, dict):
+        return v.get("path")
+    return v if isinstance(v, str) else None
+
+
 def load(p: Path):
     with open(p) as f:
         return json.load(f)
@@ -192,7 +205,7 @@ def main() -> int:
             plates = con.get("emptyPlates") or []
             if want_plate:
                 sheets = (ent.get("structured") or {}).get("sheets") or {}
-                cand = sheets.get(want_plate) or next(
+                cand = _sheet_path(sheets.get(want_plate)) or next(
                     (p for p in plates + [con.get("turnaround")]
                      if p and Path(p).stem == want_plate), None)
                 if not cand:
@@ -213,7 +226,7 @@ def main() -> int:
         sheets = st.get("sheets", {})
         required = st.get("requiredForRender", [])
         for key in required:
-            p = sheets.get(key)
+            p = _sheet_path(sheets.get(key))
             if not p:
                 print(f"REFUSE: {eid}.{key} is required but unlocked", file=sys.stderr)
                 return 2
@@ -256,7 +269,7 @@ def main() -> int:
             if poses[want_pose].get("bake"):
                 render_parts.append(poses[want_pose]["bake"])
             for key in poses[want_pose].get("sheets") or []:
-                p = sheets.get(key)
+                p = _sheet_path(sheets.get(key))
                 if p and p not in refs:
                     refs.append(p)
 
