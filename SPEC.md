@@ -1057,6 +1057,7 @@ removes that step.
 | `BEDCLOTHES_GUARD`   | conditional  | `_in_bed()`              |
 | `BED_LENGTH_GUARD`   | conditional  | `_person_lying_on_bed()` |
 | `CROWD_MEMBER_GUARD` | conditional  | `_cast_inside_crowd()`   |
+| `EYE_CONTACT_GUARD`  | conditional  | `_has_conversation()`    |
 | `HANDS_GUARD`        | conditional  | `_has_hands()`           |
 | `MOTION_GUARD`       | conditional  | `_has_motion()`          |
 | `SINGLE_IMAGE_GUARD` | every render | unconditional            |
@@ -1088,6 +1089,20 @@ removes that step.
     palm pressed on the brick beside the wood rather than the wood. Hands are the most reliable
     hallucination in this pipeline and the only one a reader spots instantly, so the guard states
     the anatomy as a count rather than asking for "correct hands".
+  - **Eye-contact guard (v0.38, `EYE_CONTACT_GUARD`).** Fires when the scene text has people
+    engaging each other or an agent directly (`_has_conversation()`: talking, laughing with,
+    introducing, showing, presenting, gesturing at, toasting, greeting), and states that everyone
+    in a conversation looks AT the person they are talking with, gazes actually meeting; nobody
+    looks at the camera and nobody stares into the middle distance unless the scene text directs
+    a gaze somewhere by name. A scene that explicitly hands the camera the interlocutor's role
+    ("facing the viewer", "the reader is the person he is meeting") is the carve-out and skips
+    the guard entirely. Earned 2026-08-08 on the-introducer spreads 05, 08 and 10 in a single
+    batch: a man mid-decision at his laptop, a man gesturing at a wall, and a founder laughing
+    over her shoulder all rendered with eyes on the LENS, because a warm grin toward camera is
+    the model's strongest prior for a likeable subject. The operator's words are the rule: "if
+    the camera is not representing your interlocutor's eyes, why are you looking at it?" The
+    readback half lives in `render-readback`: a conversation scene where a participant's eyes
+    are on the camera or the middle distance is a DEFECT to re-roll from scratch.
   - **Anchor-style guard.** Whenever a register anchor is passed, the prompt states that ref[0] is a
     style sample only: match its medium, brushwork, palette and light, take NO subject from it. The
     anchor leads every render, so on a spread that casts no setting and no characters it is one of

@@ -16,6 +16,18 @@ The quality gate that catches a defective render before it ships or locks. A ren
    - `crop_zoom.py OUT.png IMG --box X0,Y0,X1,Y1 --label "what this must show"` (repeatable) — the NARROW pass, which is where most invariants actually live: a pendant that must be a four-point star and not a crucifix, two gold incisors, a patch on the correct side, a face-down phone.
 
    Pass `--grid 4x4` instead of `--box` when you do not already know where the detail sits. Guessing a box, getting back a rectangle of empty shadow, and guessing again costs two round trips; the grid costs one. (Earned on the-little-door, 2026-07-30, which guessed wrong twice in one run.)
+2b. **The standing EYELINE check, on every scene with a conversation in it (v0.38).** Beyond the
+   entity invariants, any render whose scene has people talking with, laughing with, showing
+   something to, or being introduced to someone gets one extra look: crop-zoom each
+   participant's eyes and ask WHO THEY ARE LOOKING AT. Eyes on the interlocutor: PASS. Eyes on
+   the camera or the middle distance while the scene says they are engaging someone: DEFECT,
+   re-roll from scratch, naming the gaze in the re-roll ("her eyes are on HIS face, not the
+   camera"). The one exception is a scene that explicitly hands the camera the interlocutor's
+   role (a direct-address closing spread). Earned 2026-08-08 (the-introducer): three renders in
+   one batch put the subject's eyes on the lens mid-conversation, because a warm grin toward
+   camera is the model's strongest prior for a likeable subject; the operator's rule is "if the
+   camera is not representing your interlocutor's eyes, why are you looking at it?" The prompt
+   half of the same rule is `EYE_CONTACT_GUARD` in compose-spread.
 3. **Verdict per invariant.** PASS (the invariant holds) or DEFECT (it does not), with a one-line reason on any DEFECT.
 4. **Act on the result.** All PASS: the render is accepted. Any DEFECT: regenerate the image FROM SCRATCH with the defect named as an explicit negative. Never stack an edit pass on a defective render (it compounds artifacts).
 

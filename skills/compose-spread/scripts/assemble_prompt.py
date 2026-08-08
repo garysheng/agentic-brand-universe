@@ -143,6 +143,53 @@ def _has_motion(scene: str) -> bool:
     return not any(t in low for t in FACING_TOKENS)
 
 
+EYE_CONTACT_GUARD = (
+    "EYE CONTACT. People in conversation LOOK AT EACH OTHER: every speaker's and "
+    "listener's eyes are on the person (or being) they are talking with, faces angled "
+    "toward one another, gazes actually MEETING. NOBODY in a conversation looks at the "
+    "camera, and nobody stares into the middle distance, unless the scene text "
+    "explicitly directs a gaze elsewhere (a named view they are shown admiring, an "
+    "object they are studying, or the camera itself standing in for the person being "
+    "addressed). Someone showing or pointing at a thing LOOKS AT THE THING or at the "
+    "person they are showing it to, never at the lens. A table of people talking while "
+    "each stares somewhere else reads as strangers; the warmth of the scene lives in "
+    "the eyeline."
+)
+
+CONVERSATION_TOKENS = (
+    "talking", "talks with", "chatting", "chat with", "in conversation", "conversing",
+    "laughing with", "laughs with", "laughing at something", "telling ", "tells ",
+    "listening to", "listens to", "introduc", "confer", "catching up", "speaks with",
+    "speaking with", "asks ", "asking ", "answering", "greeting", "greets",
+    "showing ", "shows them", "presenting ", "gesturing", "pointing at", "points at",
+    "mid-toast", "toast", "welcomes", "welcoming",
+)
+
+CAMERA_ADDRESS_TOKENS = (
+    "facing the viewer", "faces the viewer", "facing the camera", "faces the camera",
+    "at the camera", "toward the camera", "to the viewer", "the reader is the person",
+    "addresses the viewer", "addressing the viewer", "reaches toward the camera",
+)
+
+
+def _has_conversation(scene: str) -> bool:
+    """True when the scene has people engaging each other (or an agent) directly.
+
+    Earned 2026-08-08 on the-introducer spreads 05, 08 and 10, all in one batch: a
+    man mid-decision at his laptop, a man gesturing at a wall of pennants, and a
+    founder laughing at something over her shoulder ALL came back with the subject's
+    eyes on the LENS, because a warm grinning portrait toward camera is the model's
+    strongest prior for 'likeable person'. The operator's words are the rule: 'if
+    the camera is not representing your interlocutor's eyes, why are you looking at
+    it?' Scenes that explicitly hand the camera the interlocutor's role (a closing
+    direct-address spread) are the carve-out and skip the guard entirely.
+    """
+    low = (scene or "").lower()
+    if any(t in low for t in CAMERA_ADDRESS_TOKENS):
+        return False
+    return any(t in low for t in CONVERSATION_TOKENS)
+
+
 ADDRESSING_GUARD = (
     "SPEAKER AND AUDIENCE GEOMETRY. Someone addressing a group FACES that group, and the "
     "group FACES THEM BACK. The two are on OPPOSITE sides of one another, never on the same "
@@ -1961,6 +2008,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             ("NEGATIVES: " + ", ".join(negs) + ".") if negs else "",
             "" if eff.get("allowMultiPanel") else SINGLE_IMAGE_GUARD,
             MOTION_GUARD if _has_motion(scene) else "",
+            EYE_CONTACT_GUARD if _has_conversation(scene) else "",
             ADDRESSING_GUARD if _has_audience(scene) else "",
             BEDCLOTHES_GUARD if _in_bed(scene) else "",
             BED_LENGTH_GUARD if _person_lying_on_bed(scene) else "",
