@@ -121,6 +121,21 @@ Two structural causes worth checking for while you are in there:
 - **Named for its mechanism rather than its outcome.** If you would not think to search the
   word, the name is wrong.
 
+### 1c. Read the worn line as evidence before reading it as a route
+
+A desire path can be evidence of a MISSING ROAD rather than a road worth paving. When the
+run's transcript is orientation-heavy (review_run's verdict names it: "orientation-heavy:
+71/85 calls before the first generation ... usually means a missing DIRECT ROUTE, not a
+missing capability"), the walked route is itself the waste, and paving it would enshrine
+the detour. Do not automate the roundabout. Build the short road that skips it, and let
+the desire path grass over. `reroll-slot` is the precedent: an 85-tool-call walk to re-roll
+one image became ONE command reading ZERO canon, because the answer sat in the slot's own
+recipe the whole time. Ask it of every candidate: is this route good and merely manual
+(pave it), or is the route the workaround (build the highway)? The BUG class below refuses
+the defensive half of this (no helpers on top of a broken cap); the highway is its
+constructive twin. (Added 2026-08-07, prompted by Gary: "the pathway is inefficient and we
+needed to build a highway to skip roundabout routes.")
+
 ### 2. Classify each candidate, because they do not all get paved the same way
 
 - **PAVE (deterministic substep).** Mechanical, verifiable, no taste required: a crop, a
