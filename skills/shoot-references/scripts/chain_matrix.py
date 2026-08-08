@@ -797,10 +797,31 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
 
     _engine_on_path()
     from agenticstory.matrix import register_neutral as _register_neutral
+    from agenticstory.matrix import realperson_default_neutral as _rp_default
     try:
         neutral = _register_neutral(ent)
     except ValueError as e:
         raise Refuse(str(e))
+
+    if neutral is None:
+        # THE REAL-PERSON DEFAULT (SPEC v0.38). An entity with a realPerson photo
+        # stack and no registerNeutral key shoots HYPER-REAL NEUTRAL by default,
+        # because hyper-realism ports down into any register and a stylized
+        # reference cannot recover likeness (Gary, 2026-08-08, after david-kobrosky's
+        # matrix shot in-register ink-and-wash and capped the likeness). The default
+        # is RECORDED INTO CANON before the shoot, per the v0.37 rule that neutrality
+        # is a property of the matrix rather than of one invocation: the next shoot
+        # must behave identically without re-deriving anything. The recorded opt-out
+        # is `structured.registerNeutral: false`, which this default never overrides.
+        neutral = _rp_default(ent)
+        if neutral:
+            ent.setdefault("structured", {})["registerNeutral"] = dict(neutral)
+            entfile.write_text(json.dumps(ent, indent=2) + "\n", encoding="utf-8")
+            print(f"NOTE: {eid} declares realPerson and no registerNeutral; adopting the "
+                  f"hyper-real neutral default (SPEC v0.38) and recording it in canon.\n"
+                  f"  medium: {neutral['medium']}\n"
+                  f"  To shoot this real person IN-REGISTER deliberately, set "
+                  f"structured.registerNeutral to false in canon and re-run.")
 
     if neutral:
         # NEUTRAL MEANS NO ANCHOR IS PASSED, NOT "AN ANCHOR IS NOT REQUIRED".

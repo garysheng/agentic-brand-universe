@@ -1,10 +1,22 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.37 — 2026-08-06.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.38 — 2026-08-08.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.38 changelog - a real person's matrix is hyper-real neutral BY DEFAULT.** v0.37 built the
+> register-neutral matrix and left it opt-in, so the next real-person entity (`david-kobrosky`,
+> hyperagentic-age, 2026-08-08) was shot in-register ink-and-wash with a five-photo stack sitting
+> beside it, and the operator had to catch it by eye. The rule is a porting asymmetry stated by
+> Gary in that session: hyper-realism ports down into any register, a stylized reference cannot
+> recover likeness. So `realPerson` + non-empty `photoStack` + no `registerNeutral` key now
+> defaults the shoot to the hyper-real neutral medium and RECORDS the adopted declaration into
+> canon (a default that is not recorded is re-derived forever); `registerNeutral: false` is the
+> recorded opt-out that shoots a real person in-register deliberately, and it is never
+> overridden. §12 REAL-PERSON DEFAULT. `realperson_default_neutral` in `matrix.py`; adopted and
+> written back by `chain_matrix.build_plan`.
 
 > **v0.37 changelog - the identity master could not be shot until a register existed, and it
 > must be.** Paved out of Proof of Vibes (Russ Ballard's brand, 2026-08-06, subject consenting),
@@ -2093,6 +2105,24 @@ Default measured reference, when a universe declares no `identity.scaleReference
     JSON to paste, the way the sibling `stylePack` refusal names `--register` and
     `--no-style-pack`. A refusal that dead-ends an operator who is doing something legal is how a
     framework gets routed around.
+
+    **THE REAL-PERSON DEFAULT (v0.38).** An entity that declares `realPerson` with a non-empty
+    `photoStack` and whose `structured` contains NO `registerNeutral` key at all is shot
+    register-neutral BY DEFAULT, in the medium `"hyper-realistic painted portrait with
+    photographic fidelity to the supplied photographs of the subject"`. The reason is a porting
+    asymmetry: hyper-realism ports down into any register at render time (the register anchor
+    styles the spread while the neutral plates carry likeness), but a reference shot inside a
+    stylization has thrown likeness away that no later prompt can recover. The shooter RECORDS
+    the adopted default into the entity's canon before shooting (neutrality is a property of the
+    matrix, not of one invocation, per the v0.37 rule above), so the next shoot behaves
+    identically without re-deriving anything. The recorded opt-out is `structured.registerNeutral:
+    false`, which the default never overrides: a key that is present, including an explicit
+    `false`, is the author's decision. Entities with no `realPerson` block are untouched and keep
+    shooting anchor-first. The defect that earned it: `david-kobrosky` (hyperagentic-age,
+    2026-08-08) had a five-photo stack and was shot in-register warm-editorial ink-and-wash
+    because the neutral path was opt-in knowledge; the operator's correction was the rule
+    verbatim ("hyper realism ports to not real but not other way around", "Abu should default to
+    entity creation with hyper realism").
 
     **`role` is the other end of the same contract, and they compose.** Register-neutral is how
     the plate is MADE; a slot's `role` is how it is CONSUMED, and four of the five role

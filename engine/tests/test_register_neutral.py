@@ -7,7 +7,8 @@ exists to forbid.
 """
 import unittest
 
-from agenticstory.matrix import (REGISTER_NEUTRAL_CONTRACT, register_neutral,
+from agenticstory.matrix import (REGISTER_NEUTRAL_CONTRACT,
+                                 realperson_default_neutral, register_neutral,
                                  register_neutral_untyped_slots)
 from agenticstory.model import Entity
 
@@ -88,6 +89,41 @@ class TestValidate(unittest.TestCase):
     def test_role_medium_is_fine_on_an_ordinary_entity(self):
         e = ent(sheets={"face-neutral": {"path": "a.png", "role": "medium"}})
         self.assertEqual([p for p in self.problems(e) if "role is 'medium'" in p], [])
+
+
+class TestRealPersonDefault(unittest.TestCase):
+    """The v0.38 REAL-PERSON DEFAULT: realPerson + photoStack and no registerNeutral
+    key shoots hyper-real neutral, because hyper-realism ports down into any register
+    and a stylized reference cannot recover likeness (david-kobrosky, 2026-08-08)."""
+
+    def rp(self, rn="ABSENT", stack=None):
+        e = ent(rn=None if rn == "ABSENT" else rn)
+        if rn == "ABSENT":
+            e["structured"].pop("registerNeutral", None)
+        else:
+            e["structured"]["registerNeutral"] = rn
+        if stack is not None:
+            e["realPerson"] = {"subject": "X", "photoStack": stack}
+        return e
+
+    def test_realperson_with_stack_and_no_key_gets_the_default(self):
+        d = realperson_default_neutral(self.rp(stack=["photos/a.jpg"]))
+        self.assertIsNotNone(d)
+        self.assertIn("hyper-realistic", d["medium"])
+        self.assertIn("ports down", d["why"])
+
+    def test_an_explicit_false_is_the_recorded_opt_out_and_wins(self):
+        self.assertIsNone(realperson_default_neutral(self.rp(rn=False, stack=["a.jpg"])))
+
+    def test_a_declared_neutral_is_not_overridden(self):
+        self.assertIsNone(realperson_default_neutral(self.rp(rn=GOOD, stack=["a.jpg"])))
+
+    def test_no_photo_stack_means_no_default(self):
+        self.assertIsNone(realperson_default_neutral(self.rp()))
+        self.assertIsNone(realperson_default_neutral(self.rp(stack=[])))
+
+    def test_a_malformed_stack_is_not_this_defaults_business(self):
+        self.assertIsNone(realperson_default_neutral(self.rp(stack="not-a-list")))
 
 
 class TestContract(unittest.TestCase):

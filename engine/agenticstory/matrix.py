@@ -154,6 +154,45 @@ def register_neutral(entity: dict) -> dict | None:
     return rn
 
 
+REALPERSON_DEFAULT_MEDIUM = (
+    "hyper-realistic painted portrait with photographic fidelity to the supplied "
+    "photographs of the subject")
+
+REALPERSON_DEFAULT_WHY = (
+    "real-person default (SPEC v0.38): hyper-realism ports down into any register, "
+    "a stylized reference cannot recover likeness")
+
+
+def realperson_default_neutral(entity: dict) -> dict | None:
+    """The v0.38 REAL-PERSON DEFAULT: the neutral declaration this entity gets for free.
+
+    Returns the default `{medium, why}` ONLY when all three hold:
+
+      * the entity carries a `realPerson` block with a non-empty `photoStack` (a
+        likeness source exists, so fidelity to it is the point of the matrix);
+      * `structured` does NOT contain a `registerNeutral` key at all. A key that is
+        present, INCLUDING an explicit `false`, is the author's decision and wins:
+        `registerNeutral: false` is the recorded opt-out that shoots a real person
+        in-register deliberately;
+      * the declared stack is a list (a malformed stack is someone else's refusal,
+        not this default's business).
+
+    Why a default and not documentation: David Kobrosky's matrix (hyperagentic-age,
+    2026-08-08) was shot in-register warm-editorial ink-and-wash because nothing
+    defaulted the neutral path, and the operator's correction was the rule verbatim:
+    hyper-realism ports down into any register, a stylized reference cannot recover
+    likeness. The caller that adopts this default must RECORD it into the entity's
+    canon (neutrality is a property of the matrix, not of one invocation, per v0.37).
+    """
+    st = entity.get("structured") or {}
+    if "registerNeutral" in st:
+        return None
+    stack = (entity.get("realPerson") or {}).get("photoStack")
+    if not isinstance(stack, list) or not stack:
+        return None
+    return {"medium": REALPERSON_DEFAULT_MEDIUM, "why": REALPERSON_DEFAULT_WHY}
+
+
 def register_neutral_untyped_slots(entity: dict) -> list[str]:
     """Sheet keys on a register-neutral entity that declare no `role`. Advisory.
 
