@@ -62,7 +62,7 @@ VENDORED_SPEC = Path(__file__).resolve().parent.parent / "data" / "voice.md"
 
 # sha256 of the published spec this rule table was derived from. Bump it with
 # `--adopt-spec` AFTER reading the diff and porting any new hard rule into RULES.
-RULES_DERIVED_FROM = "727b8e792b130643522c879ca2c1028a78ca1de7581a7db09f7eff53c7721216"
+RULES_DERIVED_FROM = "9245d52fd6600ca711b0fe5b971d0219c84acaad6f64d55f3d1a7338abc60f1d"
 
 BLOCK, REVIEW, ADVISORY = "BLOCK", "REVIEW", "ADVISORY"
 
@@ -145,6 +145,14 @@ RULES: tuple[Rule, ...] = (
          "delete the word and check whether anything changed. If nothing did, it was "
          "emphasis standing in for a sentence good enough to land alone. Concrete and "
          "temporal uses are ordinary English and stay ('the whole time')",
+         quotation_exempt=True),
+    Rule("stacked-participles", REVIEW,
+         re.compile(r"\b\w+(?:ed|lt|wn|ne)\s+\w+ing\s+(?:the|a|an|his|her|their|its|our)\b",
+                    re.I),
+         "dropping the relative pronoun to compress a clause produces phrases nobody "
+         "says ('the infrastructure battle-tested carrying the run'). Read it aloud; "
+         "restore the pronoun ('that is', 'which was') or split the sentence. Ordinary "
+         "verb-then-gerund constructions ('stopped seeing the point') are fine to waive",
          quotation_exempt=True),
     Rule("not-x-but-y", REVIEW,
          re.compile(r"\bnot\s+(?:only\s+)?[^.;:!?\n]{2,60}?,?\s+but\s+(?:rather\s+)?"
