@@ -1379,6 +1379,40 @@ def _main() -> int:
         # and on nothing else. It is deliberately NOT blessed here: a run that shot
         # its own seed and then approved it would have no human in the loop at all,
         # which is the one thing this whole chain exists to prevent.
+        #
+        # BUT an entity that ALREADY HAS locked plates on disk is not on its first
+        # painted thing, and shooting a dependent slot as a fresh seed conditions it
+        # on the register anchor ALONE: the place never rides, and the model paints a
+        # confident generic scene. Earned 2026-08-07 on nation-of-fire: nine settings'
+        # scale plates shot via --shoot-seed came back as sunset fields with no trace
+        # of their locked rooms. The right move there is to bless an existing locked
+        # plate as the seed and CHAIN the new slot off it. Refuse and say so.
+        try:
+            _ent = json.loads((uroot / "canon" / "entities" / f"{plan['entity']}.json")
+                              .read_text(encoding="utf-8"))
+            ent_sheets = (_ent.get("structured") or {}).get("sheets") or {}
+        except (OSError, ValueError):
+            ent_sheets = {}
+        existing = []
+        for k, v in ent_sheets.items():
+            if k == seed or not isinstance(v, str):
+                continue
+            if (uroot / v).exists():
+                existing.append(k)
+        if existing:
+            print(
+                f"REFUSE: {plan['entity']} already has {len(existing)} plate(s) on disk "
+                f"({', '.join(sorted(existing)[:6])}{', ...' if len(existing) > 6 else ''}), "
+                f"so '{seed}' is not this entity's first painted thing. A --shoot-seed "
+                f"render is conditioned on the register anchor ALONE: the locked place "
+                f"will NOT ride along, and the model will paint a confident generic "
+                f"scene (nine sunset fields, 2026-08-07). Instead, bless an existing "
+                f"geometry plate and chain the new slot off it:\n"
+                f"  chain_matrix.py <universe> {plan['entity']} --bless-seed <plate>\n"
+                f"  chain_matrix.py <universe> {plan['entity']} --seed <plate> "
+                f"--shots <plate>,{seed} --skip-existing",
+                file=sys.stderr)
+            return 2
         rc = _shoot(plan, seed, [], args, anchor_abs, neg, refdir, uroot)
         if rc != 0:
             return rc
