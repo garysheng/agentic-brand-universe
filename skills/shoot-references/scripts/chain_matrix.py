@@ -885,7 +885,10 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
                 f"  unknown:  {', '.join(bogus)}\n"
                 "Every shot MUST be a level-2 heading of the form:\n"
                 "  ## <shot-name> -> `reference/<entity>/<shot-name>.png`\n"
-                "Prose sections must be level-3 or deeper, or they are read as shots."
+                "Prose sections must be level-3 or deeper, or they are read as shots.\n"
+                "A LEGACY file (unicode arrows, bare filenames, prose-named headings) "
+                "migrates in one command: normalize_prompts.py <universe> <entity> "
+                "--write (dry-run without --write)."
             )
 
     # A real person's photo stack is ground truth for the likeness and must ride
