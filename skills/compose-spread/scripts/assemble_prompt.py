@@ -143,6 +143,46 @@ def _has_motion(scene: str) -> bool:
     return not any(t in low for t in FACING_TOKENS)
 
 
+DOOR_GUARD = (
+    "DOOR MECHANICS, American standard, and every clause must hold AT ONCE. A door "
+    "leaf is about 3 ft wide and 80 in tall: roughly HALF an adult's standing height "
+    "in width, and taller than every person near it. The knob or lever sits at WAIST "
+    "HEIGHT, 36 to 40 inches off the floor, INSET about a hand's width from the leaf's "
+    "edge, on the side OPPOSITE the hinges; the hinge edge is the other side, at the "
+    "jamb. A person opening a door grips the handle at their own waist with a bent "
+    "elbow, never stooping and never reaching below their hip. The leaf sits INSIDE "
+    "its frame with the frame visible around it; a handle mounted on the frame, at "
+    "thigh height, or in the middle of the leaf is a defect. Exterior and commercial "
+    "doors swing on visible hinges; the swing implied by hinge side and handle side "
+    "must be physically possible."
+)
+
+DOOR_NOUNS = ("door", "doorway", "doorframe")
+DOOR_INTERACTION_TOKENS = (
+    "knob", "handle", "opens the", "opening the", "reaches for", "reaching for",
+    "walks through", "walking through", "steps through", "threshold", "ajar",
+    "pulls open", "pushes open", "hand on the",
+)
+
+
+def _has_door_interaction(scene: str) -> bool:
+    """True when a scene has a door AND someone or something engaging it.
+
+    Earned 2026-08-08 on the-introducer spread 07 (a man at a door with a
+    nameplate): the render put the round knob at THIGH height, jammed against
+    the very edge of the jamb, on a leaf too narrow for the man beside it. The
+    operator's instruction was the rule: 'think about how american doors work.'
+    Doors are like hands: a fixture so familiar that every error is instantly
+    visible, and a prior so loose the model gets it wrong constantly. A door
+    that is merely scenery (closed, in the background, nobody touching it)
+    does not fire this; a door being reached for, opened, or walked through
+    does.
+    """
+    low = (scene or "").lower()
+    return (any(n in low for n in DOOR_NOUNS)
+            and any(t in low for t in DOOR_INTERACTION_TOKENS))
+
+
 DEVICE_USE_GUARD = (
     "DEVICE GEOMETRY. A device a person is USING is genuinely IN FRONT OF ITS USER: the "
     "screen faces the USER'S eyes, the keyboard sits under THEIR hands, at a distance a "
@@ -2048,6 +2088,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             MOTION_GUARD if _has_motion(scene) else "",
             EYE_CONTACT_GUARD if _has_conversation(scene) else "",
             DEVICE_USE_GUARD if _has_device_use(scene) else "",
+            DOOR_GUARD if _has_door_interaction(scene) else "",
             ADDRESSING_GUARD if _has_audience(scene) else "",
             BEDCLOTHES_GUARD if _in_bed(scene) else "",
             BED_LENGTH_GUARD if _person_lying_on_bed(scene) else "",

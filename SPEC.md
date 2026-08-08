@@ -1050,18 +1050,19 @@ removes that step.
   still mandatory, and a drift-prone shape is guaranteed by *passing its reference image*, never by
   wording it harder.
   <!-- BEGIN GENERATED: guards -->
-| Guard                | Fires        | Predicate                |
-|----------------------|--------------|--------------------------|
-| `ADDRESSING_GUARD`   | conditional  | `_has_audience()`        |
-| `ANCHOR_STYLE_GUARD` | every render | unconditional            |
-| `BEDCLOTHES_GUARD`   | conditional  | `_in_bed()`              |
-| `BED_LENGTH_GUARD`   | conditional  | `_person_lying_on_bed()` |
-| `CROWD_MEMBER_GUARD` | conditional  | `_cast_inside_crowd()`   |
-| `DEVICE_USE_GUARD`   | conditional  | `_has_device_use()`      |
-| `EYE_CONTACT_GUARD`  | conditional  | `_has_conversation()`    |
-| `HANDS_GUARD`        | conditional  | `_has_hands()`           |
-| `MOTION_GUARD`       | conditional  | `_has_motion()`          |
-| `SINGLE_IMAGE_GUARD` | every render | unconditional            |
+| Guard                | Fires        | Predicate                 |
+|----------------------|--------------|---------------------------|
+| `ADDRESSING_GUARD`   | conditional  | `_has_audience()`         |
+| `ANCHOR_STYLE_GUARD` | every render | unconditional             |
+| `BEDCLOTHES_GUARD`   | conditional  | `_in_bed()`               |
+| `BED_LENGTH_GUARD`   | conditional  | `_person_lying_on_bed()`  |
+| `CROWD_MEMBER_GUARD` | conditional  | `_cast_inside_crowd()`    |
+| `DEVICE_USE_GUARD`   | conditional  | `_has_device_use()`       |
+| `DOOR_GUARD`         | conditional  | `_has_door_interaction()` |
+| `EYE_CONTACT_GUARD`  | conditional  | `_has_conversation()`     |
+| `HANDS_GUARD`        | conditional  | `_has_hands()`            |
+| `MOTION_GUARD`       | conditional  | `_has_motion()`           |
+| `SINGLE_IMAGE_GUARD` | every render | unconditional             |
 <!-- END GENERATED: guards -->
 
 - **Normative guards (v0.8, extended v0.19).** Rules the compiler emits or enforces on every job,
@@ -1104,6 +1105,17 @@ removes that step.
     the camera is not representing your interlocutor's eyes, why are you looking at it?" The
     readback half lives in `render-readback`: a conversation scene where a participant's eyes
     are on the camera or the middle distance is a DEFECT to re-roll from scratch.
+  - **Door guard (v0.38, `DOOR_GUARD`).** Fires when a scene has a door AND someone engaging it
+    (`_has_door_interaction()`: knob, handle, reaches for, walks through, threshold, ajar …). It
+    states American door mechanics as checkable numbers that must hold at once: leaf about 3 ft by
+    80 in (half an adult's standing height wide, taller than everyone), knob or lever at waist
+    height 36-40 in and inset a hand's width from the edge OPPOSITE the hinges, the leaf inside a
+    visible frame, the person gripping at their own waist with a bent elbow, and a swing the hinge
+    and handle sides make physically possible. Scenery doors nobody touches do not fire it.
+    Earned 2026-08-08 on the-introducer spread 07: a knob at thigh height jammed against the jamb
+    edge on a leaf too narrow for the man reaching for it ("think about how american doors work").
+    Doors are the hands of architecture: familiar enough that every error is instantly visible,
+    with a prior loose enough that the model errs constantly.
   - **Device-use guard (v0.38, `DEVICE_USE_GUARD`).** Fires when the scene pairs a screened-device
     noun with a use signal (`_has_device_use()`: typing, at the keys, reading the screen, working
     at, sits at the …). It states the physics: a device someone is USING faces its user, screen to
