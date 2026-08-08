@@ -408,6 +408,44 @@ with the resolver extracted once rather than patched into the compiler as a seco
 
 ---
 
+### G27. `pick_caption_pos` measures busyness, which cannot see a face or a word
+
+**What.** `compose-spread/scripts/pick_caption_pos.py` (landed 2026-08-08) scores each anchor
+by gradient energy and picks the calmest band. That is the right shape and the wrong sensor.
+Energy answers "how much detail is here", and the actual question is "is the thing here
+important" — which is a question about what the objects ARE. The two come apart in exactly the
+places that matter: a plain-lit face scores LOW and is the worst possible thing to cover, while
+a wall of pinned photographs or a foliage canopy scores HIGH and is free real estate. In-art
+lettering is invisible to it as a category.
+
+**Evidence.** the-introducer, 2026-08-08, graded against Gary's own hand placements on the same
+book. He named a target on seven spreads; a fresh reimplementation of the same energy method
+agreed on three, and all four misses were decided by a hand-tuned bottom-preference constant at
+margins of 0.001-0.04, i.e. noise with a constant on top. Two failures were categorical, not
+close calls: on spread 8 it ranked `top-left` first, which is the hero's face beside a lit lamp,
+while the correct `bottom-right` is a table of papers; the runner-up `bottom-left` sits squarely
+on the "MEETSUNDAY" lettering drawn into the art. Spread 16 shipped with its caption on the
+ANTHROPIC door plaque and no measurement noticed, because a brass plaque and the stucco around
+it are the same gradient story.
+
+**Next invocation.** Every book. `--apply` writes `pos` into the render-spec, so a wrong pick is
+not advisory — it lands in the manifest the reader and any print export both read.
+
+**Would close it.** Keep the script as the cheap always-on floor and add a READBACK pass above
+it, following `judge-slot`'s own doctrine that the judge is a ROLE first and a script second:
+code computes each anchor's REAL footprint from the real caption text at the real size (a
+four-line caption is a different box from a two-line one) and hands the model those rectangles;
+the model says what is under them and returns protected regions plus a ranking. Geometry is
+arithmetic and belongs in code; "that is the hero's face" is not. Cache the verdicts beside the
+render-spec so it is one call per spread ever, and let `--apply` refuse when the readback and
+the energy pick disagree.
+
+**Still open because.** Found while building a print export in the platform repo, with the
+energy script only hours old; it wants closing once, above the existing script, rather than by
+tuning its constants a third time.
+
+---
+
 ## Filing a gap here
 
 Append an entry with the five headings above (**What / Evidence / Next invocation / Would
