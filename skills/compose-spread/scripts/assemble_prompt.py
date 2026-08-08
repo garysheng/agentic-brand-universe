@@ -143,6 +143,42 @@ def _has_motion(scene: str) -> bool:
     return not any(t in low for t in FACING_TOKENS)
 
 
+NECK_ROTATION_GUARD = (
+    "NECK ROTATION. A human head turns at most about SIXTY DEGREES past the line of the "
+    "shoulders, comfortably far less. A person looking somewhere their body does not "
+    "point turns SHOULDERS AND CHEST with the head: to look behind themselves they "
+    "rotate the whole upper body, or stop and turn around. NEVER render a head rotated "
+    "further around than a relaxed neck allows while the torso, hips and feet keep "
+    "walking the other way; that reads as an injury. If the scene wants a figure in "
+    "motion who also looks back, either pause the figure mid-step with the upper body "
+    "genuinely rotated, or settle for a modest sideways glance within the neck's real "
+    "range. The chin stays near the shoulder it turns toward; the face never points "
+    "opposite the chest."
+)
+
+LOOK_BACK_TOKENS = (
+    "turned back over", "looks back", "looking back", "glances back", "glancing back",
+    "over his shoulder", "over her shoulder", "over their shoulder", "face turned back",
+    "head turned back", "turns to look behind", "looking behind",
+)
+
+
+def _has_look_back(scene: str) -> bool:
+    """True when a scene asks a figure to look somewhere behind their body.
+
+    Earned 2026-08-08 on the-introducer spread 03: a man climbing a stoop with
+    'his face turned back over the street' rendered with his chin past his
+    shoulder and his torso still climbing, and the operator's words were the
+    spec: 'This head position looks really uncomfortable... Why are you
+    distorting yourself like an exorcist?' Same failure family as the
+    torso-follows-head rule in make-a-book (a profile head on a camera-square
+    chest); this is its motion case, and like that rule the fix must be stated
+    as ANATOMY, not as a camera name.
+    """
+    low = (scene or "").lower()
+    return any(t in low for t in LOOK_BACK_TOKENS)
+
+
 DOOR_GUARD = (
     "DOOR MECHANICS, American standard, and every clause must hold AT ONCE. A door "
     "leaf is about 3 ft wide and 80 in tall: roughly HALF an adult's standing height "
@@ -2089,6 +2125,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             EYE_CONTACT_GUARD if _has_conversation(scene) else "",
             DEVICE_USE_GUARD if _has_device_use(scene) else "",
             DOOR_GUARD if _has_door_interaction(scene) else "",
+            NECK_ROTATION_GUARD if _has_look_back(scene) else "",
             ADDRESSING_GUARD if _has_audience(scene) else "",
             BEDCLOTHES_GUARD if _in_bed(scene) else "",
             BED_LENGTH_GUARD if _person_lying_on_bed(scene) else "",

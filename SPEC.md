@@ -1050,19 +1050,20 @@ removes that step.
   still mandatory, and a drift-prone shape is guaranteed by *passing its reference image*, never by
   wording it harder.
   <!-- BEGIN GENERATED: guards -->
-| Guard                | Fires        | Predicate                 |
-|----------------------|--------------|---------------------------|
-| `ADDRESSING_GUARD`   | conditional  | `_has_audience()`         |
-| `ANCHOR_STYLE_GUARD` | every render | unconditional             |
-| `BEDCLOTHES_GUARD`   | conditional  | `_in_bed()`               |
-| `BED_LENGTH_GUARD`   | conditional  | `_person_lying_on_bed()`  |
-| `CROWD_MEMBER_GUARD` | conditional  | `_cast_inside_crowd()`    |
-| `DEVICE_USE_GUARD`   | conditional  | `_has_device_use()`       |
-| `DOOR_GUARD`         | conditional  | `_has_door_interaction()` |
-| `EYE_CONTACT_GUARD`  | conditional  | `_has_conversation()`     |
-| `HANDS_GUARD`        | conditional  | `_has_hands()`            |
-| `MOTION_GUARD`       | conditional  | `_has_motion()`           |
-| `SINGLE_IMAGE_GUARD` | every render | unconditional             |
+| Guard                 | Fires        | Predicate                 |
+|-----------------------|--------------|---------------------------|
+| `ADDRESSING_GUARD`    | conditional  | `_has_audience()`         |
+| `ANCHOR_STYLE_GUARD`  | every render | unconditional             |
+| `BEDCLOTHES_GUARD`    | conditional  | `_in_bed()`               |
+| `BED_LENGTH_GUARD`    | conditional  | `_person_lying_on_bed()`  |
+| `CROWD_MEMBER_GUARD`  | conditional  | `_cast_inside_crowd()`    |
+| `DEVICE_USE_GUARD`    | conditional  | `_has_device_use()`       |
+| `DOOR_GUARD`          | conditional  | `_has_door_interaction()` |
+| `EYE_CONTACT_GUARD`   | conditional  | `_has_conversation()`     |
+| `HANDS_GUARD`         | conditional  | `_has_hands()`            |
+| `MOTION_GUARD`        | conditional  | `_has_motion()`           |
+| `NECK_ROTATION_GUARD` | conditional  | `_has_look_back()`        |
+| `SINGLE_IMAGE_GUARD`  | every render | unconditional             |
 <!-- END GENERATED: guards -->
 
 - **Normative guards (v0.8, extended v0.19).** Rules the compiler emits or enforces on every job,
@@ -1105,6 +1106,17 @@ removes that step.
     the camera is not representing your interlocutor's eyes, why are you looking at it?" The
     readback half lives in `render-readback`: a conversation scene where a participant's eyes
     are on the camera or the middle distance is a DEFECT to re-roll from scratch.
+  - **Neck-rotation guard (v0.38, `NECK_ROTATION_GUARD`).** Fires when a scene asks a figure to
+    look somewhere behind their body (`_has_look_back()`: looks back, glancing back, over his/her
+    shoulder, face turned back …). It states the anatomy: a head turns at most about sixty degrees
+    past the shoulder line, so a person looking behind themselves rotates SHOULDERS AND CHEST with
+    the head or stops and turns around; the chin stays near the shoulder it turns toward and the
+    face never points opposite the chest. It also names the two legal resolutions (pause the
+    figure with the upper body genuinely rotated, or settle for a modest sideways glance), because
+    a ban without a resolution invites the opposite defect. Earned 2026-08-08 on the-introducer
+    spread 03 ('his face turned back over the street' rendered chin-past-shoulder on a climbing
+    torso; operator: 'why are you distorting yourself like an exorcist?'). The motion case of
+    make-a-book's torso-follows-head rule.
   - **Door guard (v0.38, `DOOR_GUARD`).** Fires when a scene has a door AND someone engaging it
     (`_has_door_interaction()`: knob, handle, reaches for, walks through, threshold, ajar …). It
     states American door mechanics as checkable numbers that must hold at once: leaf about 3 ft by
