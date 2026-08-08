@@ -463,9 +463,14 @@ Then `abu:render-readback` every image.
   `--grid` FIRST when you do not already know where the detail is.** Guessing a box, getting
   shadow, and guessing again costs two round trips per check; that happened three times in the
   same run (two shoe crops and a wall-text crop) and the grid mode exists precisely to stop it.
-- **Back up every roll when two failure axes are live.** Each roll fixes one and breaks the other,
-  and without copies there is nothing to compare. Park rejects in `<book>/candidates/` under names
-  stating what is wrong, never as `spread-*` (the render guard would accept them as inputs).
+- **Park EVERY roll the operator has seen, before anything overwrites it.** The old rule said
+  "when two failure axes are live," and on 2026-08-08 a single-axis reroll overwrote a college-era
+  seed the operator had watched render and then asked for BACK ("the image you had just a second
+  ago was better") — the file was gone, the recipe overwritten with it, and the roll had to be
+  approximated from a reconstructed generation state. A shoot's output path is a mutable slot;
+  `candidates/` is the only history. So: any roll that reached the operator's eyes gets a copy in
+  `<book>/candidates/` under a name stating what it is, BEFORE the next roll fires, every time.
+  Never name parked files `spread-*` (the render guard would accept them as inputs).
 - **Correct a WRONG INVARIANT rather than re-rolling good art.** When a plate is right and the
   rule is impossible, fix the rule and record why in `authority.note`.
 - **Fix the ENTITY, not the spreads.** Ten wrong spreads from one bad sheet is one entity rewrite

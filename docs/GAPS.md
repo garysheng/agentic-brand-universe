@@ -615,3 +615,22 @@ first hand-rolled publish.
 
 **Would close it.** A `--closing-plate` mode (or sibling script) in the cover skill that runs
 conform + platform copy + recipe in one verb, mirroring `render_cover.py`'s publish step.
+
+
+### G26. An altLook's photoStack APPENDS to the base stack instead of replacing it
+
+**What.** A look that declares its own `photoStack` (SPEC: "a look's own anchorPhoto and
+photoStack outrank the base face sheets") still gets the BASE realPerson stack passed first at
+shoot time, with the look's photos appended after. For an age era this is exactly backwards:
+five present-day photos lead the conditioning and the young-era anchor arrives sixth of eight,
+so the young face averages toward the adult one.
+
+**Evidence.** david-kobrosky@college, 2026-08-08: three seed rolls fought adult-face drift and
+residual stubble until the BASE stack was hand-swapped to young-only (stash key in the entity,
+restored after), which is a workaround that falsifies nothing but that nobody will remember.
+
+**Next invocation.** The next age-era or wardrobe-era look on any realPerson entity.
+
+**Would close it.** chain_matrix's look branch passes look.photoStack INSTEAD of the base stack
+when the look declares one (anchorPhoto first), matching the outrank language the spec already
+uses for sheets. The base stack still rides along only when the look declares `keepPhotos`.
