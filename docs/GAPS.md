@@ -751,3 +751,30 @@ shared, in the same spirit as `**Negatives (every shot):**`, or (b) change the s
 header blocks are labelled as author notes and each shot body is stamped SELF-CONTAINED. (b)
 is cheaper and loses nothing, since the entity's own `structured.render.always` is the real
 home for a description that must apply everywhere.
+
+### G29. audit_spec_refs cannot tell "improvised on purpose" from "forgot to cast"
+
+**What.** The bare-anchor check fires on `len(refs) <= 1` and says "Cast the entities this
+spread is actually about." For a book with genuinely one-off imagined plates there is nothing
+to cast: the picture is a dragon, an empty tomb, a hall of suitors, a bow on a threshold. Each
+appears ONCE, so making each a canon entity is overengineering by the framework's own
+abstract-from-the-second-instance rule. There is no way to say so, and eight standing warnings
+train an author to skim the audit, which is the exact failure the audit exists to prevent.
+
+The leak the check is really worried about is already closable: `identity.register`'s own
+`stylePackNote` prescribes a purpose-made CONTENT-NEUTRAL swatch as the anchor for "any render
+that casts nothing else", and a spread can set it per-spread via `anchorRef`. The audit does
+not look at whether the anchor it is warning about HAS a subject.
+
+**Evidence.** the-story-underneath-the-story, 2026-08-09: eight `imagined` plates, all pointed
+at `reference/register-neutral-swatch/hero.png`, all still flagged.
+
+**Next invocation.** Any book with argued/imagined plates rather than only staged scenes. That
+is most teaching books in this universe.
+
+**Would close it.** Downgrade the finding to a NOTE when the spread's resolved anchor is the
+register's declared content-neutral swatch (or any anchor with no `anchorSubject`), and keep it
+a problem when the anchor is a subject-bearing one. That reads the actual risk rather than a
+proxy for it. A per-spread `improvised: true` opt-out is the cheaper alternative and worse: it
+is a flag an author sets to silence a check, which is the thing this register keeps warning
+about elsewhere.
