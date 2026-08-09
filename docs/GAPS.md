@@ -890,3 +890,63 @@ default agrees with the canon's own contract. Also worth a line: `--print-prompt
 render_cover.py prints AND STILL GENERATES (a paid call); an operator reaching for it as a
 dry-run pays for the render they were trying to preview. Filed 2026-08-09 by the
 the-goldilocks-pace endgame run.
+
+---
+
+### G34. An `insert` shot and a cast entity contradict each other, and nothing refuses before the spend
+
+**What.** SPEC 4.13 defines `insert` framing as "no whole figures and no faces are in shot",
+while `assemble_prompt` unconditionally emits the cast-closure line, that entity's full
+`render.always` body description, and its pose bake. Both go into one prompt, they disagree,
+and the entity block wins. The failure is not a missing figure: it is an ANATOMICALLY ORPHANED
+one, a limb at plate scale belonging to no body in frame, which reads as a rendering glitch
+rather than as a framing choice. This is G31's shape (scene demands what an in-frame
+declaration forbids) specialised to the shot vocabulary, and unlike G31 it IS statically
+detectable, because both sides are structured fields rather than prose.
+
+**Evidence.** the-factory-manager spread-09 (hyperagentic-age, 2026-08-09): `shot: "insert"`
+with `tastefulstories-manager` cast produced, twice, a giant disembodied mitten plus a face in
+a machine port. Two paid rolls. It landed on roll 3 only after re-framing to `close` (the
+delivery beat), which gives the arm an owner and a scale. The re-frame cost the book one of
+its two relief shots, so the spec audits green while being slightly poorer than intended.
+
+**Next invocation.** Any book that follows the shot-variety guidance in make-a-book (declare a
+shot on every spread, use `insert` for relief) on a spread whose beat also names a character.
+That combination is common, because the beats that most want an insert are the intimate ones.
+
+**Would close it.** Cheapest first: a static refusal in `audit_spec_shots.py` when
+`shot == "insert"` and `cast` is non-empty, naming both sides and the two legal exits (change
+the shot, or drop the cast and declare the hand/object in `anonymous`). It is free and it
+fires before any spend. The richer fix, worth doing only if the refusal proves too blunt, is a
+per-cast-entry `presence: "partial"` that suppresses the body block and pose bake while
+keeping the closure and the identity refs, so an insert can legally carry a named character's
+hands. Filed 2026-08-09 by the the-factory-manager render run.
+
+---
+
+### G35. Caption placement decided downstream never returns to the render-spec, so the spec is permanently wrong about its own book
+
+**What.** `compose-spread/scripts/pick_caption_pos.py` writes a `pos` per spread into
+`render-spec.json`, and make-a-book (4b) then requires a vision pass to make the real decision
+because the heuristic cannot see a face (G27, G30). The vision pass writes its verdict into the
+DELIVERY layer only. Nothing writes it back. So every published book leaves a render-spec that
+confidently states caption positions the book does not use, and the next agent to read that spec
+(to re-render a spread, to derive a sibling book, to answer "where do captions sit in this
+universe") is reading a stale prior as if it were the record.
+
+**Evidence.** Two books in one day, both in hyperagentic-age (2026-08-09).
+the-goldilocks-pace: the vision pass overturned EVERY heuristic `top-*` prior, 14/14 changed,
+spec never updated. the-factory-manager: 13 of 15 changed, spec never updated. The drift is not
+an edge case; it is the normal outcome, because the whole reason the vision pass exists is that
+the prior is unreliable.
+
+**Next invocation.** Every book, at publish. And every later read of a shipped book's spec.
+
+**Would close it.** Either (a) type `pos` in the spec as an explicit non-authoritative prior
+(rename to `posPrior`, and have book-doctor check that a published book's manifest carries a
+decided `pos` for every spread), or (b) give compose-spec a `--writeback-captions` that pulls
+the decided anchors from the delivery manifest back into the spec after publish. (a) is more
+honest about where the decision actually lives and does not add a cross-repo dependency; (b)
+keeps one file answering the question. Prefer (a). Note this interacts with the compose_spec
+re-sync bug, which currently DELETES `pos` outright on re-sync. Filed 2026-08-09 by the
+the-factory-manager endgame run.
