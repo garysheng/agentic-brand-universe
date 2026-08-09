@@ -86,7 +86,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.38) |
+| `init` | scaffold a new universe (conforms to spec v0.39) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -161,6 +161,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.39 | four paves out of the takeoff-thursdays run (hyperagentic-age, 2026-08). |
 | v0.38 | a real person's matrix is hyper-real neutral BY DEFAULT. |
 | v0.37 | the identity master could not be shot until a register existed, and it > must be. |
 | v0.33 | three surfaces that each assumed a name meant a thing. |

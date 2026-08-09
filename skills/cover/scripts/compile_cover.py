@@ -238,6 +238,26 @@ def main() -> int:
         for ph in (rp.get("photoStack") or [])[:2]:
             if ph not in refs:
                 refs.append(ph)
+        # FIELD SELECTION IS PER KIND, MATCHING assemble_prompt (SPEC 4.6). A motif or
+        # prop is prompted from `prose.rules` (or `structured.render.bake`), and its
+        # `structured.invariants` are QA keys ONLY. This branch used to not exist, so
+        # every non-setting entity fell through the character path below and its
+        # invariants were baked VERBATIM into the prompt. A motif's invariants are
+        # often MEDIUM-SCOPED (statements about its own standalone plate form), so the
+        # leak is not just noise, it is a register contradiction: takeoff-thursdays
+        # (hyperagentic-age, 2026-08) compiled winged-startup's "Plate register only:
+        # flat solid terracotta ground" lines into a warm-editorial cover prompt, and
+        # the two compilers disagreed about what the same canon meant.
+        if ent.get("kind") not in (None, "character"):
+            inv = st.get("invariants", [])
+            derived = ((ent.get("prose") or {}).get("rules")
+                       or (st.get("render") or {}).get("bake"))
+            block = f"{eid} exactly as its reference sheets."
+            if derived:
+                block += " " + str(derived).strip()
+            ent_blocks.append(block)
+            qa.extend(f"{eid}: {i}" for i in inv)
+            continue
         # Canon's PRESCRIBED PROMPT-CRAFT (structured.render), same contract as
         # compose-spread's assembler. An invariant is a kebab QA key and cannot
         # carry the sentence that steers the model, so a cover that used only the

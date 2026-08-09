@@ -73,6 +73,25 @@ def build_universe(root: Path):
         "contract": {"emptyPlates": ["reference/isle/c1.png", "reference/isle/c2.png"],
                      "dressing": "windswept test grass"},
     }))
+    png(root / "reference" / "sigil" / "hero-plate.png")
+    (root / "canon" / "entities" / "sigil.json").write_text(json.dumps({
+        # A MOTIF whose invariants are MEDIUM-SCOPED: statements about its own
+        # standalone plate form, true of the plates and FALSE of any painterly
+        # cover that merely contains the motif. The exact shape of hyperagentic-age's
+        # winged-startup, whose "Plate register only: flat solid terracotta ground"
+        # lines leaked verbatim into takeoff-thursdays' cover prompt (2026-08).
+        "id": "sigil", "kind": "motif",
+        "structured": {
+            "sheets": {"hero-plate": "reference/sigil/hero-plate.png"},
+            "requiredForRender": ["hero-plate"],
+            "invariants": [
+                "Plate register only: flat solid terracotta ground, flat ivory fills.",
+                "The sigil is a hand-stacked tower of two or three cream blocks.",
+            ],
+        },
+        "prose": {"rules": "Master-first: pass the locked hero plate as reference; "
+                           "a sigil that disagrees with the hero plate is a defect."},
+    }))
     (root / "stories" / "tale.json").write_text(json.dumps({
         "id": "tale", "spine": "biography", "features": ["hero", "isle"],
     }))
@@ -237,6 +256,30 @@ class TestCompile(unittest.TestCase):
     def test_render_block_does_not_replace_invariant_qa(self):
         d = self.compiled()
         self.assertIn("hero: always wears the test hat", d["qa"])
+
+    def test_motif_prompt_block_is_prose_rules_not_invariants(self):
+        """FIELD SELECTION MUST MATCH assemble_prompt's motif branch (SPEC 4.6).
+
+        compose-spread's assembler prompts a motif/prop from `prose.rules` (or
+        `render.bake`) and keeps `structured.invariants` as QA keys only. This
+        compiler used to send every non-setting entity down the character path and
+        bake its invariants VERBATIM into the prompt, so a motif whose invariants
+        are medium-scoped statements about its own standalone plates ("Plate
+        register only: flat solid terracotta ground") contradicted the cover's
+        register in the prompt itself. Earned on takeoff-thursdays
+        (hyperagentic-age, 2026-08): winged-startup's plate-register lines leaked
+        into a warm-editorial cover prompt."""
+        d = self.compiled("--with", "sigil")
+        self.assertIn("Master-first", d["prompt"],
+                      "the motif's prose.rules must steer the prompt")
+        self.assertNotIn("terracotta", d["prompt"],
+                         "medium-scoped invariants must NOT reach the prompt")
+        self.assertRefEndsWith(d["refs"], "reference/sigil/hero-plate.png")
+
+    def test_motif_invariants_still_reach_qa(self):
+        """Aligned with assemble_prompt: invariants stay on the READBACK checklist."""
+        qa = " ".join(self.compiled("--with", "sigil")["qa"])
+        self.assertIn("hand-stacked tower", qa)
 
 
 class TestConform(unittest.TestCase):
@@ -777,6 +820,36 @@ class RenderWrapperForwardsClosingPlateFlags(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         for flag in ("--no-cast", "--no-text", "--negative"):
             self.assertIn(flag, r.stdout, f"render_cover.py --help no longer lists {flag}")
+
+
+class TextReportIsHonestAboutTheMode(unittest.TestCase):
+    """--no-text must not print 'BAKED TEXT (read every glyph back)' over lines that
+    were deliberately not baked. On a closing plate that instruction invites a false
+    'missing title' defect against a plate whose contract is to carry no text
+    (takeoff-thursdays, hyperagentic-age, 2026-08)."""
+
+    def setUp(self):
+        sys.path.insert(0, str(SCRIPTS))
+        from render_cover import text_report
+        self.text_report = text_report
+
+    def test_baked_mode_demands_glyph_readback(self):
+        out = "\n".join(self.text_report(False, ["TITLE", "by A"]))
+        self.assertIn("BAKED TEXT", out)
+        self.assertIn('"TITLE"', out)
+
+    def test_no_text_mode_calls_any_glyph_a_defect(self):
+        out = "\n".join(self.text_report(True, ["TITLE", "by A"]))
+        self.assertNotIn("BAKED TEXT", out)
+        self.assertIn("ANY glyph in the frame is a DEFECT", out)
+        # the compiled lines survive, labelled as typeset-pass checks only
+        self.assertIn("typeset", out)
+        self.assertIn('"TITLE"', out)
+
+    def test_no_text_with_no_lines_says_only_the_defect_rule(self):
+        out = self.text_report(True, [])
+        self.assertEqual(len(out), 1)
+        self.assertIn("DEFECT", out[0])
 
 
 if __name__ == "__main__":

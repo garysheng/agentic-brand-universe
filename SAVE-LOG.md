@@ -1,3 +1,40 @@
+## 2026-08-09 — the takeoff-thursdays pave sweep: spec v0.39 (plugin 1.5.0)
+
+Four paves out of the takeoff-thursdays run (hyperagentic-age), routed through
+pave-the-path and landed via evolve-abu, each with a named next invocation.
+
+1. `compose-spread/scripts/migrate_render_spec.py` exists. The BAKE-USED-AS-A-SELECTOR
+   refusal had named it since the guard shipped and no such file existed anywhere, so
+   takeoff-thursdays hand-rolled the bake-to-plate translation as declared debt, the
+   second hand-roll of the same translation. Detection is the guard's own predicate
+   (`bake_selector_hit`, extracted), so a translated entry can never still be refused.
+   Dry-run by default, `--write` keeps the previous bytes beside the spec.
+
+2. `compile_cover.py` selects prompt fields per KIND, matching `assemble_prompt.py`:
+   a motif/prop is prompted from `prose.rules` (or `render.bake`) with invariants as QA
+   keys only. Before, every non-setting entity fell down the character path and its
+   invariants were baked verbatim, so winged-startup's medium-scoped "Plate register
+   only" lines leaked a register contradiction into a warm-editorial cover prompt.
+
+3. `render_cover.py --no-text` reports honestly: art-only, any glyph in frame is a
+   DEFECT, compiled textLines apply only to a later typeset pass. It used to print
+   "BAKED TEXT (read every glyph back)" over lines deliberately not baked, inviting a
+   false "missing title" defect on every closing plate.
+
+4. Every PIL-dependent skill script declares pillow inline (PEP 723), so `uv run
+   <script>` resolves it by itself. The run paid the `--with pillow` tax on every
+   readback. Engine stays stdlib-only. CLAUDE.md gained the gotcha and the job row.
+
+Filed, not built: G31, a model-judged pre-render check for a scene whose prose
+positively demands what an in-frame entity's invariant forbids (takeoff-thursdays
+spread-19, the door-gap sliver vs the-plain-door's warm-light-only law). The gate is a
+judgement, not a lint, so its budget contract is a design decision. The universe-side
+reconciliation of that door invariant happened in hyperagentic-age's own canon.
+
+Tests: 1435 green including docs; new tests for the migrator (guard agreement, dry-run,
+backup), the per-kind cover field selection (proven to bite before the fix), and the
+no-text report.
+
 ## 2026-08-09 — caption placement is a mandatory VISION pass (plugin 1.4.0)
 
 The book chain now requires a vision pass over the finished art to place every caption

@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pillow"]
+# ///
+# ^ PEP 723 inline metadata, so `uv run <this script>` resolves Pillow itself.
+#   Before this, every invocation needed `uv run --with pillow` typed from memory,
+#   and the takeoff-thursdays run (2026-08) paid that tax on every single readback.
 """Build a labelled contact sheet from renders, for read-back.
 
 `render-readback` says a contact sheet of four is the right read-back unit, because it
@@ -23,7 +29,9 @@ def main() -> int:
     try:
         from PIL import Image, ImageDraw
     except ImportError:
-        return int(bool(sys.stderr.write("contact_sheet: needs pillow (uv run --with pillow)\n")))
+        return int(bool(sys.stderr.write(
+            "contact_sheet: needs pillow. Run via `uv run <this script>` (it declares "
+            "pillow inline, PEP 723) or install Pillow in this env.\n")))
 
     paths = [p for p in a.images if os.path.exists(p)]
     missing = [p for p in a.images if not os.path.exists(p)]

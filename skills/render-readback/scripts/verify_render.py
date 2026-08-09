@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pillow"]
+# ///
+# ^ PEP 723 inline metadata, so `uv run <this script>` resolves Pillow itself.
+#   Before this, every invocation needed `uv run --with pillow` typed from memory,
+#   and the takeoff-thursdays run (2026-08) paid that tax on every single readback.
 """Read a render back and say whether the canon actually arrived.
 
 WHY THIS IS A SCRIPT AND NOT A DOC. The repo's own CLAUDE.md carried these checks as two

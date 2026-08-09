@@ -29,6 +29,7 @@ would use at the moment you need it.
 | **assemble a spread prompt from canon** | `compose-spread/scripts/assemble_prompt.py` |
 | **check a WHOLE render-spec's refs before rendering** (free, no model) | `compose-spread/scripts/audit_spec_refs.py <universe> <spec>` — **run it after compose-spec and after any spec edit.** Catches the silent one: spread-level `plate` selects the SETTING's plate, so on a spread with no `setting` it is ignored and the entity's plates never reach the model. Shipped once (Looked Like Hate, five candle spreads with zero spine-object plates) and recurred on God Does Not Need Our Help (26 spreads, zero arch plates). "Dry-run and look at the ref count" was already the instruction; looking is the part that fails. |
 | **scaffold or re-sync a book render-spec** | `compose-spec/scripts/compose_spec.py` |
+| **translate a render-spec out of the retired NoF dialect** (bake-as-selector -> `plate`/`pose`) | `compose-spread/scripts/migrate_render_spec.py translate <universe> <spec> [--write]` — the tool the BAKE-USED-AS-A-SELECTOR refusal names. Dry-run by default. Never hand-translate; takeoff-thursdays did once as declared debt and that is why this exists. |
 | **re-roll an existing render AS IT WAS** (same model/prompt/refs, optional one-line delta, zero canon reads) | `reroll-slot/scripts/reroll_from_recipe.py <asset.png> [--note "delta"]` — reads the `.recipe.json` beside the asset, regenerates through the provider adapter, replays the recorded conform/publish for endcaps. ONE command, ONE image call. Wrong verb if the edit changes text/cast/look/setting (canon moved; use update-book). Earned 2026-08-07: an 85-call run spent 71 calls re-reading canon that sat in the slot's own recipe. |
 | **score a run transcript** (tool histogram, first generation call, orientation verdict) | `pave-the-path/scripts/review_run.py runs/<id> [--json]` |
 | **add / insert / renumber a spread** | `update-book/scripts/insert_spread.py` |
@@ -166,8 +167,12 @@ assert old in src, "PATCH DID NOT MATCH"   # without this the no-op is silent
 Same family as every other bug in this file: a check that did not run looks exactly like a
 check that passed.
 
-## Two standing gotchas
+## Standing gotchas
 
+- **Never `uv run --with pillow` a skill script.** Every PIL-dependent script declares
+  pillow inline (PEP 723, `# /// script`), so `uv run <script>` resolves it by itself;
+  plain `python3` needs Pillow on the env. If you catch yourself typing `--with pillow`,
+  the script you are running is missing its block — add it, do not work around it.
 - **zsh eats `"$VAR:id"`** as a parameter modifier, so `--entity "$CF:gary"` silently
   mangles the path. Build it first: `ENT="${CF}:gary"`, then pass `"$ENT"`.
 - **Never rewrite a historical record.** `.recipe.json` files and dated canon attestations

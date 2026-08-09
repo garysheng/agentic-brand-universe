@@ -1255,28 +1255,44 @@ def _selector_bake_guard(c: dict, ent: dict, spread_id: str) -> None:
     poses. Both conditions must hold, which is why an ordinary prose bake mentioning a
     state name in passing does not trip it.
     """
-    bake = (c.get("bake") or "").strip()
-    if not bake or len(bake) > 60 or "." in bake or bake.count(" ") > 2:
-        return  # a sentence, not a selector
-    st = ent.get("structured") or {}
-    candidates: dict[str, str] = {}
-    for k in (st.get("sheets") or {}):
-        candidates.setdefault(_norm_key(k), f"\"plate\": \"{k}\"")
-    for k in ((st.get("render") or {}).get("poses") or {}):
-        candidates.setdefault(_norm_key(k), f"\"pose\": \"{k}\"")
-    hit = candidates.get(_norm_key(bake))
+    hit = bake_selector_hit(c.get("bake"), ent)
     if not hit:
         return
+    field, key = hit
+    fix = f"\"{field}\": \"{key}\""
     raise Refuse(
-        f"BAKE USED AS A SELECTOR ({spread_id}, cast '{c['id']}'): bake={bake!r} is not "
+        f"BAKE USED AS A SELECTOR ({spread_id}, cast '{c['id']}'): bake={c['bake']!r} is not "
         f"prose, it names one of this entity's own reference slots. In this assembler "
-        f"`bake` is free prose appended to the block, and the SELECTOR is {hit}. Left "
+        f"`bake` is free prose appended to the block, and the SELECTOR is {fix}. Left "
         f"alone, the locked reference is never passed and the slug is pasted into the "
-        f"prompt as stray text, with no error. Fix the descriptor: set {hit}, and either "
+        f"prompt as stray text, with no error. Fix the descriptor: set {fix}, and either "
         f"drop `bake` or replace it with an actual sentence. This is the retired "
-        f"NoF compile_render.py dialect; `migrate_render_spec.py translate <spec>` "
-        f"converts a whole spec."
+        f"NoF compile_render.py dialect; `compose-spread/scripts/migrate_render_spec.py "
+        f"translate <universe> <spec> --write` converts a whole spec."
     )
+
+
+def bake_selector_hit(bake, ent: dict):
+    """(field, key) when `bake` is really a selector for one of `ent`'s own slots, else None.
+
+    The ONE detection both consumers share: `_selector_bake_guard` refuses on it at
+    assemble time, and `migrate_render_spec.py` rewrites on it when translating a whole
+    spec out of the retired NoF `compile_render.py` dialect. Extracted 2026-08-09, the
+    day the migrator that the refusal had been NAMING since it was written finally
+    shipped (takeoff-thursdays hand-rolled the translation as declared debt). Two copies
+    of this predicate would drift, and a migrator that disagrees with the guard it
+    exists to satisfy converts a spec the guard still refuses.
+    """
+    bake = (bake or "").strip()
+    if not bake or len(bake) > 60 or "." in bake or bake.count(" ") > 2:
+        return None  # a sentence, not a selector
+    st = ent.get("structured") or {}
+    candidates: dict[str, tuple[str, str]] = {}
+    for k in (st.get("sheets") or {}):
+        candidates.setdefault(_norm_key(k), ("plate", k))
+    for k in ((st.get("render") or {}).get("poses") or {}):
+        candidates.setdefault(_norm_key(k), ("pose", k))
+    return candidates.get(_norm_key(bake))
 
 
 def _pose_without_look_guard(c: dict, ent: dict, spread_id: str) -> None:

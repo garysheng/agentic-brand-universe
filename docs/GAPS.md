@@ -806,3 +806,34 @@ ever load-bearing again: score the flip penalty symmetrically (or drop it and le
 own flip rule handle short viewports), and add a skin-tone-plus-low-gradient penalty so a
 smooth face stops reading as calm. Do NOT hand-tune the constant; a constant is what made the
 misses photo finishes in the first place.
+
+### G31. Nothing gates a scene whose prose POSITIVELY demands what an in-frame entity's invariant forbids
+
+**What.** `assemble_prompt` bakes an in-frame entity's law and the spread's scene text into
+one prompt and never checks them against each other, so a scene can demand exactly what the
+entity's invariant forbids and the assemble is silent: the model resolves the contradiction
+by picking one side, the readback then flags the pick as a DEFECT (or worse, the operator
+accepts the render and the invariant is quietly dead law). This is not detectable with a
+string check: "through the gap, a sliver of the room is visible" vs
+`open-states-show-only-warm-light-through-the-gap-never-what-is-behind` contradict
+SEMANTICALLY, and a keyword heuristic would fire wrong often enough to train operators to
+ignore it (the v0.33 lesson: a check that is wrong every time it fires is worse than none).
+
+**Evidence.** takeoff-thursdays spread-19 (hyperagentic-age, 2026-08): the scene demanded a
+visible desk/mug/whiteboard sliver through the ajar door gap, the-plain-door's invariant said
+open states show warm light only, never what is behind. The render showed the sliver, the
+operator saw and accepted it, and the invariant was reconciled in canon after the fact.
+
+**Next invocation.** Any spread casting a stateful motif/setting whose scene text elaborates
+the state (doors, windows, screens, containers: anything with an "open" that has a law about
+what shows).
+
+**Would close it.** A MODEL-JUDGED pre-render check, not a lint: the natural seat is the
+`judge-slot` role run BEFORE spend, given only (scene text, in-frame invariants) and asked
+"does the scene positively demand what any invariant forbids?" Wire it as an advisory
+`warnings:` line in assemble (the channel v0.30 built), never a refusal, because the answer
+is a judgement.
+
+**Still open because.** It needs a model call inside an otherwise deterministic, free
+assembler, and the right budget/latency contract for that (per-spread? per-book? cached?) is
+a design decision, not a patch. Filed 2026-08-09 by the takeoff-thursdays pave sweep.

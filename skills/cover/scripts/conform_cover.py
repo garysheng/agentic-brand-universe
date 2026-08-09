@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pillow"]
+# ///
+# ^ PEP 723 inline metadata, so `uv run <this script>` resolves Pillow itself.
+#   Before this, every invocation needed `uv run --with pillow` typed from memory,
+#   and the takeoff-thursdays run (2026-08) paid that tax on every single readback.
 """Conform a rendered cover to the platform aspect, and HARD-ASSERT the result.
 
 The load-bearing half of the cover skill's conform contract: the transform and

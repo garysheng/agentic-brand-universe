@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pillow"]
+# ///
+# ^ PEP 723 inline metadata, so `uv run <this script>` resolves Pillow itself.
+#   Before this, every invocation needed `uv run --with pillow` typed from memory,
+#   and the takeoff-thursdays run (2026-08) paid that tax on every single readback.
 """Pick each spread's caption anchor by MEASURING the art, not by defaulting.
 
 THIS IS A PRIOR, NOT THE DECISION (demoted 2026-08-09). The caption anchor of record is

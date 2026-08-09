@@ -74,6 +74,31 @@ def publish_platform_copy(out: Path) -> Path | None:
     return dst
 
 
+def text_report(no_text: bool, text_lines: list[str]) -> list[str]:
+    """The lines the runner prints about lettering, HONEST ABOUT THE MODE.
+
+    `--no-text` renders ART ONLY, and this report used to print the same
+    "BAKED TEXT (read every glyph back against these)" header regardless, over
+    title lines that were deliberately NOT baked. On a closing plate (art-only,
+    no typeset pass either) that instruction invites a false defect: the reader
+    dutifully looks for glyphs that are correct to be absent, and "missing title"
+    gets filed against a plate whose whole contract is to carry none. Earned on
+    takeoff-thursdays (hyperagentic-age, 2026-08). The compiler still emits
+    `textLines` under --no-text on purpose (they gate a later TYPESET pass when
+    the platform runs one); the runner's job is to say which check applies.
+    """
+    if no_text:
+        out = ["ART ONLY (--no-text): NO lettering was baked. ANY glyph in the frame "
+               "is a DEFECT; regenerate, never retouch."]
+        if text_lines:
+            out.append("These compiled lines apply ONLY to a later typeset pass, "
+                       "if this platform runs one (they are not in the render):")
+            out += [f'  "{s}"' for s in text_lines]
+        return out
+    return ["BAKED TEXT (read every glyph back against these):"] + \
+           [f'  "{s}"' for s in text_lines]
+
+
 def _abu_root() -> Path:
     for c in [HERE, *HERE.parents]:
         if (c / "engine" / "agenticstory").is_dir():
@@ -161,9 +186,8 @@ def main() -> int:
 
     # The compiled strings are the contract. Print them so the read-back has something
     # to check against that is not the operator's memory of what they asked for.
-    print("BAKED TEXT (read every glyph back against these):")
-    for s in job.get("textLines") or []:
-        print(f'  "{s}"')
+    for line in text_report(a.no_text, job.get("textLines") or []):
+        print(line)
 
     sys.path.insert(0, str(_abu_root() / "engine"))
     from agenticstory.providers import resolve_str
@@ -203,8 +227,12 @@ def main() -> int:
         dst = publish_platform_copy(out)
         if dst:
             print(f"cover: published platform-facing copy -> {dst} (+ .recipe.json)")
-    print("NOT DONE YET: read the title back glyph by glyph against the BAKED TEXT above. "
-          "A typo means regenerate the whole cover, never patch the lettering.")
+    if a.no_text:
+        print("NOT DONE YET: read the plate back for STRAY LETTERING. Any text in the "
+              "frame means regenerate the whole plate, never patch it out.")
+    else:
+        print("NOT DONE YET: read the title back glyph by glyph against the BAKED TEXT above. "
+              "A typo means regenerate the whole cover, never patch the lettering.")
     return 0
 
 

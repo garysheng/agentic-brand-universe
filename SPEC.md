@@ -1,10 +1,40 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.38 — 2026-08-08.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.39 — 2026-08-09.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.39 changelog - four paves out of the takeoff-thursdays run (hyperagentic-age, 2026-08).**
+> **(1) The migrator a refusal had been naming ships.** The BAKE-USED-AS-A-SELECTOR refusal has
+> told every operator since it landed that "`migrate_render_spec.py translate <spec>` converts a
+> whole spec", and no such file existed anywhere in the repo: the refusal pointed at a phantom
+> tool, and takeoff-thursdays hand-rolled the bake-to-plate translation as declared debt, the
+> second hand-roll of the same translation. `compose-spread/scripts/migrate_render_spec.py`
+> exists now (dry-run by default, `--write` to apply, previous bytes kept beside the spec), and
+> its detection IS the guard's own predicate (`bake_selector_hit`, extracted from the refusal),
+> so a translated entry can never still be refused for what it translated. The refusal names the
+> real invocation. **(2) Endcap field selection is per KIND, matching the interior compiler
+> (4.14).** `compile_cover.py` sent every non-setting entity down the character path and baked
+> its `structured.invariants` VERBATIM into the prompt, while `assemble_prompt.py` prompts a
+> motif/prop from `prose.rules` (or `render.bake`) and keeps invariants as QA keys only. A
+> motif's invariants are often MEDIUM-SCOPED, statements about its own standalone plate form,
+> so the leak was a register contradiction, not noise: winged-startup's "Plate register only:
+> flat solid terracotta ground" lines were compiled into a warm-editorial cover prompt, and the
+> two compilers disagreed about what the same canon meant. **(3) The `--no-text` runner report
+> stops inviting false defects (4.14).** `render_cover.py --no-text` printed the same "BAKED
+> TEXT (read every glyph back against these)" header over title lines that were deliberately
+> NOT baked, so a closing plate's readback went looking for glyphs whose absence was the
+> contract. The report now states the mode: art-only, any glyph in frame is a DEFECT, and the
+> compiled lines apply only to a later typeset pass if the platform runs one. **(4) Pillow is
+> declared where it is needed.** Every PIL-dependent skill script carries PEP 723 inline
+> metadata (`# /// script` / `dependencies = ["pillow"]`), so `uv run <script>` resolves Pillow
+> itself; before this, every readback invocation needed `uv run --with pillow` typed from
+> memory, a tax the run paid on every single readback. The engine stays stdlib-only. Also filed,
+> not built: G31 (nothing gates a scene whose prose positively demands what an in-frame
+> entity's invariant forbids; the gate is a model judgement, not a lint, and its budget contract
+> is a design decision).
 
 > **v0.38 changelog - a real person's matrix is hyper-real neutral BY DEFAULT.** v0.37 built the
 > register-neutral matrix and left it opt-in, so the next real-person entity (`david-kobrosky`,
@@ -1041,6 +1071,17 @@ removes that step.
     `invariants`. `lint-universe` additionally warns `ENTITY-QA-WITHOUT-INVARIANTS`, because
     `invariants` is what the identity bake guard, auto-disambiguation, `supersedes` and `judge-slot`
     read: an entity guarded only by `render.qa` is guarded in one place out of five.
+- **The retired-dialect migrator (v0.39).** In the retired NoF `compile_render.py` dialect, `bake`
+  SELECTED which locked state reference was passed; in this compiler `bake` is free prose and the
+  selector is `plate` (non-characters) / `pose` (characters). The assembler REFUSES a bake that is
+  really a selector (a bare slug naming one of the entity's own sheets or poses), and
+  `compose-spread/scripts/migrate_render_spec.py translate <universe> <spec> [--write]` converts a
+  whole spec out of the dialect: dry-run by default, previous bytes kept beside the spec, and its
+  detection is the refusal's own predicate (`bake_selector_hit`), so a translated entry cannot
+  still be refused for what it translated. Earned twice before it shipped: `looked-like-hate`
+  (2026-07-31) rendered a three-state spine object with zero of its locked plates, and
+  `takeoff-thursdays` (2026-08) hand-rolled the same translation as declared debt while the refusal
+  named a migrator that did not exist.
 - **Provider-agnostic:** the compiler emits `(prompt, refs, size)` and hands off to a swappable
   provider adapter (`gpt-image-2` today, others behind the same interface). The adapter normalizes the
   *call*; per-provider reference-conditioning and moderation (e.g. a `public-figure` block) remain
@@ -1627,6 +1668,22 @@ re-rolling with the prohibition restated inside the scene prose.*
 
 **Neither flag weakens an existing guard.** Both are additive: `--no-cast` removes a binding the
 operator never asked for, and `--negative` can only lengthen the negative list.
+
+**Field selection is per KIND, matching the interior compiler (v0.39).** A character's prompt block
+carries its invariants plus `render.always` / the selected pose's `bake`, exactly as before. A
+motif or prop is prompted from `prose.rules` (or `structured.render.bake`), and its
+`structured.invariants` reach the QA checklist ONLY, which is what `assemble_prompt.py` has always
+done for those kinds. Before this, every non-setting entity fell down the character path and its
+invariants were baked verbatim into the cover prompt; a motif's invariants are often MEDIUM-SCOPED
+(true of its own standalone plates, false of a painterly cover that merely contains it), so the
+leak contradicted the register in the prompt itself (winged-startup's plate-register lines on
+takeoff-thursdays' cover, hyperagentic-age, 2026-08).
+
+**`--no-text` reports honestly (v0.39).** The runner used to print "BAKED TEXT (read every glyph
+back against these)" regardless of mode, over lines that were deliberately not baked, inviting a
+false "missing title" defect on a closing plate whose contract is to carry no text. Under
+`--no-text` it now states the actual check: art-only, ANY glyph in frame is a defect, and the
+compiled `textLines` apply only to a later typeset pass if the platform runs one.
 
 ### 4.13 Shot (the DECLARED framing of a spread) — v0.35
 
