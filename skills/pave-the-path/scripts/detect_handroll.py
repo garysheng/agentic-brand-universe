@@ -16,6 +16,16 @@ it was hand-rolled again the very next day, in a session that had the tool insta
 A tool nobody can find is a tool nobody has. The detector is the thing that actually
 fires, so the detector has to carry the pointer.
 
+THE THIRD OCCURRENCE (2026-08-08) SHOWS THE LIMIT OF THAT FIX. The same PIL montage
+was hand-rolled again, this time from garysheng-books while judging caption placement
+on an ABU-produced book. The signature below would have matched it exactly. Nothing
+fired, because this detector runs at the END OF AN ABU CHAIN RUN, and platform work
+on a finished book never enters one: the session was in another repo, reading another
+repo's CLAUDE.md, with no chain to close. A detector that only runs inside the
+workflow cannot catch the hand-rolls that happen outside it. The stopgap is a pointer
+in the consuming repo's CLAUDE.md (added the same day); the real close is a gap for
+running this from any working directory, over a session's scratch, without a chain.
+
 Signatures, each earned by a real script in a real scratchpad:
 
   * calls a provider generate script directly        -> abu:shoot-references / on-brand-image

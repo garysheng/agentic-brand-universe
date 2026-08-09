@@ -446,6 +446,35 @@ tuning its constants a third time.
 
 ---
 
+### G28. `detect_handroll` only runs inside a chain, so it misses hand-rolls outside one
+
+**What.** `pave-the-path/scripts/detect_handroll.py` has the right signatures and names the
+verb that owns each one, but the only thing that invokes it is `pave-the-path`, at the end of
+an ABU chain run. Book work does not stop at the universe: a finished book is consumed by a
+platform repo, a site, a print pipeline, and those sessions touch the same plates, manuscripts
+and recipes with no chain to close and no reason to read this repo's docs.
+
+**Evidence.** 2026-08-08, garysheng-books, judging caption placement on the-introducer: a PIL
+contact-sheet montage hand-rolled in a heredoc, with `render-readback/contact_sheet.py`
+installed. The detector's own docstring already records two prior occurrences and concludes
+"the detector has to carry the pointer" — this third one shows the pointer never gets read
+when the detector never runs. The same session also hand-rolled a caption scorer that
+duplicated `pick_caption_pos.py` (see G27).
+
+**Next invocation.** Any session in a consuming repo that touches ABU output: the books
+platform, a print export, a site build. That is most sessions that are not themselves a render.
+
+**Would close it.** Make it runnable from anywhere with no chain: `detect_handroll.py .`
+defaulting to the cwd, plus a `--since <ref>` mode that scans a git diff rather than a
+scratchpad, so a consuming repo can run it as a pre-commit or a CI step. Then name it in the
+places that work happens rather than only in `pave-the-path`.
+
+**Still open because.** The stopgap landed the same day (a pointer in the consuming repo's
+CLAUDE.md naming the four scripts reached for most from there), and the real fix wants doing
+once, for the whole class of consuming repos, rather than one CLAUDE.md at a time.
+
+---
+
 ## Filing a gap here
 
 Append an entry with the five headings above (**What / Evidence / Next invocation / Would
