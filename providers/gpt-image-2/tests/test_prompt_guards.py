@@ -154,9 +154,6 @@ class TestExistingGuardsStillFire(unittest.TestCase):
         self.assertIn("readable-surface", added)
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=1)
-
 
 class TestVehicleSeatFacing(unittest.TestCase):
     """A rider in a moving vehicle faces the way the vehicle is going.
@@ -215,3 +212,6 @@ class TestVehicleSeatFacing(unittest.TestCase):
         twice, added = pg.apply_prompt_guards(once)
         self.assertEqual(once, twice)
         self.assertEqual(added, [])
+
+if __name__ == "__main__":
+    unittest.main(verbosity=1)

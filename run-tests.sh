@@ -61,7 +61,14 @@ for tf in providers/*/tests/test*.py; do
   [ -e "$tf" ] || continue
   files=$((files + 1))
   prov=$(dirname "$(dirname "$tf")")
-  run "$prov/$(basename "$tf")" "$prov" python3 "tests/$(basename "$tf")"
+  # DISCOVER, never execute the file. Executing it runs whatever `if __name__ ==
+  # "__main__": unittest.main()` block the author left mid-file, so any class defined
+  # BELOW that block is silently never collected: the file passes, the count looks
+  # plausible, and the new tests simply do not exist as far as this suite is
+  # concerned. Six guard tests were invisible that way on 2026-08-09 while passing in
+  # isolation. `discover` collects the module regardless, which the engine line above
+  # already does.
+  run "$prov/$(basename "$tf")" "$prov" python3 -m unittest discover -s tests -q
 done
 
 # The derived docs. Prose rots silently while the thing it describes keeps moving, so

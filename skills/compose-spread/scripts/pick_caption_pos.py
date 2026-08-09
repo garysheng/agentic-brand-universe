@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 """Pick each spread's caption anchor by MEASURING the art, not by defaulting.
 
+THIS IS A PRIOR, NOT THE DECISION (demoted 2026-08-09). The caption anchor of record is
+the platform's VISION pass, `scripts/caption-vision.ts`, which hands a model each anchor's
+real footprint and asks what is underneath. Reach for this script for a free first guess,
+a sanity check, or when there is no API key. Do not let it decide a book on its own. Two
+failure modes, both paid for:
+
+  1. IT CANNOT TELL A FACE FROM A CHANDELIER. Gradient energy is the proxy, and skin is
+     SMOOTH, so a face scores CALM and reads here as an excellent place for a plate, while
+     busy foliage scores badly when covering leaves costs nothing. That is backwards for
+     the exact defect this file was written to prevent. On The Introducer it agreed with
+     Gary on 3 of 7 spreads.
+  2. IT IS STRUCTURALLY BIASED TOWARD `top`. See BOTTOM_BONUS and FLIP below: a bottom
+     candidate is scored 0.82*E_bottom + 0.45*E_top while a top candidate pays no flip
+     penalty, so bottom only wins when it is a third calmer. A 36-spread book came back
+     27 top / 9 bottom, which is a tilt rather than a per-spread judgement. The stated
+     intent above ("a small BOTTOM PREFERENCE") is contradicted by the arithmetic.
+
 THE DEFECT THIS CLOSES. A picture-book caption is an opaque plate laid over the
 finished painting, and until now nothing chose where it sat: the render-spec's
 `pos` was hand-guessed by whoever authored the spec, and every spread that did not

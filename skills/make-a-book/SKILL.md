@@ -479,6 +479,50 @@ Then `abu:render-readback` every image.
 - **Do not re-roll good art over a sub-legible detail.** A badge or pendant too small to read is
   correctly just a shape; read it back only where the beat frames it legibly.
 
+### 4b. Caption placement -> THE VISION PASS. Mandatory, and never the heuristic alone.
+
+**Every spread's caption anchor is decided by a VISION PASS over the finished art, once all
+spreads exist and before the manifest is generated.** A caption is an opaque plate painted
+on top of a finished painting, so the only question that matters is "would a text box here
+cover something that matters", and that is a question about what the objects in the picture
+ARE. A model has to look.
+
+The placer of record is the platform's `scripts/caption-vision.ts` (needs
+`ANTHROPIC_API_KEY`). Code computes each of the seven anchors' REAL footprint from the real
+caption text at the real font size and hands the model those rectangles as numbers; the
+model judges what is under them. Geometry is arithmetic and belongs in code, and "that is
+the hero's face" is not. It caches to `content/books/<slug>.protect.json`, so it runs once
+per book:
+
+```bash
+npx tsx scripts/caption-vision.ts --slug <slug> --apply     # from the platform's apps/web
+```
+
+**`compose-spread/scripts/pick_caption_pos.py` IS A PRIOR, NOT A DECISION.** It is free and
+deterministic and it scores a gradient map, and it has two proven failure modes:
+
+- **It cannot tell a face from a chandelier.** Skin is SMOOTH, so a face scores CALM and
+  reads to it as an excellent place for a plate. Foliage is BUSY, so leaves score badly when
+  covering leaves costs nothing. That is backwards for the exact defect the whole step
+  exists to prevent. On The Introducer it agreed with Gary on 3 of 7 spreads, and its misses
+  were photo finishes decided by a hand-tuned constant.
+- **It is structurally biased toward `top`.** A bottom candidate is scored
+  `0.82*E_bottom + 0.45*E_top` (a bottom bonus, then a penalty for the short-viewport flip)
+  while a top candidate pays no flip penalty at all, so bottom only wins when it is a third
+  calmer. On a 36-spread book that returned 27 tops, which is a tilt and not a per-spread
+  judgement.
+
+Earned twice in two days on the same tool (2026-08-08, 2026-08-09). The vision pass was
+built for The Introducer, deleted the next day as a dedup in favour of the heuristic, and
+the loss surfaced immediately as every caption in a shipped book landing in one corner.
+
+**Also decide the SHAPE deliberately, because a position quietly changes it.** The corner
+anchors (`bottom-right`, `top-left`, …) cap their width at 44% of the page in `reader.css`,
+so choosing one turns the caption from the book's full-width band into a narrow card. That
+is a typographic decision about the book and it should be made on purpose, not inherited
+from a scorer. `pick_caption_pos.py --full-width-only` restricts to the full-width bands
+when a book's norm is the band.
+
 ### 5. Cover -> `abu:cover`
 Portrait 3:4, register anchor first, the universe mark, and the title baked as integrated
 lettering with the exact string quoted. Read the cover back and check spelling letter by letter;

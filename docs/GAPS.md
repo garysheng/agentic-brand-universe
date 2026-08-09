@@ -778,3 +778,31 @@ a problem when the anchor is a subject-bearing one. That reads the actual risk r
 proxy for it. A per-spread `improvised: true` opt-out is the cheaper alternative and worse: it
 is a flag an author sets to silence a check, which is the thing this register keeps warning
 about elsewhere.
+
+### G30. pick_caption_pos is structurally biased toward `top`, and cannot see a face
+
+**What.** Two defects in the same scorer, both of which put captions in the wrong place on a
+shipped book, and neither of which the tool can detect about itself.
+
+1. **The top bias is arithmetic.** A bottom candidate scores `0.82*E_bottom + 0.45*E_top`
+   (BOTTOM_BONUS, then the short-viewport FLIP penalty); a top candidate scores `E_top` and
+   pays no flip penalty, because top does not flip. So bottom wins only when
+   `E_bottom < 0.67*E_top`. The docstring states "a small BOTTOM PREFERENCE, because bottom
+   is the book's typographic norm" and the arithmetic contradicts it.
+2. **Gradient energy is backwards about faces.** Skin is smooth, so a face scores CALM and
+   reads as an excellent place for a plate; foliage is busy, so leaves score badly when
+   covering leaves is free. The defect that produced this tool was "the caption landed on a
+   face", and the proxy it chose cannot see one.
+
+**Evidence.** the-story-underneath-the-story, 2026-08-09: 27 top / 9 bottom across 36
+spreads, which is a tilt rather than 36 judgements. The Introducer, 2026-08-08: agreed with
+Gary on 3 of 7 spreads, per caption-vision.ts's own header.
+
+**Next invocation.** Any book that runs the prior without the vision pass.
+
+**Would close it.** The vision pass already closes it in practice and is now mandatory in
+make-a-book step 4b, so this stays open only as a defect in the FALLBACK. If the fallback is
+ever load-bearing again: score the flip penalty symmetrically (or drop it and let the reader's
+own flip rule handle short viewports), and add a skin-tone-plus-low-gradient penalty so a
+smooth face stops reading as calm. Do NOT hand-tune the constant; a constant is what made the
+misses photo finishes in the first place.

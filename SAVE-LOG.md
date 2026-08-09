@@ -1,3 +1,39 @@
+## 2026-08-09 — caption placement is a mandatory VISION pass (plugin 1.4.0)
+
+The book chain now requires a vision pass over the finished art to place every caption
+(make-a-book step 4b), and `compose-spread/scripts/pick_caption_pos.py` is demoted to a
+free PRIOR in its own docstring, in the CLAUDE.md job table and in the NoF cartridge.
+
+Gary caught it: "I could have sworn that we piloted a new functionality for the book
+creator process when we created that book for David, but now I'm seeing basically every
+caption be in the top right." He was right. The platform's `caption-vision.ts` was built
+for The Introducer on 2026-08-08 and deleted the next day as a dedup, on the reasoning
+that ABU already ships the heuristic. Restored, and the trade recorded so the next dedup
+has to argue with evidence: the two tools answer different questions and only one can see.
+
+The heuristic's two defects are now measured and filed as G30. It cannot tell a face from
+a chandelier, because skin is smooth and scores CALM while foliage scores busy, which is
+backwards for the defect it was written to prevent. And it is structurally biased toward
+`top`: a bottom candidate pays a short-viewport flip penalty and a top candidate pays none,
+so bottom wins only when it is a third calmer. A 36-spread book came back 27 top.
+
+Also shipped: a `vehicle-seat-facing` guard in both provider rulebooks, because a rider in
+a moving vehicle faces the direction of travel and nothing bound that. A shipped spread had
+C. S. Lewis in a motorcycle sidecar facing backward with the road receding behind him. The
+rule existed only as prose in make-a-book plus per-entity law on two registered vehicles;
+the spread improvised a motorcycle and cast no vehicle entity, so nothing applied. The
+guard hands over the camera move rather than only forbidding, since a guard that only says
+"do not" invites the model to fix the face problem by rotating the rider.
+
+And `run-tests.sh` now DISCOVERS provider tests instead of executing the file. Executing it
+ran whatever mid-file `unittest.main()` block an author left behind, so six of these guard
+tests were invisible to the suite while passing in isolation: the file went green, the
+count looked plausible, and the tests did not exist as far as CI was concerned.
+
+`pick_caption_pos.py` also gains `--full-width-only`, because a corner anchor caps at 44%
+of the page in reader.css, so choosing one changes the caption's SHAPE and not only its
+place.
+
 # SAVE-LOG — Agentic Brand Universe
 
 Checkpoint anchors for /save-your-progress (incremental saves read the last line).
