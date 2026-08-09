@@ -1186,3 +1186,57 @@ class TestStarTopology(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestShootSeedCodeDrawn(unittest.TestCase):
+    """A CODE-DRAWN plate must not block --shoot-seed.
+
+    The 'already has plates on disk' guard refuses because the locked place would not ride
+    along on a seed render. That premise is FALSE for code-drawn geometry: _shoot passes
+    plan["codeDrawn"] as an --input-image on every shot INCLUDING the seed. While the guard
+    counted it anyway the two guards deadlocked, and an entity scaffolded blueprint-first
+    (which add-setting, add-visual-metaphor and make-a-book all instruct) had no legal first
+    shot: --shoot-seed refused and named --seed <blueprint>, and --seed refused that same
+    plate as 'already the seed'.
+
+    Tested against the extracted predicate rather than through the CLI, because the guard
+    sits inside main() after the dry-run early return, so a --dry-run subprocess test passes
+    whether the fix is present or not. (It did, before this was rewritten.)
+    """
+
+    def _mod(self):
+        from importlib import util
+        spec = util.spec_from_file_location("cm_pp", CHAIN)
+        m = util.module_from_spec(spec); spec.loader.exec_module(m)
+        return m
+
+    def _sheets(self, root, generator):
+        bp = root / "reference" / "room" / "blueprint.png"
+        png(bp)
+        png(root / "reference" / "room" / "empty-meadow.png")
+        if generator is not None:
+            Path(str(bp) + ".recipe.json").write_text(json.dumps({
+                "asset": str(bp), "generator": generator, "deterministic": True}))
+        return {"blueprint": "reference/room/blueprint.png",
+                "master": "reference/room/master.png",
+                "empty-meadow": "reference/room/empty-meadow.png"}
+
+    def test_code_drawn_blueprint_is_not_a_painted_plate(self):
+        root = Path(tempfile.mkdtemp())
+        sheets = self._sheets(root, "agenticstory.massing")
+        got = self._mod().painted_plates_on_disk(root, sheets, "master")
+        self.assertNotIn("blueprint", got)
+        self.assertEqual(got, ["empty-meadow"], "the painted sibling must still count")
+
+    def test_a_plate_with_no_recipe_still_counts(self):
+        """The guard keeps its teeth. Code-drawn is read from the RECIPE, never from the
+        filename, so a painted plate merely named `blueprint` still blocks the seed."""
+        root = Path(tempfile.mkdtemp())
+        sheets = self._sheets(root, None)
+        got = self._mod().painted_plates_on_disk(root, sheets, "master")
+        self.assertIn("blueprint", got)
+
+    def test_the_seed_itself_never_counts(self):
+        root = Path(tempfile.mkdtemp())
+        sheets = self._sheets(root, "agenticstory.elevation")
+        self.assertEqual(self._mod().painted_plates_on_disk(root, sheets, "empty-meadow"), [])

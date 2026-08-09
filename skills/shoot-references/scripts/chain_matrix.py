@@ -230,6 +230,34 @@ def deterministic_generator(png: Path) -> str | None:
     return None
 
 
+def painted_plates_on_disk(uroot: Path, ent_sheets: dict, seed: str) -> list:
+    """The entity's sheets that are already PAINTED and on disk, excluding `seed`.
+
+    Used by the --shoot-seed guard, whose whole premise is that an entity with plates
+    already on disk is not on its first painted thing, so a seed render (conditioned on
+    the register anchor alone) would come back as a confident generic scene.
+
+    A CODE-DRAWN PLATE IS EXCLUDED, because that premise is false for it: `_shoot` passes
+    `plan["codeDrawn"]` as an `--input-image` on EVERY shot INCLUDING the seed (v0.31), so
+    the geometry does ride along. Counting it deadlocked every entity scaffolded
+    blueprint-first, which is exactly what add-setting, add-visual-metaphor and make-a-book
+    instruct: `--shoot-seed` refused and named `--seed <blueprint>`, and `--seed` refused
+    that same plate as "already the seed". There was no legal first shot at all. Earned
+    2026-08-09 on nation-of-fire's addisons-walk and the-splintered-light.
+
+    Code-drawn is read from the asset's own recipe (`deterministic_generator`), never from
+    its filename, so a PAINTED plate that happens to be called `blueprint` still counts.
+    """
+    out = []
+    for k, v in (ent_sheets or {}).items():
+        if k == seed or not isinstance(v, str):
+            continue
+        png = uroot / v
+        if png.exists() and not deterministic_generator(png):
+            out.append(k)
+    return out
+
+
 def code_drawn_shots(refdir: Path, shots: list[str]) -> dict:
     """`{shot: {"path": abs, "generator": str}}` for every shot already DRAWN in code."""
     out = {}
@@ -1433,12 +1461,7 @@ def _main() -> int:
             ent_sheets = (_ent.get("structured") or {}).get("sheets") or {}
         except (OSError, ValueError):
             ent_sheets = {}
-        existing = []
-        for k, v in ent_sheets.items():
-            if k == seed or not isinstance(v, str):
-                continue
-            if (uroot / v).exists():
-                existing.append(k)
+        existing = painted_plates_on_disk(uroot, ent_sheets, seed)
         if existing:
             print(
                 f"REFUSE: {plan['entity']} already has {len(existing)} plate(s) on disk "

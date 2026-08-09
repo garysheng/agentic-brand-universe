@@ -701,3 +701,53 @@ restored after), which is a workaround that falsifies nothing but that nobody wi
 **Would close it.** chain_matrix's look branch passes look.photoStack INSTEAD of the base stack
 when the look declares one (anchorPhoto first), matching the outrank language the spec already
 uses for sheets. The base stack still rides along only when the look declares `keepPhotos`.
+
+### G27b. CLOSED 2026-08-09. `--shoot-seed` and `--seed` deadlocked any blueprint-first entity
+
+**What.** An entity whose only plate on disk was its CODE-DRAWN blueprint had no legal first
+shot. `--shoot-seed` refused ("already has 1 plate(s) on disk, so 'master' is not this
+entity's first painted thing") and named `--seed <blueprint>` as the fix; `--seed <blueprint>`
+then refused ("is CODE-DRAWN. It is already the seed: it is passed as conditioning to every
+shot in this matrix"). The two guards contradicted each other, and the second one is right:
+`_shoot` passes `plan["codeDrawn"]` as an `--input-image` on every shot INCLUDING the seed
+(v0.31), so the "locked place will NOT ride along" premise is false for code-drawn geometry.
+
+This bit every entity built the way the framework itself instructs: `add-setting`,
+`add-visual-metaphor` and `make-a-book` all say to draw the blueprint in code FIRST.
+
+**Evidence.** nation-of-fire, 2026-08-09, `addisons-walk` and `the-splintered-light`, both
+scaffolded blueprint-first. Neither could be shot at all until the guard was fixed.
+
+**Closed by.** `painted_plates_on_disk()` extracted as a pure predicate in `chain_matrix.py`
+and made to exclude plates whose own recipe names a deterministic generator. Code-drawn is
+read from the RECIPE and never from the filename, so a painted plate merely named `blueprint`
+still blocks the seed. Three tests, mutation-checked (reverting the condition fails two).
+
+**Note for whoever tests near this.** The guard sits inside `main()` AFTER the `--dry-run`
+early return, so a `--dry-run` subprocess test passes whether the fix is present or not. The
+first version of these tests did exactly that and proved nothing. Test the predicate.
+
+### G28b. prompts.md invites a shared description block the parser never sends
+
+**What.** The scaffolded `prompts.md` template, and the filled files across this universe,
+carry header blocks headed "THE MAN, restated in full on every shot" and "Shared negatives on
+every shot". `parse_prompts_full` uses ONLY the text under each `## <shot>` heading, so those
+blocks reach the model on no shot at all. A shot body written as "the full signature wardrobe
+described above" therefore ships with no description in it, and the seed render is conditioned
+on the register anchor plus a sentence about camera framing.
+
+The one header form that IS parsed is `**Negatives (every shot):** a, b, c`, which is
+undocumented anywhere the author is looking while filling the file in.
+
+**Evidence.** nation-of-fire, 2026-08-09: four character seeds (c-s-lewis, j-r-r-tolkien,
+hugo-dyson, reid-one-more) came back as four generic period men, none matching a single
+invariant, because every body deferred to a shared block. Four renders, diagnosed only by
+reading the emitted `.recipe.json`.
+
+**Next invocation.** The next entity anybody authors prompts for by hand.
+
+**Would close it.** Either (a) have the parser prepend a header block explicitly marked as
+shared, in the same spirit as `**Negatives (every shot):**`, or (b) change the scaffold so its
+header blocks are labelled as author notes and each shot body is stamped SELF-CONTAINED. (b)
+is cheaper and loses nothing, since the entity's own `structured.render.always` is the real
+home for a description that must apply everywhere.
