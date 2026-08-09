@@ -837,3 +837,56 @@ is a judgement.
 **Still open because.** It needs a model call inside an otherwise deterministic, free
 assembler, and the right budget/latency contract for that (per-spread? per-book? cached?) is
 a design decision, not a patch. Filed 2026-08-09 by the takeoff-thursdays pave sweep.
+
+### G32. render_cover.py subprocesses its PIL steps with sys.executable, bypassing their PEP 723 declarations
+
+**What.** v0.39 gave every PIL-dependent skill script PEP 723 inline metadata so `uv run
+<script>` resolves Pillow itself — but `render_cover.py` (which carries no Pillow dep of its
+own) invokes `conform_cover.py` via `subprocess.run([sys.executable, ...])`. Run the runner
+the blessed way (`uv run render_cover.py`) and sys.executable is an ephemeral uv python
+WITHOUT Pillow, so the render is PAID for, then CONFORM FAILED, and the platform copy +
+derivative provenance never happen. The v0.39 pave closed the tax for direct invocations and
+left the end-to-end runner — the path SKILL.md actually tells operators to use — broken.
+
+**Evidence.** the-goldilocks-pace endgame (hyperagentic-age, 2026-08-09): first cover render
+via `uv run render_cover.py` generated fine, then `ModuleNotFoundError: No module named
+'PIL'` out of conform_cover; the run was repaired by re-invoking as
+`uv run --with pillow render_cover.py` — exactly the typed-from-memory tax v0.39 says it
+removed.
+
+**Next invocation.** Every cover and closing plate rendered through render_cover.py by an
+operator who follows the v0.39 changelog's own advice.
+
+**Would close it.** Either declare pillow in render_cover.py's own PEP 723 block (it hosts
+the subprocess, so it owns the transitive need), or subprocess the PIL steps as
+`["uv", "run", str(HERE / "conform_cover.py"), ...]` so each script's declaration is honored.
+Same audit for any other runner that sys.executable-spawns a PEP 723 script (book_doctor
+callers, readback wrappers).
+
+### G33. A non-character hero's plate cannot be selected by --hero-pose, and nothing says so; the default contradicts requiredForRender
+
+**What.** `compile_cover.py --hero-pose` is a CHARACTER pose selector. For a hero of kind
+visual-metaphor/motif/prop the plate is selected by `--hero <id>:<plate>`, and a passed
+`--hero-pose` is silently ignored: the hero falls to `plates[0]` (the first EMPTY-STATE
+plate), even when the entity's `structured.requiredForRender` names `master`. So the compiler
+conditions the cover on a state plate the canon says must not stand alone, with no refusal
+and no warning — the operator finds out by reading the REFS line, or never.
+
+**Evidence.** the-goldilocks-pace cover (hyperagentic-age, 2026-08-09):
+`--hero the-pace-engine --hero-pose master` passed reference/the-pace-engine/roar.png (the
+first emptyPlate) as the identity ref while requiredForRender is ["master"]. The scene prose
+happened to win (needle upright), but the recipe records a roar-conditioned cover, and it
+cost one paid re-roll to make the provenance match canon via `--hero the-pace-engine:master`.
+
+**Next invocation.** Any universe whose book covers compose a visual-metaphor or prop as the
+hero — increasingly the norm for thesis-spine books (the-plain-door, winged-startup,
+the-pace-engine).
+
+**Would close it.** In compile_cover: (1) when the hero is non-character and --hero-pose was
+passed, refuse with the correct spelling ("pose selects wardrobe on characters; select this
+hero's plate as --hero id:plate"); (2) when no plate is selected, default to the sheet(s) in
+`structured.requiredForRender` (or `render.poses.master.sheets`), never `plates[0]`, so the
+default agrees with the canon's own contract. Also worth a line: `--print-prompt` on
+render_cover.py prints AND STILL GENERATES (a paid call); an operator reaching for it as a
+dry-run pays for the render they were trying to preview. Filed 2026-08-09 by the
+the-goldilocks-pace endgame run.
