@@ -1,3 +1,22 @@
+## 2026-08-09 — the caption vision pass needs no API key (plugin 1.5.1)
+
+Gary: "BRO opus has vision and we're building this locally using my Claude code
+subscription so don't block that vision pass."
+
+He was right and the block was mine. The mandatory caption pass had been written as if it
+required the platform's API-backed `caption-vision.ts`, so a missing ANTHROPIC_API_KEY read
+as a blocker. The agent running the chain already has vision and is already on the
+operator's subscription, so `caption_review_sheet.py` is now the DEFAULT path: it draws all
+seven anchors at their real footprint on every spread (height from the caption's line count,
+and a 44% corner wraps to roughly twice the lines), tiles them, and the agent looks and
+chooses. Same division of labour as render-readback, where scripts build the view and the
+agent supplies the eyes. The API path stays for unattended runs.
+
+Exercised immediately on the-story-underneath-the-story: 36 spreads judged by eye, 25 bottom
+and 11 top, with a recorded reason per spread. Every `top` is a spread where the bottom
+genuinely holds the subject (the bow on its threshold, the fan of beams, the rolled-back
+stone, Tolkien at his desk beneath the bubble). The heuristic's answer had been 27 top.
+
 ## 2026-08-09 — the takeoff-thursdays pave sweep: spec v0.39 (plugin 1.5.0)
 
 Four paves out of the takeoff-thursdays run (hyperagentic-age), routed through

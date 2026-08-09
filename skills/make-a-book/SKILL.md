@@ -487,8 +487,24 @@ on top of a finished painting, so the only question that matters is "would a tex
 cover something that matters", and that is a question about what the objects in the picture
 ARE. A model has to look.
 
-The placer of record is the platform's `scripts/caption-vision.ts` (needs
-`ANTHROPIC_API_KEY`). Code computes each of the seven anchors' REAL footprint from the real
+THERE ARE TWO PATHS AND THE DEFAULT NEEDS NO API KEY. **The agent IS the vision model.**
+It already has eyes and is already running on the operator's subscription, so blocking a
+caption decision on a second credential is silly:
+
+```bash
+uv run --with pillow <abu>/skills/compose-spread/scripts/caption_review_sheet.py \
+  --spec <render-spec> --dir <spreads/> --out /tmp/caprev
+```
+
+That draws all seven anchors at their REAL footprint on every spread (height computed from
+the caption's line count, and a 44% corner wraps to roughly twice the lines), tiles them,
+and then YOU LOOK and choose per spread. Record the reason per spread as `_posWhy` so a
+re-run argues with the judgement instead of re-deriving it. Same division of labour as
+render-readback: the script builds the view, the agent supplies the eyes.
+
+The other path is the platform's `scripts/caption-vision.ts` (needs `ANTHROPIC_API_KEY`),
+which asks Claude over the API and caches to `<slug>.protect.json`. Use it for an
+unattended run where no agent is watching. Code computes each of the seven anchors' REAL footprint from the real
 caption text at the real font size and hands the model those rectangles as numbers; the
 model judges what is under them. Geometry is arithmetic and belongs in code, and "that is
 the hero's face" is not. It caches to `content/books/<slug>.protect.json`, so it runs once
