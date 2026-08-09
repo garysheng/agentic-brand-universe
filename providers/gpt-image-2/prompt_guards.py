@@ -47,6 +47,20 @@ _TRAVEL_WORDS = (
     "walks out", "exiting", "exits", "turns back", "on the threshold", "at the door",
 )
 
+_VEHICLE_WORDS = (
+    "sidecar", "motorcycle", "motorbike", "handlebars", "steering wheel", "windshield",
+    "windscreen", "passenger seat", "front seat", "back seat", "backseat", "driver's seat",
+    "driving", " drives ", "rides in", "riding in", "rides beside", "riding beside",
+    "carriage", "wagon", "cart", "sled", "sleigh", "saddle", "cockpit", "rowing", "oars",
+    " car ", " truck", " van ", " bus ", "canoe", "rowboat",
+)
+
+# An author who has ALREADY stated the facing law does not get it stapled on twice.
+_VEHICLE_PROBES = (
+    "direction of travel", "faces forward", "facing forward", "face forward",
+    "camera ahead of the vehicle",
+)
+
 # A person seated AT A TABLE is the commonest two-hander in a picture book and it has a
 # specific, ugly failure: the torso is painted emerging straight out of the tabletop, with
 # no waist, no lap and no seat under it, so the figure reads as part of the furniture.
@@ -164,6 +178,22 @@ _GUARD_TRAVEL = (
     "the approach all at once. Never place the destination behind a character who is arriving at it."
 )
 
+_GUARD_VEHICLE_SEAT = (
+    "ANYONE RIDING IN A MOVING VEHICLE FACES THE DIRECTION OF TRAVEL. A seat in a car, truck, "
+    "cart, carriage, boat, sled, or a motorcycle SIDECAR is FIXED and points forward, so every "
+    "occupant's torso is square to the way the vehicle is going. A passenger may TURN THEIR HEAD "
+    "to speak to whoever is beside them; the body does not swivel, and nobody rides facing "
+    "backward. "
+    "IF THE SCENE NEEDS A RIDER'S FACE, SOLVE IT WITH THE CAMERA AND NEVER BY TURNING THEM ROUND: "
+    "put the camera AHEAD of the vehicle looking BACK at it, so the rider faces the lens AND faces "
+    "forward at the same time. The ground they are travelling toward is then behind the camera, "
+    "and what is visible receding behind THEM is the country they have already passed. "
+    "A rider whose face is square to the camera while the road recedes into the distance behind "
+    "them is physically impossible: that composition puts the camera in front of them and the road "
+    "ahead of them at the same time. Drivers keep both hands on the wheel or the bars and their "
+    "eyes on the road."
+)
+
 _GUARD_UI = (
     "NO USER INTERFACE ANYWHERE: no windows, menu bars, buttons, icons, toolbars, panels, form "
     "fields, cursors, floating rectangles or screenshot-like elements. Screens carry only soft glow "
@@ -202,12 +232,14 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if not enabled:
         return prompt, []
     scan = prompt.lower()
-    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI, _GUARD_SEATED, _GUARD_TWO_HANDER):
+    for block in (_GUARD_DEVICE, _GUARD_SURFACE, _GUARD_TRAVEL, _GUARD_UI, _GUARD_SEATED,
+                  _GUARD_TWO_HANDER, _GUARD_VEHICLE_SEAT):
         scan = scan.replace(block.lower(), " ")
     added: list[str] = []
     has_device = any(w in scan for w in _DEVICE_WORDS)
     has_surface = any(w in scan for w in _SURFACE_WORDS)
     has_travel = any(w in scan for w in _TRAVEL_WORDS)
+    has_vehicle = any(w in scan for w in _VEHICLE_WORDS)
     has_seated = any(w in scan for w in _TABLE_WORDS) and any(w in scan for w in _SEATED_WORDS)
     has_two_hander = has_seated and any(w in scan for w in _TWO_PERSON_CUES)
     low = prompt.lower()   # probes look at the WHOLE prompt, guard text included
@@ -221,6 +253,9 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
     if has_travel and not any(p in low for p in _TRAVEL_PROBES):
         prompt += "\n\n" + _GUARD_TRAVEL
         added.append("travel-direction")
+    if has_vehicle and not any(p in low for p in _VEHICLE_PROBES):
+        prompt += "\n\n" + _GUARD_VEHICLE_SEAT
+        added.append("vehicle-seat-facing")
     if has_two_hander and not any(p in low for p in _TWO_HANDER_PROBES):
         prompt += "\n\n" + _GUARD_TWO_HANDER
         added.append("two-hander-staging")

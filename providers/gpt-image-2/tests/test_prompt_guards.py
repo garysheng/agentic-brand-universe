@@ -156,3 +156,62 @@ class TestExistingGuardsStillFire(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
+
+
+class TestVehicleSeatFacing(unittest.TestCase):
+    """A rider in a moving vehicle faces the way the vehicle is going.
+
+    Earned 2026-08-09 on nation-of-fire's the-story-underneath-the-story, spread 19:
+    C. S. Lewis rode his brother's motorcycle sidecar with his face square to the camera
+    and the road receding into the distance BEHIND him, which puts the camera in front of
+    him and the road ahead of him at the same time. Gary: "he's in the sidecar of a
+    motorcycle, right? Do people that are on the sidecar of a motorcycle look backwards
+    while the driver is looking forward?"
+
+    NOTHING CAUGHT IT, and the reason is the point of this class. The rule existed only as
+    PROSE in make-a-book/SKILL.md ("People in vehicle seats face FORWARD"), plus per-entity
+    law on two REGISTERED nation-of-fire vehicles. That spread improvised a motorcycle in
+    its scene text with no vehicle entity cast, so no vehicle law existed to apply, and the
+    generic travel-direction guard is about arriving at and leaving a PLACE, not about
+    which way a passenger faces. Prose does not bind. This does.
+    """
+
+    def test_a_sidecar_scene_gets_the_guard(self):
+        _, added = pg.apply_prompt_guards(
+            "C. S. Lewis rides in the sidecar of his brother's motorcycle on an empty "
+            "country road at first light, seen in three-quarter so his face reads clearly."
+        )
+        self.assertIn("vehicle-seat-facing", added)
+
+    def test_the_guard_names_the_camera_fix_rather_than_only_forbidding(self):
+        """A guard that only says "do not" leaves the model to solve the face problem by
+        rotating the rider, which is the exact defect. It has to hand over the camera move."""
+        out, _ = pg.apply_prompt_guards("Two men ride in the front seat of a car.")
+        self.assertIn("camera AHEAD of the vehicle looking BACK", out)
+
+    def test_a_car_interior_gets_it_too(self):
+        _, added = pg.apply_prompt_guards(
+            "Two men talk in the front seat of a car, the driver at the steering wheel."
+        )
+        self.assertIn("vehicle-seat-facing", added)
+
+    def test_a_scene_with_no_vehicle_is_left_alone(self):
+        _, added = pg.apply_prompt_guards(
+            "Two men stand on a narrow dirt path under high trees and talk."
+        )
+        self.assertNotIn("vehicle-seat-facing", added)
+
+    def test_an_author_who_already_stated_the_law_is_not_lectured_twice(self):
+        _, added = pg.apply_prompt_guards(
+            "A man rides in a sidecar. He faces forward, in the direction of travel, and "
+            "the camera is ahead of the vehicle looking back at him."
+        )
+        self.assertNotIn("vehicle-seat-facing", added)
+
+    def test_it_is_idempotent(self):
+        """Callers legitimately double-apply: a wrapper guards a prompt, then the
+        generator guards it again. The guard's own words must not re-trigger it."""
+        once, _ = pg.apply_prompt_guards("A man rides in a motorcycle sidecar.")
+        twice, added = pg.apply_prompt_guards(once)
+        self.assertEqual(once, twice)
+        self.assertEqual(added, [])

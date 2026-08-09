@@ -132,12 +132,27 @@ def caption_page_box(im, layout: str):
     return (0, 0, w, h)
 
 
-def pick(png: Path, layout: str = "full-spread", max_energy: float = DEFAULT_MAX_ENERGY):
+# THE FULL-WIDTH BANDS. A corner caption is capped at 44% of the page by
+# reader.css and anchors to one side, so choosing one does not just move the
+# caption, it CHANGES ITS SHAPE: the plate becomes a narrow card instead of the
+# book's full-width band. That is a typographic decision about the book, and this
+# script exists to answer a different question, which is WHERE the calm area is.
+# Earned 2026-08-09 on the-story-underneath-the-story: measured positions reached
+# a manifest for the first time, most of them were corners, and every caption in
+# a shipped book silently went from a full band to a quarter-width card. Gary:
+# "I used to have captions that went the full half spread page width and now it's
+# like a half of a page width."
+FULL_WIDTH = {"bottom", "top", "center"}
+
+
+def pick(png: Path, layout: str = "full-spread", max_energy: float = DEFAULT_MAX_ENERGY,
+         full_width_only: bool = False):
     im = _load_gray(png)
     px0, py0, px1, py1 = caption_page_box(im, layout)
     pw, ph = px1 - px0, py1 - py0
+    bands = [b for b in BANDS if not full_width_only or b[0] in FULL_WIDTH]
     raw = {}
-    for name, x0, x1, y0, y1 in BANDS:
+    for name, x0, x1, y0, y1 in bands:
         box = (round(px0 + x0 * pw), round(py0 + y0 * ph),
                round(px0 + x1 * pw), round(py0 + y1 * ph))
         raw[name] = _energy(im, box)
@@ -171,13 +186,18 @@ def main() -> int:
                     choices=["full-spread", "art-and-text"])
     ap.add_argument("--max-energy", type=float, default=DEFAULT_MAX_ENERGY,
                     help="above this the best band is still busy; reported CROWDED")
+    ap.add_argument("--full-width-only", action="store_true",
+                    help="choose only among the FULL-WIDTH bands (bottom, top, center). "
+                         "A corner is capped at 44%% of the page by reader.css, so picking "
+                         "one changes the caption's SHAPE and not just its place. Use this "
+                         "for a book whose typographic norm is the full band.")
     ap.add_argument("--apply", action="store_true",
                     help="write the chosen pos back into the render-spec")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
 
     if a.png:
-        r = pick(Path(a.png), a.layout, a.max_energy)
+        r = pick(Path(a.png), a.layout, a.max_energy, a.full_width_only)
         print(json.dumps(r, indent=1) if a.json else
               f"{r['file']}: pos={r['pos']} energy={r['energy']}"
               + ("  CROWDED" if r["crowded"] else ""))
@@ -193,7 +213,7 @@ def main() -> int:
         png = Path(a.dir) / f"{sp['id']}.png"
         if not png.exists():
             continue
-        r = pick(png, a.layout, a.max_energy)
+        r = pick(png, a.layout, a.max_energy, a.full_width_only)
         r["id"] = sp["id"]
         r["was"] = sp.get("pos")
         out.append(r)
