@@ -33,6 +33,29 @@ Two rules that follow:
    The hatch rule was fixed once, then silently regressed when the same piece was
    re-shot with a character added, because nothing durable held it.
 
+## A pack carries the LOOK; only `--ref-first` carries the OBJECT
+
+A style pack influences a render, it does not reproduce anything. So when a specific
+designed object has to appear in a scene, the pack alone reliably gives you a generic
+version of that object in the right style: a locked pearl-and-gold eyeglass frame came back
+as a plain clear frame three rolls running, because nothing was reproducing it.
+
+Pass the locked plates as `--ref` **with `--ref-first`**, which puts them ahead of the pack
+anchor so the object is reproduced rather than suggested. The rule: **pack for the look,
+`--ref-first` for the object.**
+
+Two things that still fail after you do that:
+
+- **A reference fixes what the reference SHOWS.** An object plate is dominated by the
+  object's front, so parts it shows only obliquely keep coming back wrong. The same frame
+  whose front was finally correct still rendered wire temple arms, because the plate barely
+  showed the arms. Describe those parts in words even though you passed the ref, and say
+  what the wrong version looks like.
+- **A material needs pixels to exist.** A finish, an iridescence, or a fine inlay disappears
+  at portrait distance no matter how it is prompted. If the material is the point of the
+  shot, frame closer; if the shot is a wide scene, accept that the material will read only
+  as a hint and let the macro plate carry it.
+
 ## Canon entities: pass `--entity`, never hand-picked `--ref`
 
 If a subject is a canon entity, name it and let the generator resolve it:
