@@ -56,6 +56,18 @@ Two things that still fail after you do that:
   shot, frame closer; if the shot is a wide scene, accept that the material will read only
   as a hint and let the macro plate carry it.
 
+**And `--ref-first` reproduces PROPORTIONS too, which makes it the wrong flag the moment one
+dimension is supposed to depart from the reference.** Asking for a telescopic mast at three
+times the reference's height, with the plate passed `--ref-first`, returned the reference's
+own modest height six times running. The flag was doing exactly its job.
+
+When a variant is meant to change a dimension, drop to plain `--ref` so the design carries
+without the geometry, and then replace the lost precision two ways: **give the dimension a
+ratio rather than an adjective** ("the neck is seven or eight times the height of the body it
+rises from" beats "a tall neck"), and **put the scale anchor fully inside the frame**. A
+person cropped at the shoulders cannot establish eye level; the same shot with their whole
+body in frame fixed it in one roll.
+
 ## Canon entities: pass `--entity`, never hand-picked `--ref`
 
 If a subject is a canon entity, name it and let the generator resolve it:
