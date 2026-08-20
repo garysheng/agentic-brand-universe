@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # /// script
-# dependencies = ["pillow"]
+# dependencies = ["pillow", "numpy"]
 # ///
 # ^ PEP 723 inline metadata, so `uv run <this script>` resolves Pillow itself.
+#   NUMPY WAS MISSING FROM THIS LIST until 2026-08-20, and this module has imported
+#   it since the day it shipped, so `uv run measure.py` — the invocation the block
+#   exists to make work — died on ModuleNotFoundError every time. It only ever ran
+#   for people who happened to have numpy on the ambient env. A declaration that is
+#   not exercised is a declaration that is wrong.
 #   Before this, every invocation needed `uv run --with pillow` typed from memory,
 #   and the takeoff-thursdays run (2026-08) paid that tax on every single readback.
 """Measure a render, and RECORD how it was measured.
@@ -44,8 +49,14 @@ THREE FAILURES THIS ENCODES, all hit for real:
      CENTRE, which sidesteps both.
 
 Usage:
-    measure.py figure <image> [--chin Y] [--overlay OUT.png] [--no-record]
-    measure.py star   <image> [--box x0,y0,x1,y1] [--overlay OUT.png] [--no-record]
+    measure.py figure   <image> [--chin Y] [--overlay OUT.png] [--no-record]
+    measure.py periodic <image> --patch x0,y0,x1,y1 [--overlay OUT.png] [--no-record]
+    measure.py patch    <image> --patch x0,y0,x1,y1 [--target '#RRGGBB'] [--no-record]
+
+`periodic` and `patch` are the two rulers a MEDIUM needs, as opposed to the one a
+BODY needs. Both take a patch in FRACTIONAL frame coordinates, and both record it,
+because the number is meaningless without the region it came from. See their own
+docstrings for the failures each encodes.
 """
 from __future__ import annotations
 
@@ -252,6 +263,262 @@ def _components(mask: np.ndarray) -> list[np.ndarray]:
 # `reference/north-star-cross/turnaround.png` by eye, bless it, and condition on it.
 
 
+# --------------------------------------------------------------------------- patches
+#
+# THE OTHER KIND OF MEASUREMENT. `figure` measures a BODY; these two measure a
+# MEDIUM. A register whose whole argument is "this is a printed sheet" has
+# properties that are numbers — how coarse the screen is, how pale the ink is —
+# and neither is a thing an eye can hold steady across a batch or across weeks.
+#
+# EARNED TWICE IN ONE DAY. proof-of-vibes' cloud exploration (2026-08-20) asked a
+# halftone plate for a COARSE screen three rounds running and got a fine one every
+# time, and nobody could tell, because "coarse" is a word. Round 3 hand-rolled an
+# autocorrelation dot-pitch ruler plus a patch-mean colour ruler over nine plates,
+# reported the misses as numbers for the first time, and threw both scripts away;
+# round 4 needed the identical method hours later to stay comparable to round 3.
+# That is the same three-hand-rolled-rulers-that-disagree story this module was
+# built for, replayed on the medium instead of on the figure.
+#
+# THE PATCH IS REQUIRED AND IS RECORDED, for exactly the reason the figure's
+# landmarks are. A dot pitch read over a cloud is not a dot pitch read over open
+# sky, and a mean colour is entirely a statement about which pixels were averaged.
+# There is no default patch: a default would silently make two runs incomparable
+# while looking like one method.
+
+
+def parse_patch(s: str) -> tuple[float, float, float, float]:
+    """`x0,y0,x1,y1` in FRACTIONS of the frame, so it ports across sizes."""
+    try:
+        x0, y0, x1, y1 = (float(v) for v in s.split(","))
+    except ValueError:
+        raise Unmeasurable(f"--patch wants four comma-separated fractions, got {s!r}")
+    if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
+        raise Unmeasurable(
+            f"--patch {s!r} is not a fractional box inside the frame "
+            f"(want 0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1). These are FRACTIONS, "
+            f"not pixels.")
+    return x0, y0, x1, y1
+
+
+def _crop(a: np.ndarray, patch: tuple[float, float, float, float]) -> np.ndarray:
+    h, w = a.shape[0], a.shape[1]
+    x0, y0, x1, y1 = patch
+    return a[int(h * y0):int(h * y1), int(w * x0):int(w * x1)]
+
+
+def _autocorr(rows: np.ndarray) -> np.ndarray:
+    """Mean 1-D autocorrelation of a stack of detrended rows, normalised to r[0]=1."""
+    n = rows.shape[1]
+    f = np.fft.rfft(rows, n=2 * n, axis=1)
+    r = np.fft.irfft(f * np.conj(f), n=2 * n, axis=1)[:, :n].real
+    r = r.mean(axis=0)
+    return r / r[0] if r[0] > 0 else r
+
+
+def _detrend(g: np.ndarray, axis: int) -> np.ndarray:
+    """Strip the TONAL RAMP so only the screen is left.
+
+    A halftone sky is a slow density gradient with a fast dot grid on top. The
+    gradient is by far the larger signal, and an autocorrelation run against it
+    returns the size of the PICTURE, not the size of the DOT: on a cloud plate it
+    reports a period of hundreds of pixels and a confident, wrong dots-per-width
+    in the single digits. Subtracting a running mean roughly a dozen dots wide
+    removes the picture and leaves the screen.
+    """
+    lines = g if axis == 1 else g.T
+    k = max(9, (lines.shape[1] // 24) | 1)
+    pad = k // 2
+    padded = np.pad(lines, ((0, 0), (pad, pad)), mode="edge")
+    kern = np.ones(k) / k
+    smooth = np.apply_along_axis(lambda v: np.convolve(v, kern, "valid"), 1, padded)
+    return lines - smooth[:, : lines.shape[1]]
+
+
+FLOOR = 0.10  # below this a "repeat" is noise wearing a number
+
+
+def _fundamental(r: np.ndarray, span: int) -> tuple[int, float, list]:
+    """The FUNDAMENTAL period, its confidence, and the whole harmonic ladder.
+
+    THE TRAP, and it cost a factor of two on real plates before it was caught. A
+    screen repeats at p, so its autocorrelation peaks at p, 2p, 3p — and on a
+    rotated (45-degree) screen the harmonic is routinely LOUDER than the
+    fundamental, because two lattice directions reinforce there. Taking the
+    STRONGEST local maximum therefore reports 2p and halves the dot count. Taking
+    the FIRST local maximum has the opposite failure, latching onto a single-pixel
+    resampling artefact. Both were tried and both were wrong.
+
+    So the pick is the textbook one and not a threshold anybody tuned: a lag is
+    the fundamental if IT HAS A HARMONIC — another peak near twice itself — and
+    the smallest such lag wins. A ladder with no harmonic anywhere in it is not a
+    screen this method can read, and that REFUSES. A confident wrong pitch is
+    worse than no pitch, and a factor-of-two error is the confident wrong pitch
+    this measurement is most prone to.
+
+    The full ladder is returned and recorded either way, because it is the
+    evidence that reconciles two measurements disagreeing by an integer factor —
+    exactly how a hand-rolled ruler and this one differed, with neither able to
+    show its work.
+    """
+    hi = max(4, span // 4)
+    maxima = [(lag, float(r[lag])) for lag in range(2, min(hi, len(r) - 1))
+              if r[lag] > r[lag - 1] and r[lag] >= r[lag + 1]]
+    ladder = [{"lagPx": l, "r": round(v, 3)} for l, v in maxima]
+    if not maxima:
+        raise Unmeasurable(
+            "no local maximum in the autocorrelation, so this patch has no "
+            "repeating structure to measure. Is it flat, or is the screen finer "
+            "than the pixel grid?")
+    loudest = max(v for _, v in maxima)
+    if loudest < FLOOR:
+        raise Unmeasurable(
+            f"the strongest repeat in this patch is only {loudest:.3f} correlation, "
+            f"which is noise rather than a screen. Two innocent causes: the patch "
+            f"is at or near FULL INK COVERAGE, where a halftone has no dots left to "
+            f"measure, or the screen is finer than the pixel grid. A REFUSAL HERE IS "
+            f"THE POINT: a confident wrong pitch is worse than no pitch.")
+
+    lags = [l for l, v in maxima if v >= FLOOR]
+    if len(lags) == 1:
+        # ONE rung is not a ladder. The refusal below exists to stop the wrong rung
+        # being picked, and a single peak offers no wrong rung to pick.
+        return lags[0], float(dict(maxima)[lags[0]]), ladder
+    for lag in lags:
+        # Peaks land off-integer on a real screen (a 7.2px pitch shows up at 8 and
+        # 14), so the window must be proportional. +-1 was tried and refused half
+        # of a set of plates whose screens were perfectly legible.
+        tol = max(2, round(0.20 * lag))
+        if any(abs(other - 2 * lag) <= tol for other in lags):
+            return lag, float(dict(maxima)[lag]), ladder
+    raise Unmeasurable(
+        f"peaks at lags {lags} and not one of them has a harmonic near twice "
+        f"itself, so there is no fundamental to report and any single number here "
+        f"would be a guess with a factor-of-two error in it. On a printed plate the "
+        f"usual innocent cause is that the screen is DAMAGED — plugged shadows or a "
+        f"broken dot — so there is no clean pitch left. Read harmonicLadder and pick "
+        f"by eye, or measure a patch with more intact screen in it.")
+
+
+def measure_periodic(img: Image.Image, patch: tuple[float, float, float, float]) -> dict:
+    """Fundamental spatial period of a repeating screen, over a declared patch.
+
+    Answers "how coarse is this halftone", "is this weave the same weave", "did
+    the grid pitch drift" — the class of question a register can regress on
+    silently, because a look is judged by eye and a pitch is not visible by eye at
+    any size a person reviews at.
+
+    Reported as `dotsAcrossWidth` (frame width / horizontal repeat), which is how
+    a prompt should ASK for a screen too: a count across the frame is measurable
+    on read-back, where "coarse" and "fine" are not.
+    """
+    a = np.asarray(img.convert("RGB")).astype(float)
+    h, w = a.shape[0], a.shape[1]
+    box = _crop(a, patch)
+    if box.shape[0] < 32 or box.shape[1] < 32:
+        raise Unmeasurable(
+            f"patch is {box.shape[1]}x{box.shape[0]}px, too small to hold enough "
+            f"cycles to measure. Give it at least 32px on each side.")
+    g = box.mean(axis=2)
+
+    out = {
+        "schema": SCHEMA,
+        "kind": "periodic",
+        "frame": {"w": w, "h": h},
+        "patch": {"fractional": list(patch),
+                  "px": {"w": int(box.shape[1]), "h": int(box.shape[0])}},
+        "method": {
+            "detrend": "subtract a running mean ~1/24 of the patch, to strip the tonal ramp",
+            "estimator": "FFT autocorrelation per line, averaged across lines, normalised to r[0]=1",
+            "pick": ("SMALLEST local maximum that HAS A HARMONIC (another peak within "
+                     "20% of twice its lag), searched within a quarter of the line "
+                     "length, so a louder harmonic cannot be mistaken for the "
+                     "fundamental. A ladder with only ONE peak is taken as-is."),
+            "refusesWhen": (f"no local maximum, or the loudest peak < {FLOOR:g}, or no "
+                            f"peak in the ladder has a harmonic"),
+        },
+        "axes": {},
+    }
+
+    for name, axis in (("x", 1), ("y", 0)):
+        lines = _detrend(g, axis)
+        r = _autocorr(lines)
+        lag, peak, ladder = _fundamental(r, lines.shape[1])
+        out["axes"][name] = {"periodPx": lag, "confidence": round(peak, 3),
+                             "harmonicLadder": ladder}
+
+    px = out["axes"]["x"]["periodPx"]
+    out["dotsAcrossWidth"] = int(round(w / px))
+    out["note"] = (
+        f"{out['dotsAcrossWidth']} dots across the frame width "
+        f"(horizontal repeat {px}px, confidence {out['axes']['x']['confidence']:.2f}). "
+        f"Compare only against measurements over the SAME fractional patch; a pitch "
+        f"read over a cloud is not a pitch read over open sky. If another measurement "
+        f"disagrees by an integer factor, check it against harmonicLadder before "
+        f"believing either.")
+    return out
+
+
+def overlay_patch(img: Image.Image, m: dict) -> Image.Image:
+    """Draw the measured box, so the record and the region can be checked together."""
+    im = img.convert("RGB").copy()
+    d = ImageDraw.Draw(im)
+    w, h = im.size
+    x0, y0, x1, y1 = m["patch"]["fractional"]
+    d.rectangle([int(w * x0), int(h * y0), int(w * x1), int(h * y1)],
+                outline=(220, 0, 0), width=4)
+    d.text((int(w * x0) + 8, max(0, int(h * y0) - 14)),
+           m.get("note", "").split(".")[0], fill=(220, 0, 0))
+    return im
+
+
+def _hex(rgb) -> str:
+    return "#%02X%02X%02X" % tuple(int(round(v)) for v in rgb)
+
+
+def measure_patch(img: Image.Image, patch: tuple[float, float, float, float],
+                  target: str | None = None) -> dict:
+    """Mean colour over a declared patch, and its distance from a target.
+
+    The colour half of the same problem. "The blue is too deep" is a judgement
+    nobody can hold across three rounds and six weeks; `dHex` is 107 on one plate
+    and 19 on another and the correction is then a fact rather than an argument.
+
+    `dHex` is the MAX PER-CHANNEL distance, not a Euclidean one, deliberately: a
+    single channel drifting 60 while the other two hold is exactly the failure a
+    mean distance hides.
+    """
+    a = np.asarray(img.convert("RGB")).astype(float)
+    h, w = a.shape[0], a.shape[1]
+    box = _crop(a, patch)
+    if box.size == 0:
+        raise Unmeasurable("patch selects zero pixels.")
+    mean = box.reshape(-1, 3).mean(axis=0)
+
+    out = {
+        "schema": SCHEMA,
+        "kind": "patch",
+        "frame": {"w": w, "h": h},
+        "patch": {"fractional": list(patch),
+                  "px": {"w": int(box.shape[1]), "h": int(box.shape[0])}},
+        "mean": {"rgb": [round(v, 1) for v in mean], "hex": _hex(mean)},
+        "method": {"estimator": "arithmetic mean of sRGB channels over the patch",
+                   "distance": "max per-channel absolute difference from the target"},
+    }
+    if target:
+        t = target.lstrip("#")
+        if len(t) != 6:
+            raise Unmeasurable(f"--target wants #RRGGBB, got {target!r}")
+        tr = [int(t[i:i + 2], 16) for i in (0, 2, 4)]
+        d = max(abs(mean[i] - tr[i]) for i in range(3))
+        out["target"] = {"hex": "#" + t.upper(), "rgb": tr}
+        out["dHex"] = int(round(d))
+        out["note"] = (f"{out['mean']['hex']} against {out['target']['hex']}, "
+                       f"max per-channel distance {out['dHex']}.")
+    else:
+        out["note"] = f"{out['mean']['hex']}. No --target, so no distance."
+    return out
+
+
 # --------------------------------------------------------------------------- cli
 
 
@@ -259,14 +526,47 @@ def record_path(image: pathlib.Path) -> pathlib.Path:
     return image.parent / (image.name + ".measure.json")
 
 
+def write_record(image: pathlib.Path, m: dict) -> pathlib.Path:
+    """MERGE by kind, never clobber.
+
+    One plate legitimately carries several measurements at once — a cloud plate
+    has both a dot pitch and a sky colour — and the first shape of this file was a
+    single flat record, so measuring a second thing DELETED the first without
+    saying so. The record is now `{"<kind>": {...}}`. A legacy flat record is
+    folded under its own kind rather than discarded, because a measurement already
+    taken is exactly the thing this module exists to stop people re-deriving.
+    """
+    p = record_path(image)
+    doc = {}
+    if p.exists():
+        try:
+            prev = json.loads(p.read_text())
+            doc = {prev["kind"]: prev} if "kind" in prev else prev
+        except (ValueError, KeyError):
+            doc = {}
+    doc[m["kind"]] = m
+    p.write_text(json.dumps(doc, indent=2) + "\n")
+    return p
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
+
     f = sub.add_parser("figure", help="head-to-body ratio from crown, chin and sole")
-    f.add_argument("image")
     f.add_argument("--chin", type=int, help="chin-base y in pixels; the one landmark "
                                             "that must not be auto-detected")
-    for p in (f,):
+    per = sub.add_parser("periodic", help="dot pitch / weave / grid period over a patch")
+    pat = sub.add_parser("patch", help="mean colour over a patch, and its distance from a target")
+    pat.add_argument("--target", help="#RRGGBB the patch is being compared against")
+    for p in (per, pat):
+        p.add_argument("--patch", required=True, metavar="x0,y0,x1,y1",
+                       help="the measured region, in FRACTIONS of the frame. Required, "
+                            "and recorded: a pitch or a colour is a statement about a "
+                            "region, and two runs over different regions are not "
+                            "comparable however alike the numbers look.")
+    for p in (f, per, pat):
+        p.add_argument("image")
         p.add_argument("--overlay", help="write a labelled overlay here")
         p.add_argument("--no-record", action="store_true",
                        help="do not write <image>.measure.json")
@@ -279,7 +579,12 @@ def main(argv=None) -> int:
     img = Image.open(path)
 
     try:
-        m = measure_figure(img, args.chin)
+        if args.cmd == "figure":
+            m = measure_figure(img, args.chin)
+        elif args.cmd == "periodic":
+            m = measure_periodic(img, parse_patch(args.patch))
+        else:
+            m = measure_patch(img, parse_patch(args.patch), args.target)
     except Unmeasurable as e:
         # A refusal, not a number. This is the whole point of the module.
         print(f"measure: UNMEASURABLE: {e}", file=sys.stderr)
@@ -287,10 +592,9 @@ def main(argv=None) -> int:
 
     m["image"] = str(path)
     if not args.no_record:
-        record_path(path).write_text(json.dumps(m, indent=2) + "\n")
-        m["recordedAt"] = str(record_path(path))
+        m["recordedAt"] = str(write_record(path, m))
     if args.overlay:
-        ov = overlay_figure(img, m)
+        ov = overlay_figure(img, m) if args.cmd == "figure" else overlay_patch(img, m)
         ov.save(args.overlay)
         m["overlay"] = args.overlay
     print(json.dumps(m, indent=2))

@@ -48,6 +48,7 @@ or a set of page heroes without ever declaring canon.
 | `create-lookbook` | Scaffold a Lookbook (SPEC §4.7.1) — a portable folder (lookbook.json + refs/) that defines a curated but intentionally VARIED visual vocabulary (a wardrobe/fashion, a range of building silhouettes, a set of faces), the complement of a Style Pack. | yes |
 | `create-style-pack` | Scaffold a Style Pack (SPEC §4.7) — a portable folder (pack.json + refs/) that defines ONE look and is consumable by on-brand-image with no universe. |  |
 | `evolve-abu` | Evolve the Agentic Brand Universe framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. |  |
+| `explore` | Render a comparison SET that isolates one variable, so a human can decide a visual question by looking instead of by reading a description. |  |
 | `judge-slot` | Judge one generated slot against an entity's locked golden, item by item over its declared invariants, in a context that has NOT been told how the slot was made. |  |
 | `land-work` | Merge a finished work branch home instead of leaving it parked, in ANY git repo (a universe, a platform repo, a site, anything). |  |
 | `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, entities, goldens, provenance, craft canon, provider quirks) with no generation, no API calls, and no cost. | yes |
@@ -86,7 +87,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.39) |
+| `init` | scaffold a new universe (conforms to spec v0.40) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -161,6 +162,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.40 | a MEDIUM can now be measured, not just judged (§3.5.1). |
 | v0.39 | four paves out of the takeoff-thursdays run (hyperagentic-age, 2026-08). |
 | v0.38 | a real person's matrix is hyper-real neutral BY DEFAULT. |
 | v0.37 | the identity master could not be shot until a register existed, and it > must be. |

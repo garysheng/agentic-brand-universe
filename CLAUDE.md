@@ -16,7 +16,9 @@ would use at the moment you need it.
 | **make a contact sheet** of several renders | `render-readback/scripts/contact_sheet.py --out X.png --cols 3 *.png` |
 | **verify a render** — did the canon arrive, did the look bind, is the frame dead | `render-readback/scripts/verify_render.py <png> --expect "id@look"` |
 | **crop in on a detail** to check an invariant (jaw, throat, a mark) | `render-readback/scripts/crop_zoom.py` — **use it BEFORE calling a defect.** A contact sheet is downsampled; a lace hem called "vertical stripes" from a 3-up was a correct horizontal band when zoomed. |
-| **measure a figure** in a plate | `render-readback/scripts/measure.py` (`figure` mode only; `star` mode was withdrawn for false precision) |
+| **measure a figure** in a plate | `render-readback/scripts/measure.py figure` (`star` mode was withdrawn for false precision) |
+| **measure how COARSE a screen is** (halftone dot pitch, weave, grid) | `render-readback/scripts/measure.py periodic <png> --patch x0,y0,x1,y1` — fractions, required, recorded. Reports `dotsAcrossWidth`. Reach for it any time a register's argument is a NUMBER; "coarse" is a word and a screen regresses silently under it. |
+| **measure a COLOUR** against a target (sky, paper, ink) | `render-readback/scripts/measure.py patch <png> --patch x0,y0,x1,y1 --target '#RRGGBB'` — reports the mean hex and `dHex`, the MAX per-channel distance. |
 | **generate ANY image** | `on-brand-image/scripts/generate.py` — the single provider adapter. Never call a provider directly; this is what writes provenance. |
 | **knock out a background** | `on-brand-image/scripts/chroma_key.py` (add `--choke 12` for a dark-on-dark silhouette, or despill leaves a yellow edge hairline) |
 | **see where a universe stands** | `abu/scripts/status.py --json` |

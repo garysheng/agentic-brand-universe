@@ -1,10 +1,38 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.39 — 2026-08-09.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.40 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.40 changelog - a MEDIUM can now be measured, not just judged (§3.5.1).** `measure.py`
+> could measure a BODY (`figure`) and nothing else, so every property of a MEDIUM stayed a
+> word. proof-of-vibes' cloud exploration (2026-08-20) asked a halftone plate for a COARSE
+> screen across three rounds and got a fine one every time, and nobody could tell, because
+> "coarse" is not a number. Round 3 hand-rolled an autocorrelation dot-pitch ruler and a
+> patch-mean colour ruler over nine plates and threw both away; round 4 needed the identical
+> method hours later to stay comparable. Same story `measure figure` was built for, replayed
+> on the medium. So: **`measure periodic`** (the fundamental spatial period of a repeating
+> screen — halftone pitch, weave, grid — reported as dots-across-frame-width) and **`measure
+> patch`** (mean colour over a region, and its MAX PER-CHANNEL distance from a target).
+> Both REQUIRE a patch in fractional frame coordinates and record it, because a pitch read
+> over a cloud is not a pitch read over open sky and a mean colour is entirely a statement
+> about which pixels were averaged. Three refusals rather than three guesses, each one hit
+> for real: a flat patch, a patch at FULL INK COVERAGE (a halftone at solid has no dots left
+> to measure), and a peak ladder with no harmonic in it. **The harmonic rule is the load-
+> bearing part.** A screen peaks at p, 2p, 3p, and on a rotated 45-degree screen the harmonic
+> is routinely LOUDER than the fundamental, so "take the strongest peak" reports 2p and HALVES
+> the dot count — which is exactly how the round-3 hand-roll and this module first disagreed,
+> with neither able to show its work. The pick is therefore the smallest peak that HAS a
+> harmonic, and the whole ladder is recorded as the evidence that reconciles two measurements
+> differing by an integer factor. **Contract change:** `<image>.measure.json` is now keyed by
+> kind (`{"periodic": {...}, "patch": {...}}`) instead of one flat record, because a plate
+> legitimately carries several measurements and the flat shape silently DELETED the previous
+> one; a legacy flat record is folded under its own kind rather than dropped. Also fixed:
+> `measure.py` declared only `pillow` in its PEP 723 block while importing numpy since the day
+> it shipped, so `uv run measure.py` — the invocation that block exists to enable — had never
+> once worked. 14 tests.
 
 > **v0.39 changelog - four paves out of the takeoff-thursdays run (hyperagentic-age, 2026-08).**
 > **(1) The migrator a refusal had been naming ships.** The BAKE-USED-AS-A-SELECTOR refusal has
@@ -876,6 +904,48 @@ in one book, on the same lines where its own ref column listed ten of his plates
 caption check above: **a check that is wrong every time it fires trains its operator to ignore it**,
 and this one is otherwise load-bearing, because the true positive it exists to catch — a cast entity
 whose plates never reach the model — reads identically.
+
+### 3.5.1 Measured read-back: the properties an eye cannot hold (v0.40)
+
+A taste gate answers *is this right*. It cannot answer *is this 1:8 or 1:6.5*, *is this screen
+coarser than the one we blessed*, or *how far off-target is that blue* — and a register whose whole
+argument is a MEDIUM ("this is a printed sheet", "this is woven", "this is a plate on a press") has
+properties that are numbers. Those are the properties that regress silently, because a look is
+reviewed by eye and a pitch is invisible by eye at any size a person reviews at.
+
+`render-readback/scripts/measure.py` is the ruler, and it has three modes:
+
+| mode | answers | needs |
+|---|---|---|
+| `figure` | head-to-body ratio | an operator-supplied `--chin` (see §12; it resists automation) |
+| `periodic` | the fundamental period of a repeating screen, as `dotsAcrossWidth` | `--patch` |
+| `patch` | mean colour of a region and its distance from a target | `--patch`, optional `--target` |
+
+**Three rules, and each one is a defect that was paid for.**
+
+1. **A NUMBER ALONE IS NOT A MEASUREMENT.** Every mode emits its METHOD and its landmarks or its
+   patch alongside the result, and writes them beside the image as `<image>.measure.json`. Three
+   sessions once hand-rolled three head-to-body rulers that disagreed, and nobody could tell whether
+   a plate had improved or the method had changed. `periodic` and `patch` therefore **require**
+   `--patch` in fractional frame coordinates and there is no default, because a default would
+   silently make two runs incomparable while looking like one method.
+2. **A CONFIDENT WRONG NUMBER IS WORSE THAN A REFUSAL.** Every mode validates its own result and
+   raises rather than returning nonsense. `periodic` refuses a flat patch, a patch at full ink
+   coverage (a halftone at solid has no dots left to measure, which is a true and useful thing to be
+   told), and a peak ladder in which nothing has a harmonic.
+3. **THE FUNDAMENTAL IS THE SMALLEST PEAK THAT HAS A HARMONIC.** A screen peaks at p, 2p, 3p, and on
+   a rotated screen the harmonic is routinely louder, so taking the strongest peak reports 2p and
+   halves the dot count; taking the first peak latches onto a single-pixel resampling artefact. Both
+   were tried and both were wrong. The full ladder is recorded either way, because it is the evidence
+   that reconciles two measurements disagreeing by an integer factor.
+
+**The record is keyed by KIND** (`{"periodic": {...}, "patch": {...}}`). One plate legitimately
+carries several measurements; the original flat shape deleted the previous one without saying so.
+
+**Where this belongs in a pipeline:** a Style Pack gate assertion (§4.7) that names an exact
+`measure.py` invocation and a numeric bound is CHECKABLE, where the same assertion in prose is a
+vibe. Reach for it whenever a register's argument rests on a number — a screen ruling, a weave
+count, a paper colour, a line weight, an ink density.
 
 ## 4. Primitives (the schemas)
 

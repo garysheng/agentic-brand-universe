@@ -1,3 +1,49 @@
+## 2026-08-20 — a MEDIUM can be measured, not just judged (plugin 1.6.0, spec v0.40)
+
+`measure figure` could measure a BODY and nothing else, so every property of a MEDIUM stayed a
+word. proof-of-vibes' cloud exploration asked a halftone plate for a COARSE screen across three
+rounds and got a fine one every time, and nobody could tell, because "coarse" is not a number.
+Round 3 hand-rolled an autocorrelation dot-pitch ruler and a patch-mean colour ruler over nine
+plates and threw both away; round 4 needed the identical method hours later to stay comparable.
+That is the same once-is-fine-twice-is-a-bug story `measure figure` was itself built for,
+replayed on the medium instead of on the figure.
+
+So `measure periodic` (fundamental period of a repeating screen, reported as dots across the
+frame width) and `measure patch` (mean colour, and its MAX per-channel distance from a target).
+Both REQUIRE `--patch` in fractional frame coordinates and record it, with no default, because a
+pitch read over a cloud is not a pitch read over open sky and a default would silently make two
+runs incomparable while looking like one method.
+
+**The interesting part is not the arithmetic, it is that the naive implementation is wrong in a
+specific direction.** A screen peaks at p, 2p, 3p, and on a rotated 45-degree screen the harmonic
+is routinely LOUDER than the fundamental, so "take the strongest peak" returns 2p and HALVES the
+dot count. That is exactly how round 3's hand-rolled ruler and this one first disagreed on six of
+nine plates, with neither able to show its work. Taking the FIRST peak fails the other way,
+latching onto a single-pixel resampling artefact. The rule that survived is the textbook one and
+not a tuned threshold: the fundamental is the smallest peak that HAS a harmonic near twice
+itself; a single-peak ladder is taken as-is, because it offers no wrong rung to pick; and a
+ladder with no harmonic anywhere REFUSES rather than guessing. The whole ladder is recorded
+either way, since it is the only thing that reconciles two measurements differing by an integer
+factor.
+
+Three refusals, each hit for real on live plates: a flat patch, a patch at FULL INK COVERAGE (a
+halftone at solid has no dots left to measure, and being told so is useful), and the no-harmonic
+ladder, which on a printed plate means a DAMAGED screen.
+
+Contract change: `<image>.measure.json` is now keyed by kind, because one plate legitimately
+carries both a pitch and a colour and the old flat shape silently DELETED the previous
+measurement. A legacy flat record is folded under its own kind rather than dropped.
+
+Also fixed, and it had never once worked: `measure.py` declared only pillow in its PEP 723 block
+while importing numpy since the day it shipped, so `uv run measure.py` — the invocation that
+block exists to enable — died on ModuleNotFoundError for anyone without numpy on the ambient env.
+
+The payoff downstream is that a Style Pack gate assertion can now NAME an exact invocation and a
+numeric bound instead of describing a property, which is the difference between a checkable gate
+and a vibe. proof-of-vibes' `pov-fine-screen-halftone` pack ships with "require dotsAcrossWidth
+between 190 and 310" as its first gate line. SPEC 3.5.1. 14 tests, mutation-proven against the
+naive strongest-peak implementation.
+
 ## 2026-08-09 — the caption vision pass needs no API key (plugin 1.5.1)
 
 Gary: "BRO opus has vision and we're building this locally using my Claude code

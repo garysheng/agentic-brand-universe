@@ -38,10 +38,37 @@ The quality gate that catches a defective render before it ships or locks. A ren
 ## Measuring a numeric invariant
 
 Some invariants are NUMBERS: a character's head-to-body proportion, a mark's
-height-to-width ratio. Cropping and zooming answers "does this look right"; it
-cannot answer "is this 1:8 or 1:6.5". `scripts/measure.py` does.
+height-to-width ratio, how coarse a screen is, how far a blue is off-target.
+Cropping and zooming answers "does this look right"; it cannot answer "is this
+1:8 or 1:6.5". `scripts/measure.py` does.
 
-    measure.py figure <image> --chin Y [--overlay out.png]
+    measure.py figure   <image> --chin Y [--overlay out.png]
+    measure.py periodic <image> --patch 0.08,0.18,0.42,0.42       # dot pitch / weave / grid
+    measure.py patch    <image> --patch 0.08,0.18,0.42,0.42 --target '#8FAACC'
+
+**`figure` measures a BODY; `periodic` and `patch` measure a MEDIUM (SPEC §3.5.1,
+v0.40).** Reach for the second pair whenever a register's argument rests on a
+number: a screen ruling, a weave count, a paper colour, an ink density. Those are
+the properties that regress silently, because a look is reviewed by eye and a
+pitch is invisible by eye at any size a person reviews at. proof-of-vibes asked a
+halftone plate for a COARSE screen three rounds running and got a fine one every
+time; nobody could tell, because "coarse" is not a number.
+
+**`--patch` is REQUIRED for both, in FRACTIONS of the frame, and it is recorded.**
+A pitch read over a cloud is not a pitch read over open sky, and a mean colour is
+entirely a statement about which pixels were averaged. There is no default patch,
+because a default would silently make two runs incomparable while looking like one
+method. Use the SAME patch across a set or the numbers mean nothing.
+
+**A dot-pitch or colour bound in a Style Pack's gate should name the exact
+invocation**, not describe the property. `"run measure.py periodic <out> --patch
+... and require dotsAcrossWidth between 190 and 310"` is checkable; "the screen is
+fine" is a vibe.
+
+**`periodic` refuses in three situations and each is informative**: a flat patch,
+a patch at FULL INK COVERAGE (a halftone at solid has no dots left to measure), and
+a peak ladder with no harmonic in it (usually a DAMAGED screen — plugged shadows,
+broken dot). Move the patch and re-measure; never skip the check.
 
 **It records HOW it measured, beside the image, as `<image>.measure.json`.** That
 is the point, not a convenience. Three consecutive sessions hand-rolled this
