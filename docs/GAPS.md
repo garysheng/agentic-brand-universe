@@ -1022,3 +1022,109 @@ artifact — a diff to `docs/GAPS.md` — over trusting the sentence.
 
 **Still open because.** (1) and (2) are both real work; the point of this entry is that they are
 now WRITTEN DOWN where the next session reads, which is the part that had been failing.
+
+### G38. The one gate that keeps failing is the only one still judged by eye: nothing measures a feature's EXTENT
+
+**What.** `measure.py` can measure a repeating PERIOD (`periodic`) and a mean COLOUR over a patch
+(`patch`). It cannot measure the EXTENT of a feature: how far a thing runs across the frame, how
+continuous it is, how many separate places it appears. So a gate assertion phrased as a length
+("no longer than about a sixth of the frame width, broken, fading at both ends") is checkable in
+exactly the way "coarse" was checkable before v0.40, which is to say not at all.
+
+**Evidence.** `pov-fine-screen-halftone`'s prismatic-fringe assertion (gate 6) has now failed the
+pack's own round-trip TWICE, on two different ref sets (2026-08-20, `RT-pack-roundtrip.png` and
+`RT2-pack-roundtrip.png` after two members were swapped). Both failures were called by eye, both
+times in prose, and the two calls are not comparable to each other because no method was recorded.
+This is precisely the story `measure periodic` was built for, replayed a third time in the same
+exploration: dot pitch was eyeballed until it was measured, sky colour was eyeballed until it was
+measured, and the fringe is the one left. It is also the property the pack's own NOTES.md names as
+"the property this pack is least able to hold", so it is the assertion that most needs a number.
+
+**Next invocation.** Any render through this pack, since gate 6 is checked on every one of them;
+and any pack anywhere whose gate says "short", "one place only", "does not reach the edge",
+"covers less than half" — all extent claims, all currently vibes.
+
+**Would close it.** `evolve-abu` -> `measure.py extent`: given a patch or a whole frame and a
+predicate for the feature (the obvious first one is CHROMA, distance off the ground/fill axis,
+which is exactly what a prismatic fringe is), report the connected regions, each one's bounding
+box as a fraction of frame width and height, its longest run, and how many regions there are.
+Same contract as `periodic` and `patch`: require the caller to state the predicate and RECORD it,
+and refuse rather than guess. The refusals write themselves from this case: a frame whose ground
+is itself off-axis has no usable threshold, and a feature that touches the frame edge cannot have
+its true extent known.
+
+**Still open because.** It was found at the end of a session that had already landed one framework
+change (v0.41), and a second ruler wants its own design pass rather than being bolted on: the
+threshold, the connectivity rule and the refusal set are the whole product, exactly as the
+harmonic rule was for `periodic`. Filed here rather than in a work folder so round 5 does not
+eyeball it a third time. Deliberately NOT a blocker for the pack: see G39, which is why the gate
+failed, and which no ruler would have fixed.
+
+### G39. A Style Pack ref is all-or-nothing: it cannot be scoped to the properties it is authoritative for
+
+**What.** `pack.json` lists `refs` as a flat array. Every ref is passed as an equal exemplar of
+the whole look, and `rejectedPoles` are WORDS. A reference outranks a word, so a pack cannot say
+"match this ref's medium, colour and light, but NOT the thing it does wrong" — and a gate
+assertion that contradicts a ref will lose to that ref on every render, forever, while looking
+like a model failure.
+
+**Evidence.** `pov-fine-screen-halftone`, 2026-08-20. Its gate caps the prismatic fringe at one
+short broken stretch that fades at both ends. Its ref `X1-prismatic-misregistration` carries a
+CONTINUOUS, SATURATED fringe tracing about a third of the frame height as a smooth line. Both
+round-trips reproduced X1 closely and were marked DEFECT against gate 6 — so the pack was not
+drifting, it was faithfully reproducing its own reference, and the gate was rejecting it for
+resembling the plate the gate exists to protect.
+
+The sting is that X1 is not a stray: it is one of three INDIVIDUALLY BLESSED refs (v0.41 markers)
+and the plate that earned this universe's scoped fringe exception in canon. The cap it violates
+was written by a later pass to fix two other plates. Whether the ref or the gate is wrong is a
+TASTE call and belongs to the operator; what the framework got wrong is offering no way to hold
+both at once, so the disagreement can only be discovered by spending a render.
+
+**Next invocation.** Every render through this pack until someone reconciles them. More generally:
+any pack built from real work, because a set of 3-8 images that agree on everything is rare and
+the honest ones will always have a ref that is right about the medium and wrong about one detail.
+
+**Would close it.** `evolve-abu` -> a per-ref object instead of a bare string, e.g.
+`{"path": "...", "authoritativeFor": ["medium","colour"], "notFor": ["fringe"]}`, which
+`on-brand-image` compiles into a per-ref caption when it passes the refs, and which a scaffolder
+can CROSS-CHECK against the gate: a ref marked `notFor` a property the gate asserts is the
+expected, declared case; a ref that is silent about a property its own pixels contradict is the
+bug. Wants doing in ONE pass with G36 (`scope` / `evidence` / `anchorNote`), since both turn
+`pack.json` from a flat manifest into a described one, and every existing pack reads it.
+
+**Still open because.** It is the same manifest schema change G36 is waiting on, and landing half
+of it twice is worse than landing all of it once. v0.41 deliberately routed around this by putting
+blessings in MARKER FILES beside the refs rather than in the manifest, precisely to avoid touching
+this shape before it is designed.
+
+### G40. A framework change can be committed, spec-bumped and never DELIVERED, and nothing notices
+
+**What.** `evolve-abu` ships in four steps: commit, push, bump `.claude-plugin/plugin.json`, then
+Gary runs `/plugin update`. Only the last one makes the change LIVE, only Gary can run it, and
+nothing anywhere compares the repo's declared version against the installed one. So the repo can
+say 1.6.0 while every skill invocation in every session loads from a 1.5.0 cache, and the gap is
+silent in both directions: the session that shipped it reports success, and the session that
+needs it reads a skill body that predates it.
+
+**Evidence.** 2026-08-20. `.claude-plugin/plugin.json` declared 1.6.0 and
+`~/.claude/plugins/cache/agentic-brand-universe/abu/` held 0.99.0, 1.0.0, 1.3.3 and 1.5.0 — no
+1.6.0. The consequence is sharp rather than cosmetic: `measure.py periodic`, the entire content of
+1.6.0 and the tool a craft-canon record now instructs future sessions to use BY PATH, was not in
+the installed plugin at all. The next session's `--status` line came out of the 1.5.0 body while
+the repo was on 1.7.0. It only worked here because the operator's brief said to check, and the
+scripts were invoked at their repo paths instead.
+
+**Next invocation.** Every session that reaches for a skill through the plugin rather than the
+repo, which is the normal way, and any craft-canon record that names a script the plugin does not
+yet carry.
+
+**Would close it.** `evolve-abu` -> a delivery check it runs on ITSELF at the end: read
+`.claude-plugin/plugin.json`, list `~/.claude/plugins/cache/<marketplace>/<plugin>/`, and if the
+declared version is not installed, say so as the LAST LINE of the report rather than claiming the
+change shipped. Cheap, no network, and it converts a silent lag into a sentence Gary can act on.
+`abu`/`onboard` are the other natural homes, since both already inspect the install.
+
+**Still open because.** Found while auditing this session's own tool provenance rather than as the
+task, and it changes what `evolve-abu` REPORTS, which is a change to the meta-skill that should be
+made deliberately rather than at the end of a universe run.
