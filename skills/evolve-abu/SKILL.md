@@ -154,9 +154,37 @@ the hard way during the `agenticstory` to `abu` rename:**
    `registry/providers.json` and `SPEC.md`. Hand-written docs that the generator does NOT own
    (`WELCOME.md`, `docs/GLOSSARY.md`, the narrative half of `README.md`) are yours to update by
    hand when behavior changes.
-6. **Ship:** commit and push. Bump `version` in `.claude-plugin/plugin.json` (patch for a
-   fix or new skill, minor for a spec/contract change), then tell Gary to run
-   `/plugin update`; only he can, and an unchanged version makes it a no-op.
+6. **Ship, and then PROVE IT LANDED.** Commit, push, bump `version` in
+   `.claude-plugin/plugin.json` (patch for a fix or new skill, minor for a
+   spec/contract change). Then run the check, naming the artifact you built:
+
+   ```bash
+   python3 skills/evolve-abu/scripts/check_delivery.py --expect <repo/relative/path/you/added>
+   ```
+
+   **Read its exit code, because it tells you WHOSE MOVE IT IS, and those two
+   answers are not interchangeable:**
+
+   - **exit 1 — yours.** Uncommitted, unpushed, or no remote. Nothing has left
+     this machine. Fix it now; do not report success and do not tell Gary to run
+     anything.
+   - **exit 2 — Gary's.** Everything published; only he can run `/plugin update`.
+     This is a real handoff, so say so plainly and say what stays stale until he does.
+   - **exit 0 — delivered.**
+
+   Shipping used to end at "tell Gary to run `/plugin update`", which is only the
+   LAST of three links: `working tree -> commit -> push -> /plugin update`. When
+   an earlier link is the broken one that instruction is worse than useless. It
+   sends him to run a command that correctly does nothing, and its "already at
+   the latest version" reads as confirmation.
+
+   That is not hypothetical, and it is the reason this step exists. 1.6.0 shipped
+   with `measure.py periodic`, three separate stewards then ran the script from
+   repo paths because the plugin did not carry it, and the gap was filed as G40.
+   The commit filing G40 then sat unpushed itself, along with 1.7.0 and
+   `bless_ref.py`. Gary ran `/plugin update`, was told he was current, and was.
+   **A version bump that never reaches the remote is indistinguishable from no
+   work at all.**
 7. **Log it:** append a timestamped one-liner to `SAVE-LOG.md` (what promoted, version, why), matching the existing entry style. No em dashes; Gary is sole author (no Claude co-author on framework content).
 8. **Update THIS skill** if the process itself changed (new repo in the chain, new version file, a new recurring gap worth naming). The meta-skill must always describe the current reality — a stale updater is the worst kind.
 
@@ -168,7 +196,10 @@ When invoked because Gary is frustrated we are hand-rolling, first **take stock 
 
 - The gap is a real framework artifact (skill/engine/spec/template), universe-agnostic, tested where applicable.
 - **Every observable change is written into `SPEC.md` in the same commit as the code**, in the section a reader would look in, with what it does, when it applies, and the defect that earned it.
-- Versions bumped; committed and pushed, `.claude-plugin/plugin.json` version bumped, Gary prompted to `/plugin update`.
+- Versions bumped; committed and pushed, `.claude-plugin/plugin.json` version bumped.
+- **`check_delivery.py --expect <the thing you built>` was RUN, and its exit code
+  reported.** Never claim a change shipped on the strength of a commit: exit 1
+  means it is still sitting on this machine. Only exit 2 earns "over to you, Gary".
 - `SAVE-LOG.md` has the entry; if the process changed, this skill was updated too.
 - `./run-tests.sh` is green INCLUDING its `docs` line, so the generated reference describes the framework as it now is rather than as it was.
 - The universe that triggered this no longer hand-rolls the thing — it calls the framework.

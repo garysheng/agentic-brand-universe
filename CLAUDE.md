@@ -22,6 +22,7 @@ would use at the moment you need it.
 | **measure HOW FAR A THING RUNS** (a fringe, a streak, a band), how continuous it is, how many there are | `render-readback/scripts/measure.py extent <png> --feature warm-chroma [--bridge 12]` — reports `longestRunFracW` and `occupancy`. **Any gate phrased as "short", "one place only", "does not reach the edge", "no longer than a sixth of the width" is an extent claim**, and it is an opinion until you run this. Use `--bridge` when a dotty feature the eye reads as ONE line arrives as several stretches. Refuses rather than guessing when the predicate cannot separate the feature from the ground. |
 | **generate ANY image** | `on-brand-image/scripts/generate.py` — the single provider adapter. Never call a provider directly; this is what writes provenance. |
 | **knock out a background** | `on-brand-image/scripts/chroma_key.py` (add `--choke 12` for a dark-on-dark silhouette, or despill leaves a yellow edge hairline) |
+| **prove a framework change actually REACHED sessions** (committed AND pushed AND installed) | `evolve-abu/scripts/check_delivery.py --expect <path/you/added>` — exit **1 = yours** (unpushed), **2 = Gary's** (`/plugin update`), 0 = delivered. Run it at the END of every evolve-abu. A version bump that never reaches the remote is indistinguishable from no work at all. |
 | **see where a universe stands** | `abu/scripts/status.py --json` |
 | **grade a universe** | `universe-doctor/scripts/grade.py` |
 | **grade a rendered book** | `book-doctor/scripts/book_doctor.py` |

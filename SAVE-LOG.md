@@ -1,3 +1,26 @@
+## 2026-08-20 — shipping ends at DELIVERED, not at "tell Gary to run /plugin update" (plugin 1.9.0)
+
+`evolve-abu` step 6 was commit, push, bump, then ask Gary to run `/plugin update`.
+That is the last of three links (`working tree -> commit -> push -> /plugin update`)
+and it is the only one Gary can act on, so when an earlier link broke the
+instruction sent him to run a command that correctly did nothing. Its "already at
+the latest version" then read as confirmation.
+
+Paid for three times in one day. 1.6.0 carried `measure.py periodic` and never
+reached the cache, so three stewards ran it from repo paths; that got filed as
+G40; the commit filing G40 sat unpushed itself alongside 1.7.0 and `bless_ref.py`;
+then 1.8.0 landed unpushed the same way.
+
+`skills/evolve-abu/scripts/check_delivery.py` compares the working tree, HEAD,
+the remote and the installed plugin cache, and reports the FIRST broken link
+rather than three version numbers. The exit code is the point: **1 is the agent's
+move** (nothing has left the machine) and **2 is Gary's** (published, awaiting
+`/plugin update`). Conflating those is the whole defect. `--expect <path>` checks
+the artifact itself, because if the bump is forgotten every number matches while
+the file is still absent.
+
+G40 closed.
+
 ## 2026-08-20 — a FEATURE's extent can be measured, so a gate stops being an opinion (plugin 1.8.0, spec v0.42)
 
 `measure.py` could measure a BODY (`figure`) and, since this morning, a MEDIUM (`periodic`,

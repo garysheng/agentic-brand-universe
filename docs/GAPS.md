@@ -1125,7 +1125,7 @@ of it twice is worse than landing all of it once. v0.41 deliberately routed arou
 blessings in MARKER FILES beside the refs rather than in the manifest, precisely to avoid touching
 this shape before it is designed.
 
-### G40. A framework change can be committed, spec-bumped and never DELIVERED, and nothing notices
+### G40. ~~A framework change can be committed, spec-bumped and never DELIVERED, and nothing notices~~ CLOSED 2026-08-20
 
 **What.** `evolve-abu` ships in four steps: commit, push, bump `.claude-plugin/plugin.json`, then
 Gary runs `/plugin update`. Only the last one makes the change LIVE, only Gary can run it, and
@@ -1145,6 +1145,14 @@ scripts were invoked at their repo paths instead.
 **Next invocation.** Every session that reaches for a skill through the plugin rather than the
 repo, which is the normal way, and any craft-canon record that names a script the plugin does not
 yet carry.
+
+**CLOSED** by `skills/evolve-abu/scripts/check_delivery.py` (plugin 1.9.0), wired into
+`evolve-abu` step 6 and its definition of done. It walks
+`working tree -> commit -> push -> installed` and reports the FIRST broken link, and its
+exit code separates the agent's move (1, unpushed) from Gary's (2, awaiting
+`/plugin update`) because treating those as one thing is what made the gap invisible.
+Note the gap recurred TWICE more between being filed and being closed: the commit that
+filed it was itself unpushed, and so was 1.8.0.
 
 **Would close it.** `evolve-abu` -> a delivery check it runs on ITSELF at the end: read
 `.claude-plugin/plugin.json`, list `~/.claude/plugins/cache/<marketplace>/<plugin>/`, and if the
