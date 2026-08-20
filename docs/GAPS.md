@@ -1128,3 +1128,35 @@ change shipped. Cheap, no network, and it converts a silent lag into a sentence 
 **Still open because.** Found while auditing this session's own tool provenance rather than as the
 task, and it changes what `evolve-abu` REPORTS, which is a change to the meta-skill that should be
 made deliberately rather than at the end of a universe run.
+
+### G41. `textPolicy` is REQUIRED on new Style Packs and the scaffolder cannot write it
+
+**What.** SPEC 4.7 has said since v0.12 that `textPolicy` (`none` | `diegetic` | `furniture`) is
+"REQUIRED on new packs". `create-style-pack/scripts/scaffold.py` has no `--text-policy` argument
+and never emits the key. So the only way to satisfy a REQUIRED field is to hand-edit the manifest
+the scaffolder just wrote, which nobody does reliably, and the spec's own fallback ("packs written
+before v0.12 with no `textPolicy` are read as `diegetic`") then silently applies to packs written
+long AFTER it — quietly permitting in-world text in packs that meant to forbid all glyphs.
+
+**Evidence.** Twelve packs on disk, 2026-08-20: eight carry no `textPolicy` at all, and the four
+that do (`electric-hymnal`, `afrochristofuturism`, `christofuturist-illuminated`,
+`christofuturist-hyperrealistic`) can only have got it by hand, because the tool cannot produce it.
+`pov-fine-screen-halftone` is the sharp case: its gate line 8 reads "NO GLYPH ANYWHERE ... not
+small, not faint, not in a corner", which is `none` stated as prose, while the manifest's silence
+means the spec reads it as `diegetic`. The gate and the declared policy of the same pack
+contradict each other, and only the gate is enforced.
+
+**Next invocation.** The next pack anybody scaffolds, and any consumer that starts reading
+`textPolicy` for real — at which point two thirds of the existing packs claim a policy none of
+their authors chose.
+
+**Would close it.** `evolve-abu` -> `scaffold.py` gains `--text-policy` and REFUSES without it
+(the same posture it already takes on a missing `--gate`, and for the same reason: a pack that
+cannot say whether glyphs are allowed is not finished), plus a one-time sweep that sets the key
+explicitly on the eight silent packs rather than leaving them on a fallback written for a
+different era.
+
+**Still open because.** It is a required-field refusal, so landing it makes every existing
+scaffold invocation fail until each pack is given a value; that sweep should happen in the same
+pass rather than leaving a repo full of packs that cannot be re-scaffolded. Good candidate to fold
+into the single manifest pass G36 and G39 are both waiting on.
