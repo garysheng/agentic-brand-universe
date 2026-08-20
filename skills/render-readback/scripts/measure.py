@@ -52,11 +52,19 @@ Usage:
     measure.py figure   <image> [--chin Y] [--overlay OUT.png] [--no-record]
     measure.py periodic <image> --patch x0,y0,x1,y1 [--overlay OUT.png] [--no-record]
     measure.py patch    <image> --patch x0,y0,x1,y1 [--target '#RRGGBB'] [--no-record]
+    measure.py extent   <image> --feature warm-chroma [--min-chroma N] [--blur PX]
+                                [--bridge PX] [--allow-clipped] [--no-record]
 
 `periodic` and `patch` are the two rulers a MEDIUM needs, as opposed to the one a
 BODY needs. Both take a patch in FRACTIONAL frame coordinates, and both record it,
-because the number is meaningless without the region it came from. See their own
-docstrings for the failures each encodes.
+because the number is meaningless without the region it came from.
+
+`extent` is the ruler a FEATURE needs: not what the sheet is made of, but how far
+one thing on it runs, how continuous it is, and how many of them there are. Any
+gate phrased as "short", "one place only", "does not reach the edge" is an extent
+claim, and every one of them was vibes until this existed. It takes a PREDICATE
+rather than a patch, and records that instead. See their own docstrings for the
+failures each encodes.
 """
 from __future__ import annotations
 
@@ -66,7 +74,7 @@ import pathlib
 import sys
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 SCHEMA = 1
 
@@ -519,6 +527,222 @@ def measure_patch(img: Image.Image, patch: tuple[float, float, float, float],
     return out
 
 
+# --------------------------------------------------------------------------- extent
+
+
+def _lab(a: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """CIELAB (D65) from sRGB. Computed here rather than via ImageCms because
+    PIL's LAB mode packs a* and b* into unsigned bytes and clips them, which
+    reports every plate's warm peak as the same saturated 127."""
+    x = a / 255.0
+    x = np.where(x <= 0.04045, x / 12.92, ((x + 0.055) / 1.055) ** 2.4)
+    m = np.array([[0.4124, 0.3576, 0.1805],
+                  [0.2126, 0.7152, 0.0722],
+                  [0.0193, 0.1192, 0.9505]])
+    xyz = (x @ m.T) / np.array([0.95047, 1.0, 1.08883])
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
+    return (116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]),
+            200 * (f[..., 1] - f[..., 2]))
+
+
+#: Above this the mask is describing the SHEET, not a feature on it.
+MAX_MASK_FRACTION = 0.25
+
+FEATURES = ("warm-chroma",)
+
+
+def _dilate(mask: np.ndarray, r: int) -> np.ndarray:
+    """Square dilation by r, via the max over shifted copies. No scipy."""
+    out = mask.copy()
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            out |= np.roll(np.roll(mask, dy, axis=0), dx, axis=1)
+    return out
+
+
+def measure_extent(img: Image.Image, feature: str, min_chroma: float = 6.0,
+                   blur: float = 3.0, min_region_frac: float = 0.0002,
+                   allow_clipped: bool = False, bridge: int = 0) -> dict:
+    """How far a feature RUNS, how continuous it is, and how many there are.
+
+    `periodic` measures a repeat and `patch` measures a colour, so a gate that
+    says "coarse" or "too blue" became a number. A gate that says "no longer than
+    about a sixth of the frame width, broken, fading at both ends" did not, and a
+    length judged by eye is the same class of claim "coarse" was before v0.40.
+
+    Earned by `pov-fine-screen-halftone`, whose prismatic-fringe assertion failed
+    its own pack round-trip TWICE on two different ref sets, both times called in
+    prose, and the two calls were not comparable because no method was recorded
+    (docs/GAPS.md G38).
+
+    THE PREDICATE IS THE PRODUCT, and it is stated by the caller, never guessed.
+    `warm-chroma` scores each pixel by how far it lies on the WARM side in
+    CIELAB, `max(a*, b*, 0)`: gold is +b*, rose is +a*, and a cool blue ink is
+    negative in both, so an accent ink separates from the ground without any
+    per-plate fitting. THREE EARLIER PREDICATES WERE TRIED AND ALL THREE FAILED,
+    which is why this one is written down rather than re-derived:
+
+      1. distance off the canonical paper->ink axis. The saturated plates put
+         12-16% of their pixels off it, because their own ink is not the
+         canonical ink, so the deepest-fringed plate scored LOWEST.
+      2. the same, with the axis fitted per plate. Halftone dot edges are
+         partial coverage, which does not travel that axis in sRGB.
+      3. the same again in linear light, where partial coverage IS linear. Still
+         useless, because these sheets are not one ink: the blue itself drifts
+         in hue across the frame.
+
+    BLUR IS NOT COSMETIC AND IS RECORDED. On a halftone the accent inks arrive as
+    separated dots, so an unblurred mask has thousands of one-dot components and
+    "how far does it run" is answered per DOT, which is the wrong question. The
+    blur merges the screen into the region the eye actually reads.
+
+    `occupancy` is the answer to the half of the gate that is not length. Bin the
+    region along its own principal axis and report the fraction of bins that
+    carry pixels: a continuous drawn line approaches 1.0, a broken dotty stretch
+    fades well below it. Length was never the only way a fringe fails, and this
+    is the number that says which failure it is.
+    """
+    if feature not in FEATURES:
+        raise Unmeasurable(
+            f"unknown --feature {feature!r}. Known: {', '.join(FEATURES)}. "
+            f"The predicate is never guessed: a feature nobody named is a "
+            f"measurement of whatever happened to be bright.")
+
+    rgb = img.convert("RGB")
+    if blur > 0:
+        rgb = rgb.filter(ImageFilter.GaussianBlur(blur))
+    a = np.asarray(rgb).astype(float)
+    h, w = a.shape[0], a.shape[1]
+    _, a_star, b_star = _lab(a)
+
+    # REFUSAL 1: no cool ground for a warm feature to be a departure FROM.
+    coolest = float(b_star.min())
+    if coolest > -5.0:
+        raise Unmeasurable(
+            f"this frame has no cool ground (min b* {coolest:.1f}), so "
+            f"'warm-chroma' has nothing to be a departure from. On a warm or "
+            f"neutral sheet every pixel is the feature.")
+
+    score = np.maximum(np.maximum(a_star, b_star), 0.0)
+    mask = score >= min_chroma
+
+    # REFUSAL 2: the mask is describing the sheet rather than a feature on it.
+    frac = float(mask.mean())
+    if frac > MAX_MASK_FRACTION:
+        raise Unmeasurable(
+            f"'warm-chroma' at min-chroma {min_chroma} selects {100 * frac:.1f}% "
+            f"of the frame, over the {100 * MAX_MASK_FRACTION:.0f}% ceiling. That "
+            f"is a description of the ground, not of a feature on it. Raise "
+            f"--min-chroma, or this is the wrong predicate for this image.")
+
+    # BRIDGING answers a different question from connectivity, and the gate asks
+    # both. A dotty fringe running down one cloud edge arrives as several
+    # separated stretches; unbridged, "how long is it" is answered per STRETCH,
+    # which understates a feature the eye plainly reads as one line. Bridged, the
+    # stretches merge and the answer is how far the fringe RUNS. The radius is
+    # stated by the caller and recorded, because the two numbers are different
+    # claims and a reader must be able to tell which one they are holding. Area
+    # and occupancy are always computed from the ORIGINAL mask, so bridging can
+    # never inflate how much ink is actually there.
+    grouped = _dilate(mask, bridge) if bridge > 0 else mask
+
+    min_px = max(1, int(min_region_frac * h * w))
+    regions = []
+    for group in _components(grouped):
+        if bridge > 0:
+            sel = mask[group[:, 0], group[:, 1]]
+            pix = group[sel]
+            if len(pix) == 0:
+                continue
+        else:
+            pix = group
+        if len(pix) < min_px:
+            continue
+        ys, xs = pix[:, 0].astype(float), pix[:, 1].astype(float)
+        pts = np.stack([xs, ys], 1)
+        centred = pts - pts.mean(0)
+        # Principal axis: a fringe running down a cloud edge is diagonal, so a
+        # bbox width alone understates it and a bbox diagonal overstates it.
+        _, _, vt = np.linalg.svd(centred, full_matrices=False)
+        along = centred @ vt[0]
+        ext = float(np.ptp(along))
+        nbins = max(1, int(round(ext / 8.0)))
+        hist, _ = np.histogram(along, bins=nbins)
+        regions.append({
+            "areaPx": int(len(pix)),
+            "areaFrac": round(len(pix) / (h * w), 6),
+            "bboxFrac": {"x0": round(xs.min() / w, 4), "x1": round(xs.max() / w, 4),
+                         "y0": round(ys.min() / h, 4), "y1": round(ys.max() / h, 4)},
+            "axisExtentFracW": round(ext / w, 4),
+            "axisExtentFracH": round(ext / h, 4),
+            "occupancy": round(float((hist > 0).mean()), 3),
+            "peakChroma": round(float(score[pix[:, 0], pix[:, 1]].max()), 1),
+            "touchesFrameEdge": bool(xs.min() <= 1 or ys.min() <= 1
+                                     or xs.max() >= w - 2 or ys.max() >= h - 2),
+        })
+    regions.sort(key=lambda r: r["axisExtentFracW"], reverse=True)
+
+    out = {
+        "schema": SCHEMA,
+        "kind": "extent",
+        "frame": {"w": w, "h": h},
+        "feature": feature,
+        "method": {
+            "predicate": "max(a*, b*, 0) in CIELAB D65, the WARM side",
+            "minChroma": min_chroma,
+            "blurPx": blur,
+            "minRegionFrac": min_region_frac,
+            "connectivity": "8-way",
+            "bridgePx": bridge,
+            "extent": "peak-to-peak along the region's own principal axis",
+            "occupancy": "fraction of 8px bins along that axis carrying pixels",
+        },
+        "maskFrac": round(frac, 5),
+        "regions": len(regions),
+        "detail": regions,
+    }
+    if not regions:
+        out["note"] = (f"no region of {feature} survives min-chroma {min_chroma} "
+                       f"at {min_region_frac} of frame area. That is a MEASUREMENT, "
+                       f"not a refusal: a plate with no such feature has no extent.")
+        return out
+
+    big = regions[0]
+    # REFUSAL 3: a clipped feature's extent is a lower bound, not a measurement.
+    if big["touchesFrameEdge"] and not allow_clipped:
+        raise Unmeasurable(
+            f"the largest region touches the frame edge, so its true extent runs "
+            f"off the sheet and {big['axisExtentFracW']} of frame width is a LOWER "
+            f"BOUND rather than a measurement. Re-run with --allow-clipped to "
+            f"record it as one.")
+    out["longestRunFracW"] = big["axisExtentFracW"]
+    out["longestRunOccupancy"] = big["occupancy"]
+    out["extentIsLowerBound"] = big["touchesFrameEdge"]
+    out["note"] = (
+        f"{len(regions)} region(s); the longest runs {big['axisExtentFracW']} of "
+        f"frame width ({big['axisExtentFracH']} of height) at occupancy "
+        f"{big['occupancy']}"
+        + (" (LOWER BOUND: it is clipped by the frame)." if big["touchesFrameEdge"]
+           else "."))
+    return out
+
+
+def overlay_extent(img: Image.Image, m: dict) -> Image.Image:
+    """Box every region found, so a human can see WHAT was measured before
+    trusting the number. The same discipline `star` was withdrawn for lacking."""
+    im = img.convert("RGB").copy()
+    d = ImageDraw.Draw(im)
+    w, h = im.size
+    for i, r in enumerate(m.get("detail", [])):
+        bb = r["bboxFrac"]
+        box = [int(w * bb["x0"]), int(h * bb["y0"]), int(w * bb["x1"]), int(h * bb["y1"])]
+        colour = (220, 0, 0) if i == 0 else (0, 130, 220)
+        d.rectangle(box, outline=colour, width=3)
+        d.text((box[0] + 6, max(0, box[1] - 14)),
+               f"{r['axisExtentFracW']}W occ {r['occupancy']}", fill=colour)
+    return im
+
+
 # --------------------------------------------------------------------------- cli
 
 
@@ -565,7 +789,28 @@ def main(argv=None) -> int:
                             "and recorded: a pitch or a colour is a statement about a "
                             "region, and two runs over different regions are not "
                             "comparable however alike the numbers look.")
-    for p in (f, per, pat):
+    ext = sub.add_parser("extent", help="how far a feature RUNS, how continuous, how many")
+    ext.add_argument("--feature", required=True, choices=FEATURES,
+                     help="the predicate that DEFINES the feature. Required and "
+                          "recorded: an extent is a statement about a predicate, and "
+                          "two runs under different predicates are not comparable.")
+    ext.add_argument("--min-chroma", type=float, default=6.0,
+                     help="CIELAB units on the warm side (default 6)")
+    ext.add_argument("--blur", type=float, default=3.0,
+                     help="px; merges a halftone screen into the region the eye reads "
+                          "(default 3). 0 measures individual dots, which is the wrong "
+                          "question.")
+    ext.add_argument("--min-region-frac", type=float, default=0.0002,
+                     help="ignore regions smaller than this fraction of frame area")
+    ext.add_argument("--bridge", type=int, default=0, metavar="PX",
+                     help="merge separated stretches within PX into ONE region before "
+                          "measuring, so a dotty fringe the eye reads as one line is "
+                          "measured as one line. Recorded. Area and occupancy still "
+                          "come from the unbridged mask.")
+    ext.add_argument("--allow-clipped", action="store_true",
+                     help="record a frame-clipped extent as an explicit LOWER BOUND "
+                          "instead of refusing")
+    for p in (f, per, pat, ext):
         p.add_argument("image")
         p.add_argument("--overlay", help="write a labelled overlay here")
         p.add_argument("--no-record", action="store_true",
@@ -583,6 +828,10 @@ def main(argv=None) -> int:
             m = measure_figure(img, args.chin)
         elif args.cmd == "periodic":
             m = measure_periodic(img, parse_patch(args.patch))
+        elif args.cmd == "extent":
+            m = measure_extent(img, args.feature, args.min_chroma, args.blur,
+                               args.min_region_frac, args.allow_clipped,
+                               args.bridge)
         else:
             m = measure_patch(img, parse_patch(args.patch), args.target)
     except Unmeasurable as e:
@@ -594,7 +843,12 @@ def main(argv=None) -> int:
     if not args.no_record:
         m["recordedAt"] = str(write_record(path, m))
     if args.overlay:
-        ov = overlay_figure(img, m) if args.cmd == "figure" else overlay_patch(img, m)
+        if args.cmd == "figure":
+            ov = overlay_figure(img, m)
+        elif args.cmd == "extent":
+            ov = overlay_extent(img, m)
+        else:
+            ov = overlay_patch(img, m)
         ov.save(args.overlay)
         m["overlay"] = args.overlay
     print(json.dumps(m, indent=2))

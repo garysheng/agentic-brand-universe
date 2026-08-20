@@ -1,3 +1,41 @@
+## 2026-08-20 — a FEATURE's extent can be measured, so a gate stops being an opinion (plugin 1.8.0, spec v0.42)
+
+`measure.py` could measure a BODY (`figure`) and, since this morning, a MEDIUM (`periodic`,
+`patch`). It could not measure how far one THING on the sheet runs, so every gate phrased as a
+length or a count was exactly as checkable as "coarse" was before v0.40, which is to say not at all.
+
+proof-of-vibes' `pov-fine-screen-halftone` is the evidence, and it is the same plate set that
+earned the last two changes. Its prismatic-fringe assertion failed the pack's own round-trip
+TWICE, on two different ref sets, and both calls were made by eye and written in prose, so the two
+were not comparable to each other. It was the last gate on that pack still judged by looking; dot
+pitch and sky colour had both been promoted to rulers hours earlier. Filed as G38 rather than
+bolted on, because the threshold, the connectivity rule and the refusal set are the whole product.
+
+Filing it was right. THE PREDICATE TOOK FOUR ATTEMPTS. G38 proposed chroma as distance off the
+paper-to-ink axis; that is attempt one and it is wrong, because a saturated plate's own ink is not
+the canonical ink, so 12-16% of its pixels read as "off axis" and the MOST fringed plate scored
+LOWEST. Fitting the axis per plate failed too (halftone dot edges are partial coverage and do not
+travel that axis in sRGB), and so did redoing it in linear light where coverage IS linear, because
+these sheets are not one ink: the blue itself drifts in hue across the frame. What works is
+`warm-chroma`, `max(a*, b*, 0)` in CIELAB, which asks whether the ink is on the warm side rather
+than how far it sits from a fitted line. All three failures are now a refusal rather than a fourth
+silent guess, which is this module's founding rule applied to its own design history.
+
+`occupancy` is the part that is not length: bin a region along its own principal axis and report
+the fraction of bins carrying pixels. Length was never the only way a fringe fails, and this is the
+number that separates a broken dotty stretch from a smooth drawn line of the same size. `--bridge`
+merges stretches the eye reads as one line, and never inflates area, which is measured from the
+unbridged mask. Finding NO feature is a MEASUREMENT and not a refusal, because the pack that
+earned this has a control ref with no fringe at all and refusing on it would make the control
+unmeasurable.
+
+The payoff arrived the same hour and it reversed a standing verdict. The pack's blessed refs
+measure 0.077 to 0.274 of frame width; the plates rejected as drawn rainbows measure 0.456 to
+0.696; there is nothing in between. The round-trip that had been failed twice measures 0.150,
+inside the blessed band on run length, peak chroma and occupancy alike. The gate had been stricter
+than the plates its own pack was built from, and no eye was ever going to find that. 13 tests, 5
+mutations proven to bite, 1477 total green. Closes G38.
+
 ## 2026-08-20 — a Style Pack can say WHICH refs a human blessed (plugin 1.7.0, spec v0.41)
 
 A Style Pack is defined as "3-8 BLESSED reference images", and nothing on disk could carry that

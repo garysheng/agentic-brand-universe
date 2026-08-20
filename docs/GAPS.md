@@ -1023,6 +1023,33 @@ artifact — a diff to `docs/GAPS.md` — over trusting the sentence.
 **Still open because.** (1) and (2) are both real work; the point of this entry is that they are
 now WRITTEN DOWN where the next session reads, which is the part that had been failing.
 
+### G38. ~~The one gate that keeps failing is the only one still judged by eye: nothing measures a feature's EXTENT~~ CLOSED 2026-08-20 (spec v0.42)
+
+**CLOSED** by `measure.py extent` (SPEC §3.5.1), built to the design sketched below. 13 tests, 5
+mutations proven to bite. Two notes for anyone reading the original entry:
+
+- **The predicate took four attempts, and the three failures are now encoded as a refusal.** The
+  sketch below proposed "CHROMA, distance off the ground/fill axis". That is attempt one and it
+  does not work: the saturated plates put 12-16% of their pixels off the canonical axis, so the
+  most-fringed plate scored LOWEST. Fitting the axis per plate and then redoing it in linear light
+  both failed too. What works is `warm-chroma`, `max(a*, b*, 0)` in CIELAB, which asks whether the
+  ink is on the warm side rather than how far it is from a fitted line.
+- **The predicted refusals were both right and are both implemented**, plus a third (mask over 25%
+  of frame) which is the failure the three rejected predicates actually hit.
+
+**It immediately reversed the verdict it was built to adjudicate.** Measured, the pack's blessed
+refs run 0.077-0.274 of frame width and the plates rejected as drawn rainbows run 0.456-0.696, with
+nothing in between; the round-trip that had been failed TWICE by eye measures 0.150, inside the
+blessed band on run length, peak chroma and occupancy. The gate was stricter than the plates its own
+pack was built from. Note what this says about the closing line of the original entry, which is left
+below unedited: it called this "deliberately NOT a blocker for the pack: see G39, which is why the
+gate failed, and which no ruler would have fixed." The ruler was the thing that showed the gate was
+wrong, and G39 was not why it failed.
+
+---
+
+*Original entry, kept as written:*
+
 ### G38. The one gate that keeps failing is the only one still judged by eye: nothing measures a feature's EXTENT
 
 **What.** `measure.py` can measure a repeating PERIOD (`periodic`) and a mean COLOUR over a patch

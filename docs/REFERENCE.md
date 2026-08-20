@@ -87,7 +87,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.41) |
+| `init` | scaffold a new universe (conforms to spec v0.42) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -162,6 +162,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.42 | a FEATURE's extent can be measured, so a gate stops being an opinion > (§3.5.1). |
 | v0.41 | a Style Pack can say WHICH refs a human actually blessed (§4.7). |
 | v0.40 | a MEDIUM can now be measured, not just judged (§3.5.1). |
 | v0.39 | four paves out of the takeoff-thursdays run (hyperagentic-age, 2026-08). |

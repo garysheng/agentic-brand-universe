@@ -1,10 +1,38 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.41 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.42 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.42 changelog - a FEATURE's extent can be measured, so a gate stops being an opinion
+> (§3.5.1).** `measure.py` could measure a BODY (`figure`) and a MEDIUM (`periodic`, `patch`).
+> It could not measure how far one THING on the sheet runs, so every gate phrased as a length or
+> a count stayed exactly as checkable as "coarse" was before v0.40, which is to say not at all.
+> proof-of-vibes' `pov-fine-screen-halftone` (2026-08-20) failed its own round-trip on its
+> prismatic-fringe assertion TWICE, on two different ref sets, both calls made by eye and in
+> prose and therefore not comparable to each other; it was the last gate on that pack still
+> judged by looking, dot pitch and sky colour both having been promoted to rulers earlier the
+> same day (filed as G38). So: **`measure extent <image> --feature warm-chroma`**, reporting per
+> connected region the bbox and area as frame fractions, the extent along the region's OWN
+> PRINCIPAL AXIS (a fringe tracing a cloud edge is diagonal, so bbox width understates it and the
+> diagonal overstates it), the peak chroma, and `occupancy`, the fraction of bins along that axis
+> carrying pixels. **Occupancy is the half of the claim that is not length**, and it is why a
+> SHORT stretch that came back smooth and saturated can be refused by number rather than by
+> argument. **The predicate is the product, and it is stated by the caller, never guessed:** three
+> predicates were tried against the real plates first and all three scored the SHEET rather than
+> the feature on it, which is why the no-cool-ground refusal exists rather than a fourth silent
+> guess. Three refusals, each hit for real: no cool ground to depart from, a mask covering over
+> 25% of the frame (a description of the ground, not a feature), and a largest region touching the
+> frame edge (a lower bound, not a measurement). **Finding no feature is a MEASUREMENT, not a
+> refusal**, because the pack that earned this has a control ref with no fringe at all and
+> refusing on it would make the control unmeasurable. `--blur` and `--bridge` both change which
+> question is being asked, so both are recorded, and bridging never inflates area. The payoff was
+> immediate and it reversed a standing verdict: the pack's blessed refs measured 0.077 to 0.274 of
+> frame width against rejected drawn-rainbow plates at 0.456 to 0.696, and the twice-rejected
+> round-trip measured 0.150, inside the blessed band on every axis. **The gate had been stricter
+> than the plates its own pack was built from.** 13 tests, 5 mutations proven to bite. Closes G38.
 
 > **v0.41 changelog - a Style Pack can say WHICH refs a human actually blessed (§4.7).** The
 > definition of a pack has always been "3-8 BLESSED reference images", and nothing on disk
@@ -940,13 +968,14 @@ argument is a MEDIUM ("this is a printed sheet", "this is woven", "this is a pla
 properties that are numbers. Those are the properties that regress silently, because a look is
 reviewed by eye and a pitch is invisible by eye at any size a person reviews at.
 
-`render-readback/scripts/measure.py` is the ruler, and it has three modes:
+`render-readback/scripts/measure.py` is the ruler, and it has four modes:
 
 | mode | answers | needs |
 |---|---|---|
 | `figure` | head-to-body ratio | an operator-supplied `--chin` (see §12; it resists automation) |
 | `periodic` | the fundamental period of a repeating screen, as `dotsAcrossWidth` | `--patch` |
 | `patch` | mean colour of a region and its distance from a target | `--patch`, optional `--target` |
+| `extent` | how far a FEATURE runs, how continuous, how many (v0.42) | `--feature` |
 
 **Three rules, and each one is a defect that was paid for.**
 
@@ -968,6 +997,57 @@ reviewed by eye and a pitch is invisible by eye at any size a person reviews at.
 
 **The record is keyed by KIND** (`{"periodic": {...}, "patch": {...}}`). One plate legitimately
 carries several measurements; the original flat shape deleted the previous one without saying so.
+
+#### `extent`: the ruler a FEATURE needs (v0.42)
+
+`periodic` and `patch` describe what the SHEET is made of. Neither can answer how far one thing ON
+it runs. **Any gate phrased as a length or a count is an extent claim** — "no longer than about a
+sixth of the frame width", "one short broken stretch", "one place only, not repeated across a
+field", "does not reach the edge" — and every one of them was judged by eye until this existed.
+
+`extent` takes a **PREDICATE** where the other two take a patch, and records it for the same reason:
+an extent is a statement about what you counted as the feature, and two runs under different
+predicates are not comparable however alike the numbers look. `warm-chroma`, the first predicate,
+scores each pixel `max(a*, b*, 0)` in CIELAB: gold is +b\*, rose is +a\*, and a cool ink is negative
+in both, so an accent ink separates from a cool ground with no per-plate fitting.
+
+It reports, per connected region, the bounding box and area as frame fractions, the **extent along
+the region's own principal axis** (a fringe tracing a cloud edge is diagonal, so a bbox width
+understates it and a bbox diagonal overstates it), the peak chroma, and **`occupancy`**: the
+fraction of bins along that axis carrying pixels. Occupancy is the half of the claim that is not
+length. A continuous drawn line approaches 1.0 and a broken dotty stretch falls well below it, which
+is what lets a gate refuse a SHORT stretch that came back smooth and saturated.
+
+Two parameters change what question is being asked, so both are recorded. **`--blur`** merges a
+halftone screen into the region an eye actually reads; at 0 the accent ink is thousands of separate
+dots and "how far does it run" is answered per DOT. **`--bridge`** merges separated stretches within
+a stated radius into one region, because a dotty fringe running down one cloud edge arrives as
+several stretches that a viewer plainly reads as one line; area and occupancy are always computed
+from the UNBRIDGED mask, so bridging can never claim ink that is not on the sheet.
+
+**Three refusals, and the first one is the whole product.** Three predicates were tried against real
+plates before `warm-chroma` and all three scored the sheet rather than the feature on it: distance
+off the canonical paper-to-ink axis (which ranked the most-fringed plate LOWEST, because a saturated
+plate's own ink is not the canonical ink), the same axis fitted per plate (halftone dot edges are
+partial coverage and do not travel it in sRGB), and the same again in linear light where coverage IS
+linear (still wrong, because these sheets are not one ink; the blue itself drifts in hue across the
+frame). So: it refuses a frame with **no cool ground** for a warm feature to depart from; it refuses
+when the mask covers more than **25%** of the frame, which is a description of the ground rather
+than of a feature on it; and it refuses a largest region **touching the frame edge**, whose extent
+is a lower bound rather than a measurement, unless `--allow-clipped` says to record it as one.
+
+**Finding NO feature is a measurement, not a refusal.** A plate carrying no such feature has no
+extent, and reporting `regions: 0` is the correct answer. The pack that earned this ruler has
+exactly that control in it: one ref with no prismatic treatment at all, which must stay measurable.
+
+**The defect that earned it (proof-of-vibes, 2026-08-20).** A Style Pack's fringe assertion failed
+its own round-trip twice, on two different ref sets, both calls made by eye and in prose and
+therefore not comparable to each other. Measured afterwards, the pack's blessed refs ran 0.077 to
+0.274 of frame width while the plates rejected as drawn rainbows ran 0.456 to 0.696 — a gap with
+nothing in it — and the second round-trip, rejected twice, measured 0.150, inside the blessed band
+on run length, peak chroma and occupancy alike. **The gate had been stricter than the plates its
+own pack was built from, and no eye was going to discover that.** A cap re-derived from measured
+blessed evidence is the fix; the ruler is what makes "re-derived from evidence" mean anything.
 
 **Where this belongs in a pipeline:** a Style Pack gate assertion (§4.7) that names an exact
 `measure.py` invocation and a numeric bound is CHECKABLE, where the same assertion in prose is a
