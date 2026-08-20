@@ -950,3 +950,67 @@ honest about where the decision actually lives and does not add a cross-repo dep
 keeps one file answering the question. Prefer (a). Note this interacts with the compose_spec
 re-sync bug, which currently DELETES `pos` outright on re-sync. Filed 2026-08-09 by the
 the-factory-manager endgame run.
+
+### G36. A Style Pack cannot record its EVIDENCE BASE or why its anchor is its anchor
+
+**What.** `create-style-pack`'s manifest is `{id, name, anchor, refs, palette, styleLine,
+rejectedPoles, gate, maxElements}`. There is no field for the pack's SCOPE (what its refs
+actually prove) and none for the reasoning behind the refs or the anchor. `create-form` solved
+exactly this problem for forms — FORM.md states the evidence base and its scaffolder stamps a
+warning when the evidence is thin — and Style Packs never got it, even though a pack has the
+same failure: it is named for a MEDIUM by rule, while its evidence is often one SUBJECT, so the
+pack silently over-claims the moment somebody renders something else in it.
+
+**Evidence.** `pov-fine-screen-halftone` (proof-of-vibes, 2026-08-20). Every one of its seven
+refs is a sky plate, so the pack is named for a medium on subject-homogeneous evidence and
+nothing in `pack.json` says so. Its anchor is also a cloud plate rather than the content-neutral
+swatch the skill prefers, and that was a deliberate, measured decision: two content-neutral
+swatches WERE generated and both were rejected because their screens measured 140 and 154
+dots/W against a blessed band of 192-307, so anchoring on either would have baked the exact
+coarsening regression the pack's first gate line exists to catch. That reasoning currently lives
+only in a NOTES.md inside a work folder, which is the failure mode this universe has already
+written down twice in its own craft canon: a rule that lives only in a work folder is a rule the
+next session does not read.
+
+**Next invocation.** The next reviewer who asks "why is a picture of clouds the anchor of a pack
+named for a halftone", and the next agent who renders a non-sky subject through this pack and
+gets sky.
+
+**Would close it.** `evolve-abu` -> `create-style-pack/scripts/scaffold.py`: an `--evidence`
+/ `--scope` string and an `--anchor-note`, written into `pack.json` and echoed by
+`on-brand-image` when the pack loads, plus a scaffolder warning when every ref shares one
+subject. SPEC 4.7.
+
+**Still open because.** It is a manifest schema change that every existing pack reads, and it
+wants doing once for the whole shape (scope + anchor reasoning + the measured bands a gate
+refers to) rather than one field at a time.
+
+### G37. Three gaps were reported as "filed" by proof-of-vibes rounds 2-3 and never reached this register
+
+**What.** Not a capability gap: a PROCESS one, and it is the reason this file exists. Three
+separate gaps were named in `works/2026-08-20-cloud-exploration/**/NOTES.md` and reported
+upstream as filed. None of them is in this register, in SAVE-LOG, or anywhere else in the
+framework repo.
+
+1. **No aspect-ratio knob.** The provider adapter's widest expressible aspect is 1536x1024
+   (1.5:1); OpenGraph wants 1.91:1. Three rounds of cloud plates have each re-declared the same
+   workaround by hand ("nothing essential in the top or bottom eighth"), and round 3 lost two
+   suns to the crop anyway, because an instruction in a prompt is not a gate.
+2. **`identity.voice` termRules are declared and unenforced.** `voice-gate` reads exactly three
+   keys (`capitalize`, `oneWord`, `neverDisparage`), none of which can express an exact-casing
+   rule for a multi-word brand term, so most of proof-of-vibes' real term rules are checked by
+   nothing. The universe's own `universe.json` says so in a note and says it is filed. It was
+   not.
+3. **A periodic ruler.** Closed 2026-08-20 as `measure periodic` (spec v0.40) — but only because
+   a second session happened to hit the same wall and go looking.
+
+**Next invocation.** Any round 5 of the cloud work, which will re-declare the crop workaround for
+the fourth time; and any voice-gate run on proof-of-vibes, which will pass while checking nothing.
+
+**Would close it.** For (1) and (2), `evolve-abu`. For the process itself: the bar is already
+written at the top of this file, and what is missing is that a report saying "I filed a gap" is
+believed without anyone checking whether a file changed. Prefer making the filing a step with an
+artifact — a diff to `docs/GAPS.md` — over trusting the sentence.
+
+**Still open because.** (1) and (2) are both real work; the point of this entry is that they are
+now WRITTEN DOWN where the next session reads, which is the part that had been failing.
