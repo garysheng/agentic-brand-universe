@@ -985,6 +985,14 @@ subject. SPEC 4.7.
 wants doing once for the whole shape (scope + anchor reasoning + the measured bands a gate
 refers to) rather than one field at a time.
 
+**Narrowed 2026-08-20, not closed.** v0.41 landed `bless_ref.py`, so a pack can now record WHICH
+refs a human individually approved (a hash-bound `<ref>.blessed.json` marker, SPEC 4.7). That is a
+different question from this one and was built as a marker file precisely to avoid touching the
+manifest schema this gap is waiting on. G36 still wants `scope` / `evidence` / `anchorNote` fields
+in `pack.json`, and `pov-fine-screen-halftone` is still the standing evidence: seven sky plates
+under a medium name, with the measured reason its anchor is a cloud rather than a swatch living
+only in a NOTES.md.
+
 ### G37. Three gaps were reported as "filed" by proof-of-vibes rounds 2-3 and never reached this register
 
 **What.** Not a capability gap: a PROCESS one, and it is the reason this file exists. Three

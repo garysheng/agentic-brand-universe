@@ -1,3 +1,42 @@
+## 2026-08-20 — a Style Pack can say WHICH refs a human blessed (plugin 1.7.0, spec v0.41)
+
+A Style Pack is defined as "3-8 BLESSED reference images", and nothing on disk could carry that
+claim. `scaffold.py` copies every ref the same way, so a ref the operator approved by name and a
+candidate swept in beside it were byte-indistinguishable, and the approval survived only as prose
+in whatever document happened to describe the pack.
+
+proof-of-vibes' `pov-fine-screen-halftone` is the evidence. Seven refs, of which exactly two were
+individually blessed, recorded in a work folder's NOTES.md, which is the failure that universe's
+own craft canon has already written down twice: a rule that lives only in a work folder is a rule
+the next session does not read. Gary then blessed a third by name ("lock p1") and there was no
+verb to record it with. The framework had the primitive twice and could not point it at a pack:
+`chain_matrix.py --bless-seed` blesses an ENTITY's seed shot, and `abu import-asset --blessed-by`
+blesses an asset at the moment it is IMPORTED.
+
+So `bless_ref.py <pack> --ref <name> --by "<who, when>"`, writing `<pack>/refs/<ref>.blessed.json`
+beside the ref exactly as its recipe sits. A marker file rather than a manifest field, for two
+reasons: a pack REBUILD is a one-command operation people run often and the sidecar rides along
+with the ref through it, and `pack.json` stays a description of the LOOK instead of becoming a
+ledger of who said yes.
+
+**The sha256 is the load-bearing part.** A render has no seed, so "the same prompt again" is a
+different picture. Binding the marker to the bytes means a re-rolled ref reads STALE rather than
+silently inheriting an approval of an image nobody saw.
+
+`--by` is required and is never defaulted to `"human"`. That is the shortcut `--bless-seed` took,
+and G12 has been open on it since: a marker that cannot tell the operator from a delegated agent
+read-back cannot be audited afterward.
+
+`--status` counts coverage and warns specifically when the ANCHOR is unblessed, because the anchor
+is passed FIRST on every render a pack will ever make and is the one ref whose approval propagates
+into everything downstream. `scaffold.py` prints the same line at the end of a build, where the
+operator is already looking rather than in a catalog nobody re-reads.
+
+Partial coverage is a normal and honest state for a pack. Reporting it as full is what this closes.
+
+15 tests, 1464 total, green. Does NOT close G36 (a pack's evidence base and anchor reasoning),
+which is a manifest schema change and stays open.
+
 ## 2026-08-20 — a MEDIUM can be measured, not just judged (plugin 1.6.0, spec v0.40)
 
 `measure figure` could measure a BODY and nothing else, so every property of a MEDIUM stayed a

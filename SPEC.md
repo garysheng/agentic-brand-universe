@@ -1,10 +1,37 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.40 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.41 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.41 changelog - a Style Pack can say WHICH refs a human actually blessed (§4.7).** The
+> definition of a pack has always been "3-8 BLESSED reference images", and nothing on disk
+> could carry that claim: `scaffold.py` copies every ref identically, so a ref the operator
+> approved by name and a candidate swept in beside it were byte-indistinguishable, and the
+> approval survived only as prose. proof-of-vibes' `pov-fine-screen-halftone` (2026-08-20)
+> shipped seven refs of which exactly two were individually blessed, a fact recorded only in
+> a work folder's NOTES.md, which is the failure that universe's own craft canon has written
+> down twice. Gary then blessed a third by name and there was no verb to record it with: the
+> framework's two blessing primitives, `chain_matrix.py --bless-seed` and `abu import-asset
+> --blessed-by`, are entity-scoped and import-scoped and neither takes a pack. So:
+> **`bless_ref.py <pack> --ref <name> --by "<who, when>"`**, writing
+> `<pack>/refs/<ref>.blessed.json` beside the ref exactly as its recipe sits, which is what
+> lets a pack REBUILD carry the blessing along and what keeps `pack.json` a description of
+> the look rather than a ledger of who said yes. **The `sha256` is the load-bearing part:** a
+> render has no seed, so "the same prompt again" is a different picture, and binding the
+> marker to the bytes makes a re-rolled ref read STALE instead of silently inheriting an
+> approval of an image nobody saw. **`--by` is required and is never defaulted to `"human"`**,
+> the shortcut `--bless-seed` took (G12) that leaves its markers unable to tell the operator
+> from a delegated agent read-back. Four refusals, each a way the record could become a lie:
+> an unlisted ref, a listed ref missing from disk, an overwrite without `--rebless` (the
+> previous approver is kept under `replaced`), and no `--by`. `--status` counts coverage and
+> **warns specifically when the ANCHOR is unblessed**, because the anchor is passed FIRST on
+> every render a pack ever makes; `scaffold.py` prints the same line at the end of a build,
+> where the operator is already looking. Partial coverage is a normal, honest state. Reporting
+> it as full is the thing this closes. 15 tests. (Does NOT close G36, which wants the pack's
+> EVIDENCE BASE and anchor reasoning; that is a manifest schema change and stays open.)
 
 > **v0.40 changelog - a MEDIUM can now be measured, not just judged (§3.5.1).** `measure.py`
 > could measure a BODY (`figure`) and nothing else, so every property of a MEDIUM stayed a
@@ -1413,6 +1440,43 @@ them" — which has no recurring-identity requirement and therefore no need for 
 - **Portable (mirrors §3a self-containment).** A pack resolves every ref within its own folder, so it
   can be copied anywhere and still generate. A pack may live standalone OR inside a universe
   (`reference/style/<pack>/`); the skill only ever needs the pack path.
+- **A ref can record WHO blessed it, and it is bound to the bytes (v0.41).** A pack is defined as
+  built from "blessed reference images", and until v0.41 nothing on disk could say WHICH ones a
+  person actually looked at: the scaffolder copies every ref identically, so a ref the operator
+  approved by name and a candidate swept in beside it were byte-indistinguishable. **The blessing is
+  a marker file, not a manifest field:** `<pack>/refs/<ref>.blessed.json`, holding `ref`, `sha256`,
+  `blessedBy`, `blessedOn` and a `note`. It sits beside the ref exactly as `<ref>.recipe.json` does,
+  which is what lets `create-style-pack` carry it into the pack on a rebuild and what keeps
+  `pack.json` a description of the LOOK rather than a ledger of who said yes.
+
+      bless_ref.py <pack> --ref <name> --by "<who, when>" [--note "<why>"] [--rebless]
+      bless_ref.py <pack> --status
+
+  **The `sha256` is the whole point.** A blessing approves specific BYTES, so a re-rolled ref makes
+  the marker read `STALE` rather than silently transferring approval to an image nobody saw. A
+  render has no seed, so "the same prompt again" is a different picture; the digest is the only
+  thing that can tell the difference. This mirrors `--bless-seed`'s `sha256_16` and the engine's
+  `goldenDigest`.
+
+  **`--by` is REQUIRED and is deliberately not defaulted to `"human"`.** `chain_matrix.py
+  --bless-seed` hardcodes that value (G12), so its markers cannot tell the operator from a delegated
+  agent read-back and cannot be audited afterward. Say who, and when.
+
+  **Four refusals, each one a way the record could become a lie:** a ref the pack does not LIST
+  (a blessing on an unused file approves nothing); a listed ref not on disk; an existing blessing
+  overwritten without `--rebless` (the previous approver is kept under `replaced`); and no `--by`.
+
+  `--status` reports each ref as `blessed` / `STALE` / `unblessed` / `MISSING`, counts them, and
+  **warns specifically when the ANCHOR is unblessed**, because the anchor is passed FIRST on every
+  render the pack will ever make and is therefore the one ref whose approval propagates into
+  everything downstream. `scaffold.py` prints the same coverage line at the end of a build.
+
+  **Partial coverage is a normal and honest state; reporting it as full is not.** Earned on
+  `pov-fine-screen-halftone` (proof-of-vibes, 2026-08-20): seven refs, of which the operator had
+  individually approved two, a fact that existed only in a work folder's NOTES.md. When he then
+  blessed a third by name there was no verb to record it with, and the framework's two existing
+  blessing primitives (`--bless-seed`, `abu import-asset --blessed-by`) are entity-scoped and
+  import-scoped respectively and neither takes a pack.
 - **The gate is the load-bearing half.** A pack without a `gate` is a mood board. The gate is what
   turns "looks roughly right" into a checkable read-back (§3.5): generate, verify each assertion
   against the pixels, re-roll the specific failure. The finger-count defect is a gate concern, not a

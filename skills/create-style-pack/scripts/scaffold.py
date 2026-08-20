@@ -96,6 +96,14 @@ def main():
                 shutil.copy2(sidecar, dest + ".recipe.json")
             else:
                 unprovenanced.append(base)
+            # CARRY A BLESSING WITH THE REF TOO (v0.41). `bless_ref.py` records that a
+            # named human approved these exact bytes; leaving the marker behind at the
+            # source turns an approved ref back into an anonymous candidate on the way
+            # into the pack, and a pack rebuild is a ONE-COMMAND operation people run
+            # often. Same reasoning as the recipe above: the sidecar is part of the ref.
+            blessing = src + ".blessed.json"
+            if os.path.exists(blessing):
+                shutil.copy2(blessing, dest + ".blessed.json")
         rel = os.path.relpath(dest, pack)
         ref_rel.append(rel)
         if i == 0: anchor_rel = rel
@@ -129,6 +137,22 @@ def main():
               f"  provenance, so nothing downstream will flag this for you. Prefer refs made\n"
               f"  by generate.py, which writes <image>.recipe.json beside every render.")
     print(f"[style-pack] OK  {a.id}  ({len(ref_rel)} refs, {len(a.gate)} gate assertions)  -> {pack}/pack.json")
+
+    # BLESSING COVERAGE (v0.41). The skill says "only images a human approved", and for
+    # every pack before this one that claim lived in somebody's prose. A pack whose refs
+    # are mostly unreviewed candidates is a normal and honest state; SILENTLY reporting it
+    # as blessed is not. Printed here, at the end of the run the operator is watching,
+    # because a catalog read at session start loses to a line read at the point of use.
+    blessed = sum(1 for r in ref_rel if os.path.exists(os.path.join(pack, r + ".blessed.json")))
+    print(f"[style-pack] blessing coverage: {blessed} of {len(ref_rel)} refs individually blessed.")
+    if blessed < len(ref_rel):
+        anchor_note = ("  The ANCHOR is unblessed, and it is passed FIRST on every render "
+                       "this pack makes.\n"
+                       if not os.path.exists(os.path.join(pack, anchor_rel + ".blessed.json")) else "")
+        print(f"  The rest are CANDIDATES, not approvals. Say so when you report this pack.\n"
+              f"{anchor_note}"
+              f"  Record one:  bless_ref.py {pack} --ref <name> --by \"<who, when>\"\n"
+              f"  See them all: bless_ref.py {pack} --status")
 
 if __name__ == "__main__":
     main()

@@ -32,6 +32,16 @@ Turn a blessed set of images into a **Style Pack** (SPEC §4.7): `pack.json` + `
 ## Procedure
 
 1. **Gather + bless the refs.** Only images a human approved. If the anchor is not content-neutral, generate a content-neutral swatch first (palette + light + finish, no subject) and use that as `anchor`.
+
+   **"A human approved it" is a claim, so RECORD it** (SPEC §4.7, v0.41). Every ref lands in the pack the same way, so nothing distinguishes one the operator blessed by name from one you swept in beside it, and the difference is not bookkeeping: the anchor is passed FIRST on every render the pack will ever make, and a reference outranks a word.
+
+   ```bash
+   python3 ~/.../skills/create-style-pack/scripts/bless_ref.py <pack> \
+     --ref <name> --by "<who, when>" [--note "<what they said>"]
+   python3 ~/.../skills/create-style-pack/scripts/bless_ref.py <pack> --status
+   ```
+
+   It writes `<pack>/refs/<ref>.blessed.json` bound to the ref's `sha256`, so a re-rolled ref reads **STALE** instead of quietly inheriting an approval. `--by` is required and is never defaulted to `"human"`. Partial coverage is fine and common; **reporting a half-blessed pack as blessed is not**, so run `--status` before you describe the pack to anyone.
 2. **Scaffold:**
    ```bash
    python3 ~/.../skills/create-style-pack/scripts/scaffold.py \
