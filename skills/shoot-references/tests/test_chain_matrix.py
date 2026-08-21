@@ -637,7 +637,7 @@ class TestRegisterOverride(unittest.TestCase):
     def test_override_uses_the_named_packs_poles_not_the_universes(self):
         r = run(self.root, "--register", "inky", "--print-plan")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("register=inky", r.stdout)
+        self.assertIn("register=Inky", r.stdout)  # the pack's NAME, never its slug
         neg = [l for l in r.stdout.splitlines() if l.startswith("negatives:")][0]
         self.assertIn("crayon", neg)
         # The default register's poles must not leak into an overridden shoot:
@@ -754,7 +754,7 @@ class TestDeclaredStylePack(unittest.TestCase):
         self._register(stylePack="inky")
         r = run(self.root, "--register", "inky", "--print-plan")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("register=inky", r.stdout)
+        self.assertIn("register=Inky", r.stdout)  # the pack's NAME, never its slug
 
     def test_no_style_pack_shoots_the_identity_anchor_deliberately(self):
         self._register(stylePack="inky")
@@ -773,7 +773,7 @@ class TestDeclaredStylePack(unittest.TestCase):
         import chain_matrix
         plan = chain_matrix.build_plan(self.root, "room")
         self.assertEqual(plan["anchor"], "reference/style/inky/refs/anchor.png")
-        self.assertEqual(plan["register"], "inky")
+        self.assertEqual(plan["register"], "Inky")  # name over slug: a slug names no medium
         self.assertIn("crayon", plan["poles"])
         self.assertNotIn("photoreal", plan["poles"])
 
@@ -784,7 +784,7 @@ class TestDeclaredStylePack(unittest.TestCase):
         import chain_matrix
         plan = chain_matrix.build_plan(self.root, "room")
         self.assertEqual(plan["anchor"], "reference/style/inky/refs/anchor.png")
-        self.assertEqual(plan["register"], "inky")
+        self.assertEqual(plan["register"], "Inky")  # name over slug: a slug names no medium
 
     def test_a_universe_with_no_style_pack_is_completely_unchanged(self):
         """The whole point of shipping this as a refusal: every universe that has not
@@ -1240,3 +1240,34 @@ class TestShootSeedCodeDrawn(unittest.TestCase):
         root = Path(tempfile.mkdtemp())
         sheets = self._sheets(root, "agenticstory.elevation")
         self.assertEqual(self._mod().painted_plates_on_disk(root, sheets, "empty-meadow"), [])
+
+
+class StylePackCarriesTheMedium(Base):
+    """A Style Pack must contribute MEDIUM WORDS to the prompt, never its slug.
+
+    `nof-soft-painterly` is a filesystem name. To an image model it names no medium
+    at all, which made `--register <packid>` strictly WEAKER than shooting through
+    the universe register, whose `name` is a real description. Two nation-of-fire
+    seeds came back photoreal against a register that rejects `photoreal` by name
+    (2026-08-21, the-composers-phone) before the pack's own `styleLine` was read.
+    """
+
+    def _pack(self, **extra):
+        pack = self.root / "reference" / "style" / "inky"
+        (pack / "refs").mkdir(parents=True, exist_ok=True)
+        png(pack / "refs" / "anchor.png")
+        body = {"id": "inky", "name": "Inky", "anchor": "refs/anchor.png"}
+        body.update(extra)
+        (pack / "pack.json").write_text(json.dumps(body))
+        self._register(stylePack="inky", anchor=None)
+
+    def test_style_line_prefers_the_packs_own_styleLine(self):
+        self._pack(styleLine="Dense india-ink linework with dry-brush shading.")
+        r = run(self.root, "--register", "inky", "--print-plan")
+        self.assertIn("Dense india-ink linework", r.stdout)
+        self.assertNotIn("register=inky", r.stdout)
+
+    def test_style_line_falls_back_to_the_name_then_the_slug(self):
+        self._pack()  # name but no styleLine
+        r = run(self.root, "--register", "inky", "--print-plan")
+        self.assertIn("register=Inky", r.stdout)
