@@ -349,3 +349,21 @@ honestly unrecoverable and say so.
 ## Not this skill
 - Authoring the entity or its prompts (that is the `add-*` skills).
 - Rendering a story's spreads (that is a renderer).
+
+## A height plate is a VERB now, not a scratch render-spec
+
+`scripts/scale_plate.py <universe> <id> <id> [...] [--register]` renders a
+multi-character height comparison and locks it as the `scale-plate` sheet on every
+character in it.
+
+Reach for it the moment two characters will share a frame, which is also the moment
+`lint-universe` starts warning `CHARACTER-HEIGHT-UNDEPICTED`. The ordering and the
+wording come out of each entity's `structured.scale`, so the plate cannot contradict
+the record, and the refusals (fewer than two characters, a duplicate, a non-character,
+an entity with no locked sheets) all fire before anything is spent.
+
+**Do not build the solo-figure-against-a-ruler version.** It is the obvious design and
+it fails on text: the rule carries numbers, numbers are the thing an image model
+garbles, and two attempts in one session returned a subject at 5'8" when asked for
+6'0" and then a rule numbered 6'0", 4'4", 2'8", 1'2", 0'2". Two people on one ground
+line need no numbers at all. SPEC v0.43.

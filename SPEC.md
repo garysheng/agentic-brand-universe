@@ -6,6 +6,35 @@ composable, and evolvable, rendered into any deliverable. Home: `agenticbranduni
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.43 changelog - a scale plate can now be MADE, and two people can be the measure
+> (§12).** `lint-universe` has warned `CHARACTER-HEIGHT-UNDEPICTED` since v0.22 and
+> `structured.scale.relativeTo` has been load-bearing since v0.10, so the framework asked
+> for the artifact and shipped no verb that produces it. The consequence was a scratch
+> render-spec written, rendered once and thrown away, which happened twice in one session
+> (nation-of-fire, 2026-08-20, `gary-sheng` + `larrance-dopson`) before anyone promoted it.
+> `shoot-references/scripts/scale_plate.py <universe> <id> <id> [...]` renders a
+> multi-character height comparison and, with `--register`, locks it as the `scale-plate`
+> sheet on every character in it.
+>
+> **A PERSON OF RECORDED HEIGHT IS A MEASURED REFERENCE.** v0.22 defined a character
+> `scale-plate` as SOLO against a measured reference, distinguishing it from v0.10's
+> pair-at-relative-height. Both answer real questions and the solo one is strictly better
+> for absolute height, but it has a failure mode v0.22 could not have known: the measured
+> reference is usually a RULE, a rule carries NUMBERS, and numbers are TEXT. Two solo
+> attempts in that same session failed exactly there, the first rendering a subject at 5'8"
+> when the prompt said 6'0" and the second returning a rule numbered 6'0", 4'4", 2'8", 1'2",
+> 0'2". A second person whose own height is recorded in canon is a reference with no text in
+> it at all, and for the case that actually matters (two characters sharing a frame) it is
+> the more useful artifact. So a multi-character plate SATISFIES the character `scale-plate`
+> slot; it is not a lesser substitute for one.
+>
+> The scene text is DERIVED from each entity's `structured.scale`, never authored by the
+> caller, so the plate cannot contradict the record it exists to depict, and every adjacent
+> pair contributes its own sentence rather than one vague tallest-to-shortest. A pair with no
+> declared relation says so in the prompt instead of inventing a dramatic difference. The
+> verb REFUSES pre-spend on: fewer than two characters, a duplicate id, a non-character, and
+> an entity with no locked sheets.
+
 > **v0.42 changelog - a FEATURE's extent can be measured, so a gate stops being an opinion
 > (§3.5.1).** `measure.py` could measure a BODY (`figure`) and a MEDIUM (`periodic`, `patch`).
 > It could not measure how far one THING on the sheet runs, so every gate phrased as a length or

@@ -162,6 +162,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.43 | a scale plate can now be MADE, and two people can be the measure > (§12). |
 | v0.42 | a FEATURE's extent can be measured, so a gate stops being an opinion > (§3.5.1). |
 | v0.41 | a Style Pack can say WHICH refs a human actually blessed (§4.7). |
 | v0.40 | a MEDIUM can now be measured, not just judged (§3.5.1). |

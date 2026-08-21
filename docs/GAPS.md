@@ -1195,3 +1195,34 @@ different era.
 scaffold invocation fail until each pack is given a value; that sweep should happen in the same
 pass rather than leaving a repo full of packs that cannot be re-scaffolded. Good candidate to fold
 into the single manifest pass G36 and G39 are both waiting on.
+
+---
+
+## OPEN: a character's PAIR scale plate has no field, and no code reads the one the spec names
+
+**Found** 2026-08-20 (nation-of-fire, building `larrance-dopson` beside `gary-sheng`).
+
+**Evidence.** SPEC v0.10 describes `structured.scale.scalePlate` for characters as "a two-up
+of a PAIR at true relative height", and v0.22 leans on that description to justify making
+`sheets['scale-plate']` the SOLO one. But `grep -rn scalePlate engine skills` finds the field
+read only as the SETTING contract field (`model.SETTING_CONTRACT_FIELDS`,
+`authoring.py`). For a character, nothing reads it, nothing writes it, and
+`lint-universe` checks only `sheets['scale-plate']`. So the spec has drawn a distinction
+that the code does not implement, and a reader following v0.10 would populate a field with
+no consumer.
+
+**What was landed instead.** v0.43 ships `scale_plate.py` and takes the position that a
+person of recorded height IS a measured reference, so a multi-character plate satisfies the
+`scale-plate` slot. That closes the practical hole (the warning clears, the artifact exists,
+the verb is reusable) without touching the contract.
+
+**Why it is still open.** Making the pair a first-class field is a contract change: a new
+key, a lint rule, `conformsTo` implications, and a decision about whether the solo and pair
+plates are two slots or one slot with a kind. That is worth doing once, deliberately, and it
+was declined here because sibling sessions were mid-render in the same universe and because
+the same defect class (a spec field with no consumer) is worth sweeping in one pass rather
+than fixed one instance at a time.
+
+**Next invocation.** `evolve-abu`, together with a sweep for other spec-named fields that no
+code reads. Start from `SETTING_CONTRACT_FIELDS` and every `structured.*` key SPEC mentions,
+and diff against what the engine and skills actually load.
