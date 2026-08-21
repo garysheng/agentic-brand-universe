@@ -119,6 +119,19 @@ def build_scene(order: list[tuple[str, dict]]) -> tuple[str, str]:
         if h:
             lines.append(f"{eid}: {h}")
 
+    # CALIBRATE THE MAGNITUDE, because "a few inches" is not a quantity a model holds.
+    # The first plate built with this verb (nation-of-fire, 2026-08-20) declared "a few
+    # inches taller" and rendered a gap closer to six, which reads as a different class
+    # of person rather than two men of similar height. Inches do not land; a BODY PART
+    # does, because it is a thing already in the picture.
+    lines.append(
+        "CALIBRATE THE DIFFERENCE CAREFULLY. Unless a relation above says otherwise, a "
+        "height difference described in INCHES is SMALL: the taller person's chin is still "
+        "ABOVE the shorter person's eyes, and the gap between the tops of their heads is "
+        "about the height of a FOREHEAD, never a whole head. Draw them as two people of "
+        "similar height where one is somewhat taller, not as a tall person beside a short "
+        "one."
+    )
     lines.append(
         "Their heads are at DIFFERENT heights and their eye lines are at DIFFERENT "
         "heights. Nobody stands on anything, nobody leans, and the camera is level with "
