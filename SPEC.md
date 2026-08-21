@@ -520,6 +520,25 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 > `agenticstory.refs.photo_stack`, both callers use it, and a parity test pins them together, because
 > the assembler is deliberately dependency-free and will keep its own copy.
 
+> **A PHOTO STACK IS ASSEMBLED BY A VERB, AND THE VERB REFUSES CROSS-CONTAMINATION.**
+> §12 requires a real-person entity to carry `realPerson.photoStack`, and `add-character` has
+> always instructed the author to collect 8+ varied photographs into `reference/<id>/photos/`.
+> Nothing in the framework produced that directory, so every real-person build assembled it by
+> hand from wherever the photographs actually were, which for a human is the conversation.
+>
+> `add-character/scripts/ingest_photos.py` now does it: it reads pasted images out of the harness
+> transcript, continues any existing numbering rather than overwriting it, and **REFUSES, by
+> content hash, to write an image that already belongs to a DIFFERENT entity in the same
+> universe.** `--force` overrides; `--batch N` reaches past the newest paste.
+>
+> The refusal is the load-bearing part. A harness transcript can lag behind a paste, so "the most
+> recent images" may still be the PREVIOUS subject's, and nothing about that is visible: the write
+> succeeds, and a photo stack rides on EVERY shot of a matrix, so one person's face quietly
+> replaces another's and the defect surfaces hours later as "this doesn't look like him" with no
+> trace back to the cause. Earned 2026-08-21 on nation-of-fire, where four photographs of Clarence
+> Avant were one keystroke from landing in Larrance Dopson's stack and were caught only by
+> eyeballing byte sizes.
+
 > **v0.18 changelog — a VARIANT may declare WHICH ERA it is legal in.** Additive, opt-in at both
 > ends, and backward-compatible: a spread with no `when`, or an entity whose variants declare no
 > `validFor`, compiles byte-identically to v0.17, so no universe has to migrate.

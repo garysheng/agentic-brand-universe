@@ -15,7 +15,16 @@ One character, into a universe's canon, as a typed record with its reference mat
 
 1. **Casting sweep first (reuse wins).** Before naming a new character, sweep `canon/entities/` + any CANON.md for an existing entity that fits the role. If one fits, STOP and reuse it (a reuse is a crossover receipt, and it saves the whole matrix build). Only proceed if genuinely new.
 2. **Interview (one question at a time).** Gather only what canon needs.
-   - **Real person:** their name; the role they play in this universe; their story/voice; wardrobe eras (default + any activity-specific, e.g. no street clothes while running); signature physical invariants (glasses, a scar, a pendant); and the **sensitive list** (the private details that must NEVER ship). Collect a **photo stack** (aim for 8+ varied real photos: front, 3/4, profile, full-body, candids) into `reference/<id>/photos/`. Never invent or store details the subject did not authorize.
+   - **Real person:** their name; the role they play in this universe; their story/voice; wardrobe eras (default + any activity-specific, e.g. no street clothes while running); signature physical invariants (glasses, a scar, a pendant); and the **sensitive list** (the private details that must NEVER ship). Collect a **photo stack** (aim for 8+ varied real photos: front, 3/4, profile, full-body, candids) into `reference/<id>/photos/`.
+
+     **The photos are almost never files. They are pasted into the chat, because that is where a human has them, so `scripts/ingest_photos.py` pulls them out of the harness transcript onto disk:**
+
+     ```bash
+     python3 <abu>/skills/add-character/scripts/ingest_photos.py <universe> <id> --dry-run
+     python3 <abu>/skills/add-character/scripts/ingest_photos.py <universe> <id>
+     ```
+
+     It numbers into any stack already there rather than overwriting it, and it REFUSES by content hash to write an image that already belongs to a different entity. That refusal is the whole reason it exists: a harness transcript can lag behind the paste, so "the most recent images" can still be the PREVIOUS person's, and on 2026-08-21 four photos of one man were a keystroke from landing in another man's stack. A photo stack rides on every shot of a matrix, so that silently rewrites one person's face with another's and surfaces hours later as "this doesn't look like him". If it refuses, wait for the flush and re-run, or reach back with `--batch 2`. Never invent or store details the subject did not authorize.
    - **Fictional:** a design brief: look, silhouette, palette, signature invariants, voice. No photo stack; no gate.
 3. **Scaffold the entity (tested machinery).** From the engine dir:
    ```bash
