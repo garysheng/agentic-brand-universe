@@ -1258,3 +1258,20 @@ detector that never worked.
 Fix belongs in `massing`'s recipe writer, not in the detector: stamp the deterministic
 generator on every write. Worked around today by nulling the sheet entry across the seed
 shoot, which is exactly the hand-rolling the guard exists to make unnecessary.
+
+## the uncast-character guard misses a name that is only a PREFIX of the entity's id
+Found 2026-08-21 (nation-of-fire, the-deal-composer spread 8). The scene text said "RANCE"
+in caps, `larrance-dopson` was NOT cast, `allowUncast` was unset, and the spread rendered
+anyway. The model invented a young boy in his place, which is exactly the defect the guard
+exists to prevent ("a scene mentioning a person the spec does not cast does not get a
+tasteful anonymous shoulder; it gets a whole different human, confidently rendered").
+
+Likely cause: `_cast_name_tokens` derives tokens from the entity id, and "rance" is an
+INFIX of "larrance", not a standalone token, so the scene word never matches. Every
+character whose canon id embeds their common short name has the same hole: a nickname the
+prose actually uses is invisible to the check.
+
+The fix is probably an explicit `structured.alsoKnownAs` on the entity that feeds the same
+token set, rather than fuzzier matching, which would raise false positives on a guard whose
+whole value is that it fails closed. Not landed today: it is an engine change and the
+session had renders in flight.
