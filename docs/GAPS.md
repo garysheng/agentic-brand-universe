@@ -1240,3 +1240,21 @@ Closing it needs MATTING, not a better bounding box: alpha-cut each figure from 
 backdrop before pasting. Left open deliberately — the plate's job is to fix relative
 height, and the ground line plus the arithmetic ratio already do that, so this is polish
 competing with book work. The next session that touches the verb should do it.
+
+## `abu massing` writes a recipe without the code-drawn marker, deadlocking a blueprint-seeded shoot
+Found 2026-08-21 (nation-of-fire, the-academy-hall). `deterministic_generator()` returns None
+for a massing blueprint's recipe, so `painted_plates_on_disk` counts the blueprint as PAINTED
+and `--shoot-seed` refuses ("already has 1 plate(s) on disk"), while `--seed blueprint` refuses
+because blueprint is not in the prompts.md shot list. There is no legal first shot, which is
+exactly the deadlock the 2026-08-09 fix on addisons-walk was written to prevent; that fix is
+correct and its premise is being defeated upstream.
+
+Recipes written by `massing` carry only goldenDigest / inputs / prompt / provider /
+specVersion. The `--universe` and `--entity` flags are accepted and recorded nowhere the
+detector looks. A recipe written by an EARLIER run did report `agenticstory.massing
+(code-built 3D massing render)`, so this is a REGRESSION in what massing writes, not a
+detector that never worked.
+
+Fix belongs in `massing`'s recipe writer, not in the detector: stamp the deterministic
+generator on every write. Worked around today by nulling the sheet entry across the seed
+shoot, which is exactly the hand-rolling the guard exists to make unnecessary.
