@@ -101,6 +101,15 @@ def style_line(register_name: str | None, poles) -> str:
 
     Sourced from `universe.json` (or the Style Pack) rather than from the
     markdown, so a prompts.md that forgets to mention the register still gets it.
+
+    AND IT MUST BE THE MEDIUM WORDS, NOT AN IDENTIFIER. A Style Pack's `id` is a
+    slug for humans and filesystems; to the model `nof-soft-painterly` is an opaque
+    token that names no medium at all. Shooting through `--register <packid>` was
+    therefore strictly WEAKER than shooting through the universe register, whose
+    `name` is a real description, even though the pack carries a full `styleLine`
+    of its own that nothing was reading. Earned 2026-08-21 (nation-of-fire,
+    the-composers-phone): two seeds in a row came back as photoreal product shots
+    against a register that rejects `photoreal` by name.
     """
     if not register_name:
         return ""
@@ -259,15 +268,38 @@ def painted_plates_on_disk(uroot: Path, ent_sheets: dict, seed: str) -> list:
 
 
 def code_drawn_shots(refdir: Path, shots: list[str]) -> dict:
-    """`{shot: {"path": abs, "generator": str}}` for every shot already DRAWN in code."""
+    """`{shot: {"path": abs, "generator": str}}` for every plate already DRAWN in code.
+
+    SCANS THE WHOLE REFERENCE DIRECTORY, not just the shots prompts.md declares.
+    It used to iterate `shots` alone, which quietly lost the most important case there
+    is: you never PAINT a blueprint, so a well-written prompts.md has no `## blueprint`
+    section, so the blueprint was not in `shots`, so the geometry every state was meant
+    to inherit was never passed to anything. The plate sat on disk with a valid recipe
+    and rode on nothing.
+
+    Earned 2026-08-21 (nation-of-fire, the-composers-phone): a phone with a code-drawn
+    blueprint and a three-state prompts.md shot its seed with `codeDrawnRefs: []` and
+    came back a photoreal product shot with ports and buttons the prompt had banned.
+
+    The recipe decides, never the filename (see `deterministic_generator`), so a painted
+    plate that happens to be called `blueprint.png` is still painted and is still a shot.
+    """
     out = {}
+    seen = set()
     for s in shots:
         p = refdir / f"{s}.png"
-        if not p.exists():
-            continue
-        gen = deterministic_generator(p)
-        if gen:
-            out[s] = {"path": str(p.resolve()), "generator": gen}
+        if p.exists():
+            seen.add(p.name)
+            gen = deterministic_generator(p)
+            if gen:
+                out[s] = {"path": str(p.resolve()), "generator": gen}
+    if refdir.is_dir():
+        for p in sorted(refdir.glob("*.png")):
+            if p.name in seen:
+                continue
+            gen = deterministic_generator(p)
+            if gen:
+                out[p.stem] = {"path": str(p.resolve()), "generator": gen}
     return out
 
 
@@ -693,8 +725,12 @@ def _load_pack(uroot: Path, spec: str, why: str):
     anchor = str(pack_rel / a)
     if not (uroot / anchor).exists():
         raise Refuse(f"{why}: anchor not on disk: {uroot / anchor}")
+    # PREFER the pack's own styleLine, then its human name, and only then the slug:
+    # the first two describe a medium and the slug does not. See style_line().
+    described = (pack.get("styleLine") or pack.get("name")
+                 or pack.get("id") or Path(spec).name)
     return (anchor, list(pack.get("rejectedPoles", [])),
-            pack.get("id") or Path(spec).name, pack.get("anchorSubject"))
+            described, pack.get("anchorSubject"))
 
 
 def resolve_register(uroot: Path, uni: dict, override=None, no_style_pack=False):
