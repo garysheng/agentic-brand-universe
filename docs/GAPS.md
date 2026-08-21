@@ -1226,3 +1226,17 @@ than fixed one instance at a time.
 **Next invocation.** `evolve-abu`, together with a sweep for other spec-named fields that no
 code reads. Start from `SETTING_CONTRACT_FIELDS` and every `structured.*` key SPEC mentions,
 and diff against what the engine and skills actually load.
+
+## scale-plate composites still show each plate's own backdrop panel
+Found 2026-08-21 (nation-of-fire, larrance-dopson + clarence-avant). `scale_plate.py`
+now COMPOSITES the locked full-body plates instead of generating the sheet, which fixed
+the defect that mattered (a generated plate returned a generic elderly man in place of
+Clarence Avant while his locked face plate was a strong likeness). What remains is
+cosmetic: `_figure_bbox` finds the figure's crown and soles correctly, but the crop is a
+rectangle, so each figure arrives on a panel of its own studio grey rather than on one
+continuous ground.
+
+Closing it needs MATTING, not a better bounding box: alpha-cut each figure from its
+backdrop before pasting. Left open deliberately — the plate's job is to fix relative
+height, and the ground line plus the arithmetic ratio already do that, so this is polish
+competing with book work. The next session that touches the verb should do it.
