@@ -239,6 +239,30 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
     # VALIDATE BEFORE MUTATING ANYTHING. The authority stamp below is a mutation, so
     # doing it first meant a REFUSED lock still moved `lockedOn` and printed an
     # approver warning for an operation that never happened.
+    # THE FILE MUST ACTUALLY EXIST. Locking is the approval act, and approving art that
+    # is not on disk mints a sheet pointing at nothing. Nothing downstream catches it:
+    # `validate` and `assert-story` both pass, because they check that a required sheet has
+    # a VALUE, not that the value resolves. The entity then looks locked and gate-real for
+    # as long as no story happens to cast that pose.
+    #
+    # Earned 2026-08-21 (nation-of-fire, `the-wingman.coordinating`): the plate had been
+    # moved aside for a re-roll that was then approved as-is, so the file was in /tmp when
+    # the lock ran and when the commit that should have captured it ran. Canon carried a
+    # dangling sheet for hours and it only surfaced when a spread finally cast the pose and
+    # the compiler refused mid-batch.
+    _abs = pathlib.Path(path)
+    if root and not _abs.is_absolute():
+        _abs = pathlib.Path(root) / path
+    if not _abs.exists():
+        raise ValueError(
+            f"refusing to lock {entity.get('id')}.{shot}: no file at {_abs}. Locking is the "
+            f"approval act, so it cannot approve art that is not on disk. Nothing downstream "
+            f"would catch this: validate and assert-story check that a required sheet has a "
+            f"value, not that the value resolves, so the entity would look locked until a "
+            f"story cast the pose. If the plate was moved aside for a re-roll, put it back "
+            f"first."
+        )
+
     if look is not None:
         _looks = (entity.get("structured") or {}).get("altLooks") or {}
         if look not in _looks:

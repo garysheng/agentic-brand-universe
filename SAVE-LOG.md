@@ -957,3 +957,11 @@ CLASS, and immediately found a seventh site the manual pass had missed.
   day a spread whose dry run read 26,325/32,000 assembled 32,308 and failed three times.
   `render_spread` now measures the guarded length, the refusal says so, and the measurement
   falls back rather than raising so it can never break the render it only describes.
+
+- 2026-08-21 v1.11.2 — `lock-shot` refuses a path with no file behind it. Locking is the
+  approval act and it was happily approving art that was not on disk, minting a sheet
+  pointing at nothing. Nothing downstream caught it: `validate` and `assert-story` check
+  that a required sheet has a VALUE, never that the value resolves, so the entity looked
+  locked and gate-real until a story cast the pose and the compiler refused mid-batch.
+  Found on nation-of-fire `the-wingman.coordinating`, whose plate sat in /tmp during both
+  the lock and the commit meant to capture it.
