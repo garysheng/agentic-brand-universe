@@ -376,6 +376,21 @@ Then describe the camera separately, and do not tell the model what it will see 
 If you want the screen CONTENT visible, that is a different composition: put the camera behind the
 user and say the screen is visible over their shoulder, which is consistent rather than in conflict.
 
+**WANTING THE FACE AND THE SCREEN AT ONCE IS THE HARD CASE, and neither of the obvious answers gives
+you both.** Over-the-shoulder buys the screen and loses the face; a natural hold keeps the face and
+turns the glass away, and the model resolves that silently by painting a display on the BACK of the
+device, which is a defect nobody asked for. Do not argue with the geometry. Change the hold to one
+that is still ordinary and happens to point the glass upward:
+
+    the phone TILTED BACK IN HIS OPEN PALM, glass looking up and slightly toward the camera,
+    fingers curling under the far edge
+    the phone LYING FLAT AND FACE UP on the table beside him
+
+Both read as things people really do, both leave the face clear, and both put the glass where the
+lens can see it. Earned 2026-08-22 on a deck cover: two rolls came back with the beam rising out of
+the camera side, from a scene whose only sin was asking to "hold it like a normal person" while also
+asking to see the screen.
+
 The same trap applies to anything with a front and a back that belongs to a character: a phone, a
 book, a hand mirror, a photograph being shown to someone. Orient it to its owner, never to the lens.
 
@@ -383,6 +398,28 @@ Earned 2026-07-29 on *Atlas Surrendered*, twice from one copied sentence: spread
 screen facing the viewer and spread 29 rendered the lid opening away from the man toward the wall.
 Both scenes ALSO contained a correct relational clause ("the screen faces him"); the camera-relative
 sentence won because it was more specific.
+
+## Two rolls wrong in DIFFERENT ways means an ambiguous scene, not a bad model
+
+Re-rolling is the right move when a spread fails the SAME way twice: that is a strong prior beating
+your wording, and the fix is the positive description this file already prescribes. It is the wrong
+move when the two failures do not match, because differing failures mean the scene admitted both
+readings and the model picked one at random. Every further roll is a coin flip you are paying for.
+
+So when roll two is wrong in a NEW way, stop and read the scene against itself before spending
+again. The contradictions are rarely subtle once you look for them, and two shapes cover most:
+
+1. **A fact asserted in one paragraph and denied in another.** "Her screen is legible and shows the
+   message" three paragraphs above "nobody's screen is ever visible; what they read appears in a
+   callout instead."
+2. **An EXCLUSIVE claim the scene itself violates.** "The ONLY white-blue thing in this picture is
+   the Wingman" in a scene that also asks for white-blue callout bubbles and a white-blue phone.
+   The exclusive is the easiest kind to write by accident, because it reads as emphasis rather than
+   as a claim, and it quietly licenses the model to delete whichever of the other three it likes.
+
+Fixing both took one pass and the spread landed first roll after four bad ones. Earned 2026-08-22 on
+*The Deal Composer* spread 8, which had all three contradictions at once and had been re-rolled
+three times on the assumption that the model was being difficult.
 
 ## Reading material faces the reader, never the camera
 
