@@ -73,6 +73,29 @@ def _provider_script(provider="gpt-image-2"):
     return resolve_str(provider)
 
 
+def _guarded_length(prompt: str) -> int:
+    """The length the PROVIDER will actually send, not the length we hand it.
+
+    `apply_prompt_guards` appends up to seven standing guard blocks after the compiler is
+    done, several thousand characters in a busy spread. Measuring the pre-guard string
+    under-reports the real prompt, which is worse than not measuring at all: it reports a
+    comfortable number for a render that then 400s. Earned 2026-08-21, on the first day the
+    budget check existed: a spread whose dry run said 26,325/32,000 assembled 32,308 and
+    failed three times.
+    """
+    try:
+        from pathlib import Path as _P
+        prov = _P(_provider_script()).parent
+        if str(prov) not in sys.path:
+            sys.path.insert(0, str(prov))
+        from prompt_guards import apply_prompt_guards
+        guarded, _ = apply_prompt_guards(prompt)
+        return len(guarded)
+    except Exception:
+        # Never let the measurement break a render it was only meant to describe.
+        return len(prompt)
+
+
 def _sha16(path) -> str:
     """Short content hash, so a recipe pins the exact bytes it describes."""
     h = hashlib.sha256()
@@ -176,10 +199,11 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
     # attempts and a retry backoff before saying so, and its --dry-run said "ok" first.
     # Earned 2026-08-21 (nation-of-fire, the-deal-composer): three spreads failed this way
     # in one session, each time after the dry run passed.
-    n = len(job["prompt"])
+    n = _guarded_length(job["prompt"])
     pct = round(100 * n / PROMPT_CAP)
     if n > PROMPT_CAP:
-        echo(f"REFUSE {sid}: assembled prompt is {n} characters, over the provider cap of "
+        echo(f"REFUSE {sid}: assembled prompt is {n} characters WITH THE PROVIDER GUARDS APPLIED, "
+             f"over the provider cap of "
              f"{PROMPT_CAP}. Nothing was generated and nothing was spent. The prompt is the "
              f"register line plus EVERY cast entity's render prose, invariants and negatives, "
              f"plus the scene and this spread's negatives. Trim the SPREAD first if it "

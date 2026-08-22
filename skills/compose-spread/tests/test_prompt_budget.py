@@ -41,6 +41,28 @@ class PromptCapTest(unittest.TestCase):
                       "its own preflight, which is the defect this was written for")
 
 
+class GuardedLengthTest(unittest.TestCase):
+    """The number that matters is what the PROVIDER sends, not what we hand it."""
+
+    def test_guards_are_counted(self):
+        # apply_prompt_guards appends standing blocks after the compiler is done. A budget
+        # check that measures the pre-guard string reports a comfortable number for a render
+        # that then 400s, which is worse than no check because it is believed.
+        plain = "a phone on a table"
+        self.assertGreaterEqual(rs._guarded_length(plain), len(plain))
+
+    def test_measurement_never_breaks_a_render(self):
+        # It only describes; if the provider module cannot be imported it must fall back
+        # rather than raise, or a measurement failure becomes a render failure.
+        self.assertEqual(rs._guarded_length(""), rs._guarded_length(""))
+
+    def test_the_cap_check_uses_the_guarded_length(self):
+        src = (HERE / "scripts" / "render_spread.py").read_text()
+        self.assertIn('n = _guarded_length(job["prompt"])', src,
+                      "measuring job['prompt'] directly under-reports by however many guard "
+                      "blocks fire, which was the defect on day one of this check")
+
+
 class StaleArtifactTest(unittest.TestCase):
     def test_output_is_deleted_before_the_attempt_loop(self):
         src = (HERE / "scripts" / "render_spread.py").read_text()

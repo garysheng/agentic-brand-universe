@@ -1508,7 +1508,11 @@ the spread's own negatives, plus the auto-appended guards. So its length is an e
 property of the cast, and it grows every time any entity in that cast gains a rule.
 
 **`render_spread` now REFUSES above the cap before spending, and reports the count on every
-run.** `--dry-run` prints `prompt <n>/32000`, and any run at 90% or more prints a warning.
+run.** The number it reports is the length WITH THE PROVIDER'S STANDING GUARDS APPLIED, which
+is what actually gets sent: `apply_prompt_guards` appends up to seven blocks after the compiler
+hands off, several thousand characters on a busy spread. Measuring the pre-guard string
+under-reports, and a budget check that is believed and wrong is worse than none: on the day
+this shipped, a spread whose dry run said 26,325/32,000 assembled 32,308 and failed anyway. `--dry-run` prints `prompt <n>/32000`, and any run at 90% or more prints a warning.
 The refusal names the fix, because the fix is always the same: a rule belongs on the ENTITY
 once, not restated in each spread that casts it.
 

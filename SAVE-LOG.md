@@ -949,3 +949,11 @@ CLASS, and immediately found a seventh site the manual pass had missed.
   All earned in one nation-of-fire session: three spreads 400'd after passing their dry runs,
   three stale images were reviewed as new renders, and `the-wingman` held 100 negatives of
   which 39 defended against retired designs while the rule that kept failing held 8.
+
+- 2026-08-21 v1.11.1 — the budget check measured the wrong string. `apply_prompt_guards`
+  appends up to seven standing blocks AFTER the compiler hands off, so the number reported
+  in v1.11.0 was the pre-guard length and under-reported by thousands of characters on a
+  busy spread. A budget check that is believed and wrong is worse than none: on its first
+  day a spread whose dry run read 26,325/32,000 assembled 32,308 and failed three times.
+  `render_spread` now measures the guarded length, the refusal says so, and the measurement
+  falls back rather than raising so it can never break the render it only describes.
