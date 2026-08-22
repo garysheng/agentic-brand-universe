@@ -250,10 +250,14 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
     # the lock ran and when the commit that should have captured it ran. Canon carried a
     # dangling sheet for hours and it only surfaced when a spread finally cast the pose and
     # the compiler refused mid-batch.
+    # ONLY when the path is actually resolvable. A relative path with no root cannot be
+    # resolved to anywhere real, and checking it against the process's CWD would refuse
+    # legitimate callers that lock symbolically (every unit test that builds an entity in
+    # memory does exactly that). Resolvable means: absolute, or relative with a root.
     _abs = pathlib.Path(path)
-    if root and not _abs.is_absolute():
-        _abs = pathlib.Path(root) / path
-    if not _abs.exists():
+    if not _abs.is_absolute():
+        _abs = (pathlib.Path(root) / path) if root else None
+    if _abs is not None and not _abs.exists():
         raise ValueError(
             f"refusing to lock {entity.get('id')}.{shot}: no file at {_abs}. Locking is the "
             f"approval act, so it cannot approve art that is not on disk. Nothing downstream "

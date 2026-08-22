@@ -965,3 +965,9 @@ CLASS, and immediately found a seventh site the manual pass had missed.
   locked and gate-real until a story cast the pose and the compiler refused mid-batch.
   Found on nation-of-fire `the-wingman.coordinating`, whose plate sat in /tmp during both
   the lock and the commit meant to capture it.
+
+- 2026-08-21 v1.11.3 — scope the v1.11.2 lock guard to RESOLVABLE paths. As shipped it
+  checked a relative path against the process's CWD when no root was given, which refused
+  every caller that locks symbolically and broke six engine tests. It now enforces only
+  when the path is absolute or a root is supplied. v1.11.2 was pushed with the suite red,
+  which is the actual lesson: read the test output before pushing, not after.

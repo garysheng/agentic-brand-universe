@@ -35,6 +35,13 @@ class LockRequiresFileTest(unittest.TestCase):
             ent = lock_shot(_entity(), "master", "reference/x/master.png", root=root)
             self.assertEqual(ent["structured"]["sheets"]["master"], "reference/x/master.png")
 
+    def test_an_unresolvable_relative_path_is_not_guessed_at(self):
+        # No root means nothing to resolve against. Checking such a path against the
+        # process's CWD would refuse every caller that locks symbolically, which is what
+        # broke six existing engine tests the first time this guard shipped.
+        ent = lock_shot(_entity(), "master", "reference/x/master.png")
+        self.assertEqual(ent["structured"]["sheets"]["master"], "reference/x/master.png")
+
     def test_absolute_paths_are_checked_too(self):
         with tempfile.TemporaryDirectory() as root:
             missing = str(pathlib.Path(root) / "nope.png")
