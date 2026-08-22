@@ -20,6 +20,10 @@ def warn(code, msg): W.append((code, msg))
 # `<manuscript-stem>.voice-waivers.json` beside the manuscript, inside stories/.
 # Mirrors engine `agenticstory.store.STORY_SIDECAR_SUFFIXES` (this script stays
 # stdlib-and-standalone, so the tuple is restated rather than imported).
+# An entity carrying this many negatives is warned about. Not a hard limit: the real limit
+# is the provider's prompt cap, which a cast of several such entities reaches together.
+NEGATIVES_BLOAT = 60
+
 STORY_SIDECAR_SUFFIXES = (".voice-waivers.json",)
 
 def story_files(stories_dir):
@@ -162,7 +166,15 @@ def lint(root):
             s = jload(sf)
             if not s: continue
             sid = s.get("id", sf.stem)
+            # A story may declare `spine` either as the registered id string or as an
+            # OBJECT carrying that id plus its own notes. Assuming the string crashed the
+            # whole linter on the first universe that used the object form, which meant
+            # every other check silently stopped running too. Read the id out of either.
             spine = s.get("spine")
+            if isinstance(spine, dict):
+                spine = spine.get("id") or spine.get("kind") or spine.get("name")
+            if spine and not isinstance(spine, str):
+                spine = None
             if spine and spine not in reg_spine:
                 warn("STORY-SPINE-UNREGISTERED", f"{sid}: spine '{spine}' is not a registered "
                      f"craft record. Register it (canon/craft/<id>.json kind 'spine') or fix the "
@@ -607,6 +619,38 @@ def lint(root):
                      f"guard, auto-disambiguation, `supersedes` and judge-slot all read, so this "
                      f"entity is guarded in one place out of five. State the checkable facts as "
                      f"invariants; keep render.qa for what only a reader can judge.")
+
+    # ---- an entity's NEGATIVES list is a budget, not a changelog
+    #
+    # Every defect tempts an author to append a negative, and nothing ever removes one when
+    # the risk it defended against stops existing. The list therefore grows monotonically,
+    # is re-sent on EVERY render that casts the entity, and costs a slot in a prompt the
+    # provider hard-caps. Two failures come out of that, and the second is the expensive one:
+    #
+    #   1. The cap. A spread whose cast carries enough accumulated prose 400s before it
+    #      renders. `render_spread` now refuses with the count rather than burning attempts.
+    #   2. DILUTION. A live rule competes for attention with dead ones. Measured 2026-08-21
+    #      (nation-of-fire, `the-wingman`): 100 negatives, of which 39 defended against a
+    #      retired mascot design, a retired palette and a retired body shape that no longer
+    #      appear anywhere in the entity's conditioning chain, while the rule that actually
+    #      kept failing every other render (a mouth on a mouthless creature) held 8 slots
+    #      among the hundred. Pruning to 48 fixed both.
+    #
+    # So this is a WARNING with a number attached, not a refusal: only the author knows
+    # which negatives are still live. The prompt to prune is what the check is for.
+    if ents_dir.exists():
+      for ef in sorted(ents_dir.glob("*.json")):
+        e = jload(ef) or {}
+        neg = ((e.get("structured") or {}).get("negatives")) or []
+        if len(neg) >= NEGATIVES_BLOAT:
+            eid = e.get("id", ef.stem)
+            warn("ENTITY-NEGATIVES-BLOATED",
+                 f"{eid}: carries {len(neg)} negatives ({sum(len(n) for n in neg)} characters), "
+                 f"re-sent on every render that casts it. A negatives list is a BUDGET, not a "
+                 f"changelog: entries accumulate per defect and nothing prunes them when the "
+                 f"design they defended against is retired. Dead entries also DILUTE the live "
+                 f"ones, so this costs quality as well as prompt budget. Read the list and cut "
+                 f"every entry whose risk no longer exists; keep the ones that still fail.")
 
     # ---- a character must be able to prove its own SCALE and its FUTURE (SPEC v0.10, §12)
     #

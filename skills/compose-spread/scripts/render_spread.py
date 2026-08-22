@@ -38,6 +38,11 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from assemble_prompt import build, load, Refuse  # noqa: E402
 
+# The image provider hard-rejects a prompt over this many characters with a 400. It is the
+# provider's limit, not ours; keep it here so the refusal and the warning share one number.
+PROMPT_CAP = 32000
+
+
 def _abu_root(start=None):
     """The ABU root, found by walking UP for a marker instead of counting parents.
 
@@ -165,12 +170,44 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
     for w in job.get("warnings") or []:
         echo(f"  warn {sid}: {w}")
 
+    # THE PROMPT BUDGET IS THE ONE NUMBER THAT DECIDES WHETHER A PAID RUN CAN SUCCEED,
+    # and it was the one number never reported. The provider hard-400s above PROMPT_CAP,
+    # so a spread whose accumulated entity prose and negatives crossed it burned three
+    # attempts and a retry backoff before saying so, and its --dry-run said "ok" first.
+    # Earned 2026-08-21 (nation-of-fire, the-deal-composer): three spreads failed this way
+    # in one session, each time after the dry run passed.
+    n = len(job["prompt"])
+    pct = round(100 * n / PROMPT_CAP)
+    if n > PROMPT_CAP:
+        echo(f"REFUSE {sid}: assembled prompt is {n} characters, over the provider cap of "
+             f"{PROMPT_CAP}. Nothing was generated and nothing was spent. The prompt is the "
+             f"register line plus EVERY cast entity's render prose, invariants and negatives, "
+             f"plus the scene and this spread's negatives. Trim the SPREAD first if it "
+             f"restates a rule an entity already carries; a rule belongs on the entity once, "
+             f"not in each spread that casts it. `abu lint-universe` reports bloated entities.",
+             err=True)
+        return 2
+    if pct >= 90:
+        echo(f"  warn {sid}: prompt is {n}/{PROMPT_CAP} characters ({pct}% of the cap)")
+
     if args.dry_run:
         echo(f"{sid}: DRY RUN ok ({len(job['refs'])} refs, "
-             f"{len(job['qa'])} qa invariants, size {job['size']}) — nothing generated")
+             f"{len(job['qa'])} qa invariants, size {job['size']}, "
+             f"prompt {n}/{PROMPT_CAP}) — nothing generated")
         return 0
 
     out.parent.mkdir(parents=True, exist_ok=True)
+    # A FAILED RENDER MUST NOT LEAVE A PLAUSIBLE ARTIFACT. The attempt loop below checks
+    # `out.exists()`, which is correct for THIS process, but a stale file already sitting at
+    # this path survives a total failure, so any caller that checks "does the file exist" or
+    # "is it a reasonable size" reads a 400 as a success. Earned 2026-08-21: a batch of three
+    # spreads 400'd on prompt length, left three unrelated older images at those paths, and
+    # the size check passed; the wrong pictures were reviewed as if they were the new render.
+    if out.exists():
+        out.unlink()
+    recipe_path = out.with_suffix(out.suffix + ".recipe.json")
+    if recipe_path.exists():
+        recipe_path.unlink()
     cmd = [
         "uv", "run", _provider_script(),
         "--prompt", job["prompt"],

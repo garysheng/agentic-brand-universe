@@ -936,3 +936,16 @@ CLASS, and immediately found a seventh site the manual pass had missed.
 2026-08-21 chain_matrix: two fixes, both found shooting nation-of-fire's the-composers-phone, both of the same shape (a thing the framework had was not reaching the model). code_drawn_shots now SCANS THE WHOLE REFERENCE DIRECTORY instead of only the shots prompts.md declares: you never PAINT a blueprint, so a well-written prompts.md has no `## blueprint` section, so the blueprint was not in `shots`, so the geometry every state was meant to inherit rode on nothing. The plate sat on disk with a valid massing recipe and conditioned zero renders. And style_line now receives a Style Pack's own `styleLine` (then its `name`) rather than its `id`: a slug like `nof-soft-painterly` names no medium to a model, so shooting through `--register <packid>` was strictly WEAKER than shooting through the universe register, whose `name` is a real description. Two seeds came back photoreal against a register that rejects photoreal by name; with the medium words restored the third came back painted. Plugin 1.10.2.
 
 2026-08-21 add-character gained ingest_photos.py, which pulls the photographs the operator PASTED into the chat onto disk as an entity's photo stack. The skill has required 8+ varied photos in reference/<id>/photos/ since it was written and shipped no way to produce that directory, so every real-person build hand-rolled a base64 scrape of the harness transcript; nation-of-fire hand-rolled it three times in one session. The extraction is twenty lines and is not why this is a script. The REFUSAL is: it rejects by content hash any image already belonging to a different entity in the same universe, because a transcript can lag behind a paste, so "the most recent images" can still be the previous subject's, and on 2026-08-21 four photographs of Clarence Avant were one keystroke from being written into Larrance Dopson's stack. A photo stack rides on every shot of a matrix, so that silently replaces one man's face with another's and surfaces hours later as a likeness complaint with no trace back to the cause. It was caught by eyeballing byte sizes, which is not a control. Six tests, the first of which is the refusal. SPEC updated at the photo-stack section. Plugin 1.10.3.
+
+- 2026-08-21 v1.11.0 — the prompt budget (SPEC 4.6.1). `render_spread` refuses above the
+  provider's 32,000-character cap before spending and reports `prompt <n>/32000` on every
+  run including `--dry-run`, which previously reported refs and QA counts and never the one
+  number that decides whether the paid run can succeed. A failed render now deletes any
+  stale output and recipe at its path, because a leftover file from an earlier run survives
+  a 400 and reads as success to any caller checking existence or size. `lint-universe` gains
+  ENTITY-NEGATIVES-BLOATED at 60 entries: a negatives list is a budget, not a changelog, and
+  dead entries dilute live ones as well as filling the cap. Also fixes a crash that aborted
+  the whole linter on any universe declaring `story.spine` as an object rather than a string.
+  All earned in one nation-of-fire session: three spreads 400'd after passing their dry runs,
+  three stale images were reviewed as new renders, and `the-wingman` held 100 negatives of
+  which 39 defended against retired designs while the rule that kept failing held 8.

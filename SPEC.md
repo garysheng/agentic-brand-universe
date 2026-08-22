@@ -1499,6 +1499,44 @@ removes that step.
   auto-disambiguation, guarded negatives and `anchorRef`, and neither could see the other's. A
   universe-local compiler is now a FORK to be migrated, never a sanctioned pattern.
 
+### 4.6.1 The prompt budget (v0.41)
+
+The image provider hard-rejects a prompt over **32,000 characters** with a 400. That prompt
+is not authored anywhere: the compiler assembles it from the register line, then EVERY cast
+entity's `render.always` prose, `invariants` and `negatives`, then the setting, the scene and
+the spread's own negatives, plus the auto-appended guards. So its length is an emergent
+property of the cast, and it grows every time any entity in that cast gains a rule.
+
+**`render_spread` now REFUSES above the cap before spending, and reports the count on every
+run.** `--dry-run` prints `prompt <n>/32000`, and any run at 90% or more prints a warning.
+The refusal names the fix, because the fix is always the same: a rule belongs on the ENTITY
+once, not restated in each spread that casts it.
+
+Earned 2026-08-21 (nation-of-fire, *The Deal Composer*). Three spreads 400'd in one session.
+Each had passed `--dry-run` first, because the dry run reported refs and QA-invariant counts
+and never the one number that decides whether the paid run can succeed. Each then burned
+three attempts and two retry backoffs before surfacing the provider's message.
+
+**A negatives list is a BUDGET, not a changelog.** This is the pressure that fills the cap.
+Every defect tempts an author to append a negative and nothing removes one when the design it
+defended against is retired, so the list grows monotonically and is re-sent on every render
+that casts the entity. `lint-universe` warns `ENTITY-NEGATIVES-BLOATED` at 60 entries. It is
+a warning and not a refusal because only the author knows which entries are still live.
+
+The second failure is the expensive one and it is about quality, not budget: **dead negatives
+dilute live ones.** Measured on `the-wingman` the same day: 100 negatives, of which 39
+defended against a retired mascot design, a retired palette and a retired body shape that no
+longer appeared anywhere in its conditioning chain, while the rule that failed on roughly
+every other render (a mouth on a mouthless creature) held 8 slots among the hundred. Pruning
+to 48 addressed both problems at once.
+
+**A failed render must not leave a plausible artifact.** `render_spread` deletes any existing
+output file and its recipe before the attempt loop. The loop's own `out.exists()` check is
+correct for the current process, but a stale file already at that path survives a total
+failure, so any caller that checks "does the file exist" or "is it a reasonable size" reads a
+400 as a success. In the session above, three spreads 400'd, left three unrelated older
+images at those paths, and were reviewed as if they were the new renders.
+
 ### 4.7 Style Pack (the portable look)
 
 A **Style Pack** is a self-contained folder that defines ONE look and is consumable **without a
