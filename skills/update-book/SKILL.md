@@ -168,6 +168,23 @@ the story, and both were stale. **An entity swap is a MANUSCRIPT event.** Re-run
 - **Minimal-regeneration:** only the touched spreads (and their downstream narration) regenerate; everything else stays as-is.
 - **Subject-approval:** a real person's confusion-flags and likeness approval on a revised beat count the same as the author's.
 
+## When you CHANGE a subject, delete the old description in the same edit
+
+A spread's scene text accretes. Ask for a new treatment of something already described and the
+natural edit is to APPEND the new paragraph, which leaves the old one sitting above it saying the
+opposite. The model then obeys whichever it read last, non-deterministically, and the defect looks
+like the model ignoring you rather than like the spec contradicting itself.
+
+Earned 2026-08-21 (nation-of-fire, The Deal Composer, spread 26). The scene said *"hanging from it a
+PENDANT of the 1500 mark ... palm-sized on his chest"* in one paragraph and *"NOTHING hangs from it:
+no pendant, no medallion, no disc"* three paragraphs later. The pendant kept reappearing across
+several re-rolls and several increasingly emphatic negatives, and every one of those rolls was wasted:
+the spec was asking for it. Deleting the stale paragraph fixed it in one roll AND freed 546 characters
+on a spread that was over the provider's prompt cap.
+
+So after any subject change, grep the WHOLE scene and the WHOLE negatives block for the thing you just
+replaced, not just the paragraph you edited. If the old wording is still there, the edit is not done.
+
 ## Not this skill
 - Creating a brand-new book → `render-book`.
 - Rendering or re-rendering the cover → `cover` (this skill calls it when the edit touches the cover).

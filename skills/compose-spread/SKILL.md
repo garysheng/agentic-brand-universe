@@ -311,12 +311,32 @@ book was saving.
 Measured across one 8-book run: **7 of 9 read-back defects were one of these two.** Put both in the
 preamble negatives of every render spec, not just in the spreads you think are at risk.
 
-**It volunteers divine elements into ordinary frames.** Hands of light, shafts of gold, and glows
-appear in scenes that asked for none, including a frame whose whole argument was that God is visibly
-NOT acting there. A negative alone does not hold: on any spread that must carry none, ALSO say it
-positively in the scene text ("there is no divine light and no hand of light anywhere in this frame;
-the sky is empty"). And a motif reserved for a book's payoff must be forbidden by name in every
-earlier spread that could attract it, because spending it early costs the payoff.
+**A PROHIBITION LOSES TO A STRONG PRIOR. DESCRIBE THE ANATOMY INSTEAD.** Wherever the model has a
+powerful default about what a thing looks like (a face has a mouth, a hand joins an arm, a screen
+shows something, a person writing can see what they write), negating that default fails at roughly
+coin-flip rates no matter how emphatic the negative. What works is stating what IS there, in physical
+terms, against a concrete referent.
+
+Five instances in one book (nation-of-fire, The Deal Composer, 2026-08-21), each of which survived
+increasingly emphatic negatives and died instantly to a positive description:
+
+| Failing prohibition | The description that held |
+|---|---|
+| no mouth, no lips, no smile, no line, no dot | the lower half of the orb is featureless, *like the blank underside of a white egg*; a snowman nobody gave a mouth. Count the features: exactly two, both eyes |
+| no arms, no nubs, no stubs | between each paw and the body is a clear span of *empty background you can see through*, and the body's outline is complete and closed all the way round |
+| no person on the screen | the glass is *one smooth unbroken sheet of light* with nothing drawn on it |
+| the viewer sees the pad's back | the side facing us *is the blank back cover*, with no writing on it |
+| he is writing on the far side | the pencil's point *is completely occluded by the pad*; we see the body and the paw, never the point |
+
+Notice the shape: each fix names a VISIBLE THING (a blank surface, empty background, an occlusion)
+rather than an absence. An absence is not something a renderer can draw. Also note that a COUNT is
+checkable where an adjective is not ("count the halos: one", "exactly two hands"), which is why the
+count phrasing appears in three of these.
+
+This subsumes the older divine-elements case: a frame whose argument is that God is visibly NOT
+acting there needs "the sky is empty", not "no hand of light". And a motif reserved for a book's
+payoff must still be forbidden by name in every earlier spread that could attract it, because
+spending it early costs the payoff.
 
 **It DEPICTS the style anchor.** The anchor is passed as a style reference and the model draws its
 contents as props: a character handing the anchor's brass goggles across a table, set-down luggage
