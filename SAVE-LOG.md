@@ -937,37 +937,8 @@ CLASS, and immediately found a seventh site the manual pass had missed.
 
 2026-08-21 add-character gained ingest_photos.py, which pulls the photographs the operator PASTED into the chat onto disk as an entity's photo stack. The skill has required 8+ varied photos in reference/<id>/photos/ since it was written and shipped no way to produce that directory, so every real-person build hand-rolled a base64 scrape of the harness transcript; nation-of-fire hand-rolled it three times in one session. The extraction is twenty lines and is not why this is a script. The REFUSAL is: it rejects by content hash any image already belonging to a different entity in the same universe, because a transcript can lag behind a paste, so "the most recent images" can still be the previous subject's, and on 2026-08-21 four photographs of Clarence Avant were one keystroke from being written into Larrance Dopson's stack. A photo stack rides on every shot of a matrix, so that silently replaces one man's face with another's and surfaces hours later as a likeness complaint with no trace back to the cause. It was caught by eyeballing byte sizes, which is not a control. Six tests, the first of which is the refusal. SPEC updated at the photo-stack section. Plugin 1.10.3.
 
-- 2026-08-21 v1.11.0 — the prompt budget (SPEC 4.6.1). `render_spread` refuses above the
-  provider's 32,000-character cap before spending and reports `prompt <n>/32000` on every
-  run including `--dry-run`, which previously reported refs and QA counts and never the one
-  number that decides whether the paid run can succeed. A failed render now deletes any
-  stale output and recipe at its path, because a leftover file from an earlier run survives
-  a 400 and reads as success to any caller checking existence or size. `lint-universe` gains
-  ENTITY-NEGATIVES-BLOATED at 60 entries: a negatives list is a budget, not a changelog, and
-  dead entries dilute live ones as well as filling the cap. Also fixes a crash that aborted
-  the whole linter on any universe declaring `story.spine` as an object rather than a string.
-  All earned in one nation-of-fire session: three spreads 400'd after passing their dry runs,
-  three stale images were reviewed as new renders, and `the-wingman` held 100 negatives of
-  which 39 defended against retired designs while the rule that kept failing held 8.
-
-- 2026-08-21 v1.11.1 — the budget check measured the wrong string. `apply_prompt_guards`
-  appends up to seven standing blocks AFTER the compiler hands off, so the number reported
-  in v1.11.0 was the pre-guard length and under-reported by thousands of characters on a
-  busy spread. A budget check that is believed and wrong is worse than none: on its first
-  day a spread whose dry run read 26,325/32,000 assembled 32,308 and failed three times.
-  `render_spread` now measures the guarded length, the refusal says so, and the measurement
-  falls back rather than raising so it can never break the render it only describes.
-
-- 2026-08-21 v1.11.2 — `lock-shot` refuses a path with no file behind it. Locking is the
-  approval act and it was happily approving art that was not on disk, minting a sheet
-  pointing at nothing. Nothing downstream caught it: `validate` and `assert-story` check
-  that a required sheet has a VALUE, never that the value resolves, so the entity looked
-  locked and gate-real until a story cast the pose and the compiler refused mid-batch.
-  Found on nation-of-fire `the-wingman.coordinating`, whose plate sat in /tmp during both
-  the lock and the commit meant to capture it.
-
-- 2026-08-21 v1.11.3 — scope the v1.11.2 lock guard to RESOLVABLE paths. As shipped it
-  checked a relative path against the process's CWD when no root was given, which refused
-  every caller that locks symbolically and broke six engine tests. It now enforces only
-  when the path is absolute or a root is supplied. v1.11.2 was pushed with the suite red,
-  which is the actual lesson: read the test output before pushing, not after.
+- 2026-08-21 v1.11.0 — the prompt budget (SPEC 4.6.1). The provider hard-400s over 32k characters and nothing measured it, so `--dry-run` passed and the paid run burned three attempts finding out; three spreads died that way in one nation-of-fire session. `render_spread` now refuses over the cap before spending and prints the count on every run. A failed render also deletes any stale output first, because a leftover file from an earlier run reads as success to any caller checking existence or size. lint gains ENTITY-NEGATIVES-BLOATED at 60: `the-wingman` carried 100 negatives, 39 defending retired designs, while the rule that failed every other render held 8. Also fixes a crash that aborted the whole linter on a `story.spine` object.
+- 2026-08-21 v1.11.1 — the budget check measured the wrong string. `apply_prompt_guards` appends up to seven blocks AFTER the compiler hands off, so v1.11.0 under-reported by thousands of characters and a dry run reading 26,325/32,000 assembled 32,308 and failed anyway. A believed-and-wrong check is worse than none. Now measures the guarded length and falls back rather than raising.
+- 2026-08-21 v1.11.2 — `lock-shot` refuses a path with no file. Locking IS the approval act and it was approving art that did not exist; `validate` and `assert-story` check that a sheet has a VALUE, never that it resolves, so `the-wingman.coordinating` carried a dangling sheet for hours and only surfaced when a spread cast the pose.
+- 2026-08-21 v1.11.3 — scope the v1.11.2 guard to RESOLVABLE paths. It checked a relative path against the CWD when given no root, refusing every caller that locks symbolically and reddening six engine tests. The worse mistake: v1.11.2 was pushed while run-tests.sh printed FAILURES ABOVE. A suite read after the push is not a gate.
+- 2026-08-21 v1.11.4 — SAVE-LOG entries are ONE LINE, under ~80 words, and evolve-abu step 7 now says so with the numbers. The four preceding entries shipped at 74 to 172 words across 5 to 12 wrapped lines; Gary: "the version descriptions for abu are way too long." Rewrote them and moved the reasoning where it belongs, in the SPEC section and the commit.

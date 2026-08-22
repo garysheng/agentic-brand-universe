@@ -185,7 +185,18 @@ the hard way during the `agenticstory` to `abu` rename:**
    `bless_ref.py`. Gary ran `/plugin update`, was told he was current, and was.
    **A version bump that never reaches the remote is indistinguishable from no
    work at all.**
-7. **Log it:** append a timestamped one-liner to `SAVE-LOG.md` (what promoted, version, why), matching the existing entry style. No em dashes; Gary is sole author (no Claude co-author on framework content).
+7. **Log it:** append ONE LINE to `SAVE-LOG.md` — literally one line, no hard wrapping,
+   under about 80 words. Shape: `- <date> v<version> — <what changed>. <the defect that
+   earned it, with its number>.` Lead with the change, not the story; the reasoning belongs
+   in the SPEC section and the commit message, both of which have room. No em dashes; Gary is
+   sole author (no Claude co-author on framework content).
+
+   **This is a real limit and it is routinely blown.** On 2026-08-21 four consecutive entries
+   shipped at 74 to 172 words across 5 to 12 wrapped lines each, and Gary's note was "the
+   version descriptions for abu are way too long." The pull is always the same: the defect
+   feels worth explaining, and the changelog is the first place you reach. Resist it. A reader
+   scanning SAVE-LOG wants to know WHICH version changed WHAT; anyone who needs why will open
+   the commit.
 8. **Update THIS skill** if the process itself changed (new repo in the chain, new version file, a new recurring gap worth naming). The meta-skill must always describe the current reality — a stale updater is the worst kind.
 
 ## Session-awareness (why this is callable mid-frustration)
