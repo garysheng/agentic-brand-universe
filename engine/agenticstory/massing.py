@@ -146,6 +146,33 @@ def box(lo: Sequence[float], hi: Sequence[float], color: Sequence[int] = WOOD,
     return s
 
 
+def ring(center: Sequence[float], r_outer: float, z0: float, z1: float, *,
+         r_inner: float = 0.0, segments: int = 24, color: Sequence[int] = FLOOR,
+         edges: bool = True, gap_deg: float = 0.0,
+         gap_at_deg: float = 90.0) -> Dict[str, Any]:
+    """One upright ANNULUS or CYLINDER: a planted ring, a fire circle, a round table, a column.
+
+    `r_inner` 0 is a solid drum, so one verb covers both the ring and the drum. Rendered as
+    `segments` flat quads, which is what a crude massing sheet wants.
+
+    A ROUND THING WAS PREVIOUSLY IMPOSSIBLE TO DECLARE, so every author approximated one out
+    of boxes in a throwaway file: `the-fire-circle` spent 36 boxes on its ring and
+    `the-witness-hall`'s planted ring another ~70, and the second one came out a horseshoe.
+
+    `gap_deg` leaves ONE opening of that width, centred on the bearing `gap_at_deg`, for a
+    threshold somebody walks through. Leave it 0 for a closed ring, which is the default
+    because a closed ring is what people mean when they say ring.
+    """
+    s: Dict[str, Any] = {"type": "ring", "center": [float(center[0]), float(center[1])],
+                         "rOuter": float(r_outer), "rInner": float(r_inner),
+                         "z0": float(z0), "z1": float(z1), "segments": int(segments),
+                         "color": list(color), "edges": edges}
+    if gap_deg:
+        s["gapDeg"] = float(gap_deg)
+        s["gapAtDeg"] = float(gap_at_deg)
+    return s
+
+
 def room(w: float, d: float, h: float, *, floor=FLOOR, wall=WALL) -> List[Dict[str, Any]]:
     """A rectangular room as floor + far wall + left wall + right wall.
 
@@ -208,6 +235,56 @@ def scaffold_room(title: str, w: float, d: float, h: float,
     }
 
 
+def ring_quads(center: Sequence[float], r_outer: float, z0: float, z1: float,
+               r_inner: float = 0.0, segments: int = 24, *,
+               start_deg: float = 0.0, sweep_deg: float = 360.0) -> List[List[Vec]]:
+    """An annulus prism as quads: the top band, the outer skin and the inner skin.
+
+    `r_inner` 0 degenerates the inner skin to a hinge and the top band to a fan, which is
+    exactly a cylinder, so one function draws both a planted ring and a drum.
+
+    CLOSURE IS THE POINT, AND IT IS ARITHMETIC RATHER THAN JUDGEMENT, which is why it
+    belongs here and not in a throwaway file beside a spec. The Witness Hall's central
+    garden was hand-built from ~70 boxes before this existed and came out a HORSESHOE, a
+    C opening toward the camera. Every empty plate and every spread inherits the
+    blueprint, so the setting's whole argument (the painter is INSIDE a closed circle,
+    the public is OUTSIDE it) was being seeded by a picture that showed a border. Gary,
+    2026-08-23, on that sheet: "Blueprint should show nearly a full ring."
+
+    `sweep_deg` under 360 leaves ONE opening and caps the cut ends, which is the honest
+    way to draw a threshold somebody walks through. It is not a licence to draw an arc:
+    a sweep small enough to read as a border is the defect above, and
+    `test_ring_spans_every_bearing_including_the_near_side` is what refuses it.
+    """
+    cx, cy = float(center[0]), float(center[1])
+    segments = max(3, int(segments))
+    sweep = float(sweep_deg)
+    closed = abs(sweep) >= 359.999
+    step = math.radians(sweep) / segments
+    base = math.radians(float(start_deg))
+
+    def pt(radius: float, ang: float, z: float) -> Vec:
+        return (cx + radius * math.cos(ang), cy + radius * math.sin(ang), z)
+
+    out: List[List[Vec]] = []
+    for i in range(segments):
+        a0, a1 = base + i * step, base + (i + 1) * step
+        out.append([pt(r_outer, a0, z1), pt(r_outer, a1, z1),
+                    pt(r_inner, a1, z1), pt(r_inner, a0, z1)])
+        out.append([pt(r_outer, a0, z0), pt(r_outer, a1, z0),
+                    pt(r_outer, a1, z1), pt(r_outer, a0, z1)])
+        if r_inner > 0:
+            out.append([pt(r_inner, a0, z0), pt(r_inner, a1, z0),
+                        pt(r_inner, a1, z1), pt(r_inner, a0, z1)])
+    if not closed and r_inner > 0:
+        # The cut ends are real surfaces. Without them the opening reads as a hole
+        # in the geometry rather than as a threshold.
+        for ang in (base, base + math.radians(sweep)):
+            out.append([pt(r_inner, ang, z0), pt(r_outer, ang, z0),
+                        pt(r_outer, ang, z1), pt(r_inner, ang, z1)])
+    return out
+
+
 def _solids_to_quads(solids: Sequence[Dict[str, Any]]) -> List[Tuple[List[Vec], Tuple[int, int, int], bool]]:
     """Flatten the declarative solid list into (quad, colour, draw_edges)."""
     out: List[Tuple[List[Vec], Tuple[int, int, int], bool]] = []
@@ -220,8 +297,24 @@ def _solids_to_quads(solids: Sequence[Dict[str, Any]]) -> List[Tuple[List[Vec], 
                 out.append((q, colour, edges))  # type: ignore[arg-type]
         elif kind == "quad":
             out.append(([tuple(p) for p in s["pts"]], colour, edges))  # type: ignore[arg-type]
+        elif kind == "ring":
+            # `gapDeg` is the author-facing spelling: you say how wide the ONE
+            # opening is and where its middle sits, rather than doing the
+            # start/sweep arithmetic yourself and getting a horseshoe.
+            sweep = float(s.get("sweepDeg", 360.0))
+            start = float(s.get("startDeg", 0.0))
+            if "gapDeg" in s:
+                gap = float(s["gapDeg"])
+                sweep = 360.0 - gap
+                start = float(s.get("gapAtDeg", 90.0)) + gap / 2.0
+            for q in ring_quads(s["center"], float(s["rOuter"]),
+                                float(s.get("z0", 0.0)), float(s.get("z1", 1.0)),
+                                float(s.get("rInner", 0.0)),
+                                int(s.get("segments", 24)),
+                                start_deg=start, sweep_deg=sweep):
+                out.append((q, colour, edges))  # type: ignore[arg-type]
         else:
-            raise ValueError(f"unknown solid type {kind!r} (expected 'box' or 'quad')")
+            raise ValueError(f"unknown solid type {kind!r} (expected 'box', 'quad' or 'ring')")
     return out
 
 
@@ -361,7 +454,10 @@ def render_sheet(spec: Dict[str, Any], out_path: str) -> str:
           "solids": [
             {"type":"box",  "min":[0,0,0], "max":[9,4,3.1], "color":[214,206,192],
              "faces":["bottom","back","front"], "edges":true},
-            {"type":"quad", "pts":[[0,0,0],[9,0,0],[9,0,3],[0,0,3]], "color":[214,206,192]}
+            {"type":"quad", "pts":[[0,0,0],[9,0,0],[9,0,3],[0,0,3]], "color":[214,206,192]},
+            {"type":"ring", "center":[17,30], "rInner":6, "rOuter":9.5, "z0":0, "z1":2.5,
+             "segments":32, "color":[104,138,96],
+             "gapDeg":18, "gapAtDeg":90}   # omit gapDeg for a fully closed ring
           ],
           "cameras": [
             {"id":"c1","caption":"C1 MASTER - from the door","eye":[0.5,2,1.65],

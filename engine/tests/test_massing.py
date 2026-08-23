@@ -297,3 +297,63 @@ class TestAuthoring(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRingIsActuallyClosed(unittest.TestCase):
+    """A `ring` solid must draw a ring, not a horseshoe.
+
+    This exists because of a real defect that shipped (2026-08-23). A venue whose
+    whole argument is an enclosure rendered its planting as a C opening toward the
+    camera, and it survived review because the primitive had been validated as
+    "byte-identical to the hand-rolled sheet". Matching the previous drawing only
+    proves you reproduced it; if the previous drawing was an arc, byte-identity is
+    a passing test on a wrong picture.
+
+    So these assert the GEOMETRY, in a way that is independent of any golden and of
+    any camera: walk the angular positions of the emitted quads around the centre
+    and check how big the largest gap between them is. A full ring has no gap worth
+    the name. A horseshoe has one of roughly 180 degrees.
+    """
+
+    CENTER = [17.0, 30.0]
+
+    def _angular_gap_deg(self, solid):
+        """Largest angular gap, in degrees, between consecutive emitted quads."""
+        import math
+        quads = massing._solids_to_quads([solid])
+        self.assertTrue(quads, "ring emitted no geometry at all")
+        angles = []
+        for pts, _colour, _edges in quads:
+            cx = sum(p[0] for p in pts) / len(pts)
+            cy = sum(p[1] for p in pts) / len(pts)
+            angles.append(math.degrees(math.atan2(cy - self.CENTER[1], cx - self.CENTER[0])) % 360.0)
+        angles.sort()
+        gaps = [b - a for a, b in zip(angles, angles[1:])]
+        gaps.append(360.0 - angles[-1] + angles[0])  # wrap-around
+        return max(gaps)
+
+    def _ring(self, **over):
+        s = {"type": "ring", "center": self.CENTER, "rInner": 6.0, "rOuter": 9.5,
+             "z0": 0.0, "z1": 2.5, "segments": 24, "color": [104, 138, 96]}
+        s.update(over)
+        return s
+
+    def test_a_full_ring_closes_all_the_way_round(self):
+        gap = self._angular_gap_deg(self._ring())
+        self.assertLess(gap, 30.0,
+                        f"a 360-degree ring left a {gap:.0f}-degree hole, so it is not closed")
+
+    def test_a_near_full_ring_leaves_only_its_declared_threshold(self):
+        """`gapDeg` is the ONE opening the subject walks through. Nothing wider."""
+        gap = self._angular_gap_deg(self._ring(gapDeg=20.0, gapAtDeg=90.0))
+        self.assertLess(gap, 60.0,
+                        f"a 20-degree threshold rendered as a {gap:.0f}-degree opening")
+
+    def test_a_horseshoe_is_detected_as_one(self):
+        """The guard is load-bearing only if it fires on the failure it exists for."""
+        gap = self._angular_gap_deg(self._ring(startDeg=0.0, sweepDeg=180.0))
+        self.assertGreater(gap, 120.0,
+                           "a half-ring should read as a large opening; the check cannot "
+                           "distinguish a horseshoe from a ring and is therefore useless")
+
+
