@@ -394,6 +394,71 @@ class TestRingIsActuallyClosed(unittest.TestCase):
                          "whole test class is measuring the wrong thing")
 
 
+@unittest.skipUnless(HAVE_PIL, "needs Pillow")
+class TestGroundPlaneDoesNotEraseWhatStandsOnIt(unittest.TestCase):
+    """A big floor must not paint over the things beyond its own midpoint.
+
+    The painter's sort used the polygon CENTROID, which is only correct between
+    polygons of similar size. A massing sheet always has one that is not: the ground
+    plane. A 34x60 floor centroids at the middle of the room, so anything past the
+    middle sorted BEHIND it and was erased.
+
+    This is the bug that made the-witness-hall's closed planted ring render as a
+    horseshoe. The geometry tests all passed, because the geometry was never wrong.
+    Only pixels catch this, so this test looks at pixels.
+    """
+
+    RED = (220, 40, 40)
+
+    FLOOR = {"type": "quad", "pts": [[0, 0, 0], [34, 0, 0], [34, 60, 0], [0, 60, 0]],
+             "color": [200, 200, 200], "edges": False}
+
+    def _scene(self, marker_y, with_floor):
+        # A short marker standing ON the floor, past the floor's own centroid.
+        marker = {"type": "box", "min": [15, marker_y, 0], "max": [19, marker_y + 4, 3],
+                  "color": list(self.RED), "edges": False}
+        return {
+            "title": "T", "sheet": {"width": 320, "height": 240},
+            "solids": ([self.FLOOR] if with_floor else []) + [marker],
+            "cameras": [{"id": "c1", "eye": [17, -14, 14], "target": [17, 34, 1],
+                         "fov": 55, "ambient": 1.0}],
+        }
+
+    def _marker_pixels(self, marker_y, with_floor=True):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as td:
+            p = os.path.join(td, "s.png")
+            massing.render_sheet(self._scene(marker_y, with_floor), p)
+            with Image.open(p) as im:
+                px = list(im.convert("RGB").getdata())
+        return sum(1 for c in px if c[0] > 150 and c[1] < 110 and c[2] < 110)
+
+    def _survival(self, marker_y):
+        """What FRACTION of the marker's own silhouette survives adding the floor.
+
+        Stated as a ratio against the same marker rendered with no floor at all,
+        rather than as a pixel threshold. A threshold is how the first version of
+        this test failed to bite: under the broken sort the marker's TOP face still
+        squeaked through, 24 pixels of it, and "> 20 pixels" called that a pass.
+        """
+        alone = self._marker_pixels(marker_y, with_floor=False)
+        self.assertGreater(alone, 50, "the marker is not visible even without a floor, "
+                                      "so this test is measuring nothing")
+        return self._marker_pixels(marker_y, with_floor=True) / alone
+
+    def test_marker_before_the_floors_midpoint_is_drawn(self):
+        """Control. This one survived even under the centroid sort."""
+        self.assertGreater(self._survival(12), 0.9,
+                           "the near marker was clipped, so this test is not measuring "
+                           "the sort at all")
+
+    def test_marker_beyond_the_floors_midpoint_is_still_drawn(self):
+        """The real assertion: past the floor's centroid, the floor used to win."""
+        self.assertGreater(self._survival(44), 0.9,
+                           "an object standing on the floor beyond the floor's own "
+                           "centroid was painted over by the floor")
+
+
 if __name__ == "__main__":
     unittest.main()
 
