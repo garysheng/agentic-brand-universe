@@ -295,10 +295,6 @@ class TestAuthoring(unittest.TestCase):
             self.assertIn("WxDxH", r.stdout + r.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestRingIsActuallyClosed(unittest.TestCase):
     """A `ring` solid must draw a ring, not a horseshoe.
 
@@ -355,5 +351,50 @@ class TestRingIsActuallyClosed(unittest.TestCase):
         self.assertGreater(gap, 120.0,
                            "a half-ring should read as a large opening; the check cannot "
                            "distinguish a horseshoe from a ring and is therefore useless")
+
+    def _bearings(self, solid):
+        import math
+        return [math.degrees(math.atan2(sum(p[1] for p in pts) / len(pts) - self.CENTER[1],
+                                        sum(p[0] for p in pts) / len(pts) - self.CENTER[0])) % 360.0
+                for pts, _c, _e in massing._solids_to_quads([solid])]
+
+    def test_ring_spans_every_bearing_including_the_near_side(self):
+        """Every 30-degree sector carries geometry, the NEAR side most of all.
+
+        The angular-gap check above would still pass a ring drawn with its near arc
+        suppressed by a face selection, because a suppressed face leaves the segment
+        centroids in place. This walks the sectors instead: the shipped defect was a C
+        opening TOWARD THE CAMERA, so the sectors that matter are the ones between the
+        centre and the eye, and they are named here rather than left implicit.
+        """
+        bearings = self._bearings(self._ring())
+        for lo in range(0, 360, 30):
+            self.assertTrue(any(lo <= b < lo + 30 for b in bearings),
+                            f"no ring geometry between {lo} and {lo + 30} degrees; the "
+                            f"annulus is open there and reads as an arc, not a ring")
+
+    def test_the_near_arc_is_present_at_full_depth(self):
+        """The cameras stand at low y, so 'near' is the -y side. It must be solid.
+
+        Asserted on real coordinates rather than on sector counts: the near arc has to
+        reach south of the inner radius, which is exactly the band a horseshoe drops.
+        """
+        quads = massing._solids_to_quads([self._ring()])
+        near = [pts for pts, _c, _e in quads
+                if min(p[1] for p in pts) < self.CENTER[1] - 6.0]
+        self.assertTrue(near,
+                        "no quad reaches the near side of the ring, so the planting does "
+                        "not pass between the camera and the centre")
+        self.assertFalse(massing._solids_to_quads([self._ring(startDeg=0.0, sweepDeg=180.0)])
+                         and [pts for pts, _c, _e in
+                              massing._solids_to_quads([self._ring(startDeg=0.0, sweepDeg=180.0)])
+                              if min(p[1] for p in pts) < self.CENTER[1] - 9.0],
+                         "the 0-180 half-ring is the NORTH half; if geometry is showing up "
+                         "on the far south side the bearing convention has moved and this "
+                         "whole test class is measuring the wrong thing")
+
+
+if __name__ == "__main__":
+    unittest.main()
 
 
