@@ -373,11 +373,22 @@ def render_view(solids: Sequence[Dict[str, Any]], camera: Dict[str, Any],
         n = _norm(_cross(_sub(quad[1], quad[0]), _sub(quad[2], quad[0])))
         lam = ambient + (1.0 - ambient) * abs(_dot(n, L))
         col = tuple(min(255, int(c * lam)) for c in colour)
-        depth = sum(-c[2] for c in cam) / len(cam)
-        prepared.append((depth, pts, col, edges))
+        # SORT ON THE FARTHEST VERTEX, NOT THE CENTROID, with the centroid as the
+        # tiebreak. A centroid key is only correct for polygons of similar size, and
+        # a massing sheet always contains one polygon that is not: the ground plane.
+        # A 34x60 floor has its centroid at the middle of the room, so EVERYTHING
+        # standing beyond the middle of the room sorted BEHIND the floor and was
+        # painted over by it. That is how the-witness-hall's closed planted ring came
+        # out as a horseshoe (2026-08-23): the geometry was a full annulus the whole
+        # time, its far half was simply erased by the floor, and every camera that
+        # looked down at the garden reproduced the defect. A floor's farthest vertex
+        # is the far wall, so on this key it sorts first and stays underneath the
+        # things resting on it, which is what a floor is.
+        depths = [-c[2] for c in cam]
+        prepared.append((max(depths), sum(depths) / len(depths), pts, col, edges))
 
-    prepared.sort(key=lambda t: -t[0])   # far to near
-    for _depth, pts, col, edges in prepared:
+    prepared.sort(key=lambda t: (-t[0], -t[1]))   # far to near
+    for _far, _mean, pts, col, edges in prepared:
         d.polygon(pts, fill=col)
         if edges:
             for i in range(len(pts)):
