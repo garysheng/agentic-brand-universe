@@ -1,6 +1,6 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.42 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.43 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
@@ -183,6 +183,23 @@ documentation brand: explanatory plates, ink-line illustration, share cards, a s
 > scan used the slot as a dict key and the goldens loop divided a Path by it. The one slot form
 > the spec recommends for constraining what a plate contributes was the form that made the free
 > pre-render check impossible to run.
+
+> **v0.43 changelog — the scene can contradict the plate, and the scene wins.** Paved out of
+> the *The Next iPhone Moment* run (nation-of-fire, 2026-08-27). An entity was recoloured from
+> gold to blue: its invariants said blue, its plates were re-shot blue, and 22 of 42 spreads
+> still read "a warm gold volume of light" in their `scene`. Every one of them rendered GOLD.
+> Fixing the entity and re-rendering produced the same gold, which is the part worth stating: a
+> spread's `scene` is the INSTRUCTION and its plates are only CONDITIONING, so canon cannot
+> correct prose that contradicts it. `audit_spec_refs.py` now reads the negative half of each
+> cast entity's invariants (`...-never-gold`, `no-gold-anywhere`, `never-a-full-beard`) and
+> warns when the scene asserts one anyway. It is a WARNING and not a refusal on purpose: one
+> entity's `never-blue` is another's correct colour in the same frame, and a spread showing an
+> orange kernel under a blue shell legitimately says "blue". So a phrase another cast entity
+> POSITIVELY claims is never flagged. The first cut of this omitted that and fired 12 times on
+> a clean spec, which is the failure mode §4 already names twice: a check that is wrong every
+> time it fires trains its operator to ignore it. On the run that earned it, the narrowed
+> version immediately found seven MORE spreads still calling an orange cube blue, plus a blunt
+> find-and-replace that had recoloured a character's canonical gold pendant.
 
 > **v0.33 changelog — three surfaces that each assumed a name meant a thing.** Paved out of
 > the *An Amazing Sex Life* run (nation-of-fire, 2026-08-04). **(1)** No check may infer an

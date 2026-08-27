@@ -1,3 +1,12 @@
+## 2026-08-27 — the scene can contradict the plate, and the scene wins (plugin 1.12.0, spec v0.43)
+
+`audit_spec_refs` now warns when a spread's `scene` asserts what a cast entity's invariants
+forbid. A recolour left 22 of 42 scenes still saying gold; the plates and canon were blue and
+all 22 rendered gold, because the scene is the instruction and the plate only conditioning.
+A warning, not a refusal: one entity's `never-blue` is another's correct colour in the same
+frame, so a phrase another cast entity positively claims is never flagged. The first cut
+omitted that and fired 12 times on a clean spec.
+
 ## 2026-08-20 — shipping ends at DELIVERED, not at "tell Gary to run /plugin update" (plugin 1.9.0)
 
 `evolve-abu` step 6 was commit, push, bump, then ask Gary to run `/plugin update`.

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -121,6 +122,85 @@ def declared_ref_dirs(uroot: Path, eid: str) -> set[str]:
     return dirs or {eid}
 
 
+# An invariant is a kebab QA key, and the NEGATIVE half of one is a claim about what the
+# picture must not contain: `cool-white-blue-light-never-gold`, `no-gold-anywhere`,
+# `never-a-full-beard`. Scene prose is free text and can assert the exact thing the entity
+# forbids, and when it does, THE SCENE WINS: the scene is the instruction and the plate is
+# only conditioning. That is invisible until the render comes back wrong.
+#
+# Earned 2026-08-27. An entity was recoloured from gold to blue and its spreads' scene text
+# still read "a warm gold volume of light". The plates were blue, canon was blue, 22 of 42
+# spreads rendered gold, and nothing complained. Fixing the ENTITY and re-rendering produced
+# the same gold, because the scene was never touched.
+#
+# A WARNING and not a refusal, deliberately. One entity's `never-blue` is another entity's
+# correct colour in the same frame: a spread showing an orange kernel under a blue shell
+# legitimately says "blue" while the kernel forbids it. A hard refusal would block that.
+# Naming both sides and letting a human look costs a glance and catches the real case.
+_NEG_INVARIANT = re.compile(r"(?:^|-)(?:never|no)-((?:(?!-(?:never|no)-).)+)")
+_ARTICLES = ("a ", "an ", "the ")
+
+
+def forbidden_phrases(ent: dict) -> list:
+    """Visual claims an entity's invariants say must NOT appear."""
+    out = []
+    for inv in ((ent.get("structured") or {}).get("invariants") or []):
+        for m in _NEG_INVARIANT.finditer(str(inv)):
+            phrase = m.group(1).replace("-", " ").strip()
+            for art in _ARTICLES:
+                if phrase.startswith(art):
+                    phrase = phrase[len(art):]
+            # Single short words are too noisy to be worth a line ("no ui", "never two").
+            if len(phrase) >= 4 and phrase not in out:
+                out.append(phrase)
+    return out
+
+
+def claimed_phrases(ent: dict) -> list:
+    """Phrases an entity's invariants POSITIVELY assert, with the negative half removed.
+
+    `cool-white-blue-light-rising-out-of-the-screen-never-gold` claims "blue" and forbids
+    "gold", and both halves matter: the claim is what licenses another entity's forbidden
+    word to appear legitimately in the same frame.
+    """
+    out = []
+    for inv in ((ent.get("structured") or {}).get("invariants") or []):
+        head = re.split(r"-(?:never|no)-", str(inv))[0]
+        out.extend(w for w in head.split("-") if len(w) >= 4)
+    return out
+
+
+def scene_contradictions(uroot, scene: str, cast_ids: list) -> list:
+    """(entity id, forbidden phrase) for every phrase the scene asserts anyway.
+
+    A phrase is NOT a contradiction when another entity in the same frame positively
+    claims it. An orange kernel that forbids blue, standing under a blue shell that
+    claims blue, is a correct picture and must not be flagged: the word belongs to the
+    shell. Computing that beats telling the reader to work it out, which is what the
+    first version of this did, and it fired 12 times on a clean spec.
+    """
+    hits = []
+    low = (scene or "").lower()
+    ents = {}
+    for cid in cast_ids:
+        try:
+            ents[cid] = ap.load_entity(uroot, cid)
+        except Exception:
+            pass
+    for cid, ent in ents.items():
+        others = set()
+        for oid, oent in ents.items():
+            if oid != cid:
+                others.update(claimed_phrases(oent))
+        for phrase in forbidden_phrases(ent):
+            if any(w in others for w in phrase.split()):
+                continue  # another entity in this frame legitimately owns the word
+            if re.search(r"\b" + re.escape(phrase) + r"\b", low):
+                hits.append((cid, phrase))
+    return hits
+
+
+
 def audit(uroot: Path, spec: dict) -> tuple[list[dict], list[str]]:
     rows, problems = [], []
     anchor_dir = None
@@ -177,6 +257,14 @@ def audit(uroot: Path, spec: dict) -> tuple[list[dict], list[str]]:
                     "passed. Its plates are not reaching the model, so it is being "
                     "drawn from prose. Check the entity's requiredForRender, or name a "
                     "`plate`/`pose` that exists.")
+
+        # The scene asserts what a cast entity forbids. Scene text beats the plate.
+        for cid, phrase in scene_contradictions(uroot, sp.get("scene", ""), cast_ids):
+            problems.append(
+                f"{sid}: scene text says {phrase!r} but cast entity {cid!r} has an "
+                f"invariant forbidding it. THE SCENE WINS over the plate, so this renders "
+                f"the forbidden version. Fix the scene, not just the entity.")
+
     return rows, problems
 
 
