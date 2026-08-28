@@ -286,6 +286,7 @@ construction.
 2026-07-25 · 7c78193 · Plugin 0.7.2. Story TYPES became validated data. A story's spine and genre were free-text prose that nothing checked, so a typo, a near-duplicate (teaching-testimony vs testimony-teaching), or prose stuffed into the genre field passed silently. The SPEC (section 13) already models these as craft-canon records; lint-universe now ties every story back to that registry and warns (STORY-SPINE-UNREGISTERED / STORY-GENRE-UNREGISTERED) on any unregistered value, so "where are this universe's story types" is answerable by data. Advisory, not a hard validate error, so a universe mid-normalization still composes. Seeded the clean NoF spines (thesis, primer, testimony, blessing) and the new faithful-prophetic-realistic-fiction genre as craft records; the messy back-catalog genres now surface as normalization warnings. Also fixed a pre-existing linter crash on a golden recipe whose inputs entry is a bare path string. Engine and SPEC contract untouched, so no spec bump. 249 tests green (lint 30 to 35).
 
 
+- 2026-08-28 v1.13.0 — LAPTOP_FORM_GUARD: one base, deck toward the viewer, nothing behind the screen, far ranks dissolve. A NoF cover drew every laptop with two bases.
 - **Duplicated** text (a spread burning in the caption the page already lays out) is the real defect,
   and it is about duplication rather than about glyphs.
 - **Diegetic** text (a cover in frame, a sign, a jar label) belongs in the world and improves the image.

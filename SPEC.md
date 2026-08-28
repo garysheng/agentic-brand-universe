@@ -1344,6 +1344,7 @@ removes that step.
 | `DOOR_GUARD`          | conditional  | `_has_door_interaction()` |
 | `EYE_CONTACT_GUARD`   | conditional  | `_has_conversation()`     |
 | `HANDS_GUARD`         | conditional  | `_has_hands()`            |
+| `LAPTOP_FORM_GUARD`   | conditional  | `_has_laptop()`           |
 | `MOTION_GUARD`        | conditional  | `_has_motion()`           |
 | `NECK_ROTATION_GUARD` | conditional  | `_has_look_back()`        |
 | `SINGLE_IMAGE_GUARD`  | every render | unconditional             |
@@ -1411,6 +1412,26 @@ removes that step.
     edge on a leaf too narrow for the man reaching for it ("think about how american doors work").
     Doors are the hands of architecture: familiar enough that every error is instantly visible,
     with a prior loose enough that the model errs constantly.
+  - **Laptop-form guard (`LAPTOP_FORM_GUARD`).** Fires whenever a laptop is DRAWN AT ALL
+    (`_has_laptop()`), which is deliberately wider than the device-use guard above: that one
+    needs a person operating the thing, while this failure is anatomical rather than
+    behavioural, and an empty room of laptops gets the geometry wrong just as readily as one
+    somebody is typing on. It states the form — exactly two parts and exactly ONE base, the
+    keyboard deck extending TOWARD THE VIEWER, the screen rising from the back edge, and
+    nothing whatsoever behind the screen — and then gives the renderer an instruction for the
+    case it cannot satisfy: where many laptops repeat into the distance, only the nearest few
+    are drawn as laptops and the rest dissolve into haze and points of light, because a
+    malformed laptop is worse than no laptop.
+    Earned 2026-08-28 on a Nation of Fire cover, a field of laptops receding to a horizon.
+    Every machine came back with TWO bases, a deck in front of the screen and a second slab
+    behind it, and the far ranks were half-remembered shapes on plinths. The scene text had
+    said "a screen standing up from the FAR edge of that base", which never states WHICH SIDE
+    the deck extends; the model drew one on each side and was not wrong to. The prompt was
+    ambiguous, not the renderer, which is the shape of most guards in this table.
+    It lives in the framework rather than in one book because the laptop is the single most
+    drawn object across these universes: `hyperagentic-age`'s central motif IS
+    `supercharged-laptop`, and every article hero on eleven wikis passes it through
+    `on-brand-image`. A per-book fix would have left all of them wrong.
   - **Device-use guard (v0.38, `DEVICE_USE_GUARD`).** Fires when the scene pairs a screened-device
     noun with a use signal (`_has_device_use()`: typing, at the keys, reading the screen, working
     at, sits at the …). It states the physics: a device someone is USING faces its user, screen to

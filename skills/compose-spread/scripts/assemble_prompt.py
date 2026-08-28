@@ -231,6 +231,49 @@ DEVICE_USE_GUARD = (
     "device is not."
 )
 
+LAPTOP_FORM_GUARD = (
+    "LAPTOP FORM. An open laptop has EXACTLY TWO PARTS AND EXACTLY ONE BASE. The keyboard "
+    "base is a single flat rectangle resting on the surface and extending TOWARD THE "
+    "VIEWER; the screen rises from the BACK edge of that base, the edge furthest from "
+    "camera, and tilts slightly away. The keyboard is therefore on the VIEWER'S side of "
+    "the screen and the screen stands behind it. BEHIND THE SCREEN THERE IS NOTHING: no "
+    "second base, no second keyboard, no flat slab, panel, board or plinth extends "
+    "backward past it. A laptop with a deck both in front of and behind its screen is a "
+    "defect, and so is a screen floating with no base, a base with no screen, or a laptop "
+    "raised on legs or a pedestal. WHERE MANY LAPTOPS REPEAT INTO THE DISTANCE, only the "
+    "nearest few are drawn as actual laptops; the rest dissolve into haze and points of "
+    "light. A malformed laptop is worse than no laptop: where the form cannot resolve "
+    "cleanly at that scale, draw glow instead."
+)
+
+LAPTOP_NOUNS = ("laptop", "laptops", "macbook", "clamshell", "notebook computer")
+
+
+def _has_laptop(scene: str) -> bool:
+    """True when a laptop is drawn at all, used or merely present.
+
+    Deliberately WIDER than _has_device_use, which needs a person operating the
+    thing. This one fires on the object's mere presence, because the failure it
+    prevents is anatomical rather than behavioural: an empty room of laptops gets
+    the geometry wrong just as readily as one somebody is typing on.
+
+    Earned 2026-08-28 on a Nation of Fire cover, a field of laptops receding to a
+    horizon. Every machine came back with TWO bases, one deck in front of the
+    screen and a second slab behind it, and the distant ranks were half-remembered
+    shapes on plinths. The scene text had said "a screen standing up from the FAR
+    edge of that base", which never states WHICH SIDE the deck extends, so the
+    model drew one on each side and was not wrong to. The fix is to name the
+    direction and to say plainly that nothing sits behind the screen.
+
+    This lives in the framework rather than in a book because the laptop is the
+    single most drawn object across these universes: hyperagentic-age's central
+    motif is `supercharged-laptop`, and every article hero on eleven wikis passes
+    it through on-brand-image. A per-book fix would have left all of them wrong.
+    """
+    low = (scene or "").lower()
+    return any(n in low for n in LAPTOP_NOUNS)
+
+
 DEVICE_NOUNS = ("laptop", "keyboard", "computer", "monitor", "tablet", "phone in", "screen")
 DEVICE_USE_TOKENS = (
     "typing", "types", "at the keys", "on the keys", "near the keys", "hand on the key",
@@ -2140,6 +2183,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             MOTION_GUARD if _has_motion(scene) else "",
             EYE_CONTACT_GUARD if _has_conversation(scene) else "",
             DEVICE_USE_GUARD if _has_device_use(scene) else "",
+            LAPTOP_FORM_GUARD if _has_laptop(scene) else "",
             DOOR_GUARD if _has_door_interaction(scene) else "",
             NECK_ROTATION_GUARD if _has_look_back(scene) else "",
             ADDRESSING_GUARD if _has_audience(scene) else "",
