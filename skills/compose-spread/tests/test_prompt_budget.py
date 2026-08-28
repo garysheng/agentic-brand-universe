@@ -112,6 +112,18 @@ class StaleArtifactTest(unittest.TestCase):
                       "silently keeping a .prev is how an operator concludes their art is "
                       "gone and re-renders something they already had")
 
+    def test_a_retry_with_nothing_live_does_not_wipe_the_banked_art(self):
+        """The bug in the first cut of this block. On attempt 2 of a retry loop `out` is
+        already gone, so an unconditional `kept.unlink()` deletes the art attempt 1 banked
+        and puts nothing back. The unlink must be INSIDE the `live.exists()` branch."""
+        src = (HERE / "scripts" / "render_spread.py").read_text()
+        block = src[src.index("for live, kept in ("):src.index("cmd = [")]
+        unlink_at = block.index("kept.unlink()")
+        guard_at = block.index("if live.exists():")
+        self.assertLess(guard_at, unlink_at,
+                        "kept.unlink() must sit inside `if live.exists():`, or a second "
+                        "attempt deletes the backup the first attempt just made")
+
     def test_the_kept_suffix_stays_out_of_a_png_glob(self):
         """`.prev` must not end in .png, or every batch driver that globs spread-*.png
         picks the backup up as if it were a spread."""

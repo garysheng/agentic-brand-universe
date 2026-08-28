@@ -1,3 +1,10 @@
+## 2026-08-28 — the backup fix had the same bug it fixed (plugin 1.15.1)
+
+1.15.0 cleared the old `<out>.prev` before checking whether a live file existed to replace it.
+On attempt two of a retry loop `out` is already gone, so the unlink deleted the art attempt one
+had banked and put nothing back. The unlink now sits inside the `live.exists()` branch. Found
+one commit later, by losing a finished spread to it.
+
 ## 2026-08-28 — a re-roll no longer destroys good art (plugin 1.15.0, spec v0.44)
 
 `render_spread` moves the previous output to `<out>.prev` instead of deleting it, unlinks it

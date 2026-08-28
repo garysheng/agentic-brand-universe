@@ -236,10 +236,15 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
     recipe_path = out.with_suffix(out.suffix + ".recipe.json")
     prev = out.with_suffix(out.suffix + ".prev")
     prev_recipe = recipe_path.with_suffix(recipe_path.suffix + ".prev")
+    # CLEAR THE OLD BACKUP ONLY WHEN THERE IS A LIVE FILE TO PUT IN ITS PLACE. Unlinking it
+    # first looks equivalent and is not: on the SECOND attempt of a retry loop `out` is already
+    # gone (the first attempt banked it), so an unconditional unlink deletes the banked art and
+    # replaces it with nothing. That destroys exactly what this block exists to protect, and it
+    # did, one commit after the block was written.
     for live, kept in ((out, prev), (recipe_path, prev_recipe)):
-        if kept.exists():
-            kept.unlink()
         if live.exists():
+            if kept.exists():
+                kept.unlink()
             live.replace(kept)
     cmd = [
         "uv", "run", _provider_script(),
