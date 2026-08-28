@@ -539,6 +539,33 @@ is a typographic decision about the book and it should be made on purpose, not i
 from a scorer. `pick_caption_pos.py --full-width-only` restricts to the full-width bands
 when a book's norm is the band.
 
+### 4c. The beat list changes mid-book -> `insert_spread.py`, NEVER by hand
+
+It will change. The operator reads a spread and says "cut 15 and 16", or "this needs a beat
+before the ending". Every artifact that indexes a beat then has to move together: the
+render-spec entries, `spreads/spread-NN.png`, and each `spread-NN.png.recipe.json`.
+
+```bash
+python3 <abu>/skills/update-book/scripts/insert_spread.py <universe> <story> \
+  --book <book-folder> --at <1-based position> --text "<caption>" --apply
+python3 <abu>/skills/update-book/scripts/insert_spread.py <universe> <story> \
+  --book <book-folder> --at <1-based position> --remove --apply
+```
+
+**It lives in `update-book`, and that is exactly why it gets missed.** You are mid-render in
+THIS skill when the beat list changes; nobody stops to go read a different skill's scripts
+directory. Earned 2026-08-28: a session hand-rolled the renumber twice in one book, once to
+insert two beats and once to cut three and add one.
+
+**The renaming is the dangerous part and the script already solves it.** Renames must run
+DESCENDING on an insert, or a rename lands on a live file and silently destroys art that
+took a paid render to make. The hand-rolled version reached for temp-name prefixes; ordering
+is the correct fix and this script does it, moving each `.recipe.json` with its `.png` so
+provenance never separates from the image.
+
+Run it BEFORE re-rendering. Renumbering after a render means the recipes describe the wrong
+beats.
+
 ### 5. Cover -> `abu:cover`
 Portrait 3:4, register anchor first, the universe mark, and the title baked as integrated
 lettering with the exact string quoted. Read the cover back and check spelling letter by letter;
