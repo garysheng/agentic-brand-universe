@@ -64,19 +64,61 @@ class GuardedLengthTest(unittest.TestCase):
 
 
 class StaleArtifactTest(unittest.TestCase):
-    def test_output_is_deleted_before_the_attempt_loop(self):
+    """Two properties fight each other here and BOTH must hold.
+
+    A stale file left at the output path survives a total failure and reads as a success
+    to any caller that checks existence or size (earned 2026-08-21). But deleting it
+    outright means a re-roll of already-good art loses that art to a flaky provider
+    (earned 2026-08-28). The resolution is to MOVE it to `<out>.prev` and never move it
+    back, so `<out>` is still absent after a failure and the picture still exists.
+    """
+
+    def test_the_output_path_is_cleared_before_the_attempt_loop(self):
         src = (HERE / "scripts" / "render_spread.py").read_text()
-        unlink_at = src.index("out.unlink()")
+        clear_at = src.index("live.replace(kept)")
         loop_at = src.index("for attempt in (1, 2, 3)")
-        self.assertLess(unlink_at, loop_at,
+        self.assertLess(clear_at, loop_at,
                         "a stale file left at the output path survives a total failure and "
                         "reads as a success to any caller that checks existence or size")
 
-    def test_the_recipe_is_deleted_too(self):
+    def test_the_recipe_is_cleared_too(self):
         src = (HERE / "scripts" / "render_spread.py").read_text()
-        self.assertIn("recipe_path.unlink()", src,
-                      "a stale recipe beside a deleted image claims provenance for art "
-                      "that no longer exists")
+        self.assertIn("prev_recipe = recipe_path.with_suffix", src,
+                      "a stale recipe beside a missing image claims provenance for art "
+                      "that is not there")
+
+    def test_the_kept_copy_is_never_restored_to_the_output_path(self):
+        """The safety property. Restoring `.prev` to `<out>` would hand back exactly the
+        stale-reads-as-new bug the move was built to preserve protection against."""
+        src = (HERE / "scripts" / "render_spread.py").read_text()
+        for forbidden in ("prev.replace(out)", "prev.rename(out)",
+                          "shutil.move(prev", "prev_recipe.replace(recipe_path)"):
+            self.assertNotIn(forbidden, src,
+                             f"{forbidden} restores the previous render to the live path, "
+                             "so a failed run would again look like a successful one")
+
+    def test_the_kept_copy_is_removed_on_success(self):
+        src = (HERE / "scripts" / "render_spread.py").read_text()
+        ok_at = src.index("recipe = write_recipe(")
+        loop_end = src.index("for attempt in (1, 2, 3)")
+        tail = src[loop_end:]
+        self.assertIn("for kept in (prev, prev_recipe):", tail,
+                      "a .prev left beside a successful render accumulates one stale copy "
+                      "per re-roll and eventually gets mistaken for the real art")
+
+    def test_a_kept_copy_is_announced_rather_than_left_silent(self):
+        src = (HERE / "scripts" / "render_spread.py").read_text()
+        self.assertIn("the PREVIOUS render was kept at", src,
+                      "silently keeping a .prev is how an operator concludes their art is "
+                      "gone and re-renders something they already had")
+
+    def test_the_kept_suffix_stays_out_of_a_png_glob(self):
+        """`.prev` must not end in .png, or every batch driver that globs spread-*.png
+        picks the backup up as if it were a spread."""
+        src = (HERE / "scripts" / "render_spread.py").read_text()
+        self.assertIn('out.with_suffix(out.suffix + ".prev")', src)
+        self.assertFalse(Path("x.png.prev").match("*.png"),
+                         "the backup suffix must not match a .png glob")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,11 @@
+## 2026-08-28 — a re-roll no longer destroys good art (plugin 1.15.0, spec v0.44)
+
+`render_spread` moves the previous output to `<out>.prev` instead of deleting it, unlinks it
+on success, keeps it on total failure, and never restores it to `<out>`. Both properties now
+hold: a failed run still leaves nothing at the output path, so existence and size checks read
+it correctly, and the picture survives. Two already-good spreads were destroyed mid-book when
+the provider dropped all three attempts on a re-roll.
+
 ## 2026-08-27 — the scene can contradict the plate, and the scene wins (plugin 1.12.0, spec v0.43)
 
 `audit_spec_refs` now warns when a spread's `scene` asserts what a cast entity's invariants

@@ -227,11 +227,20 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
     # "is it a reasonable size" reads a 400 as a success. Earned 2026-08-21: a batch of three
     # spreads 400'd on prompt length, left three unrelated older images at those paths, and
     # the size check passed; the wrong pictures were reviewed as if they were the new render.
-    if out.exists():
-        out.unlink()
+    # ...but a re-roll of GOOD art must not lose it to a flaky provider either. So the
+    # previous render is MOVED ASIDE rather than deleted, and on total failure it is left at
+    # `<out>.prev`, never restored to `out`. `out` stays absent, so the stale-reads-as-new
+    # hazard above is unchanged, and the operator still has the picture. Earned 2026-08-28:
+    # a 48-spread book re-rolled two good spreads, the provider dropped every attempt, and
+    # both images were gone with nothing to fall back on.
     recipe_path = out.with_suffix(out.suffix + ".recipe.json")
-    if recipe_path.exists():
-        recipe_path.unlink()
+    prev = out.with_suffix(out.suffix + ".prev")
+    prev_recipe = recipe_path.with_suffix(recipe_path.suffix + ".prev")
+    for live, kept in ((out, prev), (recipe_path, prev_recipe)):
+        if kept.exists():
+            kept.unlink()
+        if live.exists():
+            live.replace(kept)
     cmd = [
         "uv", "run", _provider_script(),
         "--prompt", job["prompt"],
@@ -250,6 +259,9 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
         p = subprocess.run(cmd, capture_output=capture, text=True)
         if p.returncode == 0 and out.exists():
             recipe = write_recipe(out, Path(args.universe), spec, sid, job, args.quality)
+            for kept in (prev, prev_recipe):
+                if kept.exists():
+                    kept.unlink()
             echo(f"{sid}: OK -> {out} (+ {recipe.name})")
             return 0
         tail = ""
@@ -259,6 +271,10 @@ def render_one(args, spec: dict, sid: str, out: Path, echo) -> int:
         echo(f"{sid}: attempt {attempt} failed rc={p.returncode}{tail}", err=True)
         if attempt < 3:
             time.sleep(10 * attempt)
+    if prev.exists():
+        echo(f"{sid}: the PREVIOUS render was kept at {prev.name}; {out.name} is absent "
+             f"because this run produced nothing. Rename it back only if you decide to "
+             f"accept the old picture.", err=True)
     return 1
 
 

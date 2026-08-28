@@ -1,11 +1,16 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.43 — 2026-08-20.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.44 — 2026-08-28.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.44 changelog — a re-roll no longer destroys good art.** `render_spread` moves the
+> previous output to `<out>.prev` instead of deleting it, keeps it on total failure, and
+> never restores it to `<out>`, so a flaky provider costs a re-roll rather than a picture
+> while every existence check still reads a failure as a failure. See 4.6.
+>
 > **v0.43 changelog - a scale plate can now be MADE, and two people can be the measure
 > (§12).** `lint-universe` has warned `CHARACTER-HEIGHT-UNDEPICTED` since v0.22 and
 > `structured.scale.relativeTo` has been load-bearing since v0.10, so the framework asked
@@ -1595,6 +1600,17 @@ correct for the current process, but a stale file already at that path survives 
 failure, so any caller that checks "does the file exist" or "is it a reasonable size" reads a
 400 as a success. In the session above, three spreads 400'd, left three unrelated older
 images at those paths, and were reviewed as if they were the new renders.
+
+**...but a re-roll of good art must not lose it either.** Since SPEC v0.44 the previous output is
+MOVED ASIDE rather than deleted: `render_spread` renames `<out>` to `<out>.prev` (and the
+recipe to `<out>.recipe.json.prev`) before the attempt loop, unlinks both on success, and on
+total failure LEAVES them and says so on stderr. It never restores `.prev` to `<out>`, so the
+stale-reads-as-new hazard above is unchanged: `<out>` is still absent after a failed run, and
+every existence and size check still reads that failure correctly. The `.prev` suffix keeps
+the file out of any `spread-*.png` glob. Accepting the old picture is a deliberate manual
+rename, never something the tool does on the operator's behalf. Earned 2026-08-28, when a
+48-spread book re-rolled two already-good spreads, the provider dropped all three attempts on
+each, and both images were destroyed with nothing to fall back on.
 
 ### 4.7 Style Pack (the portable look)
 

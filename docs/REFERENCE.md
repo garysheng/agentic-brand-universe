@@ -87,7 +87,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.43) |
+| `init` | scaffold a new universe (conforms to spec v0.44) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -162,6 +162,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.44 | a re-roll no longer destroys good art. |
 | v0.43 | a scale plate can now be MADE, and two people can be the measure > (§12). |
 | v0.42 | a FEATURE's extent can be measured, so a gate stops being an opinion > (§3.5.1). |
 | v0.41 | a Style Pack can say WHICH refs a human actually blessed (§4.7). |
