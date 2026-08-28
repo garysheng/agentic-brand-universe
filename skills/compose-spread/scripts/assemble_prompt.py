@@ -488,6 +488,54 @@ def _person_lying_on_bed(scene: str) -> bool:
             and any(t in low for t in LYING_TOKENS))
 
 
+SUBJECT_PRESENCE_GUARD = (
+    "THE SUBJECT IS NOT BACKGROUND. This scene both NAMES A PERSON AS ITS SUBJECT and carries an "
+    "instruction pushing people to be distant, small, out of focus or unrecognisable. That "
+    "second instruction is about INCIDENTAL BACKGROUND people ONLY. The person the scene is "
+    "ABOUT must be CLEARLY PRESENT: in focus, at proper scale, unmistakably in the frame, close "
+    "enough to read as the subject. An empty room, an empty chair, or a scene where the "
+    "described person simply does not appear is a DEFECT, not a tasteful interpretation of the "
+    "anonymity rule. Anonymity is achieved by CAMERA AND FRAMING — shoot them from behind, in "
+    "profile, cropped at the shoulders, or by their hands — never by removing them."
+)
+
+SUBJECT_CUES = (
+    "a person", "a single person", "a crowd of people", "the same person", "a group of",
+    "a man ", "a woman ", "someone ", "one figure", "a figure", "the figure", "each with a person",
+    "with a person seated", "a person seated", "people arguing",
+)
+DEEMPHASIS_CUES = (
+    "out of focus", "distant, small", "no face is recognisable", "unrecognisable",
+    "no face is recognizable", "softly out of focus", "small and soft",
+)
+
+
+def _subject_vs_background_conflict(scene: str) -> bool:
+    """True when a scene makes a person its subject AND also tells the renderer to
+    push people back.
+
+    The two instructions look unrelated when you write them and are in direct
+    conflict when they are read. The anonymity line is boilerplate an author
+    appends to every spread for privacy; the subject line is what the picture is
+    ABOUT. The model resolves the contradiction the cheapest way available, which
+    is to render the room and leave the person out.
+
+    Earned 2026-08-28 on a Nation of Fire book. Seven spreads carried both, and
+    two of them came back as beautiful EMPTY ROOMS: a hall of screens with nobody
+    arguing in front of it, and a study with an empty chair where a man was
+    supposed to be explaining himself to a laptop. Nothing errored, both renders
+    were competent, and the missing subject was only caught by a human looking at
+    the pictures.
+
+    Deliberately fires on the CONFLICT, not on either cue alone: an anonymity line
+    on an unpeopled scene is fine, and a person-subject with no anonymity line is
+    fine. It is the pair that deletes people.
+    """
+    low = (scene or "").lower()
+    return (any(c in low for c in SUBJECT_CUES)
+            and any(c in low for c in DEEMPHASIS_CUES))
+
+
 CROWD_MEMBER_GUARD = (
     "A NAMED CHARACTER SITTING IN A CROWD IS STILL PART OF THAT CROWD. When someone the "
     "story cares about is among an audience, congregation, class or crowd, they FACE THE SAME "
@@ -2190,6 +2238,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             BEDCLOTHES_GUARD if _in_bed(scene) else "",
             BED_LENGTH_GUARD if _person_lying_on_bed(scene) else "",
             CROWD_MEMBER_GUARD if _cast_inside_crowd(scene) else "",
+            SUBJECT_PRESENCE_GUARD if _subject_vs_background_conflict(scene) else "",
             HANDS_GUARD if _has_hands(scene) else "",
         ]
         if x

@@ -1333,21 +1333,22 @@ removes that step.
   still mandatory, and a drift-prone shape is guaranteed by *passing its reference image*, never by
   wording it harder.
   <!-- BEGIN GENERATED: guards -->
-| Guard                 | Fires        | Predicate                 |
-|-----------------------|--------------|---------------------------|
-| `ADDRESSING_GUARD`    | conditional  | `_has_audience()`         |
-| `ANCHOR_STYLE_GUARD`  | every render | unconditional             |
-| `BEDCLOTHES_GUARD`    | conditional  | `_in_bed()`               |
-| `BED_LENGTH_GUARD`    | conditional  | `_person_lying_on_bed()`  |
-| `CROWD_MEMBER_GUARD`  | conditional  | `_cast_inside_crowd()`    |
-| `DEVICE_USE_GUARD`    | conditional  | `_has_device_use()`       |
-| `DOOR_GUARD`          | conditional  | `_has_door_interaction()` |
-| `EYE_CONTACT_GUARD`   | conditional  | `_has_conversation()`     |
-| `HANDS_GUARD`         | conditional  | `_has_hands()`            |
-| `LAPTOP_FORM_GUARD`   | conditional  | `_has_laptop()`           |
-| `MOTION_GUARD`        | conditional  | `_has_motion()`           |
-| `NECK_ROTATION_GUARD` | conditional  | `_has_look_back()`        |
-| `SINGLE_IMAGE_GUARD`  | every render | unconditional             |
+| Guard                    | Fires        | Predicate                           |
+|--------------------------|--------------|-------------------------------------|
+| `ADDRESSING_GUARD`       | conditional  | `_has_audience()`                   |
+| `ANCHOR_STYLE_GUARD`     | every render | unconditional                       |
+| `BEDCLOTHES_GUARD`       | conditional  | `_in_bed()`                         |
+| `BED_LENGTH_GUARD`       | conditional  | `_person_lying_on_bed()`            |
+| `CROWD_MEMBER_GUARD`     | conditional  | `_cast_inside_crowd()`              |
+| `DEVICE_USE_GUARD`       | conditional  | `_has_device_use()`                 |
+| `DOOR_GUARD`             | conditional  | `_has_door_interaction()`           |
+| `EYE_CONTACT_GUARD`      | conditional  | `_has_conversation()`               |
+| `HANDS_GUARD`            | conditional  | `_has_hands()`                      |
+| `LAPTOP_FORM_GUARD`      | conditional  | `_has_laptop()`                     |
+| `MOTION_GUARD`           | conditional  | `_has_motion()`                     |
+| `NECK_ROTATION_GUARD`    | conditional  | `_has_look_back()`                  |
+| `SINGLE_IMAGE_GUARD`     | every render | unconditional                       |
+| `SUBJECT_PRESENCE_GUARD` | conditional  | `_subject_vs_background_conflict()` |
 <!-- END GENERATED: guards -->
 
 - **Normative guards (v0.8, extended v0.19).** Rules the compiler emits or enforces on every job,
@@ -1412,6 +1413,22 @@ removes that step.
     edge on a leaf too narrow for the man reaching for it ("think about how american doors work").
     Doors are the hands of architecture: familiar enough that every error is instantly visible,
     with a prior loose enough that the model errs constantly.
+  - **Subject-presence guard (`SUBJECT_PRESENCE_GUARD`).** Fires when a scene BOTH names a
+    person as its subject AND carries an instruction pushing people to be distant, small, out
+    of focus or unrecognisable (`_subject_vs_background_conflict()`). It scopes the anonymity
+    instruction to INCIDENTAL BACKGROUND people, states that an empty room or empty chair is a
+    DEFECT rather than a tasteful reading of the rule, and then names the resolution instead of
+    only the ban: anonymity is achieved by CAMERA AND FRAMING — from behind, in profile,
+    cropped at the shoulders, by the hands — never by removing the person.
+    It fires on the CONFLICT and not on either cue alone, because an anonymity line on an
+    unpeopled scene is fine and a person-subject with no anonymity line is fine. It is the pair
+    that deletes people.
+    Earned 2026-08-28 on a Nation of Fire book, where seven spreads carried both lines and two
+    came back as beautiful EMPTY ROOMS: a hall of screens with nobody arguing in front of it,
+    and a study with an empty chair where a man was meant to be explaining himself to a laptop.
+    The two instructions look unrelated when written and are in direct conflict when read, and
+    the model resolves that the cheapest way available — render the room, omit the person.
+    Nothing errored; both renders were competent; only a human looking at the pictures caught it.
   - **Laptop-form guard (`LAPTOP_FORM_GUARD`).** Fires whenever a laptop is DRAWN AT ALL
     (`_has_laptop()`), which is deliberately wider than the device-use guard above: that one
     needs a person operating the thing, while this failure is anatomical rather than
