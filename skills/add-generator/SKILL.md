@@ -61,6 +61,31 @@ model for and still not get exactly right.
 9. **Test your assumptions rather than asserting them.** The whole advantage here is that checking is
    cheap. State a design belief in a comment, then disprove it: "the bevel is mush below 48px" held up
    right until it was proofed side by side, where the bevel read *better* small.
+10. **MEASURE THE RENDER. Never reason about the geometry and believe the answer.** This is the one
+   that keeps costing whole sessions, because the arithmetic is right and the picture is wrong, and
+   the assert you wrote is checking the numbers you just computed rather than what they produced.
+   Every one of these was found by rendering and comparing, and none of them was visible in a
+   thumbnail:
+
+   - **Text placed by its advance width, not its ink.** `text-anchor="middle"` centres the advance
+     width, and `letter-spacing` appends a trailing space after the final glyph, so every phrase sits
+     half a letter-space off centre. Measure the ink box and place by that.
+   - **A path centred by its bounding box, not its ink.** A mark whose ink is not symmetric inside
+     its own viewBox lands off-centre when you put the BOX on a point.
+   - **A shape's optical centre is not its bounding-box centre.** Anything heavy at one end and
+     tapering at the other reads as sitting wrong when box-centred against type. Compute the area
+     centroid; then let a HUMAN choose what fraction of the correction to apply, because the offset
+     is arithmetic and the fraction is taste.
+   - **Type converted to outlines without the font's kerning.** The outer bounding box matches
+     exactly while interior glyphs sit pixels off, which is precisely the signature that survives
+     every check except a pixel diff.
+   - **A proof sheet scaled on the wrong axis**, which manufactured the exact defect it existed to
+     detect and sent the author hunting a bug in the geometry that was never there.
+
+   The general form: **when a generator composes two things that must relate to each other, render
+   the composition and measure the relationship you claimed.** Not the inputs, not the layout maths
+   — the pixels. And a proof sheet is code too, so a defect it appears to find is a defect in one of
+   two places.
 
 ## generator.json
 
