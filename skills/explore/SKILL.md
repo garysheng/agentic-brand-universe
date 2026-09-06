@@ -57,6 +57,33 @@ Each roll writes `<id>.png`, `<id>.prompt.txt` and `<id>.log` into the out-dir. 
 **Concurrency 3.** Higher queues server-side and times rolls out together, and a timeout
 means no image AND no recipe.
 
+## Once one is chosen, EDIT it. Do not re-roll it.
+
+Exploring ends the moment the operator picks a frame. Everything after that is a targeted
+change to THAT image, and a targeted change is an edit rather than a fresh generation:
+
+```bash
+uv run <providers>/gpt-image-2/generate_image.py \
+  --input-image <the chosen roll>.png --filename <out>.png \
+  --size 1536x1024 --quality high --no-open \
+  --prompt "Edit this photograph. Change only <the one thing>. Leave everything else
+            identical: the same face, the same expression, the same light, the same
+            wardrobe, the same background."
+```
+
+**A render is not reproducible, so re-rolling spends what was already approved.** The
+operator picked that frame for its face, its light, its colour and its composition. A fresh
+generation re-rolls all of them alongside the one thing being fixed, so every pass trades a
+solved problem for a new one and the set never converges. The tell is an operator repeating
+a correction they already gave, because the thing they fixed two rounds ago came back.
+
+Earned across roughly a dozen rounds on one photograph, ending with the operator saying it
+plainly: *"Try again dude you didn't follow my instructions ... just modify this image."* The
+edit landed both changes on the first attempt with the rest of the frame untouched.
+
+**Say what stays, not just what changes.** An edit prompt that names only the change invites
+the model to reinterpret everything it was not told to keep. List the invariants explicitly.
+
 ## Showing the set
 
 - **Send the images, do not just open them.** If the operator is on Remote Control they are
