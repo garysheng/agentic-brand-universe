@@ -43,6 +43,20 @@ def main():
     p.add_argument("--style-pack")
     p.add_argument("--ref", action="append", default=[])
     p.add_argument("--ref-first", action="store_true")
+    # A comparison set of a CANON entity (what should she wear at the gym, which chair
+    # suits him) needs the entity's locked identity plates on every roll, or the six
+    # variants come back as six different people and the axis under study is lost in
+    # the noise. Until 2026-09-06 the only way to do that here was to hand-pick plates
+    # and pass them as --ref, which every caller did differently. Forward the entity to
+    # the adapter, which already resolves sheets, alt-looks and invariants from canon.
+    p.add_argument("--entity", action="append", default=[],
+                   help="UNIVERSE:ID[@LOOK], repeatable. Passes the entity's locked identity "
+                        "plates and canon on every roll, resolved by the provider adapter.")
+    p.add_argument("--entity-required-only", action="store_true",
+                   help="pass only each entity's requiredForRender sheets (fewer references)")
+    p.add_argument("--no-wardrobe", action="store_true",
+                   help="skip the adapter's automatic wardrobe resolution from --entity; use "
+                        "when the axis under study IS the wardrobe")
     p.add_argument("--size", default="1024x1024")
     p.add_argument("--quality", default="high")
     p.add_argument("--concurrency", type=int, default=3)
@@ -64,6 +78,9 @@ def main():
         if a.style_pack: cmd += ["--style-pack", os.path.expanduser(a.style_pack)]
         for r in a.ref: cmd += ["--ref", os.path.expanduser(r)]
         if a.ref_first: cmd.append("--ref-first")
+        for e in a.entity: cmd += ["--entity", os.path.expanduser(e)]
+        if a.entity_required_only: cmd.append("--entity-required-only")
+        if a.no_wardrobe: cmd.append("--no-wardrobe")
         jobs.append((vid, cmd))
 
     print(f"[explore] {len(jobs)} variants -> {out}")

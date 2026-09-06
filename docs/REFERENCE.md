@@ -48,7 +48,7 @@ or a set of page heroes without ever declaring canon.
 | `create-lookbook` | Scaffold a Lookbook (SPEC §4.7.1) — a portable folder (lookbook.json + refs/) that defines a curated but intentionally VARIED visual vocabulary (a wardrobe/fashion, a range of building silhouettes, a set of faces), the complement of a Style Pack. | yes |
 | `create-style-pack` | Scaffold a Style Pack (SPEC §4.7) — a portable folder (pack.json + refs/) that defines ONE look and is consumable by on-brand-image with no universe. | yes |
 | `evolve-abu` | Evolve the Agentic Brand Universe framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. |  |
-| `explore` | Render a comparison SET that isolates one variable, so a human can decide a visual question by looking instead of by reading a description. |  |
+| `explore` | Render a comparison SET that isolates one variable, so a human can decide a visual question by looking instead of by reading a description. | yes |
 | `judge-slot` | Judge one generated slot against an entity's locked golden, item by item over its declared invariants, in a context that has NOT been told how the slot was made. |  |
 | `land-work` | Merge a finished work branch home instead of leaving it parked, in ANY git repo (a universe, a platform repo, a site, anything). |  |
 | `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, entities, goldens, provenance, craft canon, provider quirks) with no generation, no API calls, and no cost. | yes |

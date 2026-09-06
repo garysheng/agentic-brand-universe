@@ -44,9 +44,21 @@ python3 skills/explore/scripts/explore.py \
   --variants variants.txt \
   --out-dir ~/scratch/explore-<question> \
   --style-pack <path/to/pack> \
+  [--entity <universe>:<id>[@look] ...] [--no-wardrobe] [--entity-required-only] \
   [--ref <locked-plate> ...] [--ref-first] \
   [--size 1536x1024] [--quality high] [--concurrency 3]
 ```
+
+**Exploring a canon entity: pass `--entity`, never hand-picked plates.** A comparison set of
+the same person (six gym outfits, three chairs for him) is worthless if the six rolls come back
+as six different people, and that is exactly what happens when her identity plates are not on
+every roll. `--entity <universe>:<id>` hands the adapter the entity, and the adapter resolves
+her locked sheets, alt-looks and invariants from canon the same way `on-brand-image` does. Add
+`@<look>` to explore inside an alt look. **When the axis under study IS the wardrobe, add
+`--no-wardrobe`**, or the adapter's automatic wardrobe resolution pins the clothes you are
+trying to vary. Earned 2026-09-06 on the Continental Works gym outfits: eight rolls with three
+plates hand-passed as `--ref`, which worked, and which the next caller would have done
+differently.
 
 `variants.txt` is one variant per line, `id: text`. Ids become filenames, so make them
 readable (`A-ducted-sphere`, not `v1`), because the id is how the operator will answer.
