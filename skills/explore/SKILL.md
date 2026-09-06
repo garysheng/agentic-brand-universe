@@ -63,13 +63,22 @@ Exploring ends the moment the operator picks a frame. Everything after that is a
 change to THAT image, and a targeted change is an edit rather than a fresh generation:
 
 ```bash
-uv run <providers>/gpt-image-2/generate_image.py \
-  --input-image <the chosen roll>.png --filename <out>.png \
-  --size 1536x1024 --quality high --no-open \
+python3 skills/on-brand-image/scripts/generate.py \
+  --out <out>.png --no-open --no-wardrobe \
+  --ref <the chosen roll>.png --ref-first \
+  --size 1536x1024 --quality high \
   --prompt "Edit this photograph. Change only <the one thing>. Leave everything else
             identical: the same face, the same expression, the same light, the same
             wardrobe, the same background."
 ```
+
+**Go through the ADAPTER, not the provider.** This section told you to call
+`gpt-image-2/generate_image.py` directly for a week, and that was wrong: the adapter
+already forwards every `--ref` to the provider as `--input-image`, so a single `--ref`
+IS an edit. The difference is that the adapter writes the `.recipe.json` and the
+provider does not, so the documented bypass produced edits with no provenance, which is
+the one thing this framework exists to prevent. Corrected 2026-09-06 after four edits
+came back with recipes that the instruction said were impossible.
 
 **A render is not reproducible, so re-rolling spends what was already approved.** The
 operator picked that frame for its face, its light, its colour and its composition. A fresh

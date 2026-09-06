@@ -179,6 +179,13 @@ check that passed.
   the script you are running is missing its block — add it, do not work around it.
 - **zsh eats `"$VAR:id"`** as a parameter modifier, so `--entity "$CF:gary"` silently
   mangles the path. Build it first: `ENT="${CF}:gary"`, then pass `"$ENT"`.
+- **zsh does NOT word-split an unquoted `$VAR`, so `shoot $pair` passes ONE argument.**
+  A shoot loop written as `for p in "face 1024x1024" ...; do shoot $p; done` hands the
+  whole string to `$1` and leaves `$2` empty, and the renders fail with a usage error
+  rather than anything that names the cause. Loop over explicit pairs
+  (`shoot face-neutral 1024x1024`) or use an array and `"${a[@]}"`. Cost six renders on
+  2026-09-06, and the same rule has already been earned once in `open-in-preview`, which
+  is a skill that never loads during a shoot.
 - **Never rewrite a historical record.** `.recipe.json` files and dated canon attestations
   state what actually ran. Change live INSTRUCTIONS; leave every ATTESTATION alone, even
   when it points at a file that has since been deleted.
