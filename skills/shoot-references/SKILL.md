@@ -333,6 +333,31 @@ prompt.
 Applied to nation-of-fire 2026-07-31: 74 detector findings to 5, and the five that remain are
 honestly unrecoverable and say so.
 
+## REPLACING THE SEED INVALIDATES THE WHOLE MATRIX, and it is not bookkeeping
+
+Every non-seed shot chains off the seed, so swapping that one file makes every other
+plate an approval of a different input. `lint-universe` says so, once per plate, as
+`GOLDEN-STALE`.
+
+**The temptation is to edit each recipe's input digest to today's bytes, and it is
+laundering.** A recipe states what was actually passed at approval time; rewriting it
+turns "nobody has re-judged these" into "these were all approved", silently, with no
+way for a later reader to tell. The linter's own message says not to do it.
+
+**Re-shoot instead, and expect it to be cheap.** The plates rebuild from `prompts.md`
+plus the entity's CURRENT invariants against the new seed, which is one parallel batch.
+Nine plates cost nine calls on 2026-09-06 and took under a minute of wall clock.
+
+**And check whether the staleness is real before assuming it is only bookkeeping.** It
+usually is not. That same swap changed the character's jewellery, and the necklace is
+visible at her throat in six of the nine plates, so those plates were showing a chain
+that canon no longer described. A matrix that disagrees with its own invariants is worse
+than a stale digest, because every future render inherits the disagreement.
+
+**Re-bless the seed rather than bumping its digest.** `<shot>.golden.json` records that a
+HUMAN looked at those bytes. If a person approved the new frame, say so and record the
+digest it supersedes. If nobody has, the marker is not yours to move.
+
 ## Gates honored
 - **Register-first:** every generation leads with the universe style anchor; no anchor means stop.
   The register is ALSO named positively, in words, at the head of every shot's prompt (`style_line`),
