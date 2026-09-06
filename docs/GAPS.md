@@ -1275,3 +1275,29 @@ The fix is probably an explicit `structured.alsoKnownAs` on the entity that feed
 token set, rather than fuzzier matching, which would raise false positives on a guard whose
 whole value is that it fails closed. Not landed today: it is an engine change and the
 session had renders in flight.
+
+## OPEN: nothing asserts a register-rule, and there is no app surface
+
+A universe's `canon/craft/*.json` `register-rule` records are read by renderer skills as prompt
+negatives and never ASSERTED. `continental-works-universe/canon/scripts/assert.sh` said so on
+2026-09-05 when it hand-extended itself with `tokens` and `mark` modes, and on 2026-09-06 it did
+it again with `surface`: `canon/craft/surface.json` declares what a page the operator touches
+owes the brand (the tokens and their derived values and nothing else naming a colour, the ground
+scheme, live never a ground, the phone rules), and `canon/scripts/surface.py` refuses a rendered
+HTML page that breaks it. Freedom's frapp suite and the CCI portal both run that checker.
+
+Two gaps, in order of cost:
+
+1. **No extension point for a universe's own assertion.** Re-scaffolding `assert.sh` drops all
+   three modes. A `canon/scripts/assert.d/*.sh` (or a `gates:` list in `universe.json`) that the
+   scaffolded file runs under `all` would let a universe carry its own gates without editing a
+   generated file.
+2. **No notion of an app surface as a WORK.** The framework knows books, plates, covers, forms.
+   A web app is a surface a brand is judged on every day and it has no kind, no gate, no
+   provenance. The shape that would fit: a `surface` register-rule kind the engine validates
+   (tokens must resolve to the palette record, derived values must pass the palette's own
+   warmth test) and an `assert-surface <page.html>` CLI mode that does what surface.py does,
+   so every universe gets it rather than one hand-rolling it.
+
+Not landed today: it is an engine change and the day was spent putting the rule where it
+could be asserted at all. The universe-local copy is the spec to lift.
