@@ -367,6 +367,58 @@ class TestCraftCanon(unittest.TestCase):
         self.assertEqual(CanonStore(d).validate_canon(), [])
 
 
+class TestStoryStatusExemption(unittest.TestCase):
+    """SPEC "Story status": features/beats/provenance requirements apply only to a
+    `full` story. Regression guard for a real 2026-07-26 bug: StorySpec.validate()
+    honored the stub exemption, but the features-vs-canon check in
+    CanonStore.validate_canon() ran outside it and flagged stubs anyway, which made
+    it impossible to author a story ahead of the entities its beats cast — the exact
+    workflow `stub` exists for."""
+
+    def _universe(self, story: dict):
+        import json, tempfile
+        from pathlib import Path
+        from agenticstory import CanonStore
+        d = Path(tempfile.mkdtemp())
+        (d / "canon" / "entities").mkdir(parents=True)
+        (d / "canon" / "relations").mkdir()
+        (d / "stories").mkdir()
+        (d / "universe.json").write_text(json.dumps({"name": "t", "assetRoot": "."}))
+        (d / "stories" / f"{story['id']}.json").write_text(json.dumps(story))
+        return CanonStore(d)
+
+    def test_stub_story_may_feature_entities_that_do_not_exist_yet(self):
+        store = self._universe({
+            "id": "planned", "status": "stub", "spine": "thesis",
+            "features": ["not-created-yet", "also-missing"],
+        })
+        self.assertEqual(
+            store.validate_canon(), [],
+            "a stub story must be exempt from the features-vs-canon check per SPEC")
+
+    def test_full_story_still_fails_on_unknown_feature(self):
+        store = self._universe({
+            "id": "shipped", "status": "full", "spine": "thesis",
+            "features": ["not-created-yet"],
+            "beats": [{"n": 1, "text": "x", "provenance": "test"}],
+        })
+        problems = store.validate_canon()
+        self.assertTrue(
+            any("not-created-yet" in p for p in problems),
+            f"a full story must still fail on an unknown feature, got: {problems}")
+
+    def test_status_defaults_to_full_so_the_check_is_not_silently_disabled(self):
+        store = self._universe({
+            "id": "no-status", "spine": "thesis",
+            "features": ["not-created-yet"],
+            "beats": [{"n": 1, "text": "x", "provenance": "test"}],
+        })
+        problems = store.validate_canon()
+        self.assertTrue(
+            any("not-created-yet" in p for p in problems),
+            "a story with no explicit status is 'full' and must still be checked")
+
+
 class TestLockShot(unittest.TestCase):
     def test_lock_shot_promotes_required_and_keeps_validate_green(self):
         import json, tempfile

@@ -1197,3 +1197,75 @@ class CrowdMemberGuardTest(unittest.TestCase):
     def test_guard_moves_the_camera_not_the_person(self):
         self.assertIn("MOVE THE CAMERA, NOT THE PERSON", CROWD_MEMBER_GUARD)
         self.assertIn("FACE THE SAME WAY EVERYONE ELSE FACES", CROWD_MEMBER_GUARD)
+
+
+class CanonDeliveredSelfCheck(unittest.TestCase):
+    """THE INCIDENT this guards, 2026-07-26: render_spread imports assemble_prompt from
+    beside itself, and a concurrent session's rsync twice reverted the plugin mirror's copy
+    to a version with no camera/blocking support. Every render exited 0. Fourteen spreads
+    were produced with their setting's seat ownership and fixed camera missing from the
+    prompt and NOTHING failed: no refusal, no error, only wrong provenance frozen into each
+    recipe.
+
+    The check derives what MUST appear from canon, not from the block-building code path,
+    because the failure is the block-builder not running at all.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        build_universe(self.root)
+        self.ent = self.root / "canon" / "entities" / "home.json"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _spec(self, **spread_extra):
+        spec = {"size": "1536x1024", "style": "s.", "negatives": [],
+                "spreads": [dict({"id": "s1", "setting": "home", "plate": "kitchen",
+                                  "scene": "x", "cast": []}, **spread_extra)]}
+        p = self.root / "render-spec.json"; p.write_text(json.dumps(spec)); return p
+
+    def test_blocking_that_reaches_the_prompt_passes(self):
+        d = json.loads(self.ent.read_text())
+        d["contract"] = {"dressing": "warm kitchen", "blocking": "host camera-left"}
+        self.ent.write_text(json.dumps(d))
+        r = run(self.root, self._spec())
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_undelivered_blocking_is_refused(self):
+        """PROVE IT FIRES: simulate a stale assembler by making the block-builder blind to
+        contract.blocking, exactly as the reverted mirror copy was."""
+        src = (SCRIPTS / "assemble_prompt.py").read_text()
+        # THE PATCH POINT MOVED, and the assertion below is what said so. This test was
+        # written 2026-07-26 against a builder with a dedicated `if con.get("blocking"):`
+        # branch. The setting block is now built from a key list, so the honest way to
+        # simulate an assembler that lacks blocking support is to take `blocking` out of
+        # that list. Same simulated defect, current code.
+        stale = src.replace('keys = ["map", "blocking", "dressing", "scale"]',
+                            'keys = ["map", "dressing", "scale"]', 1)
+        self.assertNotEqual(stale, src, "patch point moved; update this test")
+        stale_path = self.root / "stale_assemble.py"
+        stale_path.write_text(stale)
+        d = json.loads(self.ent.read_text())
+        d["contract"] = {"dressing": "warm kitchen", "blocking": "host camera-left"}
+        self.ent.write_text(json.dumps(d))
+        spec = self._spec()
+        out = subprocess.run([sys.executable, str(stale_path), str(self.root), str(spec), "s1"],
+                             capture_output=True, text=True)
+        self.assertNotEqual(out.returncode, 0, "a stale assembler must REFUSE, not exit 0")
+        self.assertIn("CANON DECLARED BUT NOT DELIVERED", out.stderr)
+        self.assertIn("contract.blocking", out.stderr)
+
+    def test_bake_exempts_an_entity(self):
+        """A cast entry's bake REPLACES the derived block on purpose, so it is exempt."""
+        d = json.loads(self.ent.read_text())
+        d["contract"] = {"dressing": "warm kitchen", "blocking": "host camera-left"}
+        self.ent.write_text(json.dumps(d))
+        spec = {"size": "1536x1024", "style": "s.", "negatives": [],
+                "spreads": [{"id": "s1", "scene": "x",
+                             "cast": [{"id": "home", "plate": "kitchen",
+                                       "bake": "the room, colder tonight"}]}]}
+        p = self.root / "render-spec.json"; p.write_text(json.dumps(spec))
+        r = run(self.root, p)
+        self.assertEqual(r.returncode, 0, r.stderr)
