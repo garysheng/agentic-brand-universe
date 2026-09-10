@@ -4,7 +4,19 @@
 # dependencies = ["openai>=2.48", "pillow"]
 # ///
 """
-Generate or edit images using OpenAI's gpt-image-2 model.
+Generate or edit images using OpenAI's image models. Default: gpt-image-2.5-sunburst.
+
+The PROVIDER ID stays `gpt-image-2` even though the model no longer does. The id is the
+adapter's name and it is recorded in every universe's generator pins and in the provenance
+of every asset ever rendered through it; renaming it would invalidate all of that to fix a
+label. What must be honest is the MODEL, and the recipe records `--model` verbatim, so an
+asset made after 2026-09-09 says gpt-image-2.5-sunburst and one made before says
+gpt-image-2. Read the recipe, never the folder, when you want to know what drew something.
+
+Sunburst rather than flare because this adapter's job is chained editing off locked
+reference sheets, and sunburst is the sibling OpenAI builds for edit precision and subject
+preservation. Flare is the volume model; pass `--model gpt-image-2.5-flare` for a batch
+where speed beats holding a face.
 
 The openai FLOOR above is load-bearing, not tidiness. An unpinned `openai` let uv keep
 reusing a months-old cached environment (openai 2.32.0), and that SDK version HANGS on a
@@ -103,17 +115,29 @@ def write_recipe(path: Path, args, image_paths: list[str] | None) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate or edit images with OpenAI gpt-image-2")
+    parser = argparse.ArgumentParser(description="Generate or edit images with OpenAI's image models")
     parser.add_argument("--prompt", required=True, help="Image description or editing instructions")
     parser.add_argument("--filename", required=True, help="Output file path (PNG)")
     parser.add_argument("--input-image", action="append", help="Path to input image for editing. Pass multiple --input-image flags for multi-reference editing with gpt-image-2 (e.g. one for face, one for style anchor).")
     parser.add_argument("--mask", help="Path to mask PNG for inpainting (DALL-E 2 only)")
-    parser.add_argument("--model", default="gpt-image-2", help="Model: gpt-image-2 (default), gpt-image-1.5, gpt-image-1, gpt-image-1-mini, dall-e-3, dall-e-2")
+    parser.add_argument("--model", default="gpt-image-2.5-sunburst",
+                        help="Model: gpt-image-2.5-sunburst (default, edit precision), "
+                             "gpt-image-2.5-flare (fast, for volume), gpt-image-2, gpt-image-1.5, "
+                             "gpt-image-1, gpt-image-1-mini, dall-e-3, dall-e-2")
     parser.add_argument("--size", default="1536x1024", help="Output size, e.g. 1024x1024, 1536x1024, 1024x1536")
-    parser.add_argument("--quality", default="high", help="Quality: high (default), medium, low, auto")
+    parser.add_argument("--quality", default="max",
+                        help="Quality: max (default), then xhigh, high, medium, low, auto. GPT Image "
+                             "2.5's ladder is LONGER than gpt-image-2's was and the names moved under "
+                             "it: measured at 1536x1024, 2.5 `high` bills 1,372 output tokens where "
+                             "gpt-image-2 `high` billed 5,488. `max` is the tier that matches the old "
+                             "`high` in both spend and detail, which is why it is the default here -- "
+                             "a universe's plates should not quietly get cheaper because a model "
+                             "shipped. Drop to xhigh for a batch you are going to judge and re-roll.")
     parser.add_argument("--background", default="auto", choices=["auto", "transparent", "opaque"],
                         help="Background: auto (default), transparent (PNG alpha, gpt-image models only), opaque. "
-                             "Transparent requires medium/high quality.")
+                             "Transparent works at every quality tier as of 2026-09-09, verified on "
+                             "gpt-image-2.5-flare and gpt-image-2 at --quality low: real alpha, no halo. "
+                             "It used to 400 outright, and older notes still say so.")
     parser.add_argument("--api-key", help="OpenAI API key (or set OPENAI_API_KEY env var)")
     parser.add_argument("--timeout", type=float, default=300.0,
                         help="Per-attempt HTTP timeout in seconds (default 300). The OpenAI SDK "
@@ -159,6 +183,12 @@ def main() -> None:
                 image=files if len(files) > 1 else files[0],
                 prompt=args.prompt,
                 size=args.size,
+                # Quality used to be missing here. Almost everything this framework renders
+                # goes through the EDIT path, because passing locked plates as references is
+                # how canon is held -- so every spread ran at the API's own default while the
+                # recipe written beside it named a tier nobody had sent. A provenance file
+                # that describes a render that did not happen is worse than none.
+                quality=args.quality,
             )
             if args.background != "auto" and args.model.startswith("gpt-image-"):
                 kwargs["background"] = args.background
