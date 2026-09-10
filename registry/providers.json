@@ -2,6 +2,7 @@
   "_note": "Provider knowledge, not brand knowledge. A quirk is what a specific model gets reliably wrong regardless of what you are making. It attaches to the PROVIDER, so it applies whether a generator pinned that provider or merely resolved to it at run time. Universes do not own this file; the framework does, and every universe benefits when one project learns something.",
   "providers": {
     "gpt-image-2": {
+      "_note": "The provider ID is an adapter name, not a model name. As of 2026-09-09 this adapter calls gpt-image-2.5-sunburst by default; the id stays gpt-image-2 because it is written into every universe's generator pins and into the provenance of every asset ever rendered through it. Every quirk below was observed on the gpt-image-2 MODEL and none has been re-measured against 2.5. Keep them: a counter that is no longer needed costs a few tokens in a prompt, where a quirk deleted on optimism costs a re-roll. When one is confirmed gone on 2.5, say so in its entry with the date rather than removing it, because the next model generation may bring it back.",
       "quirks": [
         {
           "id": "artwork-within-artwork-renders-inverted",
