@@ -229,6 +229,40 @@ def resolve_entities(specs, required_only=False, with_photos=False):
     return uniq, list(dict.fromkeys(invariants)), rules, meta
 
 
+def required_entity_problem(pack, entity_specs, waived=()):
+    """Why a render in this pack may not proceed, or None.
+
+    SPEC 4.7 `requiredEntities`: a pack whose law names a locked canon entity
+    (the North Star Cross is the standing case) declares its id here, and a
+    render in that pack must bind it via --entity so the mark carries its filed
+    geometry rather than the model's guess. A note in pack.json asked for the
+    same thing in prose and was skipped on 2026-09-10; four album covers went
+    out with an approximated mark and the operator caught it by eye. A note is
+    not a gate; this is the gate. `--waive-entity <id>` lifts it for ONE render
+    and is recorded in the recipe, the way --permit is.
+    """
+    required = [str(r).strip() for r in (pack.get("requiredEntities") or []) if str(r).strip()]
+    if not required:
+        return None
+    bound = set()
+    for spec in entity_specs or []:
+        tail = spec.rsplit(":", 1)[-1]
+        bound.add(tail.split("@", 1)[0])
+    waived = {w.strip() for w in (waived or []) if w and w.strip()}
+    unknown_waivers = sorted(waived - set(required))
+    if unknown_waivers:
+        return ("generate.py: --waive-entity names an entity this pack does not require: "
+                + ", ".join(unknown_waivers) + "\n  the pack requires: " + ", ".join(required))
+    missing = [r for r in required if r not in bound and r not in waived]
+    if not missing:
+        return None
+    return ("generate.py: style pack %r requires these canon entities bound via --entity and "
+            "they are not: %s\n  pass --entity <universe-path>:<id> for each, so the mark carries "
+            "its locked geometry rather than a guess; or --waive-entity <id> for a render that "
+            "genuinely does not carry it (recorded in the recipe)."
+            % (pack.get("id"), ", ".join(missing)))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
@@ -302,6 +336,10 @@ def main():
     # references, bakes the entity's live invariants into the prompt as positives,
     # and REFUSES the render if a required sheet is missing from disk.
     ap.add_argument("--entity", action="append", default=[], metavar="UNIVERSE:ID[@LOOK]")
+    ap.add_argument("--waive-entity", action="append", default=[], metavar="ID",
+                    help="Lift a style pack's requiredEntities entry for THIS render only, "
+                         "for a render that genuinely carries no instance of it. Recorded "
+                         "in the recipe as waivedEntities, the way --permit is recorded.")
     # Per-attempt HTTP timeout, passed through to the gpt-image-2 script. Without this
     # a batch caller is stuck with that script's 300s default, which is fine for one
     # render and NOT fine under concurrency: parallel high-quality 1536x1024 requests
@@ -357,6 +395,11 @@ def main():
         pack_dir = os.path.dirname(pack_file)
         with open(pack_file) as fh:
             pack = json.load(fh)
+
+        # requiredEntities (SPEC 4.7): refuse before spending a render.
+        problem = required_entity_problem(pack, a.entity, a.waive_entity)
+        if problem:
+            sys.exit(problem)
 
         style_line = (pack.get("styleLine") or "").strip()
         rejected = [str(r) for r in pack.get("rejectedPoles", []) if r]
@@ -595,6 +638,8 @@ def main():
         recipe["stylePack"] = a.style_pack
         if lifted:
             recipe["permitted"] = lifted
+        if a.waive_entity:
+            recipe["waivedEntities"] = [w.strip() for w in a.waive_entity if w.strip()]
         if a.ref_first:
             recipe["refFirst"] = True
     # Output geometry belongs in provenance. It was forwarded to the provider and never

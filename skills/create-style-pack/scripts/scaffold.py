@@ -14,7 +14,9 @@ Usage:
     --palette-ground '#0a1030,#141c46' [--palette-fill ... --palette-line ...] \\
     --reject <pole> [--reject ...] \\
     --gate "<assertion>" [--gate ...]       (>=1 required) \\
-    --max-elements 5
+    --max-elements 5 \\
+    [--require-entity <canon-entity-id> ...] (SPEC 4.7 requiredEntities: a render in this
+                                              pack must bind each via --entity or it refuses)
 """
 import argparse, hashlib, json, os, shutil, sys
 
@@ -50,6 +52,9 @@ def main():
     ap.add_argument("--reject", action="append", default=[])
     ap.add_argument("--gate", action="append", default=[])
     ap.add_argument("--max-elements", type=int, default=5)
+    ap.add_argument("--require-entity", action="append", default=[], metavar="ID",
+                    help="Canon entity id this pack's law depends on (e.g. north-star-cross). "
+                         "generate.py refuses a render in the pack that does not bind it.")
     a = ap.parse_args()
 
     if not a.gate:
@@ -122,6 +127,7 @@ def main():
         "rejectedPoles": a.reject,
         "gate": a.gate,
         "maxElements": a.max_elements,
+        **({"requiredEntities": [x.strip() for x in a.require_entity if x.strip()]} if a.require_entity else {}),
     }
     with open(os.path.join(pack, "pack.json"), "w") as f:
         json.dump(manifest, f, indent=2)

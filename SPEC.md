@@ -1,11 +1,16 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.44 — 2026-08-28.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.45 — 2026-09-11.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.45 changelog — a pack can require an entity.** `requiredEntities` on a Style Pack (§4.7)
+> makes `generate.py` refuse a render that does not bind each listed canon id via `--entity`, with
+> `--waive-entity` as the recorded per-render exception. Earned by four album covers that drew the
+> North Star Cross from prose while the pack's note said not to.
+>
 > **v0.44 changelog — a re-roll no longer destroys good art.** `render_spread` moves the
 > previous output to `<out>.prev` instead of deleting it, keeps it on total failure, and
 > never restores it to `<out>`, so a flaky provider costs a re-roll rather than a picture
@@ -1644,7 +1649,8 @@ them" — which has no recurring-identity requirement and therefore no need for 
     "any hands are loopy and non-anatomical (this look has no realistic finger-count to get wrong)"
   ],
   "maxElements": 4,
-  "textPolicy": "none"                         // none | diegetic | furniture (v0.12)
+  "textPolicy": "none",                        // none | diegetic | furniture (v0.12)
+  "requiredEntities": ["north-star-cross"]     // OPTIONAL (v0.45): canon ids a render MUST bind
 }
 ```
 
@@ -1723,6 +1729,23 @@ them" — which has no recurring-identity requirement and therefore no need for 
   against the pixels, re-roll the specific failure. The finger-count defect is a gate concern, not a
   prompt concern — and an ink-line look whose hands are deliberately non-anatomical sidesteps it by
   construction.
+- **`requiredEntities` (v0.45, optional).** A list of canon entity ids the pack's law depends
+  on. When present, `generate.py` REFUSES a render in that pack unless every listed id is bound
+  through `--entity <universe-path>:<id>[@look]`, and it refuses at pack load, before any
+  provider is called or any file is written. `--waive-entity <id>` lifts one entry for a single
+  render that genuinely carries no instance of it (a landscape with no mark in frame) and is
+  recorded in the recipe as `waivedEntities`, the way `--permit` is recorded; waiving an id the
+  pack does not require is itself a refusal. The field names the id only; which universe holds
+  it is the caller's, because a pack is portable and a universe path is not.
+
+  The defect that earned it, 2026-09-10: `afrochristofuturism`'s note said in prose that the
+  North Star Cross must come from the locked canon entity, never from a prompt. Four album-cover
+  candidates rendered without it, every one carrying a plausible four-point star with the wrong
+  proportions, and the operator caught it by eye ("make sure to get exact nsc dimensions"). A
+  note in `pack.json` is read by nobody at render time; a field the compiler checks is. The
+  universe's own `make-piece.py` wrapper grew the same gate the same night, which is how a
+  universe-local fix tells you the framework was missing one.
+
 - **`textPolicy` (v0.12, REQUIRED on new packs).** One of three values. A blanket text ban was the
   wrong shape: it conflated three different things, and it silently degraded artifacts whose whole
   job is to explain something.
