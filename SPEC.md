@@ -1,11 +1,16 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.45 — 2026-09-11.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.46 — 2026-09-11.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.46 changelog — binding an entity inherits its guard.** `generate.py` writes `entityGate`
+> into the recipe (each bound entity's invariants) and the readback of that render is the pack
+> gate plus every entity gate (§3.5). Earned by the same four covers as v0.45: the checklist they
+> were judged against never mentioned the mark's proportions.
+>
 > **v0.45 changelog — a pack can require an entity.** `requiredEntities` on a Style Pack (§4.7)
 > makes `generate.py` refuse a render that does not bind each listed canon id via `--entity`, with
 > `--waive-entity` as the recorded per-render exception. Earned by four album covers that drew the
@@ -1034,6 +1039,20 @@ in one book, on the same lines where its own ref column listed ten of his plates
 caption check above: **a check that is wrong every time it fires trains its operator to ignore it**,
 and this one is otherwise load-bearing, because the true positive it exists to catch — a cast entity
 whose plates never reach the model — reads identically.
+
+**Binding an entity inherits its guard (v0.46).** A render made with `--entity` already
+carried the entity's `structured.invariants` into the PROMPT as positives. It did not carry
+them onto the checklist the OUTPUT is read back against: the pack's `gate` was the whole
+gate, and an entity's own law was checked only if somebody remembered to run
+`render-readback` by hand. Since v0.46 `generate.py` writes `entityGate` into the recipe,
+one entry per bound entity that has invariants (`{id, look, invariants}`), and the readback
+of that render is the pack gate PLUS every entity gate. A wrapper that prints a checklist
+(`make-piece` in a universe) prints both; a confirm that records a verdict records it against
+both. The defect that earned it, 2026-09-10: four album covers rendered the North Star Cross
+with drifted proportions, and the printed checklist never mentioned proportions, because the
+only place "bottom point 1.48 times the others" lived was the entity, and the entity's guard
+never reached the render's gate. The prompt half inherited; the judgment half did not, and
+the judgment half is where drift gets caught.
 
 ### 3.5.1 Measured read-back: the properties an eye cannot hold (v0.40)
 

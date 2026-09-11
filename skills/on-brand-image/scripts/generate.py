@@ -219,7 +219,10 @@ def resolve_entities(specs, required_only=False, with_photos=False):
         meta.append({"universe": upath, "id": eid, "look": look,
                      "photoStackDeclared": ent.photo_stack(),
                      "photoStackPassed": list(ent_photos) if with_photos else [],
-                     "sheets": {k: v for k, v in sorted(sheets.items())}})
+                     "sheets": {k: v for k, v in sorted(sheets.items())},
+                     # Per-entity, so the readback can check each entity's own guard
+                     # rather than a flattened list nobody can attribute.
+                     "invariants": list(ent.look_invariants(look))})
     # De-dupe, preserving order: two entities may legitimately share a plate.
     seen, uniq = set(), []
     for p in refs:
@@ -227,6 +230,25 @@ def resolve_entities(specs, required_only=False, with_photos=False):
             seen.add(p)
             uniq.append(p)
     return uniq, list(dict.fromkeys(invariants)), rules, meta
+
+
+def entity_gate(resolved_meta):
+    """The readback guard a render INHERITS from the entities bound into it.
+
+    SPEC 3.5 (v0.46): binding an entity already put its invariants into the prompt as
+    positives; it did not put them on the checklist the OUTPUT is read back against, so
+    the pack's gate was the whole gate and an entity's own law was checked only if
+    somebody remembered to run render-readback by hand. Four album covers rendered the
+    North Star Cross with drifted proportions on 2026-09-10 and the printed checklist
+    never mentioned proportions. The prompt half inherited; the judgment half did not.
+    Returns [{id, look, invariants}] for every bound entity that has invariants.
+    """
+    out = []
+    for m in resolved_meta or []:
+        inv = [str(i) for i in (m.get("invariants") or []) if str(i).strip()]
+        if inv:
+            out.append({"id": m.get("id"), "look": m.get("look"), "invariants": inv})
+    return out
 
 
 def required_entity_problem(pack, entity_specs, waived=()):
@@ -634,6 +656,9 @@ def main():
     }
     if recipe_entities:
         recipe["entities"] = recipe_entities
+        gate = entity_gate(recipe_entities)
+        if gate:
+            recipe["entityGate"] = gate
     if a.style_pack:
         recipe["stylePack"] = a.style_pack
         if lifted:
@@ -659,6 +684,11 @@ def main():
     with open(out + ".recipe.json", "w") as f:
         json.dump(recipe, f, indent=2)
     print(f"[generate] {os.path.basename(out)} + {os.path.basename(out)}.recipe.json  (provenance written)")
+    if recipe.get("entityGate"):
+        n = sum(len(g["invariants"]) for g in recipe["entityGate"])
+        print(f"[generate] entityGate: {n} invariant(s) from "
+              + ", ".join(g["id"] for g in recipe["entityGate"])
+              + " are part of this render's readback, alongside the pack gate.")
 
 if __name__ == "__main__":
     main()

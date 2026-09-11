@@ -8,7 +8,7 @@ description: After EVERY render in an Agentic Brand Universe, read the image bac
 The quality gate that catches a defective render before it ships or locks. A render that looks fine at thumbnail can be wrong at the invariant level (a lens that should not be there, a missing patch, a wrong pendant). Read-back forces a per-invariant check.
 
 ## Procedure
-1. **Load the entity's invariants.** From `canon/entities/<id>.json` read `structured.invariants` (the load-bearing identity rules). If the entity has none, there is nothing to check and the render passes trivially.
+1. **Load the entity's invariants.** From the render's own `<image>.recipe.json`, key `entityGate` (v0.46: one entry per bound entity, `{id, look, invariants}`), which is what that render was actually conditioned on; fall back to `canon/entities/<id>.json` `structured.invariants` for a render made before v0.46 or without `--entity`. If there are none, there is nothing to check and the render passes trivially.
 2. **Read the image back.** Open the just-generated image. For EACH invariant, crop-zoom the relevant region (the face for a face rule, the chest for a patch rule, the feet for a shoe rule) and judge it directly against the invariant. Do not judge from the thumbnail or from memory of the prompt.
 
    Use the two scripts in `scripts/` rather than writing PIL by hand. Both take FRACTIONS of the image, so a box survives a re-render at another size:
