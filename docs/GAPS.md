@@ -1338,3 +1338,54 @@ for the same reason from the other direction; close them together or the lineage
 twice and disagrees.
 
 **Why it is still open:** the operator's call, same day: *"get ready to evolve abu LATER."*
+
+## A release is not a REF: the shipped plugin floats on whatever master happens to be
+
+**Filed 2026-09-12**, from the operator's question: *"Should Abu have a dev repo and a shipped
+plugin"*.
+
+**The answer to the question as asked is no, and it has already been tried.** ABU had a second
+private marketplace repo holding a duplicate `plugins/abu/`, and it was deleted on 2026-07-30
+because it was always the staler of the two. Two copies of one thing is the failure, and
+`source: "."` exists precisely so an install carries SPEC.md, the engine and the vendored
+providers rather than reaching into someone's home directory. That decision stands.
+
+**But the instinct was pointing at something real, and it is the REF rather than the repo.**
+Measured the same day:
+
+- `.claude-plugin/marketplace.json` declares `source: "."`, so the payload is the repo resolved
+  at its default branch.
+- `git tag` returns **nothing**. There are zero tags in the repo.
+- Five commits landed on master that day, mid-session, while `plugin.json` read `1.20.0`
+  throughout.
+
+So there is no distinction anywhere in the system between COMMITTED and RELEASED. The version
+string in `plugin.json` is the only release marker, it is bumped by hand, and it points at
+nothing immutable. An operator running `/plugin update` at an arbitrary moment gets whatever
+state master is in, and the version they are told they have is the same string either way. That
+also means a bad commit cannot be un-shipped except by another commit, and a bisect across
+"which version did this break in" has no refs to bisect.
+
+**Why this is worse than it looks for THIS framework specifically.** `evolve-abu`'s own delivery
+check (`check_delivery.py`) distinguishes three states: uncommitted, pushed, installed. It is
+the most careful delivery discipline in the workspace and it still cannot tell the operator
+WHICH BYTES are installed, because the thing it verifies pushed is a moving branch head. The
+exit-2 handoff ("everything published, only Gary can run `/plugin update`") is honest about
+whose move it is and silent about what will arrive.
+
+**The next invocation that needs it:** the next time a version is bumped while a sibling session
+is mid-render against the engine. That has already bitten once, on 2026-09-04, when ABU shipped
+1.9.0 through 1.15.0 during a session and a Freedom merge died on the engine path. That incident
+is recorded as the reason `land` was moved out of ABU; the shipping half of it was never fixed.
+
+**The shape that would fit, and the one thing to verify FIRST.** Tag each release and have the
+plugin resolve the tag rather than the branch, so dev stays free on master and shipping becomes
+a deliberate act creating an immutable ref. One repo, no duplication, plus the staging that is
+missing today. **VERIFY BEFORE BUILDING: whether Claude Code's marketplace format lets a
+`source: "."` plugin pin a tag rather than follow the default branch.** If it cannot, the shape
+changes to a `release` branch that only ever fast-forwards to blessed commits, and
+`check_delivery.py` gains a fourth state: pushed to master but not released. Do not build either
+until that is checked, because the entire value is that the shipped thing is pinned.
+
+**Why it is still open:** the operator asked for it to be filed rather than built, on the same
+day the mark was being traced.
