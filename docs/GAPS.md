@@ -1302,47 +1302,39 @@ Two gaps, in order of cost:
 Not landed today: it is an engine change and the day was spent putting the rule where it
 could be asserted at all. The universe-local copy is the spec to lift.
 
-## Exploring the base of a universe has no verb, so the framework hands you a wall first
+## A fan-out has no ROUNDS: nothing records that this set descends from the last set's pick
 
-**Found 2026-09-12**, on Continental Works' second go at its brand register. Gary, mid-run,
-twice: *"when just beginning to explore the base of an abu we need to improve the vrbs for
-that bro. i want a fan out of options and then to pick a direction to fan out more and keep
-going until im super happy with some golden references - THEN go from there"*, and then, on
-being handed the one artifact the framework's bootstrap path actually produces: *"anchor
-candidate is only so helpful without seeing people in it bro"*.
+**Filed wrong on 2026-09-12 and corrected the same day, by the author.** The original entry
+claimed "exploring the base of a universe has no verb". That is false. `explore` exists, it
+fans out N variants isolating one variable, and its own SKILL.md says it was built for exactly
+this: *"The framework had verbs for making a thing you had already decided on and no verb for
+DECIDING."* It also already solves the half that looked hardest: `--entity <universe>:<id>`
+passes an entity's locked identity plates on every roll, so a comparison set comes back as the
+same person instead of six different ones.
 
-**Both halves are one gap.** `create-style-pack` requires `--anchor` to be a file on disk and
-SPEC §4.7 defines a pack as 3-8 blessed refs, so the only sanctioned first move on a new
-register is to mint a content-neutral anchor. The neutrality rule is correct and must not be
-relaxed: the anchor is passed first on every render and whatever it depicts leaks, which is
-why `continental-works-ink`'s anchor is one open cream stroke on an empty field. But it means
-the first thing a human is asked to judge is a picture of nothing, and **a register cannot be
-judged on an empty plate.** You find out whether a register works by looking at a person in
-it. The run proved this the expensive way: the anchor candidate came back as warm plaster with
-window-bar shadows and a blue fall-off, which is a competent photograph that answers almost
-nothing about whether the register reads.
+**The real failure that day was an agent not reaching for it.** Asked to explore a new
+photographic register, a run minted a single content-neutral anchor candidate instead of
+fanning out, and the operator's verdict was *"anchor candidate is only so helpful without
+seeing people in it bro"*. He was right, and `explore --entity` was the answer sitting in the
+skills directory. That is an agent-behaviour defect rather than a missing capability, and
+filing it here as a framework gap would have had `evolve-abu` build a verb that already ships.
 
-**So minting an anchor and exploring a base are different jobs and the framework only has the
-second.** The missing loop, in his words and order: fan out several candidates WITH PEOPLE IN
-THEM, pick a direction, fan out again from that, repeat until blessed references exist, and
-only THEN derive the neutral anchor from the blessed direction rather than guessing it first.
-Deriving it last is also strictly better: an anchor extracted from a direction somebody has
-approved cannot smuggle in a look nobody chose.
+**What IS still missing, and it is narrower.** The operator's loop: *"i want a fan out of
+options and then to pick a direction to fan out more and keep going until im super happy with
+some golden references."* `explore` gives you one round. Nothing gives you the second round's
+relationship to the first. Its flags carry no parent, no pick, no round number, and a recipe
+has no lineage field, so round two is an orphan set that happens to sit in a neighbouring
+folder. Three consequences, all paid by hand today: nobody can later say which fan produced a
+blessed reference, a narrowing that took four rounds reads as four unrelated explorations, and
+the reason a direction was picked lives only in the chat that picked it.
 
-**The next invocation that needs it:** Continental Works' film-blue register, immediately.
-Its anchor is `null` on purpose and lint correctly refuses every render until one is blessed,
-so the universe is currently deadlocked behind exactly the artifact that cannot answer the
-question being asked.
+**The next invocation that needs it:** a brand register mid-exploration right now, where a
+blessed set is expected to emerge from several rounds of narrowing.
 
-**The shape that would fit.** An `explore-base` verb (or a mode on `create-style-pack`) that
-takes a direction in prose plus a cast reference, emits N candidates in one fan, records them
-as candidates rather than refs, and takes a pick to fan from again, keeping the lineage so the
-blessed set carries its own derivation. Two constraints it has to respect: candidates are not
-refs and must never be reachable as one without a human blessing, and nothing it emits may be
-measured for a token, because a provisional value that has been rendered once is how a token
-gets decided by accident.
+**The shape that would fit:** `--from <previous-out-dir>/<picked-candidate>` on `explore`,
+recording parent and round in each roll's recipe, so the blessed set carries its own
+derivation. Overlaps issue #1 (deep provenance), which asks for a `lineage` field on recipes
+for the same reason from the other direction; close them together or the lineage gets stored
+twice and disagrees.
 
-**Why it is still open:** Gary's call, same run: *"get ready to evolve abu LATER."* Recorded
-here rather than built, because the brand work in flight needs the loop more than the
-framework needs the verb today, and the hand-rolled version of it is the evidence the verb
-should be designed from.
+**Why it is still open:** the operator's call, same day: *"get ready to evolve abu LATER."*
