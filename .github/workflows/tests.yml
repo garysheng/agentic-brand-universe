@@ -1,0 +1,31 @@
+name: tests
+
+# THE SUITE IS THE CONTRACT, so it runs on somebody else's machine rather than only on the
+# maintainer's. Before 2026-09-12 a contribution could only be validated by the maintainer
+# pulling it and running ./run-tests.sh by hand, which is a review step that scales to
+# exactly one reviewer.
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install what the deterministic generators need
+        # potrace and rsvg-convert are real dependencies of the vector work, and Pillow,
+        # numpy, scipy and scikit-image are imported by the measurement scripts. A suite
+        # that skips the tests whose imports are missing is a suite that reports green for
+        # the wrong reason.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq potrace librsvg2-bin
+          python -m pip install --quiet pillow numpy scipy scikit-image
+      - name: Run the suite
+        run: ./run-tests.sh
