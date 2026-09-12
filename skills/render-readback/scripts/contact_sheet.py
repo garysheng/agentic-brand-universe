@@ -46,17 +46,40 @@ def main() -> int:
         sys.stderr.write("contact_sheet: no images\n")
         return 1
 
-    first = Image.open(paths[0])
-    cell_h = max(1, round(a.width * first.size[1] / first.size[0]))
+    # NEVER DISTORT. Until 2026-09-12 the cell was shaped from the FIRST image and every
+    # image was hard-resized into it, so a sheet mixing orientations stretched everything
+    # that did not match. Measured on a real sheet: a 1024x1536 plate first, then two
+    # 1536x1024 frames squashed into a portrait cell, a 2.25x aspect error.
+    #
+    # THAT IS A CORRECTNESS BUG, NOT A COSMETIC ONE, because this sheet is the surface a
+    # human picks from. A distorted plate means a pick made on an image that is not the
+    # image. The operator caught it by eye: "Results sheet shouldn't distort the images
+    # like that."
+    #
+    # The cell is now shaped by the TALLEST aspect present, and every image is fitted
+    # inside it preserving its own aspect and centred. On a sheet whose images all share
+    # one shape, which is most of them, this is a no-op and reproduces the old output.
+    sizes = [Image.open(p).size for p in paths]
+    cell_h = max(1, max(round(a.width * h / w) for w, h in sizes))
     pad = 22 if a.label else 0
     cols = max(1, min(a.cols, len(paths)))
     rows = (len(paths) + cols - 1) // cols
     sheet = Image.new("RGB", (a.width * cols, (cell_h + pad) * rows), "white")
     draw = ImageDraw.Draw(sheet)
     for i, p in enumerate(paths):
-        im = Image.open(p).convert("RGB").resize((a.width, cell_h))
+        im = Image.open(p).convert("RGB")
+        # Fit inside the cell rather than filling it: the scale is the tighter of the two
+        # axes, so nothing is cropped either. Cropping would be the same lie as stretching,
+        # told more quietly.
+        k = min(a.width / im.size[0], cell_h / im.size[1])
+        im = im.resize((max(1, round(im.size[0] * k)), max(1, round(im.size[1] * k))),
+                       Image.LANCZOS)
         x, y = (i % cols) * a.width, (i // cols) * (cell_h + pad)
-        sheet.paste(im, (x, y + pad))
+        # A faint grey behind the letterbox, so the image's TRUE BOUNDS are visible even
+        # when the image itself has a white background. On a white sheet a white plate has
+        # no edge, and not knowing where a plate ends is its own way of misreading it.
+        draw.rectangle([x, y + pad, x + a.width - 1, y + pad + cell_h - 1], fill=(238, 238, 238))
+        sheet.paste(im, (x + (a.width - im.size[0]) // 2, y + pad + (cell_h - im.size[1]) // 2))
         if a.label:
             draw.text((x + 8, y + 6), os.path.basename(p), fill="black")
     os.makedirs(os.path.dirname(os.path.abspath(a.out)) or ".", exist_ok=True)

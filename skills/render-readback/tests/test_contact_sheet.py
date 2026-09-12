@@ -5,8 +5,10 @@ A short sheet reads as "everything I rendered", which is exactly how a missing s
 goes unnoticed. One spread of gain-everything-lose-nothing was parked mid-batch and its
 absence was only caught by counting files by hand (2026-07-30).
 """
-import os, subprocess, sys, tempfile, unittest
+import os, pathlib, subprocess, sys, tempfile, unittest
 from pathlib import Path
+
+from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "scripts" / "contact_sheet.py"
@@ -53,6 +55,78 @@ class TestContactSheet(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             from PIL import Image
             self.assertEqual(Image.open(out).size[0], 300)
+
+
+class AspectRatio(unittest.TestCase):
+    """The defect that shipped: a sheet mixing orientations stretched every image that did
+    not match the FIRST one's shape. None of the tests above caught it, because they all
+    used one shape. A contact sheet is the surface a human picks from, so a distorted plate
+    means a pick made on an image that is not the image.
+    """
+
+    def _sheet(self, sizes, **kw):
+        d = pathlib.Path(tempfile.mkdtemp())
+        paths = []
+        # One solid colour per image, so each can be found in the output by its own colour
+        # and measured. Distortion then shows up as a changed aspect of that colour region.
+        colours = [(220, 20, 20), (20, 200, 20), (20, 20, 220), (220, 200, 20)]
+        for n, (w, h) in enumerate(sizes):
+            f = d / f"i{n}.png"
+            Image.new("RGB", (w, h), colours[n % len(colours)]).save(f)
+            paths.append(str(f))
+        out = d / "sheet.png"
+        cmd = [sys.executable, str(SCRIPT), *paths, "--out", str(out)]
+        for k, v in kw.items():
+            cmd += [f"--{k}", str(v)]
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return Image.open(out).convert("RGB"), colours
+
+    def _region(self, im, colour):
+        px = im.load()
+        xs, ys = [], []
+        for y in range(im.size[1]):
+            for x in range(im.size[0]):
+                c = px[x, y]
+                if sum(abs(c[i] - colour[i]) for i in range(3)) < 40:
+                    xs.append(x); ys.append(y)
+        self.assertTrue(xs, f"colour {colour} not found in the sheet at all")
+        return (max(xs) - min(xs) + 1), (max(ys) - min(ys) + 1)
+
+    def test_MIXED_ORIENTATIONS_ARE_NOT_DISTORTED(self):
+        """A portrait first, then a landscape: the exact shape of the real sheet that was
+        caught by eye. 1024x1536 then 1536x1024 is a 2.25x aspect error when stretched."""
+        im, cols = self._sheet([(1024, 1536), (1536, 1024)], cols=2)
+        for n, (sw, sh) in enumerate([(1024, 1536), (1536, 1024)]):
+            w, h = self._region(im, cols[n])
+            got, want = w / h, sw / sh
+            self.assertAlmostEqual(got, want, delta=0.04,
+                                   msg=f"image {n} arrived at aspect {got:.3f}, source is "
+                                       f"{want:.3f}: the sheet distorted it")
+
+    def test_landscape_first_then_portrait(self):
+        """The same defect in the other order, which is the one a fix keyed on the first
+        image's orientation would still get wrong."""
+        im, cols = self._sheet([(1536, 1024), (1024, 1536)], cols=2)
+        for n, (sw, sh) in enumerate([(1536, 1024), (1024, 1536)]):
+            w, h = self._region(im, cols[n])
+            self.assertAlmostEqual(w / h, sw / sh, delta=0.04, msg=f"image {n} distorted")
+
+    def test_nothing_is_cropped_either(self):
+        """Cropping to fill the cell is the same lie as stretching, told more quietly: the
+        full image must be present, so its scaled area must match what the fit predicts."""
+        im, cols = self._sheet([(1024, 1536), (1536, 1024)], cols=2, width=400)
+        w, h = self._region(im, cols[1])
+        # The landscape image fits by WIDTH in a portrait-shaped cell.
+        self.assertAlmostEqual(w, 400, delta=2)
+
+    def test_uniform_sheet_still_fills_the_cell(self):
+        """The fix must be a no-op when every image shares one shape, which is most sheets.
+        A letterbox that shrinks a uniform sheet would have changed every existing one."""
+        im, cols = self._sheet([(1024, 1536), (1024, 1536)], cols=2, width=400)
+        w, h = self._region(im, cols[0])
+        self.assertAlmostEqual(w, 400, delta=2)
+        self.assertAlmostEqual(h, 600, delta=2)
 
 
 if __name__ == "__main__":
