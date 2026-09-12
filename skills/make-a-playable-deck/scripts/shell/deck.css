@@ -107,10 +107,10 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 14px 14px;
 
 #scrub{display:block;position:relative;flex:1;height:34px;touch-action:none;cursor:pointer}
 
-#scrub .track{position:absolute;top:15px;left:0;right:0;height:5px;border-radius:3px;
+#scrub .track{position:absolute;top:13px;left:0;right:0;height:9px;border-radius:5px;
   background:rgba(240,236,229,.16)}
-#scrub .fill{position:absolute;top:15px;left:0;height:5px;border-radius:3px;background:var(--live)}
-#scrub .thumb{position:absolute;top:10px;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;
+#scrub .fill{position:absolute;top:13px;left:0;height:9px;border-radius:5px;background:var(--live)}
+#scrub .thumb{position:absolute;top:9px;width:17px;height:17px;margin-left:-8.5px;border-radius:50%;
   background:var(--live);box-shadow:0 0 0 5px rgba(0,122,255,.18)}
 #scrub .pill{position:absolute;bottom:34px;transform:translateX(-50%);white-space:nowrap;
   font-size:11px;padding:4px 9px;border-radius:11px;background:var(--cream);color:var(--ink);
