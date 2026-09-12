@@ -28,7 +28,7 @@ Usage:
     [--size 1536x1024] [--quality high] [--spec-version 0.6] [--style-pack <id-or-path>] \\
     [--timeout 900]   # raise when fanning out; parallel renders queue and time out at the default
 """
-import argparse, json, os, subprocess, sys, hashlib, datetime, tempfile, shutil
+import argparse, json, os, re, pathlib, subprocess, sys, hashlib, datetime, tempfile, shutil
 
 
 def shrink_ref(path, max_edge, tmpdir):
@@ -101,6 +101,31 @@ def provider_script(provider):
     _engine_on_path()
     from agenticstory.providers import resolve_str
     return resolve_str(provider)
+
+
+def adapter_default_model(provider="gpt-image-2"):
+    """Read the provider adapter's OWN default model, so this wrapper never re-decides it.
+
+    The adapter is the single source of truth for which model is current. This parses its
+    `--model` default out of its source rather than duplicating the string, because a
+    duplicated string is exactly the defect this function exists to close: the adapter moved
+    to gpt-image-2.5-sunburst on 2026-09-09, this file still said gpt-image-2, and a full day
+    of renders went through the superseded model without a single error.
+
+    Parsing source is ugly and it is the right trade here. The alternative is importing the
+    adapter, which pulls in its dependencies and its API client just to read one string, and
+    would make this wrapper fail to start on a machine that cannot talk to the provider at all.
+
+    REFUSES rather than guessing. A default this cannot find is a broken assumption about the
+    adapter's shape, and silently substituting a model name is how the original defect worked.
+    """
+    src = pathlib.Path(provider_script(provider))
+    m = re.search(r'--model["\']\s*,\s*default\s*=\s*["\']([^"\']+)["\']', src.read_text())
+    if not m:
+        sys.exit(f"generate.py: cannot read the default model out of {src}. "
+                 f"Pass --model explicitly, and fix this resolver: a wrapper that guesses a "
+                 f"model name is the defect it was written to prevent.")
+    return m.group(1)
 
 
 def sha256(p):
@@ -290,7 +315,21 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--prompt"); ap.add_argument("--prompt-file")
     ap.add_argument("--ref", action="append", default=[])
-    ap.add_argument("--model", default="gpt-image-2")
+    # NO DEFAULT ON PURPOSE. The provider adapter owns its own default and moves it when a
+    # better model ships; a default duplicated here is guaranteed to drift from the thing it
+    # wraps, and the drift is SILENT because every render still succeeds.
+    #
+    # Earned 2026-09-12. The adapter moved to gpt-image-2.5-sunburst on 2026-09-09. This line
+    # still said gpt-image-2, and `explore.py` has no --model flag to override it with, so an
+    # entire day of exploration, roughly forty rolls across a character, a prop and a wardrobe,
+    # went through the superseded model. Nothing errored. The tell was the operator noticing
+    # that a garment kept coming back royal blue when the prompt asked for #0078FE, which is a
+    # colour-fidelity symptom of the older model, and then asking what model was being used.
+    #
+    # A wrapper's job is to add the universe's rules, not to re-decide the provider's defaults.
+    ap.add_argument("--model", default=None,
+                    help="Passed straight through to the provider adapter. Omit to use the "
+                         "ADAPTER's own default, which is what you almost always want.")
     ap.add_argument("--size", default="1536x1024")
     ap.add_argument("--quality", default="high")
     ap.add_argument("--spec-version", default="0.6")
@@ -616,11 +655,20 @@ def main():
 
     out = os.path.abspath(a.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    if a.model.startswith("nano"):
+
+    # RESOLVE the model rather than defaulting it, so the adapter stays the single source of
+    # truth AND the recipe still records what actually drew the asset. Recording null would
+    # trade one silent failure for another: provenance whose whole job is to answer "what made
+    # this" must never answer "unspecified".
+    model = a.model or adapter_default_model()
+    if a.model is None:
+        print(f"[generate] model not specified; using the adapter's default: {model}", flush=True)
+
+    if model.startswith("nano"):
         cmd = ["uv", "run", provider_script("nano-banana-pro"), "--prompt", prompt, "--filename", out, "--resolution", "2K"]
     else:
         cmd = ["uv", "run", provider_script("gpt-image-2"), "--prompt", prompt, "--filename", out,
-               "--size", a.size, "--quality", a.quality]
+               "--size", a.size, "--quality", a.quality, "--model", model]
         # The provider opens the result in Preview by default; this adapter used to
         # suppress that unconditionally, so a single on-brand render finished silently
         # and the operator had to go find the file. Looking at the image IS the gate, so
@@ -646,8 +694,9 @@ def main():
         sys.exit("generate.py: generation FAILED — no image, no recipe")
 
     recipe = {
-        "provider": a.model,
-        "model": a.model,
+        "provider": model,
+        "model": model,
+        "modelSource": "explicit" if a.model else "adapter-default",
         "prompt": prompt.strip(),
         "specVersion": a.spec_version,
         "refs": [{"path": r} for r in a.ref],

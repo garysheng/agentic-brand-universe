@@ -58,6 +58,12 @@ def main():
                    help="skip the adapter's automatic wardrobe resolution from --entity; use "
                         "when the axis under study IS the wardrobe")
     p.add_argument("--size", default="1024x1024")
+    # NO DEFAULT. Omitted, the model is resolved by the provider adapter, which owns it.
+    # This flag did not exist until 2026-09-12, and its absence is how a day of exploration
+    # silently ran on a superseded model: on-brand-image's wrapper carried a stale default and
+    # there was no way for a caller to say otherwise.
+    p.add_argument("--model", default=None,
+                   help="Override the model. Omit to use the provider adapter's own default.")
     p.add_argument("--quality", default="high")
     p.add_argument("--concurrency", type=int, default=3)
     p.add_argument("--dry-run", action="store_true")
@@ -75,6 +81,7 @@ def main():
         ptxt.write_text(f"{subject} {text}\n")
         cmd = ["python3", str(GEN), "--out", str(out / f"{vid}.png"),
                "--prompt-file", str(ptxt), "--size", a.size, "--quality", a.quality, "--no-open"]
+        if a.model: cmd += ["--model", a.model]
         if a.style_pack: cmd += ["--style-pack", os.path.expanduser(a.style_pack)]
         for r in a.ref: cmd += ["--ref", os.path.expanduser(r)]
         if a.ref_first: cmd.append("--ref-first")

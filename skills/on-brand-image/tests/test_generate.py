@@ -27,6 +27,8 @@ import importlib.util
 import io
 import json
 import os
+import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -144,6 +146,8 @@ class GenerateCase(unittest.TestCase):
         with mock.patch.object(gen.subprocess, "run", runner or self._fake_run(payload)), \
              mock.patch.object(gen, "provider_script",
                                lambda p: "/nonexistent/never-executed-provider.py"), \
+             mock.patch.object(gen, "adapter_default_model",
+                               lambda provider="gpt-image-2": "stub-model-from-adapter"), \
              mock.patch.object(sys, "argv", argv), \
              contextlib.redirect_stdout(io.StringIO()):
             gen.main()
@@ -461,7 +465,14 @@ class TestRecipeIsUnskippable(GenerateCase):
     """This file's stated reason for existing: provenance is not a step you remember
     at lock time, it is a thing you cannot generate without."""
 
-    BARE_KEYS = {"provider", "model", "prompt", "specVersion", "refs", "timestamp", "sha256", "size", "quality"}
+    # `modelSource` added 2026-09-12 alongside dropping the wrapper's hardcoded model default.
+    # It records whether the model was named by the caller or inherited from the provider
+    # adapter, which is the one fact a reader needs to tell "somebody chose this model" from
+    # "this is whatever was current that day". specVersion is deliberately NOT bumped: the
+    # field is purely additive and every 0.6 reader ignores unknown keys, so bumping would
+    # invalidate 293 existing recipes to describe a change none of them are affected by.
+    BARE_KEYS = {"provider", "model", "modelSource", "prompt", "specVersion", "refs",
+                 "timestamp", "sha256", "size", "quality"}
 
     def test_the_recipe_lands_beside_the_output(self):
         r = self.run_main(*self.base())
@@ -1120,3 +1131,78 @@ class TestSuiteNeverCallsAProvider(GenerateCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
+
+
+class ModelDefaultTracksTheAdapter(unittest.TestCase):
+    """The wrapper must never carry its own model default.
+
+    Earned 2026-09-12. The gpt-image-2 provider adapter moved its default to
+    gpt-image-2.5-sunburst on 2026-09-09. This wrapper's argparse still said
+    `default="gpt-image-2"`, and `explore.py` had no --model flag to override it with, so
+    roughly forty exploration rolls across a character, a prop and a wardrobe all went through
+    the superseded model. Every one succeeded. Nothing logged a warning. The only symptom was
+    that a garment kept returning royal blue when the prompt asked for #0078FE, and it took the
+    operator asking "what model have you been using" to find it.
+
+    A duplicated default is guaranteed to drift, and the drift is silent. These tests refuse
+    the duplication rather than checking for a particular model name, because asserting the
+    name would itself be a copy that goes stale the next time the adapter moves.
+    """
+
+    SRC = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "generate.py"
+
+    def test_the_wrapper_declares_NO_model_default(self):
+        src = self.SRC.read_text()
+        m = re.search(r'--model["\']\s*,\s*default\s*=\s*([^,\)\n]+)', src)
+        self.assertIsNotNone(m, "the --model argument is gone; this test needs updating")
+        self.assertEqual(
+            m.group(1).strip(), "None",
+            "generate.py has reacquired a hardcoded --model default. The provider adapter owns "
+            "that decision. Pass default=None and resolve via adapter_default_model().")
+
+    def test_no_model_name_is_hardcoded_anywhere_in_the_wrapper(self):
+        """The string itself must not appear, not just the argparse default.
+
+        The first fix could be undone by moving the literal somewhere else in the file and
+        getting the same silent drift back, so the ban is on the literal rather than on one line.
+        Docstrings and comments are stripped of the check's scope by being counted separately:
+        this asserts no EXECUTABLE line names a model.
+        """
+        code = []
+        in_doc = False
+        for line in self.SRC.read_text().splitlines():
+            s = line.strip()
+            if s.startswith(('"""', "'''")):
+                in_doc = not in_doc or s.count('"""') == 2 or s.count("'''") == 2
+                continue
+            if in_doc or s.startswith("#"):
+                continue
+            code.append(line)
+        offenders = [l for l in code if re.search(r'["\'](gpt-image-[\d.]|dall-e-)', l)]
+        self.assertEqual(
+            offenders, [],
+            "an executable line in generate.py names a model version. The adapter is the only "
+            "place a model name belongs:\n  " + "\n  ".join(offenders))
+
+    def test_resolver_agrees_with_the_adapter_it_reads(self):
+        sys.path.insert(0, str(self.SRC.parent))
+        import generate
+        resolved = generate.adapter_default_model()
+        adapter = pathlib.Path(generate.provider_script("gpt-image-2")).read_text()
+        m = re.search(r'--model["\']\s*,\s*default\s*=\s*["\']([^"\']+)["\']', adapter)
+        self.assertIsNotNone(m, "the adapter no longer declares a --model default")
+        self.assertEqual(resolved, m.group(1),
+                         "the resolver and the adapter disagree about the default model")
+
+    def test_the_recipe_records_which_model_actually_drew_it(self):
+        """Provenance must never say null.
+
+        Dropping the default without this would trade one silent failure for another: a recipe
+        whose entire job is answering "what made this" answering "unspecified".
+        """
+        src = self.SRC.read_text()
+        self.assertNotIn('"model": a.model', src,
+                         "the recipe records the raw flag, which is None when unspecified")
+        self.assertIn('"model": model', src, "the recipe must record the RESOLVED model")
+        self.assertIn('"modelSource"', src,
+                      "the recipe should say whether the model was explicit or inherited")
