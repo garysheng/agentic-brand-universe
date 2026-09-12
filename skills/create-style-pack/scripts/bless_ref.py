@@ -22,7 +22,7 @@ claim approval of an image nobody saw. This mirrors `--bless-seed`'s `sha256_16`
 engine's `goldenDigest`.
 
 `--by` IS REQUIRED AND IS NOT DEFAULTED. `--bless-seed` hardcodes `blessedBy: "human"`
-(docs/GAPS.md G12), which cannot distinguish the operator from a delegated agent read-back,
+(gap G12, issue #13), which cannot distinguish the operator from a delegated agent read-back,
 so the marker cannot be audited later. Say who, and when.
 
 Usage:
@@ -182,7 +182,7 @@ def main():
                     help="WHO approved it and when, verbatim, e.g. 'Gary Sheng, 2026-08-20'. "
                          "Required, and deliberately not defaulted to \"human\": a marker "
                          "that cannot tell the operator from a delegated agent read-back "
-                         "cannot be audited (docs/GAPS.md G12)")
+                         "cannot be audited (gap G12, issue #13)")
     ap.add_argument("--note", default=None, help="what they said, or what the blessing covers")
     ap.add_argument("--rebless", action="store_true",
                     help="replace an existing blessing (the previous one is kept under `replaced`)")

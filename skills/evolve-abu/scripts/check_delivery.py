@@ -9,7 +9,7 @@ Shipping is a chain of three links, and every one of them fails silently:
 only the third link. When an earlier link is the broken one, that instruction is
 worse than useless: it sends Gary to run a command that correctly does nothing,
 and its "already at the latest version" is read as confirmation. That is exactly
-how 1.7.0 sat unpushed while `/plugin update` reported success (docs/GAPS.md G40,
+how 1.7.0 sat unpushed while `/plugin update` reported success (gap G40, issue #43,
 whose own filing commit was one of the three that had not been pushed).
 
 So the point of this script is NOT to print three version numbers. It is to name

@@ -573,7 +573,7 @@ def measure_extent(img: Image.Image, feature: str, min_chroma: float = 6.0,
     Earned by `pov-fine-screen-halftone`, whose prismatic-fringe assertion failed
     its own pack round-trip TWICE on two different ref sets, both times called in
     prose, and the two calls were not comparable because no method was recorded
-    (docs/GAPS.md G38).
+    (gap G38, issue #41).
 
     THE PREDICATE IS THE PRODUCT, and it is stated by the caller, never guessed.
     `warm-chroma` scores each pixel by how far it lies on the WARM side in

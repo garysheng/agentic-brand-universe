@@ -1,7 +1,7 @@
 """`measure extent`: how far a feature RUNS, how continuous it is, how many.
 
 Earned on proof-of-vibes' `pov-fine-screen-halftone` (2026-08-20, docs/GAPS.md
-G38). The pack's prismatic-fringe assertion failed its own round-trip TWICE on
+G38; that register was retired 2026-09-12 and G38 is now issue #41). The pack's prismatic-fringe assertion failed its own round-trip TWICE on
 two different ref sets, both calls made by eye and in prose, and the two calls
 were not comparable to each other because no method was recorded. Dot pitch and
 sky colour had both been promoted to rulers earlier the same day; the fringe was

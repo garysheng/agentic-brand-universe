@@ -2671,7 +2671,7 @@ Default measured reference, when a universe declares no `identity.scaleReference
     otherwise in-register matrix, and this declaration is whole-matrix only. That is deliberate:
     the chain conditions each shot on its accepted siblings, so a half-neutral matrix walks the
     anchor into the neutral plates through the golden chain regardless of what the flagging says.
-    A genuinely neutral single plate wants its own matrix. Filed in `docs/GAPS.md`.
+    A genuinely neutral single plate wants its own matrix. Filed as issue #15.
   - **`structured.sheetAliases: {newKey: oldKey}` (2026-08-02) — a DECLARED sheet alias.** The
     add-keys-never-remove pattern (a camera slot renamed without breaking every story or spec that
     names the old key: retired-hearthRotunda precedent; the-park-bench and apostle-lee-study camera

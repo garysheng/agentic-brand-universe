@@ -22,7 +22,7 @@ rendered from.
 - **The architecture:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — how the layers fit, what the
   linter checks, and where hosted execution is headed (aspirational, see SPEC §14; everything here runs
   locally today). Diagrams included (hand-authored SVG; there is no generator for them yet).
-- **The known gaps:** [`docs/GAPS.md`](./docs/GAPS.md) — found and proven by a real run, not yet
+- **The known gaps:** [the `gap` label](https://github.com/garysheng/agentic-brand-universe/issues?q=is%3Aissue+label%3Agap) — found and proven by a real run, not yet
   closed, each with the evidence, the verb that would close it, and why it is still open.
 - **Home / docs:** `agenticbranduniverse.com` (the canonical home of the standard).
 - **Reference implementations:** the Nation of Fire universe (~15 illustrated books over one shared
