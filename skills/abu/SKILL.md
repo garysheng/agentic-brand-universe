@@ -131,3 +131,42 @@ narrating activity.
   of that looks like.
 - They were offered something specific rather than asked an open question.
 - No shell command appeared in the conversation.
+
+## End every verb by OFFERING the next moves, never by describing them
+
+**A verb that finishes without saying what is now possible hands the operator a guessing
+game.** Earned 2026-09-12, from Gary, after a twelve-hour session: *"ABU should leverage
+askuserquestion a lot more / I keep wondering what the next possible actions are / This should
+feel more like a game idk."*
+
+The framework already knew the answer and could not say it in a usable shape. `grade.py --json`
+emits every open issue as `{impact, dimension, what, fix}`, where `fix` IS the verb that closes
+it, and that came out of `status.py` as three lines of prose in a verb nobody invokes mid-build.
+
+```bash
+python3 skills/abu/scripts/next_actions.py <universe> [--after <the verb you just ran>] [--json]
+```
+
+**Then ask it as ONE `AskUserQuestion` call.** The labels and descriptions it returns are
+written to be used verbatim: each option names the verb, what you get out of it in plain words,
+and what it is worth in points. The first is marked `(Recommended)`.
+
+Three rules about the asking, and each one is a mistake already made somewhere in this stack:
+
+- **NO `preview`.** A preview flips the tool into a side-by-side layout that does not draw the
+  visible `Other` row, and on a board of next moves the real answer is very often the fifth one,
+  in the operator's head. Never build the door out of something you cannot see.
+- **Pass `--after` whenever a verb just finished.** It drops the move just made, which would
+  otherwise top the board of the job you have this second completed, and promotes what that move
+  makes possible. The board then reads as a consequence rather than as a menu that ignored what
+  you did.
+- **Offer, never narrate.** "You could now shoot references, or add a story, or..." is the prose
+  wall this replaces. Four tappable options and a score is the whole idea.
+
+**Why this feels like a game, stated plainly so it is not mistaken for decoration:** a score
+that moved, a ranked set of moves each worth a stated amount, and the fact that they are choices
+rather than a wall. The grader supplies all three. Nothing here is a flourish.
+
+**Where it is already wired:** `explore` prints the board itself at the end of every fan-out, so
+a fan-out ends with what the fan-out made possible. Any verb that completes a unit of work
+should do the same.

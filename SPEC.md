@@ -1,6 +1,6 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.46 — 2026-09-11.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.47 — 2026-09-12.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
@@ -2962,6 +2962,66 @@ five attached craft skills (`canon-resolve`, `casting-sweep`, `compose-spread`, 
 clearly, that it never asks a human a question mid-run, and that the skill wins where the prompt and a
 skill disagree. It composes and publishes illustrated, narrated books while the operator's machine is
 closed.
+
+## 15. The board of next moves (v0.47)
+
+**A verb that finishes without saying what is now possible hands the operator a guessing game.**
+Earned 2026-09-12, from Gary, after a twelve-hour session building a brand universe: *"ABU should
+leverage askuserquestion a lot more / I keep wondering what the next possible actions are / This
+should feel more like a game idk."*
+
+**The framework already knew the answer and had no shape or moment in which to say it.**
+`universe-doctor/scripts/grade.py --json` emits every open issue as
+`{impact, dimension, what, fix}`, where `fix` IS the verb that closes it, and
+`engine/agenticstory/workspace.py:plan` already ranks them. All of that surfaced only through
+`abu/scripts/status.py` as three lines of prose, in a verb nobody invokes mid-build.
+
+### What it emits
+
+    python3 skills/abu/scripts/next_actions.py <universe> [--after <verb>] [--json] [--max 4]
+
+A BOARD: at most four options, each carrying the verb, a plain-words statement of what you get
+out of it, and what it is worth in points, with the first marked `(Recommended)`. Plus the
+universe's grade, score and distance from 100.
+
+**It does not ask.** The `AskUserQuestion` call belongs to the agent, because a script cannot
+know what else is in flight in a conversation. The labels and descriptions are written to be
+used verbatim.
+
+### When it applies
+
+- **`--after <verb>` whenever a verb has just finished.** It DROPS the move just made, which
+  would otherwise top the board of the job you have this second completed, and PROMOTES what
+  that move makes possible via the `FOLLOWS` table. The board then reads as a consequence rather
+  than as a menu that ignored what you did. A verb absent from `FOLLOWS` degrades to a plain
+  ranked board, which is the correct default.
+- **A declared follow-on with no open issue is still offered**, and near the top. A verb usually
+  has no open issue because nobody has reached it yet, which is exactly when offering it helps.
+- **`explore` prints the board itself** at the end of every fan-out. Any verb that completes a
+  unit of work should do the same. It is best-effort and can never fail a run: the rolls are the
+  deliverable, they cost money and are not reproducible.
+
+### Three refusals, each one a mistake already made in this stack
+
+- **NO `preview` on the question.** A preview flips `AskUserQuestion` into a side-by-side layout
+  that does not draw the visible `Other` row, and on a board of next moves the real answer is
+  very often the fifth one, in the operator's head.
+- **Four options maximum**, because that is the tool's limit. A fifth is a board the operator is
+  told about and cannot use. The count omitted is reported instead.
+- **`fix` is a HINT, not always a verb.** The grader legitimately returns prose such as
+  `abu backfill-provenance (records what is knowable)` and
+  `start-new-story-universe / edit universe.json`. Only a bare verb-shaped token is given the
+  `/abu:` prefix; anything else passes through as the instruction it is, in `instruction` rather
+  than `verb`. Prefixing everything produced `/abu:abu backfill-provenance (...)`, which is not
+  a command anybody can run.
+
+### Why this is not decoration
+
+What makes it feel like a game is three things the grader already supplies: a score that moved, a
+ranked set of moves each worth a stated amount, and the fact that they are choices rather than a
+wall. Nothing here is a flourish, and no new judgement was invented; the rubric stays in the
+doctor.
+
 
 ## 10. Glossary
 

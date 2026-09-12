@@ -140,6 +140,20 @@ def main():
         else:
             print(f"[explore] no contact sheet: {cs} not found")
 
+    # THE NEXT MOVES, PRINTED WHERE THE WORK ENDS.
+    #
+    # A fan-out finishes and the operator is holding four possible verbs and no way to see them.
+    # Gary, 2026-09-12, after a twelve-hour session: "I keep wondering what the next possible
+    # actions are / This should feel more like a game idk". The framework already knew the answer
+    # via grade.py's issues; it had no moment at which to say it. This is that moment.
+    #
+    # It is best-effort and never fails the run: the rolls are the deliverable, cost money and are
+    # not reproducible, and a board is a courtesy on top of them.
+    na = pathlib.Path(__file__).resolve().parents[2] / "abu" / "scripts" / "next_actions.py"
+    uni = next((e.split(":", 1)[0] for e in a.entity), None) if a.entity else None
+    if na.exists() and uni:
+        subprocess.call(["python3", str(na), os.path.expanduser(uni), "--after", "explore"])
+
     if failed:
         print(f"[explore] {len(failed)} failed, see <id>.log: {', '.join(failed)}")
         sys.exit(1)
