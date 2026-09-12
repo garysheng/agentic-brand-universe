@@ -154,5 +154,106 @@ class Output(unittest.TestCase):
         self.assertEqual(p1.read_text(), p2.read_text())
 
 
+class Glow(unittest.TestCase):
+    """The Freedom Glow chrome: opt-in, derived, and NOT neon.
+
+    The derivation went wrong once in exactly the way worth a regression test. The live token
+    is fully saturated, so rotating its hue at that saturation produced #FF14C8 and #FFF314:
+    rainbow confetti, which is the failure the brand's own canon warns against. The fix was to
+    drop saturation so a hue reads as light rather than paint, and a ceiling here is what stops
+    a future edit walking it back up.
+    """
+
+    def test_off_by_default_so_no_universe_inherits_a_rainbow(self):
+        r, p = run(MIN, palette=PAL)
+        t = p.read_text()
+        self.assertNotIn("@keyframes drift1", t)
+        self.assertIn("chrome: flat accent", t)
+
+    def test_on_when_declared(self):
+        r, p = run(dict(MIN, glow=True), palette=PAL)
+        t = p.read_text()
+        for k in ("drift1", "drift2", "drift3", "drift4", "swell", "breathe", "turn"):
+            self.assertIn("@keyframes " + k, t, k)
+        self.assertIn("the Freedom Glow, derived from live", t)
+
+    def test_DERIVED_STOPS_ARE_LIGHT_NOT_NEON(self):
+        """The regression. Saturation is what separates light from paint here."""
+        sys.path.insert(0, str(BUILD.parent))
+        from build_deck import spectrum_from
+        import colorsys
+        for hexv in spectrum_from("#007AFF"):
+            r, g, b = (int(hexv[1:][i:i + 2], 16) / 255 for i in (0, 2, 4))
+            _, s, v = colorsys.rgb_to_hsv(r, g, b)
+            self.assertLessEqual(s, 0.62, f"{hexv} is saturated {s:.2f}: that is paint")
+            self.assertGreaterEqual(v, 0.85, f"{hexv} is dark at {v:.2f}: light is bright")
+
+    def test_spectrum_starts_at_cyan_not_violet(self):
+        """The material law names the order: cyan, green, gold, warm pink, violet. Walking
+        the hue circle the other way put violet first and read as a UI theme rather than as
+        a separation."""
+        sys.path.insert(0, str(BUILD.parent))
+        from build_deck import spectrum_from
+        import colorsys
+        second = spectrum_from("#007AFF")[1]
+        r, g, b = (int(second[1:][i:i + 2], 16) / 255 for i in (0, 2, 4))
+        h, _, _ = colorsys.rgb_to_hsv(r, g, b)
+        self.assertTrue(0.40 <= h <= 0.55, f"the second stop is hue {h:.2f}, not a cyan")
+
+    def test_the_glow_surface_gets_ONE_class_attribute(self):
+        """The bug this replaced a test for. Emitting class="fill" class="glowbar" is valid
+        HTML that parses, logs nothing, and inspects fine, and the browser silently keeps the
+        first and drops the second, so the pools were painted onto an element with no
+        positioning context. A duplicate attribute has to be asserted against directly
+        because nothing else complains."""
+        r, p = run(dict(MIN, glow=True), palette=PAL)
+        t = p.read_text()
+        fill = [l for l in t.splitlines() if 'class="fill' in l][0]
+        self.assertEqual(fill.count("class="), 1, f"two class attributes: {fill.strip()}")
+        self.assertIn('class="fill glowbar"', fill)
+        self.assertIn("<i></i><i></i><i></i><i></i>", fill)
+
+    def test_pools_are_NOT_screen_blended(self):
+        """screen ADDS light, so a pale hue over a saturated blue goes white and the colour
+        disappears. That is what 'where are the rainbow colors' was looking at."""
+        r, p = run(dict(MIN, glow=True), palette=PAL)
+        self.assertNotIn("mix-blend-mode:screen", p.read_text())
+
+    def test_pool_hues_are_actually_chromatic(self):
+        """The pools use a higher saturation than the calm set, because a small drifting
+        shape needs more chroma to read than a large calm surface does."""
+        sys.path.insert(0, str(BUILD.parent))
+        from build_deck import spectrum_from
+        import colorsys
+        for hexv in spectrum_from("#007AFF", sat=0.88):
+            r_, g_, b_ = (int(hexv[1:][i:i + 2], 16) / 255 for i in (0, 2, 4))
+            _, s, _ = colorsys.rgb_to_hsv(r_, g_, b_)
+            self.assertGreaterEqual(s, 0.7, f"{hexv} at {s:.2f} will not read as colour")
+
+    def test_the_four_pools_take_four_different_paths(self):
+        """One shared keyframe at four speeds is a procession, which the eye reassembles into
+        exactly the ordered sweep this design exists to avoid."""
+        r, p = run(dict(MIN, glow=True), palette=PAL)
+        t = p.read_text()
+        import re
+        paths = {m: re.search(r"@keyframes " + m + r"\{(.*?)\}\n", t, re.S)
+                 for m in ("drift1", "drift2", "drift3", "drift4")}
+        bodies = [v.group(1) for v in paths.values() if v]
+        self.assertEqual(len(bodies), 4)
+        self.assertEqual(len(set(bodies)), 4, "two pools share a path")
+
+    def test_reduced_motion_keeps_the_colour_and_drops_the_motion(self):
+        """Removing the gradient as well would take the brand out of the chrome for a reader
+        who asked only not to be moved at."""
+        r, p = run(dict(MIN, glow=True), palette=PAL)
+        t = p.read_text()
+        i = t.find("@media(prefers-reduced-motion:reduce){\n  .glowbar")
+        self.assertGreater(i, 0, "no reduced-motion override for the glow")
+        block = t[i:i + 420]
+        self.assertIn("animation:none", block)
+        self.assertIn("opacity:.5", block)      # parked mid-drift, still coloured
+        self.assertNotIn("display:none", block)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

@@ -51,6 +51,39 @@ KINDS = {
 COMMON = {"kind", "id", "notes"}
 
 
+def spectrum_from(live_hex: str, n: int = 7, sat: float = 0.52) -> list[str]:
+    """The spectrum a core colour separates INTO, derived rather than picked.
+
+    THIS IS THE CANON RULE EXPRESSED AS CODE. `canon/craft/palette.json` says the blue is the
+    core and the rainbow is what the blue becomes as it leaves, and that the separation is
+    faint INSIDE the object and complete OUTSIDE it. UI chrome is light that has left, so it
+    takes the saturated end.
+
+    So the stops are the live token's own saturation and value, walked around the hue circle
+    in the order the mark's material law names: cyan, green, gold, warm pink, violet. Nothing
+    is typed, which matters because a hand-picked rainbow would be a second definition of the
+    brand's spectrum sitting next to the measured one and free to disagree with it.
+    """
+    import colorsys
+    r, g, b = (int(live_hex.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    # LIGHT, NOT PAINT, and the first attempt got this wrong in a way worth recording. The
+    # live token is fully saturated, so rotating its hue at that saturation produced neon
+    # (#FF14C8, #FFF314): rainbow confetti, the exact failure canon warns against in its own
+    # words, "accents are enough ... it never has to be loud". Dropping saturation and
+    # holding value high is what makes a hue read as something EMITTING rather than painted.
+    s = s * sat
+    out = []
+    for k in range(n):
+        # BACKWARD from the blue, which is the order the material law names: cyan, green,
+        # gold, warm pink, violet. Forward put violet first and read as a UI theme rather
+        # than as a separation.
+        hh = (h - k / n) % 1.0
+        rr, gg, bb = colorsys.hsv_to_rgb(hh, s, v)
+        out.append("#%02X%02X%02X" % (round(rr * 255), round(gg * 255), round(bb * 255)))
+    return out
+
+
 def esc(s) -> str:
     return html.escape(str(s), quote=True)
 
@@ -207,6 +240,106 @@ def main() -> None:
     if theme:
         css += "\n:root{" + "".join(f"--{k}:{v};" for k, v in theme.items()) + "}\n"
 
+    # THE GLOW, opt-in per deck and OFF by default. A universe whose canon has no glow law
+    # must not inherit a rainbow chrome from a shared shell, so this is a deck's declaration
+    # rather than a shell default.
+    glow_note = "chrome: flat accent"
+    if deck.get("glow"):
+        live = theme.get("live", "#007AFF")
+        stops = spectrum_from(live)
+        # The core first, then the separation. On the progress and scrub bars the gradient
+        # spans the FULL width while the fill reveals it, so the further the bar has
+        # travelled the more of what it was carrying is visible. That is the canon rule
+        # doing a job rather than decorating one.
+        c = stops                       # cyan, green, gold, warm pink, magenta, violet
+        # THE POOLS NEED MORE CHROMA THAN THE CALM SET, and this is the second thing the
+        # first attempt got wrong. They were drawn at the tempered saturation AND composited
+        # with mix-blend-mode:screen, which ADDS light: a pale hue screened over a saturated
+        # blue goes white, so the effect read as white blooms and the colour was invisible.
+        # Gary, looking at it: "Where are the rainbow colors". Normal blending, real chroma.
+        pool = spectrum_from(live, sat=0.88)
+        css += f"""
+/* --- THE FREEDOM GLOW ON THE CHROME. Derived from the live token, never typed. ---
+ *
+ * NO ORDERED SPECTRUM, AND THAT IS THE WHOLE DESIGN. The first version was a left-to-right
+ * rainbow ramp, which reads as a FLAG however the hues are tuned, because an ordered
+ * spectrum band is flag semantics rather than a colour choice. Gary: "I don't want it to
+ * just be left right rainbow I want it animated organically like color flowing unexpectedly
+ * like energy pulsing."
+ *
+ * So the bar is BLUE, and colour BLOOMS THROUGH IT. Four soft radial pools, each a single
+ * hue, drifting across the bar on four unrelated periods (13s, 17s, 23s, 29s) while their
+ * opacity swells on four more. Coprime periods mean the combination does not visibly repeat,
+ * which is what makes it read as energy rather than as a loop: no two passes look the same.
+ *
+ * This is also the canon law rather than a liberty taken with it: the blue is the core and
+ * the rainbow is what the blue becomes AS IT LEAVES, so colour appearing out of a blue
+ * ground is the argument, and colour arranged in a row beside it is not.
+ *
+ * Everything animates transform and opacity only, so it composites and costs a phone nothing. */
+.glowbar{{position:relative;overflow:hidden;background:{live}}}
+.glowbar > i{{position:absolute;top:-300%;height:700%;width:46%;border-radius:50%;
+  filter:blur(3px);opacity:0;will-change:transform,opacity}}
+.glowbar > i:nth-child(1){{background:radial-gradient(closest-side,{pool[1]},transparent 62%);
+  animation:drift1 13s ease-in-out infinite,swell 7s ease-in-out infinite}}
+.glowbar > i:nth-child(2){{background:radial-gradient(closest-side,{pool[3]},transparent 62%);
+  animation:drift2 17s ease-in-out infinite,swell 11s ease-in-out infinite -3s}}
+.glowbar > i:nth-child(3){{background:radial-gradient(closest-side,{pool[5]},transparent 62%);
+  animation:drift3 23s ease-in-out infinite,swell 9s ease-in-out infinite -5s}}
+.glowbar > i:nth-child(4){{background:radial-gradient(closest-side,{pool[2]},transparent 62%);
+  animation:drift4 29s ease-in-out infinite,swell 13s ease-in-out infinite -8s}}
+/* Each pool takes a DIFFERENT PATH, and two of them run the other way. A single shared
+ * keyframe would put every pool on the same journey at different speeds, which the eye
+ * reassembles into a procession. */
+@keyframes drift1{{0%{{transform:translateX(-40%) scaleX(1)}}
+  50%{{transform:translateX(190%) scaleX(1.5)}}100%{{transform:translateX(-40%) scaleX(1)}}}}
+@keyframes drift2{{0%{{transform:translateX(230%) scaleX(1.3)}}
+  50%{{transform:translateX(10%) scaleX(.8)}}100%{{transform:translateX(230%) scaleX(1.3)}}}}
+@keyframes drift3{{0%{{transform:translateX(60%) scaleX(.7)}}
+  35%{{transform:translateX(250%) scaleX(1.2)}}70%{{transform:translateX(-30%) scaleX(1.6)}}
+  100%{{transform:translateX(60%) scaleX(.7)}}}}
+@keyframes drift4{{0%{{transform:translateX(150%) scaleX(1.1)}}
+  40%{{transform:translateX(-20%) scaleX(1.4)}}100%{{transform:translateX(150%) scaleX(1.1)}}}}
+/* Never fully on and never fully off: a pool that reaches zero reads as a light switching
+ * rather than as energy moving through. */
+@keyframes swell{{0%,100%{{opacity:.30}}50%{{opacity:1}}}}
+
+#scrub .fill{{border-radius:3px}}
+
+/* The thumb is the one element the reader's own thumb sits on, so it is where aliveness is
+ * felt rather than watched. White core, blue halo, breathing. */
+#scrub .thumb{{background:#fff;animation:breathe 3.2s ease-in-out infinite}}
+@keyframes breathe{{
+  0%,100%{{box-shadow:0 0 0 3px rgba(255,255,255,.20),0 0 9px 3px rgba(0,122,255,.28)}}
+  50%{{box-shadow:0 0 0 4px rgba(255,255,255,.28),0 0 15px 5px rgba(0,122,255,.42)}}}}
+#scrub.seeking .thumb{{animation:none;
+  box-shadow:0 0 0 4px rgba(255,255,255,.32),0 0 18px 7px rgba(0,122,255,.46)}}
+
+/* The active dot: a white core with colour contained at its edge, turning slowly. Same
+ * structure as the mark, where the white holds the middle and colour hugs the inside. */
+.dot{{position:relative;isolation:isolate}}
+.dot.on{{background:#fff}}
+.dot.on::after{{content:"";position:absolute;inset:-3.5px;border-radius:50%;z-index:-1;
+  background:conic-gradient({", ".join(c + [c[0]])});animation:turn 9s linear infinite;
+  opacity:.8}}
+@keyframes turn{{to{{transform:rotate(360deg)}}}}
+
+.kicker{{color:{live}}}
+.nav button:active{{box-shadow:0 0 12px 2px rgba(0,122,255,.35)}}
+
+/* REDUCED MOTION KEEPS THE COLOUR AND DROPS THE MOTION. Removing the colour too would take
+ * the brand out of the chrome for a reader who asked only not to be moved at, so the pools
+ * are parked mid-drift at a readable opacity instead of hidden. */
+@media(prefers-reduced-motion:reduce){{
+  .glowbar > i{{animation:none;opacity:.5}}
+  .glowbar > i:nth-child(1){{transform:translateX(0%)}}
+  .glowbar > i:nth-child(2){{transform:translateX(70%)}}
+  .glowbar > i:nth-child(3){{transform:translateX(140%)}}
+  .glowbar > i:nth-child(4){{transform:translateX(210%)}}
+  .dot.on::after,#scrub .thumb{{animation:none}}}}
+"""
+        glow_note = f"chrome: the Freedom Glow, derived from live {live} -> {len(stops)} stops"
+
     if a.assets:
         src = pathlib.Path(a.assets).expanduser()
         for p in sorted(src.rglob("*")):
@@ -216,6 +349,10 @@ def main() -> None:
                 shutil.copy2(p, dst)
 
     sections = "\n".join(render(sl, n) for n, sl in enumerate(deck["slides"], 1))
+    # The drifting pools are DOM rather than background layers, because four independent
+    # transforms cannot be expressed as one element's background.
+    glowcls = " glowbar" if deck.get("glow") else ""
+    pools = "<i></i><i></i><i></i><i></i>" if deck.get("glow") else ""
     title = esc(deck.get("title", "Deck"))
     summary = esc(deck.get("summary", ""))
     doc = f"""<!doctype html>
@@ -229,19 +366,20 @@ def main() -> None:
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{summary}">
 <meta name="theme-color" content="{theme.get('ink', '#1E1B19')}">
-<!-- Built by abu make-a-playable-deck. {esc(theme_note)} -->
+<!-- Built by abu make-a-playable-deck. {esc(theme_note)}. {esc(glow_note)} -->
 <style>
 {css}</style>
 </head>
 <body>
-<div id="bar"></div><div id="no"></div>
+<div id="no"></div>
 <div id="stage">
 {sections}
 </div>
 <footer>
   <div id="dots"></div>
   <div id="scrub" role="slider" aria-label="Slide" aria-valuemin="1"
-       aria-valuemax="{len(deck['slides'])}"><div class="track"></div><div class="fill"></div>
+       aria-valuemax="{len(deck['slides'])}"><div class="track"></div>
+       <div class="fill{glowcls}">{pools}</div>
        <div class="thumb"></div><div class="pill"></div></div>
   <div class="nav"><button id="prev" aria-label="Previous">&#8249;</button>
        <button id="next" aria-label="Next">&#8250;</button></div>
@@ -254,6 +392,7 @@ def main() -> None:
     (out / "index.html").write_text(doc)
     print(f"[deck] {len(deck['slides'])} slides -> {out / 'index.html'}")
     print(f"[deck] theme: {theme_note}")
+    print(f"[deck] {glow_note}")
     print("[deck] OPEN IT ON A PHONE BEFORE SENDING IT. The fit is measured at run time "
           "against a real viewport, so a desktop window proves almost nothing about the "
           "device most people will read it on.")

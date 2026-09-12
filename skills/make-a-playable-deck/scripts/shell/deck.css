@@ -73,7 +73,14 @@ blockquote cite{display:block;font-family:var(--sans);font-style:normal;font-siz
 table{width:100%;border-collapse:collapse;font-size:clamp(13px,1.8vw,16px)}
 th,td{text-align:left;padding:.55em .7em;border-bottom:1px solid var(--edge)}
 th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
-td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Tabular figures so a column of numbers aligns, but NOT nowrap. The generator cannot know
+ * which columns are numeric, so nowrap applied to every non-first column forced the prose
+ * columns wide and crushed the first one on a phone. A wrapped figure beats a crushed label. */
+td.n{font-variant-numeric:tabular-nums}
+/* A three-column table on a 390px screen has about 110px per column, so the first column
+ * needs a floor or its words break one-per-line. */
+@media(max-width:640px){th:first-child,td:first-child{min-width:8.5em}
+  th,td{padding:.5em .45em}}
 tr.pick td{color:#fff}
 tr.pick td:first-child::before{content:"→ ";color:var(--live)}
 
@@ -81,26 +88,29 @@ ul,ol{margin:0 0 .9em;padding-left:1.15em}
 li{font-size:clamp(15px,2vw,19px);line-height:1.5;margin-bottom:.45em;max-width:64ch}
 
 /* ---- chrome ---- */
-#bar{position:fixed;top:0;left:0;height:2px;background:var(--live);z-index:6;transition:width .3s ease}
+/* The SCRUB is the only progress surface. A passive bar at the top said the same thing the
+ * scrub already said, and the scrub can also be dragged, so the bar was a second answer to
+ * a question nobody had asked twice. Gary: "Why do we need two progress bars". */
+#bar{display:none}
 #no{position:fixed;top:12px;right:16px;font-size:12px;letter-spacing:.08em;color:var(--muted);z-index:6;
   font-variant-numeric:tabular-nums}
 footer{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 14px 14px;
   background:linear-gradient(to top,var(--ink) 62%,transparent);
   display:flex;align-items:center;gap:12px}
-#dots{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+#dots{display:none}
 .dot{width:7px;height:7px;border-radius:50%;border:0;padding:0;cursor:pointer;
   background:rgba(240,236,229,.24);transition:background .2s,transform .2s}
 .dot.on{background:var(--live);transform:scale(1.35)}
 /* Dots stop being aimable well before they stop fitting, so the phone gets the scrub bar
  * and nothing else. Hiding them is what makes room for a thumb-sized target. */
-@media(max-width:640px){#dots{display:none}}
 
-#scrub{display:none;position:relative;flex:1;height:34px;touch-action:none;cursor:pointer}
-@media(max-width:640px){#scrub{display:block}}
-#scrub .track{position:absolute;top:16px;left:0;right:0;height:3px;border-radius:2px;
-  background:rgba(240,236,229,.2)}
-#scrub .fill{position:absolute;top:16px;left:0;height:3px;border-radius:2px;background:var(--live)}
-#scrub .thumb{position:absolute;top:11px;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;
+
+#scrub{display:block;position:relative;flex:1;height:34px;touch-action:none;cursor:pointer}
+
+#scrub .track{position:absolute;top:15px;left:0;right:0;height:5px;border-radius:3px;
+  background:rgba(240,236,229,.16)}
+#scrub .fill{position:absolute;top:15px;left:0;height:5px;border-radius:3px;background:var(--live)}
+#scrub .thumb{position:absolute;top:10px;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;
   background:var(--live);box-shadow:0 0 0 5px rgba(0,122,255,.18)}
 #scrub .pill{position:absolute;bottom:34px;transform:translateX(-50%);white-space:nowrap;
   font-size:11px;padding:4px 9px;border-radius:11px;background:var(--cream);color:var(--ink);
