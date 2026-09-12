@@ -1301,3 +1301,48 @@ Two gaps, in order of cost:
 
 Not landed today: it is an engine change and the day was spent putting the rule where it
 could be asserted at all. The universe-local copy is the spec to lift.
+
+## Exploring the base of a universe has no verb, so the framework hands you a wall first
+
+**Found 2026-09-12**, on Continental Works' second go at its brand register. Gary, mid-run,
+twice: *"when just beginning to explore the base of an abu we need to improve the vrbs for
+that bro. i want a fan out of options and then to pick a direction to fan out more and keep
+going until im super happy with some golden references - THEN go from there"*, and then, on
+being handed the one artifact the framework's bootstrap path actually produces: *"anchor
+candidate is only so helpful without seeing people in it bro"*.
+
+**Both halves are one gap.** `create-style-pack` requires `--anchor` to be a file on disk and
+SPEC §4.7 defines a pack as 3-8 blessed refs, so the only sanctioned first move on a new
+register is to mint a content-neutral anchor. The neutrality rule is correct and must not be
+relaxed: the anchor is passed first on every render and whatever it depicts leaks, which is
+why `continental-works-ink`'s anchor is one open cream stroke on an empty field. But it means
+the first thing a human is asked to judge is a picture of nothing, and **a register cannot be
+judged on an empty plate.** You find out whether a register works by looking at a person in
+it. The run proved this the expensive way: the anchor candidate came back as warm plaster with
+window-bar shadows and a blue fall-off, which is a competent photograph that answers almost
+nothing about whether the register reads.
+
+**So minting an anchor and exploring a base are different jobs and the framework only has the
+second.** The missing loop, in his words and order: fan out several candidates WITH PEOPLE IN
+THEM, pick a direction, fan out again from that, repeat until blessed references exist, and
+only THEN derive the neutral anchor from the blessed direction rather than guessing it first.
+Deriving it last is also strictly better: an anchor extracted from a direction somebody has
+approved cannot smuggle in a look nobody chose.
+
+**The next invocation that needs it:** Continental Works' film-blue register, immediately.
+Its anchor is `null` on purpose and lint correctly refuses every render until one is blessed,
+so the universe is currently deadlocked behind exactly the artifact that cannot answer the
+question being asked.
+
+**The shape that would fit.** An `explore-base` verb (or a mode on `create-style-pack`) that
+takes a direction in prose plus a cast reference, emits N candidates in one fan, records them
+as candidates rather than refs, and takes a pick to fan from again, keeping the lineage so the
+blessed set carries its own derivation. Two constraints it has to respect: candidates are not
+refs and must never be reachable as one without a human blessing, and nothing it emits may be
+measured for a token, because a provisional value that has been rendered once is how a token
+gets decided by accident.
+
+**Why it is still open:** Gary's call, same run: *"get ready to evolve abu LATER."* Recorded
+here rather than built, because the brand work in flight needs the loop more than the
+framework needs the verb today, and the hand-rolled version of it is the evidence the verb
+should be designed from.
