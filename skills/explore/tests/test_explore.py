@@ -54,5 +54,51 @@ class ExploreEntityPassthrough(unittest.TestCase):
         self.assertNotIn("--no-wardrobe", r.stdout)
 
 
+
+class ContactSheetIsEmittedForEveryFanOut(unittest.TestCase):
+    """A fan-out must hand back a labelled contact sheet, not a pile of files.
+
+    Earned 2026-09-12. Gary, after a dozen rounds of being shown variants one at a time:
+    "Moving forward show me contact sheets when there are multiple images to review so I have
+    images ids". A fan-out exists to be chosen between, and choosing means seeing the variants
+    together with their ids attached. Sent individually, the operator holds the differences in
+    their head and has no way to name a pick except by describing the picture.
+
+    It is emitted by the script rather than by the caller because a step that depends on an agent
+    remembering happens most of the time, and the comparison IS the point of the verb.
+    """
+
+    SRC = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "explore.py"
+
+    def test_it_calls_the_framework_contact_sheet_verb(self):
+        src = self.SRC.read_text()
+        self.assertIn("contact_sheet.py", src,
+                      "explore.py must build its sheet with render-readback's contact_sheet verb "
+                      "rather than hand-rolling a montage")
+
+    def test_the_cells_are_labelled_so_a_pick_is_one_word(self):
+        src = self.SRC.read_text()
+        self.assertIn('"--label"', src,
+                      "the sheet must be labelled; unlabelled cells give the operator no id to "
+                      "name a pick with, which is the whole reason this exists")
+
+    def test_a_single_roll_gets_no_sheet(self):
+        """One image is not a comparison, and a one-cell sheet is noise."""
+        src = self.SRC.read_text()
+        self.assertIn("len(made) > 1", src,
+                      "a sheet should only be built when there is more than one roll to compare")
+
+    def test_a_failed_sheet_never_fails_the_run(self):
+        """The rolls are the deliverable and they cost money. A montage is a convenience."""
+        src = self.SRC.read_text()
+        self.assertIn("the rolls are unaffected", src,
+                      "a contact-sheet failure must be reported and must not abort or fail the "
+                      "run, because the renders already exist and are not reproducible")
+
+    def test_it_only_sheets_rolls_that_actually_landed(self):
+        src = self.SRC.read_text()
+        self.assertIn('(out / f"{vid}.png").exists()', src,
+                      "a failed variant has no png; sheeting it would crash the sheet builder")
+
 if __name__ == "__main__":
     unittest.main()

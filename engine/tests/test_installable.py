@@ -77,10 +77,6 @@ class TestNoDeadCitations(unittest.TestCase):
                              ROOT / "providers" / p / "generate_image.py")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestPortability(unittest.TestCase):
     """Nothing a stranger installs may point into the author's home directory."""
 
@@ -125,3 +121,7 @@ class TestPortability(unittest.TestCase):
         status = importlib.import_module("status")
         deep = ROOT / "skills" / "abu" / "scripts" / "status.py"
         self.assertEqual(status._abu_root(deep), ROOT)
+
+
+if __name__ == "__main__":
+    unittest.main()

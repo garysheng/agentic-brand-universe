@@ -1049,10 +1049,6 @@ class TestArchivedRefusal(unittest.TestCase):
         self.assertNotIn("ARCHIVED", r.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 # ── ADDRESSING GUARD ──────────────────────────────────────────────────────
 # Earned 2026-08-01 on The Power of Obeying, three times in one book: a
 # congregation seated facing the back wall of its own church (spreads 24, 26),
@@ -1269,3 +1265,7 @@ class CanonDeliveredSelfCheck(unittest.TestCase):
         p = self.root / "render-spec.json"; p.write_text(json.dumps(spec))
         r = run(self.root, p)
         self.assertEqual(r.returncode, 0, r.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

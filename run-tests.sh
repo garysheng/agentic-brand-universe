@@ -85,6 +85,37 @@ else
   echo "=== docs === generated blocks current"
 fi
 
+# --- A TEST THAT NEVER RAN IS WORSE THAN NO TEST, because the suite reports OK either way.
+#
+# Earned 2026-09-12. Five tests were appended to skills/explore/tests/test_explore.py, which
+# carries `if __name__ == "__main__": unittest.main()` partway down the file. Python runs top to
+# bottom, so main() fired before the new class was defined: the tests never collected, the file
+# reported "Ran 4 tests ... OK", and this runner added 4 to the total and printed green. The only
+# reason it was caught is that the count was expected to be 9.
+#
+# The count check above cannot see this. It asks whether a suite produced a number, not whether
+# the number covers every test in the file. So the shape gets refused directly: no test file may
+# define anything after its main() guard, which is the one arrangement that hides tests.
+echo
+guard_fail=0
+while IFS= read -r f; do
+  g=$(grep -n '^if __name__ == "__main__":' "$f" | head -1 | cut -d: -f1)
+  [ -z "$g" ] && continue
+  # anything that looks like a definition after the guard line
+  after=$(awk -v g="$g" 'NR>g && /^(class|def) /' "$f")
+  if [ -n "$after" ]; then
+    echo "=== test-guard === $f DEFINES CODE AFTER ITS main() GUARD; those tests never run:"
+    printf '%s\n' "$after" | sed 's/^/      /'
+    echo "      fix: move the \`if __name__ == \"__main__\"\` block to the END of the file"
+    guard_fail=1
+  fi
+done < <(find skills providers engine -name "test_*.py" -not -path "*/__pycache__/*" 2>/dev/null)
+if [ $guard_fail -eq 0 ]; then
+  echo "=== test-guard === no test file hides tests after its main() guard"
+else
+  fail=1
+fi
+
 echo
 echo "$files skill test file(s) discovered, $total tests total"
 if [ $fail -eq 0 ]; then echo "ALL GREEN"; else echo "FAILURES ABOVE"; fi

@@ -130,10 +130,6 @@ class DuplicateDossierIsRefused(unittest.TestCase):
         self.assertEqual([p for p in e.validate("none-required") if "render" in p.lower()], [])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ContractShapedSheets(unittest.TestCase):
     """A LOCKED SETTING WAS UNREFERENCEABLE, and nothing said so.
 
@@ -191,3 +187,7 @@ class ContractShapedSheets(unittest.TestCase):
         e = self.ent(self.setting(turnaround="reference/a-room/desk.png",
                                   emptyPlates=["reference/a-room/livingroom.png"]))
         self.assertEqual(e.required_sheet_keys(), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

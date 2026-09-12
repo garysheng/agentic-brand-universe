@@ -112,6 +112,34 @@ def main():
 
     print(f"\n[explore] staged in {out}")
     print("[explore] every roll is KEPT. A render is not reproducible; never delete a candidate.")
+
+    # A CONTACT SHEET, ALWAYS, WHENEVER THERE IS MORE THAN ONE ROLL TO COMPARE.
+    #
+    # A fan-out exists to be chosen between, and comparing it means seeing the variants TOGETHER
+    # with their ids attached. Handing them over one at a time makes the operator hold the
+    # differences in their head and gives them no way to name a pick except by describing it.
+    #
+    # It is emitted here rather than left to the caller because a step that depends on an agent
+    # remembering is a step that happens most of the time, and the whole point of a fan-out is
+    # the comparison. Gary, 2026-09-12: "Moving forward show me contact sheets when there are
+    # multiple images to review so I have images ids".
+    #
+    # Labelled on purpose: the cells carry the variant ids, so a pick is one word rather than a
+    # description of a picture.
+    made = [vid for vid, _ in jobs if (out / f"{vid}.png").exists()]
+    if len(made) > 1:
+        sheet = out / "CONTACT-SHEET.png"
+        cs = pathlib.Path(__file__).resolve().parents[2] / "render-readback" / "scripts" / "contact_sheet.py"
+        if cs.exists():
+            cols = min(len(made), 3)
+            rc = subprocess.call(["python3", str(cs), *[str(out / f"{v}.png") for v in made],
+                                  "--out", str(sheet), "--cols", str(cols), "--label"])
+            # A failed sheet never fails the run: the rolls are the deliverable and they exist.
+            print(f"[explore] contact sheet: {sheet}" if rc == 0 and sheet.exists()
+                  else "[explore] contact sheet FAILED to build; the rolls are unaffected")
+        else:
+            print(f"[explore] no contact sheet: {cs} not found")
+
     if failed:
         print(f"[explore] {len(failed)} failed, see <id>.log: {', '.join(failed)}")
         sys.exit(1)

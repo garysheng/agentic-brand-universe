@@ -334,10 +334,6 @@ class TestLockShotIntoAnAltLook(unittest.TestCase):
                          ["face-neutral", "forward-fullbody"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class PromptsSkeletonTest(unittest.TestCase):
     """add-entity must emit the prompts.md that shoot-references reads as input.
 
@@ -550,3 +546,7 @@ class RealPersonCoverageTest(unittest.TestCase):
         rp = self._rp(); rp["structured"]["realPerson"]["recurringProps"] = []
         rp["structured"]["sheets"].pop("chest-up")
         self.assertEqual(real_person_gaps(rp), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

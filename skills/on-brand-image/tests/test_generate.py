@@ -1129,10 +1129,6 @@ class TestSuiteNeverCallsAProvider(GenerateCase):
                              f"generate.py touches {name}; the provider script owns that")
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=1)
-
-
 class ModelDefaultTracksTheAdapter(unittest.TestCase):
     """The wrapper must never carry its own model default.
 
@@ -1178,11 +1174,23 @@ class ModelDefaultTracksTheAdapter(unittest.TestCase):
             if in_doc or s.startswith("#"):
                 continue
             code.append(line)
-        offenders = [l for l in code if re.search(r'["\'](gpt-image-[\d.]|dall-e-)', l)]
+        # THE PROVIDER ID AND THE OLD MODEL NAME ARE THE SAME STRING, "gpt-image-2", and that
+        # collision is the whole reason the original drift was invisible: a reader scanning this
+        # file saw a provider folder name where a stale model default actually sat. So the ban is
+        # on naming a model, not on the literal: lines that hand "gpt-image-2" to
+        # provider_script() or take it as a `provider=` default are naming the ADAPTER and are
+        # correct. Anything else that names a model version is the defect.
+        def names_a_model(line):
+            if not re.search(r'["\'](gpt-image-[\d.]|dall-e-)', line):
+                return False
+            return not ("provider_script" in line or "provider=" in line)
+
+        offenders = [l for l in code if names_a_model(l)]
         self.assertEqual(
             offenders, [],
-            "an executable line in generate.py names a model version. The adapter is the only "
-            "place a model name belongs:\n  " + "\n  ".join(offenders))
+            "an executable line in generate.py names a MODEL version. The adapter is the only "
+            "place a model name belongs. (Naming the PROVIDER id is fine and is exempted; see "
+            "names_a_model.)\n  " + "\n  ".join(offenders))
 
     def test_resolver_agrees_with_the_adapter_it_reads(self):
         sys.path.insert(0, str(self.SRC.parent))
@@ -1206,3 +1214,7 @@ class ModelDefaultTracksTheAdapter(unittest.TestCase):
         self.assertIn('"model": model', src, "the recipe must record the RESOLVED model")
         self.assertIn('"modelSource"', src,
                       "the recipe should say whether the model was explicit or inherited")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=1)

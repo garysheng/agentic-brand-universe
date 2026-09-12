@@ -587,10 +587,6 @@ class TestAssetExistence(unittest.TestCase):
         self.assertTrue(any("emptyPlates" in p and "NOT ON DISK" in p for p in problems), problems)
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
-
-
 # --- SPEC v0.13 §4.11: deterministic generators -----------------------------
 
 class GeneratorTests(unittest.TestCase):
@@ -1069,3 +1065,7 @@ class TestRenderBlockIsValidated(unittest.TestCase):
     def test_well_formed_render_block_passes(self):
         p = self._entity({"always": "a", "poses": {"master": {"bake": "b", "sheets": ["master"]}}}).validate()
         self.assertEqual([x for x in p if "render" in x], [], p)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

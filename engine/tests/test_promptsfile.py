@@ -199,10 +199,6 @@ class ScaffoldsAMissingPromptsFile(unittest.TestCase):
         self.assertNotIn("a-doctrine", r["scaffolded"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ProseSectionsAreNotShots(unittest.TestCase):
     """A `##` heading that names no output is PROSE, not a shot.
 
@@ -249,3 +245,7 @@ The real shot.
         got = self.parse(self.MD)
         shots = got["prompts"] if isinstance(got, dict) and "prompts" in got else got
         self.assertNotIn("Prose explaining", shots["master"])
+
+
+if __name__ == "__main__":
+    unittest.main()

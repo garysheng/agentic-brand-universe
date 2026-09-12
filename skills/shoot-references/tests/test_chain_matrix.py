@@ -1184,10 +1184,6 @@ class TestStarTopology(unittest.TestCase):
         self.assertEqual([r["shot"] for r in rec["codeDrawnRefs"]], ["blueprint"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestShootSeedCodeDrawn(unittest.TestCase):
     """A CODE-DRAWN plate must not block --shoot-seed.
 
@@ -1242,7 +1238,12 @@ class TestShootSeedCodeDrawn(unittest.TestCase):
         self.assertEqual(self._mod().painted_plates_on_disk(root, sheets, "empty-meadow"), [])
 
 
-class StylePackCarriesTheMedium(Base):
+class StylePackCarriesTheMedium(TestDeclaredStylePack):
+    # `Base` when this landed on 2026-08-21, which is not defined anywhere in this file.
+    # It never mattered because the class sat below the module's main() guard and so was
+    # never imported, let alone run. Resolved to TestDeclaredStylePack on 2026-09-12: that
+    # is the only class here defining `_register`, which this class calls, and it also sets
+    # self.root. Found by the test-guard check in run-tests.sh.
     """A Style Pack must contribute MEDIUM WORDS to the prompt, never its slug.
 
     `nof-soft-painterly` is a filesystem name. To an image model it names no medium
@@ -1271,3 +1272,7 @@ class StylePackCarriesTheMedium(Base):
         self._pack()  # name but no styleLine
         r = run(self.root, "--register", "inky", "--print-plan")
         self.assertIn("register=Inky", r.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()
