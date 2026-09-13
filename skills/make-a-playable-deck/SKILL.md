@@ -7,7 +7,8 @@ description: Build a mobile-friendly PLAYABLE slide deck from slides declared as
 
 ```bash
 python3 skills/make-a-playable-deck/scripts/build_deck.py <deck.json> \
-    --out <dir> [--palette <universe>/canon/craft/palette.json] [--assets <dir>]
+    --out <dir> [--palette <universe>/canon/craft/palette.json] [--assets <dir>] \
+    [--repo-root <universe>]
 ```
 
 **A deck is DATA plus a shell.** You write `deck.json`; the shell is the same every time and
@@ -31,7 +32,7 @@ working code.
 
 ## The slide kinds
 
-Nine, and they are a hypothesis rather than a vocabulary. Unknown keys are **refused by name**,
+Ten, and they are a hypothesis rather than a vocabulary. Unknown keys are **refused by name**,
 because a mistyped key is the one defect a deck cannot show you: the content is simply absent,
 on one slide, and the deck still looks finished.
 
@@ -46,10 +47,13 @@ on one slide, and the deck still looks finished.
 | `chat` | a recreated exchange | `turns: [{from: me\|them, text}]` |
 | `table` | where taste became a number | `columns`, `rows`, `pick` |
 | `list` | a short enumeration | `items`, `ordered` |
+| `handoff` | a prompt the reader takes away | `paste`, `label`, `footnote` |
 
-`**bold**` and `*italic*` work in any text field. Nothing else does, on purpose: a slide is a
-sentence or two, and a markdown parser would let a slide carry headings and tables that the
-kinds exist to decide.
+`**bold**`, `*italic*` and `[text](https://...)` work in any text field. Nothing else does, on
+purpose: a slide is a sentence or two, and a markdown parser would let a slide carry headings
+and tables that the kinds exist to decide. **Links are https only**, and that is the security
+boundary rather than a style rule: `javascript:` and `data:` would otherwise become live
+handlers on a page that escapes everything else it is handed.
 
 ## The method
 
@@ -75,12 +79,74 @@ kinds exist to decide.
 8. **Sending it to a person is a separate, gated act.** Hand the URL to `freedom:send-message`,
    which shows the draft and waits for a human yes. Never send unasked.
 
+## A deck built to be REVIEWED declares a `review` block
+
+A deck is the worst possible artifact to receive feedback on through an agent. The argument is
+in pictures, the pictures are resized copies with invented filenames, and a comment like
+"slide 2, this image feels off" hands the reviewer's agent a caption and nothing else. It
+cannot open the plate, cannot read the prompt that made it, and cannot see which canon rule the
+picture is evidence for, so it either asks the reviewer questions the deck already answered or
+it fills the gap with a plausible guess that reads exactly like a fact.
+
+Declare `review` and the build emits **`llms.txt`** beside the HTML: the deck as an index an
+agent can read, with every image carrying its absolute URL (for an agent holding only the link)
+AND the repo-relative path of the source plate (for an agent holding the repo, which can then
+open the `.recipe.json` beside it and read the exact prompt that made the picture).
+
+```json
+"review": {
+  "baseUrl": "https://<where-it-is-served>",
+  "repo": "org/universe",
+  "clone": "git clone git@github.com:org/universe.git",
+  "assetRoot": "works/<work>/assets",
+  "author": "who made it", "reviewer": "who is reading it",
+  "boomerang": "BOOMERANG.md",
+  "returns": "one line naming the document that comes back",
+  "protocol": ["how to name a slide", "what kind of comment is useful"],
+  "canon": [{"path": "canon/entities/x.json", "what": "one line"}]
+}
+```
+
+Then every image carries its `source`, beside a single image or inside each `images` entry:
+
+```json
+"source": {
+  "path": "reference/<entity>/<roll>/<plate>.png",
+  "depicts": "what the plate is, in one line",
+  "governs": ["canon/entities/<entity>.json"],
+  "status": "blessed|rejected|superseded|candidate|proof|generated",
+  "note": "anything a reviewer would otherwise have to ask"
+}
+```
+
+**Declaring `review` is declaring that every image is traceable, and the build refuses until
+that is true.** A review file with holes is worse than no review file: the one image with no
+source is the one the reviewer's agent quietly guesses about.
+
+**Pass `--repo-root <universe>` and every `source.path`, every `governs` entry and every
+`review.canon` path is checked to exist.** Paths rot for ordinary reasons: a plate gets
+promoted out of `rejected/`, a roll is renamed, a generator's output folder is cleaned. None of
+those announce themselves, and a dead path is worse than no path, because the agent goes
+looking, finds nothing, and has to decide whether the deck is lying.
+
+Pair it with a `handoff` slide at the end carrying a conforming
+[BOOMERANG.md](https://appliedai.wiki/reference/standards/boomerang-md) prompt, and the review
+becomes one paste for the reviewer instead of a list of instructions they have to follow.
+
 ## Refusals
 
 - A deck with no slides.
 - An unknown `kind`, naming the ones that exist.
 - An unknown key on a known kind, naming the key and what is allowed there.
-- A kind missing its payload (`pair` with no `images`, `table` with no `columns`).
+- An unknown key inside an entry of `images`, or inside a `source`.
+- A kind missing its payload (`pair` with no `images`, `table` with no `columns`,
+  `handoff` with no `paste`).
+- A `source` whose `status` is not one of the known six.
+- `review` with no `baseUrl`, since every URL it emits is absolute.
+- `review` declared while any image lacks a `source` with both `path` and `depicts`.
+- `review.boomerang` naming a file that does not exist beside the deck, rather than shipping a
+  dead link on the one slide whose whole job is to be pasted.
+- With `--repo-root`, any `source.path`, `governs` or `review.canon` path that does not resolve.
 
 ## Where the work goes
 

@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import re
 import pathlib
 import shutil
 import sys
@@ -38,17 +39,27 @@ HERE = pathlib.Path(__file__).resolve().parent
 SHELL = HERE / "shell"
 
 KINDS = {
-    "cover":     {"kicker", "heading", "lede", "image", "caption"},
+    # `source` sits beside a SINGLE image; `pair` carries one per entry in `images`.
+    "cover":     {"kicker", "heading", "lede", "image", "caption", "source"},
     "statement": {"kicker", "heading", "body"},
-    "image":     {"kicker", "heading", "image", "caption", "plain", "body"},
+    "image":     {"kicker", "heading", "image", "caption", "plain", "body", "source"},
     "pair":      {"kicker", "heading", "images", "body"},
-    "split":     {"kicker", "heading", "body", "image", "caption"},
+    "split":     {"kicker", "heading", "body", "image", "caption", "source"},
     "quote":     {"kicker", "quote", "who", "body"},
     "chat":      {"kicker", "heading", "turns", "body"},
     "table":     {"kicker", "heading", "columns", "rows", "pick", "body"},
     "list":      {"kicker", "heading", "items", "body", "ordered"},
+    "handoff":   {"kicker", "heading", "body", "paste", "label", "footnote"},
 }
 COMMON = {"kind", "id", "notes", "ground"}
+
+# A slide's image may carry its SOURCE, which is what makes a deck reviewable by an agent
+# rather than only readable by a person. See emit_review().
+IMAGE_KEYS = {"image", "caption", "plain", "source"}
+SOURCE_KEYS = {"path", "depicts", "governs", "status", "note"}
+STATUSES = {"blessed", "rejected", "superseded", "candidate", "proof", "generated"}
+REVIEW_KEYS = {"baseUrl", "repo", "clone", "repoName", "reviewer", "author", "returns",
+               "protocol", "canon", "boomerang", "assetRoot"}
 
 
 def spectrum_depth(live_hex: str, n: int = 7) -> list[str]:
@@ -107,14 +118,29 @@ def esc(s) -> str:
     return html.escape(str(s), quote=True)
 
 
+# `[text](https://…)` and NOTHING ELSE that looks like a link.
+#
+# HTTPS ONLY, and that is the security boundary rather than a style preference: `[x](javascript:
+# …)` in a slide would otherwise become a live script handler on a page that escapes everything
+# else it is given. The pattern also cannot match a quote, because escaping runs first and turns
+# one into `&quot;`, so nothing can break out of the href attribute.
+LINK = re.compile(r"\[([^\]\[]+)\]\((https://[^\s)]+)\)")
+
+
 def rich(s) -> str:
-    """The one formatting affordance: **bold** and *italic*, so a slide can stress a word.
+    """The one formatting affordance: **bold**, *italic*, and an https link.
 
     Deliberately not a markdown library. A deck slide is a sentence or two, and pulling in a
     parser would let a slide carry headings, lists and tables that the slide KINDS are there
     to decide. The escape happens first, so no input can inject markup.
+
+    THE LINK CASE WAS ADDED AFTER SHIPPING A SLIDE WITHOUT IT. A `handoff` slide's whole job is
+    to point somewhere, so its footnote named a URL in markdown and rendered as literal
+    brackets on a real page. The shell already styled `a`, which is the tell that links were
+    expected here and simply never wired: a deck that hands off to a standard cannot cite it.
     """
     out = esc(s)
+    out = LINK.sub(r'<a href="\2" target="_blank" rel="noopener">\1</a>', out)
     for mark, tag in (("**", "strong"), ("*", "em")):
         parts = out.split(mark)
         if len(parts) % 2 == 1:                      # balanced pairs only
@@ -189,6 +215,23 @@ def render(sl: dict, n: int) -> str:
         tag = "ol" if sl.get("ordered") else "ul"
         items = "".join(f"<li>{rich(x)}</li>" for x in sl["items"])
         inner = K + head + f"<{tag}>{items}</{tag}>" + paras(sl.get("body"))
+    elif k == "handoff":
+        # NOT a <textarea> and not a link. A reader on a phone needs the text VISIBLE (so they
+        # can see what they are about to run) and copyable in one tap (so they do not have to
+        # select 60 lines with a thumb). The button is progressive: the block is selectable
+        # text with or without JavaScript.
+        pid = f"paste-{n}"
+        # THE BUTTON SITS IN ITS OWN BAR, OUTSIDE THE SCROLLING BLOCK. Absolutely positioned
+        # over the <pre>, it covered whichever line happened to be scrolled into view, which
+        # looked deliberate and hid the text. Bottom padding on the <pre> does not help either:
+        # the padding scrolls with the content, so the gap it reserves is almost never where
+        # the button is.
+        inner = (K + head + paras(sl.get("body"))
+                 + f'<div class="paste"><pre id="{pid}">{esc(sl["paste"])}</pre>'
+                 + f'<div class="pastebar"><button class="copy" type="button" '
+                 + f'data-for="{pid}">{esc(sl.get("label", "Copy"))}</button></div></div>'
+                 + (f'<p class="muted">{rich(sl["footnote"])}</p>'
+                    if sl.get("footnote") else ""))
     else:                                            # unreachable; validate() refuses first
         raise SystemExit(f"slide {n}: unhandled kind {k!r}")
 
@@ -205,6 +248,24 @@ def render(sl: dict, n: int) -> str:
 # exists for an UNKNOWN ground, whose failure is silent.
 GROUNDS = {"cream", "ink"}
 NO_CLASS_GROUNDS = {"ink"}
+
+
+def slide_images(sl: dict) -> list[dict]:
+    """Every image on a slide, in reading order, as dicts carrying its optional `source`.
+
+    ONE traversal, shared by validate() and emit_review(). Two separate walks over the same
+    structure is how a gate ends up checking images the review file never lists, which is the
+    exact failure a review file exists to prevent.
+    """
+    if sl.get("kind") == "pair":
+        return [im for im in (sl.get("images") or []) if isinstance(im, dict)]
+    if sl.get("image"):
+        one = {"image": sl["image"]}
+        for k in ("caption", "plain", "source"):
+            if sl.get(k) is not None:
+                one[k] = sl[k]
+        return [one]
+    return []
 
 
 def validate(deck: dict) -> None:
@@ -234,6 +295,242 @@ def validate(deck: dict) -> None:
                 sys.exit(f"build_deck: slide {n} ({k}) needs {req!r}")
         if k == "table" and "columns" not in sl:
             sys.exit(f"build_deck: slide {n} (table) needs 'columns'")
+        if k == "handoff" and "paste" not in sl:
+            sys.exit(f"build_deck: slide {n} (handoff) needs 'paste'")
+        for im in (sl.get("images") or []):
+            if not isinstance(im, dict) or "image" not in im:
+                sys.exit(f"build_deck: slide {n} (pair) has an entry in 'images' that is not "
+                         f"an object with an 'image' key")
+            bad = set(im) - IMAGE_KEYS
+            if bad:
+                sys.exit(f"build_deck: slide {n} image {im['image']!r} has unknown key(s) "
+                         f"{', '.join(sorted(bad))}. Allowed: {', '.join(sorted(IMAGE_KEYS))}")
+        for im in slide_images(sl):
+            src = im.get("source")
+            if src is None:
+                continue
+            if not isinstance(src, dict):
+                sys.exit(f"build_deck: slide {n} image {im['image']!r} has a 'source' that is "
+                         f"not an object")
+            bad = set(src) - SOURCE_KEYS
+            if bad:
+                sys.exit(f"build_deck: slide {n} image {im['image']!r} source has unknown "
+                         f"key(s) {', '.join(sorted(bad))}. Allowed: "
+                         f"{', '.join(sorted(SOURCE_KEYS))}")
+            st = src.get("status")
+            if st is not None and st not in STATUSES:
+                sys.exit(f"build_deck: slide {n} image {im['image']!r} has status {st!r}; "
+                         f"known: {', '.join(sorted(STATUSES))}")
+    _validate_review(deck)
+
+
+def check_review_paths(deck: dict, root: pathlib.Path) -> str:
+    """Every path the review file promises actually resolves inside the repo.
+
+    THE ONE FAILURE A REVIEW FILE CANNOT SURVIVE. Its whole value is that the reviewer's agent
+    stops guessing, and a path that does not resolve is worse than no path: the agent goes
+    looking, finds nothing, and now has to decide whether the file moved, whether it is reading
+    the wrong repo, or whether the deck is lying. Any of those costs the reviewer a question.
+
+    Paths rot for ordinary reasons (a plate promoted out of `rejected/`, a roll renamed, a
+    generator's output directory cleaned), and none of them announce themselves.
+    """
+    dead: list[str] = []
+    for n, sl in enumerate(deck["slides"], 1):
+        for im in slide_images(sl):
+            src = im.get("source") or {}
+            for p in [src.get("path")] + list(src.get("governs") or []):
+                if p and not (root / p).exists():
+                    dead.append(f"slide {n} ({sl.get('id') or sl['kind']}) {im['image']}: {p}")
+    for c in (deck.get("review", {}).get("canon") or []):
+        if not (root / c["path"]).exists():
+            dead.append(f"review.canon: {c['path']}")
+    if dead:
+        sys.exit(f"build_deck: {len(dead)} path(s) in the review file do not exist under "
+                 f"{root}:\n  " + "\n  ".join(dead))
+    n_paths = sum(1 + len((im.get("source") or {}).get("governs") or [])
+                  for sl in deck["slides"] for im in slide_images(sl))
+    return f"{n_paths} source and canon path(s) verified against {root}"
+
+
+def _validate_review(deck: dict) -> None:
+    """The review block, and the gate that makes it worth having.
+
+    A REVIEW FILE WITH HOLES IS WORSE THAN NO REVIEW FILE. Its whole promise to the reviewer's
+    agent is that every image on screen can be traced back to the plate that made it, so one
+    image with no source is the one the agent quietly guesses about, and a guess reads exactly
+    like a fact in the feedback that comes back. So declaring `review` is declaring that every
+    image is traceable, and the build refuses until that is true.
+    """
+    rv = deck.get("review")
+    if rv is None:
+        return
+    if not isinstance(rv, dict):
+        sys.exit("build_deck: 'review' must be an object")
+    bad = set(rv) - REVIEW_KEYS
+    if bad:
+        sys.exit(f"build_deck: review has unknown key(s) {', '.join(sorted(bad))}. Allowed: "
+                 f"{', '.join(sorted(REVIEW_KEYS))}")
+    if not rv.get("baseUrl"):
+        sys.exit("build_deck: review needs 'baseUrl'. Every asset in the review file is an "
+                 "ABSOLUTE url, because the agent reading it may have only the link.")
+    missing = []
+    for n, sl in enumerate(deck["slides"], 1):
+        for im in slide_images(sl):
+            src = im.get("source") or {}
+            if not src.get("path") or not src.get("depicts"):
+                missing.append(f"slide {n} ({sl.get('id') or sl['kind']}): {im['image']}")
+    if missing:
+        sys.exit("build_deck: 'review' is declared, so every image needs a source with both "
+                 "'path' and 'depicts'. Untraceable:\n  " + "\n  ".join(missing))
+
+
+def emit_review(deck: dict, out: pathlib.Path, root: pathlib.Path | None = None) -> str:
+    """Write `llms.txt`: the deck as an index an agent can read, with every asset traceable.
+
+    WHY A DECK NEEDS ONE. A deck is the worst possible artifact to receive feedback on through
+    an agent. The argument is in pictures, the pictures are resized copies with invented
+    filenames, and a comment like "slide 2, this image feels off" gives the reviewer's agent a
+    caption and nothing else. It cannot open the plate, cannot read the prompt that made it,
+    and cannot see which canon rule the picture is evidence for, so it either asks the reviewer
+    questions the deck already answered or it fills the gap with a plausible guess.
+
+    So this file inverts the default: for every image on every slide it emits the ABSOLUTE url
+    (fetchable by an agent holding only the link) AND the repo-relative path of the source
+    plate (openable by an agent that has the repo, along with the `.recipe.json` beside it),
+    plus what the plate depicts, which canon files govern it, and whether it was blessed or
+    rejected. A comment then lands on a file rather than on a description of a file.
+
+    It is GENERATED, never hand-written, for the reason brand.txt is: a stale link in a prime
+    file is the moment an agent improvises. Emitting it from the same `deck.json` the slides
+    render from means the index cannot describe a deck that is not the one being served.
+
+    Format: llms.txt (https://llmstxt.org), extended with per-slide asset provenance.
+    """
+    rv = deck["review"]
+    base = str(rv["baseUrl"]).rstrip("/")
+    L: list[str] = []
+    A = L.append
+
+    A(f"# {deck.get('title', 'Deck')}: llms.txt")
+    if deck.get("summary"):
+        A(f"> {deck['summary']}")
+    A("")
+    A(f"This is the review surface for the deck served at {base}/. It exists so that an agent "
+      "can open the actual file behind any image the reviewer is looking at, instead of "
+      "inferring it from a caption.")
+    A("")
+    A("Format: llms.txt (https://llmstxt.org), extended with per-slide asset provenance by "
+      "abu make-a-playable-deck.")
+    A("")
+
+    if rv.get("author") or rv.get("reviewer"):
+        A("## Who this is between")
+        if rv.get("author"):
+            A(f"- Author: {rv['author']}")
+        if rv.get("reviewer"):
+            A(f"- Reviewer: {rv['reviewer']}")
+        A("")
+
+    A("## How to name a slide")
+    A("Every slide below carries a NUMBER (its position, what a person says out loud) and an "
+      "ID (stable, what a link points at). Deep-link any slide as "
+      f"{base}/#<id>. Quote both when you record a comment, because the number moves if a "
+      "slide is inserted and the id does not.")
+    A("")
+
+    A("## Reading the source, not the deck copy")
+    if rv.get("repo"):
+        A(f"- Repo: {rv['repo']}")
+    if rv.get("clone"):
+        A(f"- Clone: `{rv['clone']}`")
+    if rv.get("assetRoot"):
+        A(f"- The deck's own resized copies live at `{rv['assetRoot']}` in that repo.")
+    A("- Every image in this deck is a resized webp. The `source` path under each one is the "
+      "PLATE it was made from, at full size, inside the repo above. When a comment is about "
+      "the image itself (its colour, its crop, its finish), open the source rather than the "
+      "deck copy.")
+    if root:
+        A("- A plate's provenance is its `<filename>.recipe.json`, recording the model, the "
+          "exact prompt and every input by path. It is the answer to \"why does it look like "
+          "this\". Each image below says whether it HAS one, checked against the repo at "
+          "build time rather than promised in general, because a plate from an early fan-out "
+          "may not have got one and sending an agent to a file that is not there costs the "
+          "reviewer a question.")
+    else:
+        A("- A plate's provenance, where it has any, is its `<filename>.recipe.json`, "
+          "recording the model, the exact prompt and every input by path. This build had no "
+          "repo on hand, so it could not check which plates actually carry one.")
+    A("- `governs` names the canon files that hold the rules the image is evidence for. Read "
+      "those before disagreeing with a picture: the rule is usually the real subject.")
+    A("")
+
+    if rv.get("boomerang"):
+        A("## The review prompt")
+        A(f"{base}/{rv['boomerang']}: a conforming BOOMERANG.md "
+          "(https://appliedai.wiki/reference/standards/boomerang-md). Paste it into a coding "
+          "agent that has this file and the repo, and it runs the review and writes the "
+          "feedback document.")
+        if rv.get("returns"):
+            A(f"Returns: {rv['returns']}")
+        A("")
+
+    if rv.get("protocol"):
+        A("## How to give feedback on this deck")
+        for line in rv["protocol"]:
+            A(f"- {line}")
+        A("")
+
+    A("## Slides")
+    A(f"{len(deck['slides'])} slides. Full text is in {base}/index.html; what follows is the "
+      "index plus the provenance of every image.")
+    A("")
+    for n, sl in enumerate(deck["slides"], 1):
+        sid = sl.get("id") or f"slide-{n}"
+        A(f"### {n}. {sid} ({sl['kind']})")
+        if sl.get("kicker"):
+            A(f"- kicker: {sl['kicker']}")
+        if sl.get("heading"):
+            A(f"- heading: {sl['heading']}")
+        if sl.get("quote"):
+            who = f" [{sl['who']}]" if sl.get("who") else ""
+            A(f"- quote: {sl['quote']}{who}")
+        A(f"- ground: {sl.get('ground', 'ink')}")
+        A(f"- link: {base}/#{sid}")
+        ims = slide_images(sl)
+        if not ims:
+            A("- images: none; this slide is text only.")
+        for im in ims:
+            src = im.get("source") or {}
+            A(f"- image: {base}/{im['image']}")
+            if im.get("caption"):
+                A(f"  caption: {im['caption']}")
+            st = f" [{src['status']}]" if src.get("status") else ""
+            A(f"  source: {src['path']}{st}")
+            A(f"  depicts: {src['depicts']}")
+            if src.get("governs"):
+                A(f"  governs: {', '.join(src['governs'])}")
+            if root:
+                rec = f"{src['path']}.recipe.json"
+                A(f"  recipe: {rec}" if (root / rec).exists()
+                  else "  recipe: NONE on disk. This plate carries no provenance record, so "
+                       "the prompt that made it is not recoverable. Do not go looking.")
+            if src.get("note"):
+                A(f"  note: {src['note']}")
+        A("")
+
+    if rv.get("canon"):
+        A("## Canon this deck argues from")
+        A("Repo-relative. These are the rule files, and they are the real subject of most of "
+          "the slides above.")
+        for c in rv["canon"]:
+            A(f"- `{c['path']}`: {c['what']}")
+        A("")
+
+    path = out / "llms.txt"
+    path.write_text("\n".join(L))
+    n_img = sum(len(slide_images(sl)) for sl in deck["slides"])
+    return f"review: llms.txt, {len(deck['slides'])} slides, {n_img} traceable image(s)"
 
 
 def theme_from(palette: pathlib.Path | None) -> tuple[dict, str]:
@@ -262,6 +559,9 @@ def main() -> None:
     ap.add_argument("--palette")
     ap.add_argument("--assets", help="directory of images referenced by the slides; copied "
                                      "beside the html so the folder is self-contained")
+    ap.add_argument("--repo-root", help="the universe root every review `source.path` and "
+                                        "`governs` entry is relative to. Passed, the build "
+                                        "REFUSES a path that does not resolve.")
     a = ap.parse_args()
 
     deck = json.loads(pathlib.Path(a.deck).expanduser().read_text())
@@ -419,7 +719,31 @@ def main() -> None:
 </html>
 """
     (out / "index.html").write_text(doc)
+
+    review_note = "review: no review file (the deck declares no `review` block)"
+    if deck.get("review"):
+        bm = deck["review"].get("boomerang")
+        if bm:
+            # Served beside the deck so the reviewer opens the raw prompt in one click. It is
+            # resolved against the DECK FILE rather than the cwd, because the deck is the thing
+            # that names it and a build run from anywhere else must find the same file.
+            src = pathlib.Path(a.deck).expanduser().resolve().parent / bm
+            if not src.is_file():
+                sys.exit(f"build_deck: review.boomerang names {bm!r}, which does not exist at "
+                         f"{src}. The deck links it, so a missing file ships a dead link on "
+                         f"the one slide whose whole job is to be pasted.")
+            shutil.copy2(src, out / pathlib.Path(bm).name)
+        root = None
+        if a.repo_root:
+            root = pathlib.Path(a.repo_root).expanduser().resolve()
+            if not root.is_dir():
+                sys.exit(f"build_deck: --repo-root {root} is not a directory")
+        review_note = emit_review(deck, out, root)
+        if root:
+            review_note += "; " + check_review_paths(deck, root)
+
     print(f"[deck] {len(deck['slides'])} slides -> {out / 'index.html'}")
+    print(f"[deck] {review_note}")
     print(f"[deck] theme: {theme_note}")
     print(f"[deck] {glow_note}")
     print("[deck] OPEN IT ON A PHONE BEFORE SENDING IT. The fit is measured at run time "

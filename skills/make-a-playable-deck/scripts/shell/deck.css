@@ -182,4 +182,34 @@ footer{-webkit-tap-highlight-color:transparent}
 .nav button:active{background:rgba(240,236,229,.18)}
 @media(max-width:640px){.nav button{width:44px;height:40px}}
 
+/* THE HANDOFF BLOCK: a prompt the reader is meant to take away with them.
+ *
+ * A <pre> rather than a <textarea>, because the reader has to SEE what they are about to run
+ * before they run it, and a scrollable form field on a phone reads as a thing to fill in. The
+ * copy button is an enhancement on top of selectable text, so the block still works with no
+ * JavaScript at all.
+ *
+ * `white-space:pre-wrap` with `word-break` is load-bearing: a long line in a prompt would
+ * otherwise need horizontal scrolling, and a horizontal drag inside the deck is the gesture
+ * that changes slide. `touch-action:pan-y` says the same thing to the browser. */
+.paste{display:flex;flex-direction:column;margin:16px 0 10px;border:1px solid var(--edge);
+  border-radius:12px;background:rgba(240,236,229,.06);overflow:hidden}
+.paste pre{margin:0;padding:14px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;
+  max-height:34vh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;
+  color:var(--cream);-webkit-user-select:text;user-select:text}
+/* The button gets its OWN row. Floated over the block it covered whichever line was scrolled
+ * into view, and looked deliberate while doing it. */
+.pastebar{display:flex;justify-content:flex-end;padding:9px 10px;
+  border-top:1px solid var(--edge);background:rgba(240,236,229,.05);flex:none}
+.paste .copy{touch-action:manipulation;
+  background:var(--live);color:#fff;border:0;border-radius:9px;padding:9px 16px;
+  font-size:13px;font-weight:600;cursor:pointer;-webkit-user-select:none;user-select:none}
+.paste .copy:active{opacity:.82}
+.paste .copy.done{background:var(--cream);color:var(--ink)}
+section.s.ground-cream .paste{background:rgba(30,27,25,.05);border-color:rgba(30,27,25,.16)}
+section.s.ground-cream .pastebar{background:rgba(30,27,25,.04);border-top-color:rgba(30,27,25,.16)}
+section.s.ground-cream .paste pre{color:var(--ink)}
+
 a{color:var(--live)}
