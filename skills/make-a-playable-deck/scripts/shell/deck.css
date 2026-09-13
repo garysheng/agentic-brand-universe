@@ -129,6 +129,20 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 14px 14px;
   text-overflow:ellipsis}
 #scrub.seeking .pill{opacity:1}
 
+/* KILL DOUBLE-TAP ZOOM ON THE CHROME. A reader tapping the next arrow quickly taps it
+ * twice, and mobile Safari reads two taps in under ~300ms as double-tap-to-zoom, so the
+ * whole deck lurches to 2x on the one gesture the deck is navigated by. `touch-action:
+ * manipulation` tells the browser this element only pans and taps, which disables
+ * double-tap zoom on it and drops the 300ms click delay as a bonus.
+ *
+ * It goes on the WHOLE FOOTER rather than only the buttons, because the gap between them
+ * and the area around the scrub are just as tappable and just as fast. Gary: "Quick double
+ * tap on arrows zooms / I hate that". */
+footer,.nav,.nav button,#dots,.dot{touch-action:manipulation}
+/* And stop the tap flashing a grey box, and stop a fast double tap selecting the glyph. */
+footer{-webkit-tap-highlight-color:transparent}
+.nav button,.dot{-webkit-user-select:none;user-select:none}
+
 .nav{display:flex;gap:8px}
 .nav button{background:rgba(240,236,229,.08);color:var(--cream);border:1px solid var(--edge);
   width:40px;height:36px;border-radius:9px;font-size:16px;cursor:pointer;line-height:1}

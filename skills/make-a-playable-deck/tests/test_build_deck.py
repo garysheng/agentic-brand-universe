@@ -292,5 +292,27 @@ class Glow(unittest.TestCase):
         self.assertNotIn("display:none", block)
 
 
+class TouchBehaviour(unittest.TestCase):
+    def test_double_tap_zoom_is_disabled_on_the_chrome(self):
+        """A reader taps the next arrow quickly twice and mobile Safari reads that as
+        double-tap-to-zoom, so the deck lurches to 2x on the one gesture it is navigated by.
+        touch-action:manipulation on the footer is the fix, and it must cover the whole
+        footer rather than only the buttons, because the gaps between them are just as
+        tappable and just as fast."""
+        r, p = run(MIN)
+        t = p.read_text()
+        self.assertIn("touch-action:manipulation", t)
+        i = t.index("touch-action:manipulation")
+        rule = t[t.rindex("\n", 0, i) + 1:i]
+        for sel in ("footer", ".nav button"):
+            self.assertIn(sel, rule, f"{sel} is not covered: {rule}")
+
+    def test_the_scrub_keeps_touch_action_none(self):
+        """The scrub is DRAGGED, so it needs none rather than manipulation: manipulation
+        still allows panning, which would let a drag scroll the page instead of seeking."""
+        r, p = run(MIN)
+        self.assertIn("touch-action:none", p.read_text())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
