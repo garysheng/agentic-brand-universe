@@ -213,5 +213,50 @@ class TestVehicleSeatFacing(unittest.TestCase):
         self.assertEqual(once, twice)
         self.assertEqual(added, [])
 
+
+
+class TestEveryGuardHasAReadbackGate(unittest.TestCase):
+    """A guard is an instruction; the read-back gate is what refuses. Earned 2026-09-12:
+    device-anatomy fired, the prompt carried it, and the render still put the screen on
+    the wrong side, because nothing told the read-back to look. A guard with no gate
+    entry is that gap, so this test refuses it at the source."""
+
+    def test_names_table_matches_what_apply_can_emit(self):
+        triggers = {
+            "device-anatomy": "She looks at her phone.",
+            "readable-surface": "An open notebook on a bare floor.",
+            "travel-direction": "She is arriving at the church.",
+            "vehicle-seat-facing": "He rides in the sidecar.",
+            "two-hander-staging": "Two men are seated across the table from each other.",
+            "seated-at-table": "He sits at the desk.",
+            "no-ui-chrome": "A laptop on a desk.",
+        }
+        emitted = set()
+        for name, prompt in triggers.items():
+            _, added = pg.apply_prompt_guards(prompt)
+            self.assertIn(name, added, f"{name!r} did not fire on {prompt!r}")
+            emitted.update(added)
+        self.assertEqual(emitted, set(pg.GUARD_NAMES))
+
+    def test_every_name_has_an_assertion(self):
+        for name in pg.GUARD_NAMES:
+            self.assertIn(name, pg.READBACK_GATE, f"guard {name!r} has no read-back assertion")
+            self.assertIn("DEFECT", pg.READBACK_GATE[name],
+                          f"{name!r}'s assertion never says what a DEFECT looks like")
+
+    def test_readback_gate_follows_firing_order_and_refuses_unknown(self):
+        _, added = pg.apply_prompt_guards("She reads a letter on her phone.")
+        gate = pg.readback_gate(added)
+        self.assertEqual(len(gate), len(added))
+        self.assertTrue(gate[0].startswith("DEVICE FACING"))
+        with self.assertRaises(KeyError):
+            pg.readback_gate(["not-a-guard"])
+
+    def test_device_gate_names_the_wrong_side(self):
+        g = pg.READBACK_GATE["device-anatomy"]
+        self.assertIn("wrong side", g)
+        self.assertIn("over the user's shoulder", g)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

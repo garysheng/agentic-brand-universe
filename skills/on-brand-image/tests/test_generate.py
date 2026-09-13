@@ -485,9 +485,18 @@ class TestRecipeIsUnskippable(GenerateCase):
         self.assertEqual(set(r.recipe), self.BARE_KEYS)
 
     def test_a_pack_render_adds_style_pack_and_nothing_else(self):
-        pack = make_pack(self.tmp)
+        # A pack whose poles name no guarded thing. The default pack rejects "any text or
+        # lettering", and "lettering" is a readable-surface trigger, so the guards fire on
+        # the negatives clause (they always did, inside the provider; the recipe now says so).
+        pack = make_pack(self.tmp, rejected=("photorealism",))
         r = self.run_main(*self.base("--style-pack", pack))
         self.assertEqual(set(r.recipe), self.BARE_KEYS | {"stylePack"})
+
+    def test_a_packs_poles_can_fire_guards_and_the_recipe_says_so(self):
+        pack = make_pack(self.tmp)   # rejects "any text or lettering"
+        r = self.run_main(*self.base("--style-pack", pack))
+        self.assertEqual(set(r.recipe), self.BARE_KEYS | {"stylePack", "guards", "guardGate"})
+        self.assertIn("readable-surface", r.recipe["guards"])
 
     def test_the_recipe_pins_the_prompt_actually_sent(self):
         pack = make_pack(self.tmp)
@@ -1214,6 +1223,36 @@ class ModelDefaultTracksTheAdapter(unittest.TestCase):
         self.assertIn('"model": model', src, "the recipe must record the RESOLVED model")
         self.assertIn('"modelSource"', src,
                       "the recipe should say whether the model was explicit or inherited")
+
+
+
+
+# =====================================================================
+# The guard gate: a guard that fires is also a read-back assertion in the recipe
+# =====================================================================
+class TestGuardGate(GenerateCase):
+    """Earned 2026-09-12. device-anatomy fired on a wiki hero, the prompt carried the rule,
+    and the render still put the screen on the wrong side; the read-back passed it because
+    nothing in the recipe told the reader to check. So a fired guard now writes its
+    read-back assertion into the recipe, where render-readback evaluates it."""
+
+    def test_a_device_prompt_records_the_guard_and_its_gate(self):
+        r = self.run_main("--prompt", "She reads her laptop at the desk.", "--ref-max-edge", "0")
+        self.assertIn("device-anatomy", r.recipe["guards"])
+        self.assertIn("no-ui-chrome", r.recipe["guards"])
+        gate = r.recipe["guardGate"]
+        self.assertEqual(len(gate), len(r.recipe["guards"]))
+        self.assertTrue(any(g.startswith("DEVICE FACING") for g in gate))
+        self.assertTrue(all("DEFECT" in g for g in gate))
+
+    def test_the_prompt_sent_to_the_provider_carries_the_guard(self):
+        r = self.run_main("--prompt", "She reads her laptop at the desk.", "--ref-max-edge", "0")
+        self.assertIn("DEVICE ANATOMY, NON-NEGOTIABLE", r.prompt)
+
+    def test_a_prompt_with_no_trigger_records_no_gate(self):
+        r = self.run_main(*self.base())
+        self.assertNotIn("guards", r.recipe)
+        self.assertNotIn("guardGate", r.recipe)
 
 
 if __name__ == "__main__":

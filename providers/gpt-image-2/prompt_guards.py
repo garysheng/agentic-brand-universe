@@ -266,3 +266,75 @@ def apply_prompt_guards(prompt: str, enabled: bool = True) -> tuple[str, list[st
         prompt += "\n\n" + _GUARD_UI
         added.append("no-ui-chrome")
     return prompt, added
+
+
+# ---------------------------------------------------------------------------
+# THE READ-BACK HALF. A prompt guard is an INSTRUCTION to the model, and an instruction
+# is weighed against everything else in the window and sometimes loses. Earned
+# 2026-09-12 on an appliedai.wiki hero: device-anatomy fired, the prompt carried the
+# rule verbatim, and the render still put the glowing screen toward the camera with the
+# woman looking at it from behind the lid. The read-back passed it, because the pack's
+# gate never mentioned devices and nothing else told the reader to look. Gary: "no more
+# screens on the wrong side of a device."
+#
+# So every guard that fires ALSO writes a read-back assertion into the render's recipe
+# (`guardGate`), and render-readback evaluates those alongside the pack gate and the
+# entity gate. The prompt half asks; the gate half refuses. A guard with no entry here
+# is an instruction with no enforcement, which is why the test insists on one per name.
+# ---------------------------------------------------------------------------
+GUARD_NAMES = (
+    "device-anatomy", "readable-surface", "travel-direction", "vehicle-seat-facing",
+    "two-hander-staging", "seated-at-table", "no-ui-chrome",
+)
+
+READBACK_GATE = {
+    "device-anatomy": (
+        "DEVICE FACING: for EVERY phone, laptop, tablet or monitor in frame, crop-zoom the "
+        "device together with the person using it. The glowing display is on the side that "
+        "faces its user. If the viewer can see the screen's content AND the user is on the far "
+        "side of the device (the device sits between the camera and the user's face), the "
+        "screen is on the wrong side of the device: DEFECT. A visible screen passes only when "
+        "the shot is over the user's shoulder, or when nobody in frame is using the device."
+    ),
+    "readable-surface": (
+        "READABLE SURFACE: every page, card, sign, letter or other writing surface is oriented "
+        "for the person reading it in the scene, not rotated flat to the lens. A surface whose "
+        "reader is looking at it from the wrong side, or whose writing faces the camera while "
+        "its reader faces away: DEFECT."
+    ),
+    "travel-direction": (
+        "TRAVEL DIRECTION: a character arriving at a place moves TOWARD it and one leaving "
+        "moves AWAY from it, and the composition shows that. A destination behind a character "
+        "who is arriving, or ahead of one who is leaving: DEFECT."
+    ),
+    "vehicle-seat-facing": (
+        "VEHICLE SEAT FACING: every rider or passenger in a moving vehicle faces the direction "
+        "of travel unless the scene says otherwise. A rider facing backward in a forward-moving "
+        "vehicle: DEFECT."
+    ),
+    "two-hander-staging": (
+        "TWO-HANDER STAGING: two people at one table are staged near and far, never as two "
+        "equal whole figures side-on at the same distance, and the near figure's chest is "
+        "turned with their head. Two figures in a flat line-up, or a head turned ninety "
+        "degrees on a chest square to the camera: DEFECT."
+    ),
+    "seated-at-table": (
+        "SEATED ANATOMY: every seated figure has a waist, a lap and a seat under them, with the "
+        "table in front of the body. A torso emerging from the tabletop with nothing beneath "
+        "it: DEFECT."
+    ),
+    "no-ui-chrome": (
+        "NO UI CHROME: no screen or surface carries invented interface furniture, menus, "
+        "buttons, status bars or lettering the caller did not declare. Any such chrome: DEFECT."
+    ),
+}
+
+
+def readback_gate(added: list[str]) -> list[str]:
+    """The read-back assertions for the guards that fired, in firing order.
+
+    REFUSES on a guard name with no assertion, rather than skipping it: a guard that
+    can be appended to a prompt but never checked on the output is the exact gap this
+    table closes, and a KeyError here is cheaper than a shipped screen on the wrong side.
+    """
+    return [READBACK_GATE[name] for name in added]

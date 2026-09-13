@@ -139,7 +139,10 @@ the right skill.
    same shape `shoot-references` freezes, so **every candidate is provenanced at birth**, not only at
    lock. Pass the selected references in order (anchor first) plus `--style-pack <pack-id>`. Provenance
    is a side effect of generating here; there is no un-provenanced image.
-5. **Read back against the gate (mandatory).** Open the output and check EACH `pack.gate` assertion
+5. **Read back against the gate (mandatory).** Open the output and check EACH `pack.gate` assertion,
+   AND each `guardGate` assertion the recipe carries (one per standing prompt guard that fired:
+   a device's screen faces its user, a readable surface faces its reader, and so on; see
+   `render-readback` step 2a),
    against the actual pixels, returning PASS or DEFECT per item. This is the load-bearing half; a pack
    without a gate is a mood board.
    **If the pack permits text, spelling is part of the read-back, not an afterthought.** Read every
