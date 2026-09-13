@@ -91,6 +91,11 @@
     if (NO) NO.textContent = (i + 1) + ' / ' + S.length;
     if (BAR) BAR.style.width = ((i + 1) / S.length * 100) + '%';
     S[i].scrollTop = 0;
+    /* THE CHROME FOLLOWS THE SLIDE'S GROUND. The footer and counter sit OUTSIDE the section,
+     * so a cream slide otherwise gets a dark bar across its bottom that reads as a separate
+     * layer bolted onto the page. The class goes on <body> because that is the only element
+     * above both the sections and the fixed chrome. */
+    document.body.classList.toggle('on-cream', S[i].classList.contains('ground-cream'));
     if (!fromHash) {
       var h = '#' + (i + 1);
       if (location.hash !== h) history.replaceState(null, '', h);

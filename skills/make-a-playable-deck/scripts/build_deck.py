@@ -48,7 +48,7 @@ KINDS = {
     "table":     {"kicker", "heading", "columns", "rows", "pick", "body"},
     "list":      {"kicker", "heading", "items", "body", "ordered"},
 }
-COMMON = {"kind", "id", "notes"}
+COMMON = {"kind", "id", "notes", "ground"}
 
 
 def spectrum_depth(live_hex: str, n: int = 7) -> list[str]:
@@ -193,7 +193,18 @@ def render(sl: dict, n: int) -> str:
         raise SystemExit(f"slide {n}: unhandled kind {k!r}")
 
     sid = f' id="{esc(sl["id"])}"' if sl.get("id") else ""
-    return f'<section class="s"{sid}>\n  <div class="in">{inner}</div>\n</section>'
+    g = sl.get("ground")
+    ground = f" ground-{esc(g)}" if g and g not in NO_CLASS_GROUNDS else ""
+    return (f'<section class="s{ground}"{sid}>\n  <div class="in">{inner}</div>\n'
+            f'</section>')
+
+
+# `ink` is accepted and emits NO class, because it is the shell's default. Refusing it was
+# the first behaviour and it is wrong: being explicit about a slide's ground is good practice,
+# and an author who writes the default out loud should not be punished for it. The refusal
+# exists for an UNKNOWN ground, whose failure is silent.
+GROUNDS = {"cream", "ink"}
+NO_CLASS_GROUNDS = {"ink"}
 
 
 def validate(deck: dict) -> None:
@@ -206,6 +217,11 @@ def validate(deck: dict) -> None:
                      f"{', '.join(sorted(KINDS))}")
         # REFUSE AN UNKNOWN KEY BY NAME. A mistyped key is the one defect a deck cannot show
         # you: the content is simply absent, on one slide, and the deck still looks finished.
+        g = sl.get("ground")
+        if g is not None and g not in GROUNDS:
+            sys.exit(f"build_deck: slide {n} has ground {g!r}; the shell styles "
+                     f"{', '.join(sorted(GROUNDS))} and defaults to ink. An unstyled ground "
+                     f"emits a dead class and the slide silently stays dark.")
         unknown = set(sl) - KINDS[k] - COMMON
         if unknown:
             sys.exit(f"build_deck: slide {n} ({k}) has unknown key(s) "

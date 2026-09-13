@@ -22,6 +22,39 @@ section.s{
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 section.s.on{display:flex;align-items:center;justify-content:center;animation:in .32s ease both}
+
+/* A SLIDE CAN CARRY ITS OWN GROUND, so a mark is always shown on a background it was drawn
+ * for. A light-ground mark placed on a dark slide arrives as a bright white panel floating in
+ * the middle of the deck: measured, the blessed light cut's own ground is #FEFEFE, which is 229
+ * off the deck's ink. The dark marks are not innocent either at 30 off, because they were
+ * rendered on #000000 and this brand has no black.
+ *
+ * The asset is ALSO re-grounded onto the exact slide colour when the deck is built, so the two
+ * match to zero and there is no edge at all. This rule is the other half of that: without it
+ * the re-grounded light mark would be cream-on-ink, which is worse than white-on-ink.
+ * Gary: "ALWAYS display the freedom fonts on compatible backgrounds in the deck". */
+section.s.ground-cream{background:var(--cream);color:var(--ink)}
+section.s.ground-cream strong{color:#000}
+section.s.ground-cream .lede{color:var(--ink)}
+section.s.ground-cream figcaption,section.s.ground-cream .muted{color:rgba(30,27,25,.66)}
+section.s.ground-cream th{color:rgba(30,27,25,.66)}
+section.s.ground-cream td,section.s.ground-cream th{border-bottom-color:rgba(30,27,25,.16)}
+section.s.ground-cream blockquote cite{color:rgba(30,27,25,.66)}
+section.s.ground-cream .chat .b.them{background:rgba(30,27,25,.10)}
+/* The figure's own placeholder tint must follow the ground too, or a loading image flashes a
+ * dark box on a cream slide. */
+section.s.ground-cream figure img,section.s.ground-cream figure video{background:rgba(30,27,25,.06)}
+
+/* And the fixed chrome, which lives outside the section and cannot inherit from it. The class
+ * is set on <body> by go(). Without this a cream slide carries a dark bar along its bottom. */
+body.on-cream{background:var(--cream)}
+body.on-cream footer{background:linear-gradient(to top,var(--cream) 62%,transparent)}
+body.on-cream #no{color:rgba(30,27,25,.6)}
+body.on-cream #scrub .track{background:rgba(30,27,25,.14)}
+body.on-cream .nav button{background:rgba(30,27,25,.06);color:var(--ink);
+  border-color:rgba(30,27,25,.18)}
+body.on-cream .nav button:active{background:rgba(30,27,25,.14)}
+body.on-cream .dot{background:rgba(30,27,25,.24)}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){section.s.on{animation:none}}
 .in{width:100%;max-width:980px;margin:0 auto}
@@ -128,6 +161,20 @@ footer{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 14px 14px;
   opacity:0;transition:opacity .15s;pointer-events:none;max-width:70vw;overflow:hidden;
   text-overflow:ellipsis}
 #scrub.seeking .pill{opacity:1}
+
+/* KILL DOUBLE-TAP ZOOM ON THE CHROME. A reader tapping the next arrow quickly taps it
+ * twice, and mobile Safari reads two taps in under ~300ms as double-tap-to-zoom, so the
+ * whole deck lurches to 2x on the one gesture the deck is navigated by. `touch-action:
+ * manipulation` tells the browser this element only pans and taps, which disables
+ * double-tap zoom on it and drops the 300ms click delay as a bonus.
+ *
+ * It goes on the WHOLE FOOTER rather than only the buttons, because the gap between them
+ * and the area around the scrub are just as tappable and just as fast. Gary: "Quick double
+ * tap on arrows zooms / I hate that". */
+footer,.nav,.nav button,#dots,.dot{touch-action:manipulation}
+/* And stop the tap flashing a grey box, and stop a fast double tap selecting the glyph. */
+footer{-webkit-tap-highlight-color:transparent}
+.nav button,.dot{-webkit-user-select:none;user-select:none}
 
 .nav{display:flex;gap:8px}
 .nav button{background:rgba(240,236,229,.08);color:var(--cream);border:1px solid var(--edge);
