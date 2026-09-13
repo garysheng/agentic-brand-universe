@@ -167,13 +167,13 @@ class Glow(unittest.TestCase):
     def test_off_by_default_so_no_universe_inherits_a_rainbow(self):
         r, p = run(MIN, palette=PAL)
         t = p.read_text()
-        self.assertNotIn("@keyframes drift1", t)
+        self.assertNotIn("@keyframes corebreathe", t)
         self.assertIn("chrome: flat accent", t)
 
     def test_on_when_declared(self):
         r, p = run(dict(MIN, glow=True), palette=PAL)
         t = p.read_text()
-        for k in ("drift1", "drift2", "drift3", "drift4", "swell", "breathe", "turn"):
+        for k in ("corebreathe", "wander1", "wander2", "wander3", "breathe"):
             self.assertIn("@keyframes " + k, t, k)
         self.assertIn("the Freedom Glow, derived from live", t)
 
@@ -230,28 +230,65 @@ class Glow(unittest.TestCase):
             _, s, _ = colorsys.rgb_to_hsv(r_, g_, b_)
             self.assertGreaterEqual(s, 0.7, f"{hexv} at {s:.2f} will not read as colour")
 
-    def test_the_four_pools_take_four_different_paths(self):
-        """One shared keyframe at four speeds is a procession, which the eye reassembles into
-        exactly the ordered sweep this design exists to avoid."""
+    def test_the_traces_take_different_paths(self):
+        """One shared keyframe at three speeds is a procession, which the eye reassembles
+        into exactly the ordered sweep this design exists to avoid."""
         r, p = run(dict(MIN, glow=True), palette=PAL)
         t = p.read_text()
         import re
-        paths = {m: re.search(r"@keyframes " + m + r"\{(.*?)\}\n", t, re.S)
-                 for m in ("drift1", "drift2", "drift3", "drift4")}
-        bodies = [v.group(1) for v in paths.values() if v]
-        self.assertEqual(len(bodies), 4)
-        self.assertEqual(len(set(bodies)), 4, "two pools share a path")
+        bodies = [m.group(1) for n in ("wander1", "wander2", "wander3")
+                  if (m := re.search(r"@keyframes " + n + r"\{(.*?)\}\n", t, re.S))]
+        self.assertEqual(len(bodies), 3)
+        self.assertEqual(len(set(bodies)), 3, "two traces share a path")
+
+    def test_THE_STRUCTURE_IS_VERTICAL_NOT_A_LEFT_TO_RIGHT_RAMP(self):
+        """The regression that matters most. Two earlier attempts put an ordered spectrum
+        along the bar's LENGTH, which reads as a flag however the hues are tuned. The mark's
+        colour runs through its THICKNESS, edge to core, so the chrome does too."""
+        r, p = run(dict(MIN, glow=True), palette=PAL)
+        t = p.read_text()
+        # The RULE, not its first line: .glowbar{...} wraps across lines, and reading only
+        # line one tested the selector rather than the gradient.
+        s = t.index(".glowbar{")
+        base = t[s:t.index("}", s)]
+        self.assertIn("to bottom", base, "the base gradient must run through the thickness")
+        self.assertNotIn("90deg", base)
+        self.assertNotIn("to right", base)
+
+    def test_the_core_is_lighter_than_the_edge(self):
+        """Edge-to-core is the measured direction: deep at the stroke's edge, luminous in the
+        middle. Inverting it would read as a tube rather than as light inside."""
+        sys.path.insert(0, str(BUILD.parent))
+        from build_deck import spectrum_depth
+        import colorsys
+        d = spectrum_depth("#007AFF")
+        def sat(h):
+            r_, g_, b_ = (int(h[1:][i:i + 2], 16) / 255 for i in (0, 2, 4))
+            return colorsys.rgb_to_hsv(r_, g_, b_)[1]
+        self.assertGreater(sat(d[0]), sat(d[-1]), "the core must be less saturated than the edge")
+
+    def test_derived_depth_tracks_the_MEASURED_bands(self):
+        """The mark's own light cut measures #066BFA at the edge and #4CC7FB at the core.
+        The derivation must land near those or the chrome is a second blue free to disagree
+        with the artwork."""
+        sys.path.insert(0, str(BUILD.parent))
+        from build_deck import spectrum_depth
+        d = spectrum_depth("#007AFF")
+        def dist(a, b):
+            return max(abs(int(a[1:][i:i+2], 16) - int(b[1:][i:i+2], 16)) for i in (0, 2, 4))
+        self.assertLessEqual(dist(d[0], "#066BFA"), 30, f"edge {d[0]} is far from measured")
+        self.assertLessEqual(dist(d[-1], "#4CC7FB"), 30, f"core {d[-1]} is far from measured")
 
     def test_reduced_motion_keeps_the_colour_and_drops_the_motion(self):
         """Removing the gradient as well would take the brand out of the chrome for a reader
         who asked only not to be moved at."""
         r, p = run(dict(MIN, glow=True), palette=PAL)
         t = p.read_text()
-        i = t.find("@media(prefers-reduced-motion:reduce){\n  .glowbar")
+        i = t.find("@media(prefers-reduced-motion:reduce){\n  .glowbar::before")
         self.assertGreater(i, 0, "no reduced-motion override for the glow")
-        block = t[i:i + 420]
+        block = t[i:i + 480]
         self.assertIn("animation:none", block)
-        self.assertIn("opacity:.5", block)      # parked mid-drift, still coloured
+        self.assertIn("opacity:.8", block)      # the core sits at full, still coloured
         self.assertNotIn("display:none", block)
 
 

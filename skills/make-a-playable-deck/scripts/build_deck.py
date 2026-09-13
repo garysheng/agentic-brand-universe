@@ -51,6 +51,25 @@ KINDS = {
 COMMON = {"kind", "id", "notes"}
 
 
+def spectrum_depth(live_hex: str, n: int = 7) -> list[str]:
+    """Edge-to-core, the way the blue mark is actually built.
+
+    MEASURED off the blessed light-ground cut: its depth bands run #066BFA at the stroke's
+    edge to #4CC7FB at the core, with saturation falling 0.98 to 0.70 and hue drifting 0.598
+    to 0.550 toward cyan. This walks the live token along that same path, so the chrome is
+    the mark's cross-section rather than a second blue that can disagree with it.
+    """
+    import colorsys
+    r, g, b = (int(live_hex.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    out = []
+    for k in range(n):
+        f = k / (n - 1)
+        rr, gg, bb = colorsys.hsv_to_rgb(h - 0.048 * f, s * (1 - 0.30 * f), v)
+        out.append("#%02X%02X%02X" % (round(rr * 255), round(gg * 255), round(bb * 255)))
+    return out
+
+
 def spectrum_from(live_hex: str, n: int = 7, sat: float = 0.52) -> list[str]:
     """The spectrum a core colour separates INTO, derived rather than picked.
 
@@ -251,60 +270,63 @@ def main() -> None:
         # spans the FULL width while the fill reveals it, so the further the bar has
         # travelled the more of what it was carrying is visible. That is the canon rule
         # doing a job rather than decorating one.
-        c = stops                       # cyan, green, gold, warm pink, magenta, violet
-        # THE POOLS NEED MORE CHROMA THAN THE CALM SET, and this is the second thing the
-        # first attempt got wrong. They were drawn at the tempered saturation AND composited
-        # with mix-blend-mode:screen, which ADDS light: a pale hue screened over a saturated
-        # blue goes white, so the effect read as white blooms and the colour was invisible.
-        # Gary, looking at it: "Where are the rainbow colors". Normal blending, real chroma.
-        pool = spectrum_from(live, sat=0.88)
+        # THE BAR IS THE BLUE MARK'S CROSS-SECTION. Gary: "something resembling how color
+        # permeates the logo when on white background is more what I wanted." The blessed
+        # light-ground cut is deep blue at the stroke's edge with a soft luminous core down
+        # the middle of its thickness and the faintest spectrum trace where that inner light
+        # is strongest. Measured, its depth bands run #066BFA at the edge to #4CC7FB at the
+        # core, saturation 0.98 falling to 0.70 with the hue drifting 0.598 to 0.550 toward
+        # cyan. Those are the numbers this reproduces, derived from the live token by the
+        # same walk rather than pasted, so a token change moves the chrome with it.
+        #
+        # The drifting POOLS are retired. They were a reasonable reading of "organic" and
+        # the wrong structure: colour arriving from outside and passing through is not what
+        # the mark does. The mark's colour comes from WITHIN, which is also the canon rule,
+        # since the blue is the core and the spectrum is what it becomes on the way out.
+        core = spectrum_depth(live)
+        trace = spectrum_from(live, sat=0.80)
         css += f"""
-/* --- THE FREEDOM GLOW ON THE CHROME. Derived from the live token, never typed. ---
+/* --- THE FREEDOM GLOW ON THE CHROME: the blue mark's own cross-section. ---
  *
- * NO ORDERED SPECTRUM, AND THAT IS THE WHOLE DESIGN. The first version was a left-to-right
- * rainbow ramp, which reads as a FLAG however the hues are tuned, because an ordered
- * spectrum band is flag semantics rather than a colour choice. Gary: "I don't want it to
- * just be left right rainbow I want it animated organically like color flowing unexpectedly
- * like energy pulsing."
+ * Deep blue at both edges, a luminous core down the middle, and the faintest spectrum only
+ * where that inner light is strongest. Vertical, because the structure is through the bar's
+ * THICKNESS rather than along its length: an ordered spectrum running left to right reads as
+ * a flag, and that is what the first two attempts kept rediscovering.
  *
- * So the bar is BLUE, and colour BLOOMS THROUGH IT. Four soft radial pools, each a single
- * hue, drifting across the bar on four unrelated periods (13s, 17s, 23s, 29s) while their
- * opacity swells on four more. Coprime periods mean the combination does not visibly repeat,
- * which is what makes it read as energy rather than as a loop: no two passes look the same.
- *
- * This is also the canon law rather than a liberty taken with it: the blue is the core and
- * the rainbow is what the blue becomes AS IT LEAVES, so colour appearing out of a blue
- * ground is the argument, and colour arranged in a row beside it is not.
- *
- * Everything animates transform and opacity only, so it composites and costs a phone nothing. */
-.glowbar{{position:relative;overflow:hidden;background:{live}}}
-.glowbar > i{{position:absolute;top:-300%;height:700%;width:46%;border-radius:50%;
-  filter:blur(3px);opacity:0;will-change:transform,opacity}}
-.glowbar > i:nth-child(1){{background:radial-gradient(closest-side,{pool[1]},transparent 62%);
-  animation:drift1 13s ease-in-out infinite,swell 7s ease-in-out infinite}}
-.glowbar > i:nth-child(2){{background:radial-gradient(closest-side,{pool[3]},transparent 62%);
-  animation:drift2 17s ease-in-out infinite,swell 11s ease-in-out infinite -3s}}
-.glowbar > i:nth-child(3){{background:radial-gradient(closest-side,{pool[5]},transparent 62%);
-  animation:drift3 23s ease-in-out infinite,swell 9s ease-in-out infinite -5s}}
-.glowbar > i:nth-child(4){{background:radial-gradient(closest-side,{pool[2]},transparent 62%);
-  animation:drift4 29s ease-in-out infinite,swell 13s ease-in-out infinite -8s}}
-/* Each pool takes a DIFFERENT PATH, and two of them run the other way. A single shared
- * keyframe would put every pool on the same journey at different speeds, which the eye
- * reassembles into a procession. */
-@keyframes drift1{{0%{{transform:translateX(-40%) scaleX(1)}}
-  50%{{transform:translateX(190%) scaleX(1.5)}}100%{{transform:translateX(-40%) scaleX(1)}}}}
-@keyframes drift2{{0%{{transform:translateX(230%) scaleX(1.3)}}
-  50%{{transform:translateX(10%) scaleX(.8)}}100%{{transform:translateX(230%) scaleX(1.3)}}}}
-@keyframes drift3{{0%{{transform:translateX(60%) scaleX(.7)}}
-  35%{{transform:translateX(250%) scaleX(1.2)}}70%{{transform:translateX(-30%) scaleX(1.6)}}
-  100%{{transform:translateX(60%) scaleX(.7)}}}}
-@keyframes drift4{{0%{{transform:translateX(150%) scaleX(1.1)}}
-  40%{{transform:translateX(-20%) scaleX(1.4)}}100%{{transform:translateX(150%) scaleX(1.1)}}}}
-/* Never fully on and never fully off: a pool that reaches zero reads as a light switching
- * rather than as energy moving through. */
-@keyframes swell{{0%,100%{{opacity:.30}}50%{{opacity:1}}}}
+ * It is alive in the two ways the light itself is: the core BREATHES, and the spectrum trace
+ * drifts slowly along it so the colour is never in the same place twice. Both animate
+ * opacity and transform only, so they composite and cost a phone nothing. */
+.glowbar{{position:relative;overflow:hidden;
+  background:linear-gradient(to bottom,{core[0]} 0%,{core[2]} 26%,{core[6]} 50%,
+    {core[2]} 74%,{core[0]} 100%)}}
+/* The core, breathing. A separate layer so its opacity can move without touching the blue. */
+.glowbar::before{{content:"";position:absolute;inset:0;
+  background:linear-gradient(to bottom,transparent 22%,{core[6]} 50%,transparent 78%);
+  animation:corebreathe 4.6s ease-in-out infinite}}
+@keyframes corebreathe{{0%,100%{{opacity:.45}}50%{{opacity:1}}}}
+/* The trace: a wide soft band of spectrum riding the core, drifting. Low opacity on purpose.
+ * Canon: inside the body the separation has only FAINTLY begun. */
+.glowbar > i{{position:absolute;left:0;top:38%;height:24%;width:38%;border-radius:50%;
+  filter:blur(2px);pointer-events:none}}
+.glowbar > i:nth-child(1){{background:radial-gradient(closest-side,{trace[1]},transparent 70%);
+  opacity:.34;animation:wander1 19s ease-in-out infinite}}
+.glowbar > i:nth-child(2){{background:radial-gradient(closest-side,{trace[3]},transparent 70%);
+  opacity:.30;animation:wander2 27s ease-in-out infinite}}
+.glowbar > i:nth-child(3){{background:radial-gradient(closest-side,{trace[5]},transparent 70%);
+  opacity:.28;animation:wander3 23s ease-in-out infinite}}
+.glowbar > i:nth-child(4){{display:none}}
+/* Three unrelated periods and three different paths, two of them reversed. A shared keyframe
+ * at three speeds is a procession, which the eye reassembles into the ordered sweep this
+ * design exists to avoid. */
+@keyframes wander1{{0%{{transform:translateX(-30%)}}50%{{transform:translateX(200%)}}
+  100%{{transform:translateX(-30%)}}}}
+@keyframes wander2{{0%{{transform:translateX(220%)}}50%{{transform:translateX(20%)}}
+  100%{{transform:translateX(220%)}}}}
+@keyframes wander3{{0%{{transform:translateX(90%)}}40%{{transform:translateX(240%)}}
+  75%{{transform:translateX(-20%)}}100%{{transform:translateX(90%)}}}}
 
-#scrub .fill{{border-radius:3px}}
+#scrub .track{{background:rgba(240,236,229,.14)}}
+#scrub .fill{{border-radius:5px}}
 
 /* The thumb is the one element the reader's own thumb sits on, so it is where aliveness is
  * felt rather than watched. White core, blue halo, breathing. */
@@ -315,28 +337,19 @@ def main() -> None:
 #scrub.seeking .thumb{{animation:none;
   box-shadow:0 0 0 4px rgba(255,255,255,.32),0 0 18px 7px rgba(0,122,255,.46)}}
 
-/* The active dot: a white core with colour contained at its edge, turning slowly. Same
- * structure as the mark, where the white holds the middle and colour hugs the inside. */
-.dot{{position:relative;isolation:isolate}}
-.dot.on{{background:#fff}}
-.dot.on::after{{content:"";position:absolute;inset:-3.5px;border-radius:50%;z-index:-1;
-  background:conic-gradient({", ".join(c + [c[0]])});animation:turn 9s linear infinite;
-  opacity:.8}}
-@keyframes turn{{to{{transform:rotate(360deg)}}}}
-
 .kicker{{color:{live}}}
 .nav button:active{{box-shadow:0 0 12px 2px rgba(0,122,255,.35)}}
 
-/* REDUCED MOTION KEEPS THE COLOUR AND DROPS THE MOTION. Removing the colour too would take
- * the brand out of the chrome for a reader who asked only not to be moved at, so the pools
- * are parked mid-drift at a readable opacity instead of hidden. */
+/* REDUCED MOTION KEEPS THE COLOUR AND DROPS THE MOTION: the core sits at full and the trace
+ * parks along it. Removing the colour would take the brand out of the chrome for a reader who
+ * asked only not to be moved at. */
 @media(prefers-reduced-motion:reduce){{
-  .glowbar > i{{animation:none;opacity:.5}}
-  .glowbar > i:nth-child(1){{transform:translateX(0%)}}
-  .glowbar > i:nth-child(2){{transform:translateX(70%)}}
-  .glowbar > i:nth-child(3){{transform:translateX(140%)}}
-  .glowbar > i:nth-child(4){{transform:translateX(210%)}}
-  .dot.on::after,#scrub .thumb{{animation:none}}}}
+  .glowbar::before{{animation:none;opacity:.8}}
+  .glowbar > i{{animation:none}}
+  .glowbar > i:nth-child(1){{transform:translateX(15%)}}
+  .glowbar > i:nth-child(2){{transform:translateX(95%)}}
+  .glowbar > i:nth-child(3){{transform:translateX(175%)}}
+  #scrub .thumb{{animation:none}}}}
 """
         glow_note = f"chrome: the Freedom Glow, derived from live {live} -> {len(stops)} stops"
 
