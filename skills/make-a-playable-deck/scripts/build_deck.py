@@ -193,12 +193,18 @@ def render(sl: dict, n: int) -> str:
         raise SystemExit(f"slide {n}: unhandled kind {k!r}")
 
     sid = f' id="{esc(sl["id"])}"' if sl.get("id") else ""
-    ground = f' ground-{esc(sl["ground"])}' if sl.get("ground") else ""
+    g = sl.get("ground")
+    ground = f" ground-{esc(g)}" if g and g not in NO_CLASS_GROUNDS else ""
     return (f'<section class="s{ground}"{sid}>\n  <div class="in">{inner}</div>\n'
             f'</section>')
 
 
-GROUNDS = {"cream"}          # ink is the default and needs no class
+# `ink` is accepted and emits NO class, because it is the shell's default. Refusing it was
+# the first behaviour and it is wrong: being explicit about a slide's ground is good practice,
+# and an author who writes the default out loud should not be punished for it. The refusal
+# exists for an UNKNOWN ground, whose failure is silent.
+GROUNDS = {"cream", "ink"}
+NO_CLASS_GROUNDS = {"ink"}
 
 
 def validate(deck: dict) -> None:

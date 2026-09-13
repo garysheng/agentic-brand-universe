@@ -329,6 +329,16 @@ class Grounds(unittest.TestCase):
         r, p = run(MIN)
         self.assertIn('<section class="s"', p.read_text())
 
+    def test_ink_may_be_stated_EXPLICITLY_and_is_still_a_no_op(self):
+        """Refusing an explicit `ink` was the first behaviour and it was wrong. Being explicit
+        about a slide's ground is good practice, especially on a slide that sits between two
+        cream ones, and an author who writes the default out loud should not be refused."""
+        r, p = run({"slides": [{"kind": "statement", "heading": "H", "ground": "ink"}]})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        t = p.read_text()
+        self.assertIn('<section class="s"', t)
+        self.assertNotIn("ground-ink", t)
+
     def test_AN_UNSTYLED_GROUND_IS_REFUSED(self):
         """The failure this prevents is silent: an unknown ground emits a class the shell has
         no rule for, so the slide stays dark and looks like the author forgot to set it."""
