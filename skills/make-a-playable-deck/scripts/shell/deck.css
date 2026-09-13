@@ -53,7 +53,18 @@ figcaption{font-size:13px;line-height:1.45;color:var(--muted);margin-top:.7em;ma
  * They share a row so the eye compares rather than remembers. */
 .pair{display:grid;gap:12px;grid-template-columns:1fr 1fr}
 .pair figcaption{margin-top:.5em}
-@media(max-width:640px){.pair{grid-template-columns:1fr}}
+/* A PAIR STAYS TWO COLUMNS AT EVERY WIDTH, and the first version of this was wrong for a
+ * reason worth stating: it collapsed to one column under 640px, which is the shape that
+ * defeats the whole point. A pair exists so the eye COMPARES; stacking the two so the
+ * second is off-screen turns a comparison into a memory test, on the device most people
+ * will read this on. Two small images side by side beat one large one and a scroll.
+ *
+ * What gives instead is the HEIGHT: two portraits side by side in a narrow column are tall,
+ * so their ceiling comes down and the captions tighten. */
+@media(max-width:640px){
+  .pair{gap:8px}
+  .pair figure img,.pair figure video{max-height:38dvh}
+  .pair figcaption{font-size:11.5px;line-height:1.35}}
 
 blockquote{margin:0;padding:0 0 0 clamp(14px,2.4vw,26px);border-left:3px solid var(--live)}
 blockquote p{font-family:var(--serif);font-size:clamp(19px,3.2vw,32px);line-height:1.3}
