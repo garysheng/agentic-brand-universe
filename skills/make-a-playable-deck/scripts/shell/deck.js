@@ -79,9 +79,29 @@
    * lands on the slide the reader was actually on instead of snapping back to the cover.
    * replaceState rather than pushState: the back button should leave the deck, not walk
    * backwards through twelve slides. */
+  /* A HASH IS EITHER A POSITION OR AN ID, AND AN ID IS THE STABLE ONE.
+   *
+   * This used to strip every non-digit out of the hash, which had two faults. It could not
+   * resolve an id at all, even though the builder writes every slide's id into the section, so
+   * a link naming a slide silently landed on slide one. And worse, it MIS-resolved any id that
+   * happens to contain a digit: `#why-2` became "2" and opened slide two, which is a different
+   * slide, with nothing anywhere reporting a problem.
+   *
+   * A position is what a person says out loud and it moves the moment a slide is inserted. An
+   * id does not move, which is why anything durable (a review file, a comment, a message) should
+   * point at the id. So both resolve, digits-only first, then an exact id. */
   function slideFromHash() {
-    var n = parseInt((location.hash || '').replace(/[^0-9]/g, ''), 10);
-    return (n >= 1 && n <= S.length) ? n - 1 : 0;
+    var h = (location.hash || '').replace(/^#/, '');
+    if (/^[0-9]+$/.test(h)) {
+      var n = parseInt(h, 10);
+      return (n >= 1 && n <= S.length) ? n - 1 : 0;
+    }
+    if (h) {
+      for (var k = 0; k < S.length; k++) {
+        if (S[k].id === h) return k;
+      }
+    }
+    return 0;
   }
 
   function go(k, fromHash) {
@@ -159,6 +179,10 @@
   var stage = document.getElementById('stage') || document.body;
   stage.addEventListener('touchstart', function (e) {
     if (e.touches.length !== 1) { tracking = false; return; }
+    /* A DRAG THAT STARTS INSIDE A PASTE BLOCK IS A SELECTION, NEVER A SWIPE. Selecting text
+     * with a thumb is a horizontal drag of exactly the shape this handler reads as "next
+     * slide", so without this the reader loses both the selection and their place. */
+    if (e.target && e.target.closest && e.target.closest('.paste')) { tracking = false; return; }
     sx = e.touches[0].clientX; sy = e.touches[0].clientY; tracking = true;
   }, { passive: true });
   stage.addEventListener('touchend', function (e) {
@@ -182,6 +206,34 @@
   var next = document.getElementById('next'), prev = document.getElementById('prev');
   if (next) next.addEventListener('click', function () { go(i + 1); });
   if (prev) prev.addEventListener('click', function () { go(i - 1); });
+
+  /* COPY, with a real fallback. navigator.clipboard is unavailable on any page not served
+   * over https (and on older iOS Safari), which is exactly the case where a deck gets opened
+   * from a local build to check it. A button that silently does nothing there is worse than no
+   * button, because the reader has no way to tell it failed. */
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('.paste .copy');
+    if (!b) return;
+    var pre = document.getElementById(b.getAttribute('data-for'));
+    if (!pre) return;
+    var text = pre.textContent, was = b.getAttribute('data-was') || b.textContent;
+    b.setAttribute('data-was', was);
+    function ok() {
+      b.textContent = 'Copied';
+      b.classList.add('done');
+      setTimeout(function () { b.textContent = was; b.classList.remove('done'); }, 2200);
+    }
+    function manual() {
+      /* Select it for them, so the next action is one tap on their own Copy. */
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      b.textContent = 'Selected, copy it';
+      setTimeout(function () { b.textContent = was; }, 3200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, manual);
+    } else { manual(); }
+  });
 
   window.addEventListener('hashchange', function () { go(slideFromHash(), true); });
   window.addEventListener('resize', fitCurrent);

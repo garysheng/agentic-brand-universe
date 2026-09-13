@@ -8,9 +8,11 @@ PAL = {"tokens": {"ink": {"hex": "#1E1B19"}, "cream": {"hex": "#F0ECE5"},
                   "live": {"hex": "#007AFF"}}}
 
 
-def run(deck, extra=(), palette=None):
+def run(deck, extra=(), palette=None, files=None):
     d = pathlib.Path(tempfile.mkdtemp())
     (d / "deck.json").write_text(json.dumps(deck))
+    for name, body in (files or {}).items():
+        (d / name).write_text(body)
     cmd = [sys.executable, str(BUILD), str(d / "deck.json"), "--out", str(d / "out")]
     if palette is not None:
         (d / "pal.json").write_text(json.dumps(palette))
@@ -139,11 +141,12 @@ class Output(unittest.TestCase):
                                        {"from": "them", "text": "yo"}]},
             {"kind": "table", "columns": ["a", "b"], "rows": [["x", "1"], ["y", "2"]],
              "pick": "y"},
-            {"kind": "list", "items": ["one", "two"]}]}
+            {"kind": "list", "items": ["one", "two"]},
+            {"kind": "handoff", "heading": "H", "paste": "do the thing"}]}
         r, p = run(deck)
         self.assertEqual(r.returncode, 0, r.stderr)
         t = p.read_text()
-        self.assertEqual(t.count('<section class="s"'), 9)
+        self.assertEqual(t.count('<section class="s"'), 10)
         self.assertIn('class="b me"', t)
         self.assertIn('<tr class="pick">', t)
 
@@ -367,6 +370,405 @@ class Grounds(unittest.TestCase):
         for sel in ("body.on-cream footer", "body.on-cream #no",
                     "body.on-cream .nav button", "body.on-cream #scrub .track"):
             self.assertIn(sel, t, f"{sel} does not follow the ground")
+
+
+
+def kinds():
+    """The builder's own kind table, read rather than restated."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("bd", BUILD)
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    return m
+
+
+class KindCoverage(unittest.TestCase):
+    def test_EVERY_DECLARED_KIND_IS_EXERCISED_BY_test_every_kind_renders(self):
+        """A kind added to the table and to no test renders once, by hand, and never again.
+
+        This is the gate rather than a convention, because the failure is silent: the suite
+        stays green, and the first person to find out is the reader looking at a slide that
+        rendered wrong.
+        """
+        declared = set(kinds().KINDS)
+        src = pathlib.Path(__file__).read_text()
+        body = src.split("def test_every_kind_renders")[1].split("def test_deterministic")[0]
+        used = {k for k in declared if f'"kind": "{k}"' in body}
+        self.assertEqual(declared, used,
+                         f"kinds with no sample slide: {sorted(declared - used)}")
+
+
+class Handoff(unittest.TestCase):
+    """The copy-pasteable block: a prompt the reader is meant to take away with them."""
+
+    D = {"title": "T", "slides": [{"kind": "handoff", "id": "go", "heading": "Run it",
+                                   "paste": "line one\nline two", "label": "Copy the prompt",
+                                   "footnote": "and *send* it back"}]}
+
+    def test_paste_is_required(self):
+        r, _ = run({"slides": [{"kind": "handoff", "heading": "H"}]})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("paste", r.stdout + r.stderr)
+
+    def test_the_block_and_its_button_are_wired_to_each_other(self):
+        r, p = run(self.D)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = p.read_text()
+        self.assertIn('<pre id="paste-1">', t)
+        self.assertIn('data-for="paste-1"', t)
+        self.assertIn("Copy the prompt", t)
+
+    def test_THE_PASTE_IS_ESCAPED(self):
+        """A prompt is the one slide kind most likely to contain angle brackets and quotes,
+        and it is rendered inside an element rather than as an attribute."""
+        r, p = run({"slides": [{"kind": "handoff",
+                                "paste": '<script>alert("x")</script> & <b>'}]})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = p.read_text()
+        self.assertNotIn("<script>alert", t)
+        self.assertIn("&lt;script&gt;", t)
+
+    def test_a_horizontal_drag_inside_the_block_does_not_change_slide(self):
+        """Selecting text with a thumb is exactly the gesture that means "next slide"."""
+        js = (BUILD.parent / "shell" / "deck.js").read_text()
+        guard = js.split("stage.addEventListener('touchstart'")[1].split("}, { passive")[0]
+        self.assertIn(".closest('.paste')", guard)
+        self.assertIn("tracking = false", guard)
+
+    def test_the_paste_block_never_needs_a_horizontal_scroll(self):
+        css = (BUILD.parent / "shell" / "deck.css").read_text()
+        block = css.split(".paste pre{")[1].split("}")[0]
+        self.assertIn("white-space:pre-wrap", block)
+        self.assertIn("word-break:break-word", block)
+        self.assertIn("touch-action:pan-y", block)
+
+    def test_copy_has_a_fallback_for_a_page_with_no_clipboard_api(self):
+        """navigator.clipboard is absent on any page not served over https, which is exactly
+        where a local build gets checked. A button that silently does nothing is worse than
+        no button."""
+        js = (BUILD.parent / "shell" / "deck.js").read_text()
+        self.assertIn("navigator.clipboard", js)
+        self.assertIn("selectNodeContents", js)
+
+
+REV = {
+    "title": "Brand", "summary": "S",
+    "review": {"baseUrl": "https://example.com/", "repo": "org/uni",
+               "clone": "git clone git@github.com:org/uni.git",
+               "author": "A", "reviewer": "R",
+               "protocol": ["name the slide"],
+               "canon": [{"path": "canon/entities/m.json", "what": "the mark"}]},
+    "slides": [
+        {"kind": "image", "id": "one", "image": "a.webp", "caption": "cap", "ground": "cream",
+         "source": {"path": "reference/m/hero.png", "depicts": "the blessed cut",
+                    "governs": ["canon/entities/m.json"], "status": "blessed"}},
+        {"kind": "statement", "heading": "no images here"},
+        {"kind": "pair", "images": [
+            {"image": "b.webp", "source": {"path": "reference/m/r/x.png", "depicts": "rejected",
+                                           "status": "rejected"}},
+            {"image": "c.webp", "source": {"path": "reference/m/y.png", "depicts": "kept"}}]}]}
+
+
+class Review(unittest.TestCase):
+    """llms.txt: the deck as something an agent can read, with every asset traceable."""
+
+    def out(self, deck=None, **kw):
+        r, p = run(deck or REV, **kw)
+        return r, p.parent / "llms.txt"
+
+    def test_no_review_block_means_no_file_and_the_build_SAYS_so(self):
+        r, p = run(MIN)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse((p.parent / "llms.txt").exists())
+        self.assertIn("no review file", r.stdout)
+
+    def test_every_image_is_listed_with_BOTH_a_url_and_a_repo_path(self):
+        """The two halves are for two different readers: an agent holding only the link
+        fetches the url, and an agent holding the repo opens the plate and its recipe."""
+        r, f = self.out()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = f.read_text()
+        for name in ("a.webp", "b.webp", "c.webp"):
+            self.assertIn(f"https://example.com/{name}", t)
+        for path in ("reference/m/hero.png", "reference/m/r/x.png", "reference/m/y.png"):
+            self.assertIn(path, t)
+
+    def test_the_trailing_slash_on_baseurl_does_not_double(self):
+        r, f = self.out()
+        self.assertNotIn("//a.webp", f.read_text())
+
+    def test_it_carries_what_each_image_depicts_and_what_governs_it(self):
+        t = self.out()[1].read_text()
+        self.assertIn("depicts: the blessed cut", t)
+        self.assertIn("governs: canon/entities/m.json", t)
+        self.assertIn("[blessed]", t)
+        self.assertIn("[rejected]", t)
+
+    def test_a_text_only_slide_says_it_has_no_images(self):
+        """Silence would read to an agent as an image it failed to parse."""
+        self.assertIn("images: none", self.out()[1].read_text())
+
+    def test_the_ground_is_recorded_because_a_mark_is_judged_against_it(self):
+        t = self.out()[1].read_text()
+        self.assertIn("ground: cream", t)
+        self.assertIn("ground: ink", t)          # the default, stated
+
+    def test_every_slide_gets_a_deep_link(self):
+        t = self.out()[1].read_text()
+        self.assertIn("https://example.com/#one", t)
+
+    def test_AN_UNTRACEABLE_IMAGE_REFUSES_THE_BUILD(self):
+        """A review file with holes is worse than none: the one image with no source is the
+        one the reviewer's agent quietly guesses about, and a guess reads like a fact."""
+        d = json.loads(json.dumps(REV))
+        del d["slides"][0]["source"]
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        out = r.stdout + r.stderr
+        self.assertIn("a.webp", out)
+        self.assertIn("Untraceable", out)
+
+    def test_a_source_missing_depicts_is_just_as_untraceable_as_a_missing_path(self):
+        d = json.loads(json.dumps(REV))
+        d["slides"][0]["source"] = {"path": "reference/m/hero.png"}
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Untraceable", r.stdout + r.stderr)
+
+    def test_review_needs_a_baseurl_because_the_urls_are_absolute(self):
+        d = json.loads(json.dumps(REV)); del d["review"]["baseUrl"]
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("baseUrl", r.stdout + r.stderr)
+
+    def test_an_unknown_review_key_is_refused_by_name(self):
+        d = json.loads(json.dumps(REV)); d["review"]["reveiwer"] = "typo"
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("reveiwer", r.stdout + r.stderr)
+
+    def test_an_unknown_source_key_is_refused_by_name(self):
+        d = json.loads(json.dumps(REV)); d["slides"][0]["source"]["depicst"] = "typo"
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("depicst", r.stdout + r.stderr)
+
+    def test_an_unknown_key_inside_an_image_object_is_refused_by_name(self):
+        """Nothing validated the entries of `images` before, so a typo there was the one
+        silent hole left in a validator built to refuse exactly this."""
+        d = json.loads(json.dumps(REV))
+        d["slides"][2]["images"][0]["captoin"] = "typo"
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("captoin", r.stdout + r.stderr)
+
+    def test_an_invented_status_is_refused(self):
+        d = json.loads(json.dumps(REV)); d["slides"][0]["source"]["status"] = "quite-good"
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("quite-good", r.stdout + r.stderr)
+
+    def test_the_boomerang_is_copied_beside_the_deck_and_linked(self):
+        d = json.loads(json.dumps(REV)); d["review"]["boomerang"] = "BOOMERANG.md"
+        r, f = self.out(d, files={"BOOMERANG.md": "# prompt\n"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual((f.parent / "BOOMERANG.md").read_text(), "# prompt\n")
+        self.assertIn("https://example.com/BOOMERANG.md", f.read_text())
+
+    def test_A_MISSING_BOOMERANG_REFUSES_RATHER_THAN_SHIPPING_A_DEAD_LINK(self):
+        """The deck links it from the one slide whose whole job is to be pasted."""
+        d = json.loads(json.dumps(REV)); d["review"]["boomerang"] = "BOOMERANG.md"
+        r, _ = run(d)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("BOOMERANG.md", r.stdout + r.stderr)
+
+    def test_it_points_the_reader_at_the_recipe_files(self):
+        """The provenance beside each plate is the answer to "why does it look like this",
+        and an agent that does not know it exists will never open it."""
+        self.assertIn("recipe.json", self.out()[1].read_text())
+
+    def test_deterministic(self):
+        a = self.out()[1].read_text()
+        b = self.out()[1].read_text()
+        self.assertEqual(a, b)
+
+
+class ReviewPaths(unittest.TestCase):
+    """--repo-root: every path the review file promises actually resolves."""
+
+    def build(self, deck, make):
+        d = pathlib.Path(tempfile.mkdtemp())
+        (d / "deck.json").write_text(json.dumps(deck))
+        repo = d / "repo"
+        for rel in make:
+            (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            (repo / rel).write_text("x")
+        repo.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run([sys.executable, str(BUILD), str(d / "deck.json"),
+                            "--out", str(d / "out"), "--repo-root", str(repo)],
+                           capture_output=True, text=True)
+        return r
+
+    REAL = ["reference/m/hero.png", "reference/m/r/x.png", "reference/m/y.png",
+            "canon/entities/m.json"]
+
+    def test_all_paths_present_builds_and_says_how_many_it_checked(self):
+        r = self.build(REV, self.REAL)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("path(s) verified", r.stdout)
+
+    def test_A_DEAD_SOURCE_PATH_REFUSES_AND_NAMES_IT(self):
+        """A path that does not resolve is worse than no path: the agent goes looking, finds
+        nothing, and has to decide whether the deck is lying."""
+        r = self.build(REV, [p for p in self.REAL if p != "reference/m/y.png"])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("reference/m/y.png", r.stdout + r.stderr)
+
+    def test_a_dead_governs_path_refuses_too(self):
+        r = self.build(REV, [p for p in self.REAL if p != "canon/entities/m.json"])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("canon/entities/m.json", r.stdout + r.stderr)
+
+    def test_the_gate_is_OPT_IN_so_a_deck_with_no_repo_on_hand_still_builds(self):
+        r, f = run(REV)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("verified", r.stdout)
+
+
+class Recipes(unittest.TestCase):
+    """Whether a plate carries provenance is CHECKED per image, never promised in general."""
+
+    def build(self, make, with_root=True):
+        d = pathlib.Path(tempfile.mkdtemp())
+        (d / "deck.json").write_text(json.dumps(REV))
+        repo = d / "repo"; repo.mkdir(parents=True, exist_ok=True)
+        for rel in make:
+            (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            (repo / rel).write_text("x")
+        cmd = [sys.executable, str(BUILD), str(d / "deck.json"), "--out", str(d / "out")]
+        if with_root:
+            cmd += ["--repo-root", str(repo)]
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        return r, d / "out" / "llms.txt"
+
+    PLATES = ["reference/m/hero.png", "reference/m/r/x.png", "reference/m/y.png",
+              "canon/entities/m.json"]
+
+    def test_a_plate_WITH_a_recipe_gets_its_path(self):
+        r, f = self.build(self.PLATES + ["reference/m/hero.png.recipe.json"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("recipe: reference/m/hero.png.recipe.json", f.read_text())
+
+    def test_A_PLATE_WITHOUT_ONE_SAYS_SO_RATHER_THAN_SENDING_THE_AGENT_LOOKING(self):
+        """Found for real: 2 of 13 plates in the first deck through this had no recipe, while
+        the file promised in general that every plate did. An agent that goes looking for a
+        file that is not there spends the reviewer's attention on the tooling."""
+        r, f = self.build(self.PLATES)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = f.read_text()
+        self.assertIn("recipe: NONE on disk", t)
+        self.assertIn("Do not go looking", t)
+
+    def test_with_no_repo_it_does_not_claim_to_know_either_way(self):
+        r, f = self.build([], with_root=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = f.read_text()
+        self.assertIn("could not check", t)
+        self.assertNotIn("recipe:", t)
+
+
+class DeepLinks(unittest.TestCase):
+    """A hash is either a position or an id, and the id is the one anything durable points at."""
+
+    def js(self):
+        return (BUILD.parent / "shell" / "deck.js").read_text()
+
+    def test_an_id_hash_resolves_by_matching_a_section_id(self):
+        self.assertIn("S[k].id === h", self.js())
+
+    def test_A_DIGIT_INSIDE_AN_ID_IS_NOT_TREATED_AS_A_POSITION(self):
+        """The old resolver stripped non-digits, so `#why-2` opened slide TWO: a different
+        slide, with nothing reporting a problem. Only a digits-ONLY hash is a position."""
+        js = self.js()
+        self.assertNotIn("replace(/[^0-9]/g, '')", js)
+        self.assertIn("/^[0-9]+$/.test(h)", js)
+
+    def test_the_builder_writes_the_id_the_resolver_looks_for(self):
+        r, p = run({"title": "T", "slides": [
+            {"kind": "statement", "id": "why-2", "heading": "H"},
+            {"kind": "statement", "id": "handoff", "heading": "H"}]})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = p.read_text()
+        self.assertIn('id="why-2"', t)
+        self.assertIn('id="handoff"', t)
+
+    def test_the_review_file_promises_id_links_so_they_have_to_WORK(self):
+        """The two halves are written in different files and only break together."""
+        r, p = run(REV)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("#one", (p.parent / "llms.txt").read_text())
+        self.assertIn('id="one"', p.read_text())
+
+
+class Links(unittest.TestCase):
+    """`[text](https://…)` renders, and nothing else that looks like a link does."""
+
+    def one(self, text):
+        r, p = run({"slides": [{"kind": "statement", "heading": "H", "body": text}]})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return p.read_text()
+
+    def test_an_https_link_renders(self):
+        t = self.one("see [the standard](https://appliedai.wiki/x) for this")
+        self.assertIn('<a href="https://appliedai.wiki/x" target="_blank" '
+                      'rel="noopener">the standard</a>', t)
+
+    def test_A_JAVASCRIPT_URL_IS_NOT_A_LINK(self):
+        """https-only is the security boundary, not a style preference: this would otherwise
+        become a live script handler on a page that escapes everything else it is given."""
+        t = self.one("[x](javascript:alert(1))")
+        self.assertNotIn("<a href", t)
+        self.assertNotIn("javascript:alert(1)\"", t)
+
+    def test_http_and_relative_urls_are_left_as_text(self):
+        for bad in ("[x](http://example.com)", "[x](/local/path)", "[x](data:text/html,y)"):
+            self.assertNotIn("<a href", self.one(bad), bad)
+
+    def test_the_link_text_is_still_escaped(self):
+        t = self.one('[<b>hi</b>](https://e.com/a)')
+        self.assertIn("&lt;b&gt;hi&lt;/b&gt;", t)
+        self.assertNotIn("<b>hi</b>", t)
+
+    def test_a_quote_in_the_url_cannot_break_out_of_the_attribute(self):
+        t = self.one('[x](https://e.com/a"onload="alert(1))')
+        self.assertNotIn('"onload="', t)
+
+    def test_plain_brackets_are_left_alone(self):
+        t = self.one("array[0] and (a note)")
+        self.assertNotIn("<a href", t)
+        self.assertIn("array[0]", t)
+
+
+class PasteLayout(unittest.TestCase):
+    def test_THE_BUTTON_IS_NOT_INSIDE_THE_SCROLLING_BLOCK(self):
+        """Absolutely positioned over the <pre> it covered whichever line was scrolled into
+        view, and looked deliberate while doing it. Bottom padding does not help: the padding
+        scrolls with the content, so the gap is almost never where the button is."""
+        r, p = run({"slides": [{"kind": "handoff", "paste": "x"}]})
+        t = p.read_text()
+        pre_end = t.index("</pre>")
+        self.assertLess(pre_end, t.index('class="copy"'),
+                        "the button is rendered inside the <pre>")
+        self.assertIn('<div class="pastebar">', t)
+
+    def test_the_bar_does_not_scroll_away_with_the_content(self):
+        css = (BUILD.parent / "shell" / "deck.css").read_text()
+        bar = css.split(".pastebar{")[1].split("}")[0]
+        self.assertIn("flex:none", bar)
+        self.assertNotIn("position:absolute", bar)
+
+    def test_the_bar_follows_a_cream_ground(self):
+        css = (BUILD.parent / "shell" / "deck.css").read_text()
+        self.assertIn("section.s.ground-cream .pastebar{", css)
 
 
 if __name__ == "__main__":
