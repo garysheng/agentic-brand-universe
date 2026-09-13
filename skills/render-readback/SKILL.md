@@ -16,6 +16,18 @@ The quality gate that catches a defective render before it ships or locks. A ren
    - `crop_zoom.py OUT.png IMG --box X0,Y0,X1,Y1 --label "what this must show"` (repeatable) — the NARROW pass, which is where most invariants actually live: a pendant that must be a four-point star and not a crucifix, two gold incisors, a patch on the correct side, a face-down phone.
 
    Pass `--grid 4x4` instead of `--box` when you do not already know where the detail sits. Guessing a box, getting back a rectangle of empty shadow, and guessing again costs two round trips; the grid costs one. (Earned on the-little-door, 2026-07-30, which guessed wrong twice in one run.)
+2a. **The GUARD GATE, from the recipe (v0.47).** The recipe's `guardGate` lists one read-back
+   assertion per standing prompt guard that fired on this render (`guards` names them:
+   device-anatomy, readable-surface, travel-direction, vehicle-seat-facing, two-hander-staging,
+   seated-at-table, no-ui-chrome). Evaluate EVERY one, PASS or DEFECT, the same way as an
+   entity invariant, and crop-zoom to do it: for device-anatomy that means each device
+   together with its user, asking which side the glowing display is on. A prompt guard is an
+   instruction to the model and it loses some fraction of the time; this gate is what refuses
+   when it lost. Earned 2026-09-12 on an appliedai.wiki hero: the guard fired, the prompt
+   carried it verbatim, the render put the screen toward the camera with its user behind the
+   lid, and the read-back passed it because no line told the reader to look. A recipe with
+   `guards` but no `guardGate` was written before v0.47; apply the same table from
+   `providers/gpt-image-2/prompt_guards.py` (`READBACK_GATE`) by hand.
 2b. **The standing EYELINE check, on every scene with a conversation in it (v0.38).** Beyond the
    entity invariants, any render whose scene has people talking with, laughing with, showing
    something to, or being introduced to someone gets one extra look: crop-zoom each

@@ -138,6 +138,34 @@ def sha256(p):
 ENGINE = None  # resolved lazily by _engine_on_path(); see engine/agenticstory/providers.py
 
 
+def _prompt_guards_module(provider="gpt-image-2"):
+    """The standing prompt guards, loaded from a vendored provider by path.
+
+    By path rather than by `provider_script()`, because that resolver may be pointed at a
+    fork or stubbed in a test, and the guard table is framework canon rather than a
+    provider detail: both vendored providers carry an identical copy. REFUSES if the file
+    is missing, since a render whose recipe silently omits `guardGate` is the exact
+    unchecked-guard case this exists to close.
+    """
+    import importlib.util
+    path = _abu_root() / "providers" / provider / "prompt_guards.py"
+    if not path.exists():
+        sys.exit(f"generate.py: prompt guards not found at {path}; the guard gate cannot be "
+                 f"recorded, and a render without it is unchecked.")
+    spec = importlib.util.spec_from_file_location("abu_prompt_guards", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _apply_guards(prompt):
+    return _prompt_guards_module().apply_prompt_guards(prompt)
+
+
+def _guard_gate(fired):
+    return _prompt_guards_module().readback_gate(fired)
+
+
 def resolve_entities(specs, required_only=False, with_photos=False):
     """Resolve `UNIVERSE:ID[@LOOK]` specs to (refs, invariants, rules, meta).
 
@@ -664,6 +692,16 @@ def main():
     if a.model is None:
         print(f"[generate] model not specified; using the adapter's default: {model}", flush=True)
 
+    # THE GUARDS ARE APPLIED HERE, ONCE, SO THE RECIPE CAN NAME THEM. The provider applies
+    # the same guards idempotently, so nothing is double-stuffed; what this buys is that
+    # `guards` and `guardGate` below are facts about THIS prompt rather than a guess about
+    # what the provider did. A guard is an instruction to the model; `guardGate` is the
+    # read-back assertion that refuses when the model did not follow it. Earned 2026-09-12:
+    # device-anatomy fired, the prompt carried it verbatim, and a hero still shipped with
+    # the screen toward the camera and its user behind the lid, because the read-back had
+    # no line telling it to look.
+    prompt, fired_guards = _apply_guards(prompt)
+
     if model.startswith("nano"):
         cmd = ["uv", "run", provider_script("nano-banana-pro"), "--prompt", prompt, "--filename", out, "--resolution", "2K"]
     else:
@@ -723,6 +761,9 @@ def main():
     # worked fine).
     recipe["size"] = a.size
     recipe["quality"] = a.quality
+    if fired_guards:
+        recipe["guards"] = fired_guards
+        recipe["guardGate"] = _guard_gate(fired_guards)
     if lookbook_meta:
         # The SAMPLED exemplars, not just the lookbook's name. Which subset was drawn is
         # the difference between a reproducible render and a recipe that merely asserts
@@ -733,6 +774,10 @@ def main():
     with open(out + ".recipe.json", "w") as f:
         json.dump(recipe, f, indent=2)
     print(f"[generate] {os.path.basename(out)} + {os.path.basename(out)}.recipe.json  (provenance written)")
+    if recipe.get("guardGate"):
+        print(f"[generate] guardGate: {len(recipe['guardGate'])} assertion(s) from "
+              + ", ".join(fired_guards)
+              + " are part of this render's readback, alongside the pack gate.")
     if recipe.get("entityGate"):
         n = sum(len(g["invariants"]) for g in recipe["entityGate"])
         print(f"[generate] entityGate: {n} invariant(s) from "

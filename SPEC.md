@@ -1,11 +1,21 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.47 — 2026-09-12.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.48 — 2026-09-12.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.48 changelog — a prompt guard that fires is also a read-back assertion.** Every standing
+> prompt guard (§3.5, `providers/*/prompt_guards.py`) now has a matching entry in `READBACK_GATE`,
+> and `generate.py` writes the ones that fired into the recipe as `guards` and `guardGate`, which
+> `render-readback` evaluates alongside the pack gate and the entity gate. Earned 2026-09-12 by a
+> wiki hero whose prompt carried the device-anatomy guard verbatim and still shipped with the
+> laptop's screen toward the camera and its user behind the lid: the instruction lost, and no line
+> on the checklist told the reader to look. Gary: "no more screens on the wrong side of a device."
+>
+> **v0.47 changelog — the board of next moves.** §15.
+>
 > **v0.46 changelog — binding an entity inherits its guard.** `generate.py` writes `entityGate`
 > into the recipe (each bound entity's invariants) and the readback of that render is the pack
 > gate plus every entity gate (§3.5). Earned by the same four covers as v0.45: the checklist they
@@ -1039,6 +1049,19 @@ in one book, on the same lines where its own ref column listed ten of his plates
 caption check above: **a check that is wrong every time it fires trains its operator to ignore it**,
 and this one is otherwise load-bearing, because the true positive it exists to catch — a cast entity
 whose plates never reach the model — reads identically.
+
+**A prompt guard that fires is also a read-back assertion (v0.48).** The standing prompt
+guards (device anatomy, readable surface, travel direction, vehicle seat facing, two-hander
+staging, seated anatomy, no UI chrome) are appended to the prompt when its content calls for
+them, and each is an instruction to the model. An instruction is weighed against everything else
+in the window and loses some fraction of the time, and until v0.48 nothing checked the output for
+the thing the guard asked for: the pack gate never mentioned devices, and a render with a screen
+on the wrong side of its laptop passed read-back because no line told the reader to look. Now
+`READBACK_GATE` in `prompt_guards.py` carries one assertion per guard name, `generate.py` writes
+`guards` (the names that fired) and `guardGate` (their assertions) into the recipe, and the
+readback of that render is the pack gate PLUS the entity gate PLUS the guard gate. A guard with
+no gate entry fails the provider's own test suite, so the two halves cannot drift apart. The
+prompt half asks; the gate half refuses.
 
 **Binding an entity inherits its guard (v0.46).** A render made with `--entity` already
 carried the entity's `structured.invariants` into the PROMPT as positives. It did not carry
