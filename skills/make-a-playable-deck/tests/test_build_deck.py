@@ -314,5 +314,50 @@ class TouchBehaviour(unittest.TestCase):
         self.assertIn("touch-action:none", p.read_text())
 
 
+class Grounds(unittest.TestCase):
+    """A mark must always be shown on a background it was drawn for. A light-ground mark on a
+    dark slide arrives as a bright white panel floating mid-deck."""
+
+    def test_a_slide_can_carry_its_own_ground(self):
+        r, p = run({"slides": [{"kind": "image", "image": "m.png", "ground": "cream"}]})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = p.read_text()
+        self.assertIn('class="s ground-cream"', t)
+        self.assertIn("section.s.ground-cream{background:var(--cream)", t)
+
+    def test_ink_is_the_default_and_adds_no_class(self):
+        r, p = run(MIN)
+        self.assertIn('<section class="s"', p.read_text())
+
+    def test_AN_UNSTYLED_GROUND_IS_REFUSED(self):
+        """The failure this prevents is silent: an unknown ground emits a class the shell has
+        no rule for, so the slide stays dark and looks like the author forgot to set it."""
+        r, _ = run({"slides": [{"kind": "statement", "heading": "H", "ground": "sepia"}]})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("sepia", r.stdout + r.stderr)
+        self.assertIn("dead class", r.stdout + r.stderr)
+
+    def test_the_cream_ground_restyles_everything_that_would_vanish(self):
+        """Flipping only the background leaves cream text on cream. Each of these is a thing
+        that disappears or goes illegible if the ground flips without it."""
+        r, p = run({"slides": [{"kind": "table", "columns": ["a", "b"],
+                                "rows": [["x", "1"]], "ground": "cream"}]})
+        t = p.read_text()
+        for sel in ("section.s.ground-cream .lede", "section.s.ground-cream figcaption",
+                    "section.s.ground-cream th", "section.s.ground-cream .chat .b.them",
+                    "section.s.ground-cream figure img"):
+            self.assertIn(sel, t, f"{sel} is not restyled for the cream ground")
+    def test_the_fixed_chrome_follows_the_ground(self):
+        """The footer and counter live OUTSIDE the section and cannot inherit from it, so a
+        cream slide otherwise gets a dark bar across its bottom that reads as a separate layer.
+        go() sets the class on <body>, which is the only element above both."""
+        r, p = run({"slides": [{"kind": "image", "image": "m.png", "ground": "cream"}]})
+        t = p.read_text()
+        self.assertIn("classList.toggle('on-cream'", t)
+        for sel in ("body.on-cream footer", "body.on-cream #no",
+                    "body.on-cream .nav button", "body.on-cream #scrub .track"):
+            self.assertIn(sel, t, f"{sel} does not follow the ground")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

@@ -48,7 +48,7 @@ KINDS = {
     "table":     {"kicker", "heading", "columns", "rows", "pick", "body"},
     "list":      {"kicker", "heading", "items", "body", "ordered"},
 }
-COMMON = {"kind", "id", "notes"}
+COMMON = {"kind", "id", "notes", "ground"}
 
 
 def spectrum_depth(live_hex: str, n: int = 7) -> list[str]:
@@ -193,7 +193,12 @@ def render(sl: dict, n: int) -> str:
         raise SystemExit(f"slide {n}: unhandled kind {k!r}")
 
     sid = f' id="{esc(sl["id"])}"' if sl.get("id") else ""
-    return f'<section class="s"{sid}>\n  <div class="in">{inner}</div>\n</section>'
+    ground = f' ground-{esc(sl["ground"])}' if sl.get("ground") else ""
+    return (f'<section class="s{ground}"{sid}>\n  <div class="in">{inner}</div>\n'
+            f'</section>')
+
+
+GROUNDS = {"cream"}          # ink is the default and needs no class
 
 
 def validate(deck: dict) -> None:
@@ -206,6 +211,11 @@ def validate(deck: dict) -> None:
                      f"{', '.join(sorted(KINDS))}")
         # REFUSE AN UNKNOWN KEY BY NAME. A mistyped key is the one defect a deck cannot show
         # you: the content is simply absent, on one slide, and the deck still looks finished.
+        g = sl.get("ground")
+        if g is not None and g not in GROUNDS:
+            sys.exit(f"build_deck: slide {n} has ground {g!r}; the shell styles "
+                     f"{', '.join(sorted(GROUNDS))} and defaults to ink. An unstyled ground "
+                     f"emits a dead class and the slide silently stays dark.")
         unknown = set(sl) - KINDS[k] - COMMON
         if unknown:
             sys.exit(f"build_deck: slide {n} ({k}) has unknown key(s) "
