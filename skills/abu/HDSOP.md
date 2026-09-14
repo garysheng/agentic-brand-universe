@@ -129,10 +129,18 @@ selecting the moves worth mentioning, and phrasing each one as an outcome with i
 **Irreducibly human:** which of the offered moves to take, and any taste fork the grader marks as
 propose-rather-than-auto. Also the decision to stop.
 
-**Strongest next candidate:** a check that fails when a shell command appears in this skill's own
-output. The one hard rule is enforced today by the agent remembering it, which is the weakest
-enforcement available, and the failure is invisible to everyone except the user reading the
-transcript.
+**Built, v0.49, for the half the framework controls** (it was this map's own strongest next
+candidate): the FRAMEWORK's own strings can no longer carry a command to a person.
+`workspace.command_in()` is the detector, `humanize()` drops anything command-shaped whichever
+argument it arrived in, a command-shaped board label becomes the dimension's outcome sentence, and
+a test reads `grade.py`'s `RUBRIC` so a new dimension cannot ship without a plain-language
+sentence. The live leak it closed: `setting_nesting` had no sentence, so its fix string -- two JSON
+keys in backticks -- was what `plan.headline.human` said out loud.
+
+**Strongest next candidate:** the other half, a command the AGENT types into the transcript on its
+own account. Nothing here can see that, and the honest options are a transcript-scoring check
+(`pave-the-path/scripts/review_run.py` already reads a run's transcript) or leaving it as
+judgement. Worth deciding rather than leaving implied, since the rule now reads as enforced.
 
 # Related
 

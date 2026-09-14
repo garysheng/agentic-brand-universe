@@ -1,6 +1,7 @@
 """Universe discovery, progress memory, and next-move selection."""
 import json
 import os
+import pathlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -225,8 +226,89 @@ class TestHumanize(unittest.TestCase):
         for tell in ("canon/properties", "`abu", ".json"):
             self.assertNotIn(tell, s)
 
-    def test_unknown_dimension_falls_back(self):
+    def test_unknown_dimension_falls_back_to_PLAIN_LANGUAGE(self):
+        """A fallback that reads as English is still used; that half was always right."""
         self.assertIn("something odd", workspace.humanize("mystery", "", "something odd"))
+
+    def test_unknown_dimension_NEVER_falls_back_to_a_COMMAND(self):
+        """The leak this closes (v0.49).
+
+        `fallback` is the grader's `fix`, written for the grader's maintainer. The old
+        behaviour passed it through verbatim for any dimension with no OUTCOMES sentence,
+        and the old test for it was named `..._falls_back` and asserted the leak.
+        """
+        s = workspace.humanize("mystery", "", "write canon/properties/<id>.json, then `abu build-canon`")
+        self.assertIsNone(workspace.command_in(s), s)
+        self.assertNotIn("abu build-canon", s)
+        s2 = workspace.humanize("mystery", "", "abu backfill-provenance (records what is knowable)")
+        self.assertIsNone(workspace.command_in(s2), s2)
+
+    def test_a_command_in_the_DETAIL_is_dropped_too(self):
+        s = workspace.humanize("provenance", "18/1304 images; run `abu backfill-provenance`")
+        self.assertIsNone(workspace.command_in(s), s)
+
+    def test_every_grader_dimension_has_an_outcome_sentence(self):
+        """The READBACK_GATE pattern: a new dimension cannot ship without its sentence.
+
+        `setting_nesting` shipped without one, so its fix string -- which names two JSON
+        keys in backticks -- was what `plan.headline.human` said out loud.
+        """
+        import importlib.util
+        g = (pathlib.Path(__file__).resolve().parents[2]
+             / "skills" / "universe-doctor" / "scripts" / "grade.py")
+        spec = importlib.util.spec_from_file_location("_grade", g)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for key, label, _max in mod.RUBRIC:
+            self.assertIn(key, workspace.OUTCOMES,
+                          f"grader dimension {key!r} ({label}) has no plain-language "
+                          f"sentence in workspace.OUTCOMES, so the front door would say "
+                          f"the grader's own fix string, which contains commands")
+
+    def test_plan_human_strings_carry_no_command(self):
+        """Over the grader's REAL fix strings, not invented ones."""
+        real_fixes = [
+            ("validity", "abu validate"),
+            ("setting_nesting", "split the rooms into settings with `partOf`, house rules "
+                                "into `structured.houseRules`"),
+            ("provenance", "abu backfill-provenance (records what is knowable; never re-renders)"),
+            ("stories", "write canon/properties/<id>.json, then `abu build-canon`"),
+            ("identity", "start-new-story-universe / edit universe.json"),
+        ]
+        issues = [{"impact": 9 - n, "dimension": d, "what": "x", "fix": f}
+                  for n, (d, f) in enumerate(real_fixes)]
+        p = workspace.plan(issues)
+        for g in p["groups"]:
+            self.assertIsNone(workspace.command_in(g["human"]), g["human"])
+        for k in ("headline", "small"):
+            if p[k]:
+                self.assertIsNone(workspace.command_in(p[k]["human"]), p[k]["human"])
+
+
+class TestCommandIn(unittest.TestCase):
+    def test_catches_what_a_person_must_never_be_shown(self):
+        for s in ("abu validate",
+                  "run `abu build-canon` afterwards",
+                  "python3 grade.py <universe>",
+                  "pass --json to it",
+                  "cat x && echo y",
+                  "use grade.py for this",
+                  "`uv run generate.py`"):
+            self.assertIsNotNone(workspace.command_in(s), f"missed: {s!r}")
+
+    def test_leaves_ordinary_sentences_alone(self):
+        """Over-triggering blanks real sentences, which is worse than the leak."""
+        for s in list(workspace.OUTCOMES.values()) + [
+                "18/1304 images have no provenance record",
+                "identity is missing register.anchor",
+                "3 full stories with no canon/properties record: a, b",
+                "assetRoot is 'assets' (should be '.'): refs may point outside the repo",
+                "make a work out of this canon",
+                "one place is modelled as several rooms at once"]:
+            self.assertIsNone(workspace.command_in(s), f"false positive: {s!r}")
+
+    def test_a_path_is_not_a_command(self):
+        self.assertIsNone(workspace.command_in("canon/entities/jerry.json"))
 
     def test_plan_attaches_human_to_every_group(self):
         issues = [{"impact": 9, "dimension": "provenance", "what": "18/1304 images", "fix": "f"},

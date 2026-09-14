@@ -27,13 +27,17 @@ def png(path: Path, *, black=False):
     return str(path)
 
 
-def recipe(path: Path, *, entities=None, prompt=None):
+def recipe(path: Path, *, entities=None, prompt=None, guards=None, gate=None):
     if prompt is None:
         prompt = ("A scene. These are LOCKED canonical traits: a gold visor."
                   if entities else "A scene with nobody in it.")
     body = {"prompt": prompt}
     if entities is not None:
         body["entities"] = entities
+    if guards is not None:
+        body["guards"] = guards
+        body["guardGate"] = gate if gate is not None else [
+            f"{g.upper()}: look at it. If it is wrong: DEFECT." for g in guards]
     Path(str(path) + ".recipe.json").write_text(json.dumps(body))
 
 
@@ -172,6 +176,115 @@ class VerifyRender(unittest.TestCase):
                                 "--scene", "in a lace gown")
         self.assertEqual(code, 1)
         self.assertEqual(err.count("cannot prove the look is BOUND"), 1)
+
+
+class GuardGateIsJudged(unittest.TestCase):
+    """An unjudged gate and a passed gate used to look identical (v0.49).
+
+    v0.47 put the read-back assertion in the recipe so a reader would be TOLD to look at
+    the thing that shipped wrong on the appliedai hero. Nothing then checked that anyone
+    looked, which is the same defect one level up: a prompt guard is an instruction and
+    loses some of the time, and so is "evaluate every guardGate entry".
+    """
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp(prefix="abu-vrg-"))
+        self.addCleanup(shutil.rmtree, self.d, True)
+
+    def run_it(self, *args):
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        err, out = io.StringIO(), io.StringIO()
+        with redirect_stderr(err), redirect_stdout(out):
+            code = vr.main(list(args))
+        return code, err.getvalue(), out.getvalue()
+
+    def guarded(self, name="a.png", guards=("device-anatomy",)):
+        p = Path(png(self.d / name))
+        recipe(p, entities=[ent("selah")], guards=list(guards),
+               prompt="A scene. These are LOCKED canonical traits: a gold visor.")
+        return str(p)
+
+    def test_a_fired_guard_with_no_verdict_FAILS(self):
+        code, err, _ = self.run_it(self.guarded())
+        self.assertEqual(code, 1)
+        self.assertIn("device-anatomy", err)
+        self.assertIn("no recorded verdict", err)
+
+    def test_the_failure_prints_the_ASSERTION_so_the_reader_knows_where_to_look(self):
+        """The appliedai hero's exact miss: nothing told the reader to look."""
+        code, err, _ = self.run_it(self.guarded())
+        self.assertIn("DEVICE-ANATOMY:", err)
+        self.assertIn("--guard device-anatomy=pass", err)
+
+    def test_a_render_that_tripped_no_guard_is_unaffected(self):
+        p = Path(png(self.d / "clean.png"))
+        recipe(p, entities=[ent("selah")])
+        code, _, _ = self.run_it(str(p))
+        self.assertEqual(code, 0)
+
+    def test_recording_a_pass_lets_it_through(self):
+        p = self.guarded()
+        self.assertEqual(self.run_it(p, "--guard", "device-anatomy=pass")[0], 0)
+        self.assertEqual(self.run_it(p)[0], 0, "the verdict must persist beside the image")
+
+    def test_a_recorded_DEFECT_is_a_failure_not_a_note(self):
+        p = self.guarded()
+        code, err, _ = self.run_it(p, "--guard", 'device-anatomy=defect:"screen toward camera"')
+        self.assertEqual(code, 1)
+        self.assertIn("FROM SCRATCH", err)
+
+    def test_a_waiver_needs_a_written_reason(self):
+        p = self.guarded()
+        code, err, _ = self.run_it(p, "--guard", "device-anatomy=waived")
+        self.assertEqual(code, 2)
+        self.assertIn("no reason", err)
+        code, _, _ = self.run_it(p, "--guard", "device-anatomy=waived:the page is illegible by design")
+        self.assertEqual(code, 0)
+
+    def test_a_defect_needs_a_written_reason_too(self):
+        code, err, _ = self.run_it(self.guarded(), "--guard", "device-anatomy=defect")
+        self.assertEqual(code, 2)
+        self.assertIn("no reason", err)
+
+    def test_an_unknown_verdict_is_refused(self):
+        code, err, _ = self.run_it(self.guarded(), "--guard", "device-anatomy=probably")
+        self.assertEqual(code, 2)
+        self.assertIn("unknown verdict", err)
+
+    def test_a_verdict_for_a_guard_that_never_fired_is_refused(self):
+        """A typo must not read as a judgement, leaving the real guard unjudged."""
+        code, err, _ = self.run_it(self.guarded(), "--guard", "device-antomy=pass")
+        self.assertEqual(code, 2)
+        self.assertIn("no guard named", err)
+
+    def test_judging_one_guard_does_not_erase_another(self):
+        p = self.guarded(guards=("device-anatomy", "no-ui-chrome"))
+        self.run_it(p, "--guard", "device-anatomy=pass")
+        code, err, _ = self.run_it(p, "--guard", "no-ui-chrome=pass")
+        self.assertEqual(code, 0, err)
+
+    def test_every_fired_guard_needs_its_own_verdict(self):
+        p = self.guarded(guards=("device-anatomy", "no-ui-chrome"))
+        code, err, _ = self.run_it(p, "--guard", "device-anatomy=pass")
+        self.assertEqual(code, 1)
+        self.assertIn("no-ui-chrome", err)
+        self.assertNotIn("guard 'device-anatomy' FIRED", err)
+
+    def test_a_verdict_may_not_be_spread_across_a_batch(self):
+        a, b = self.guarded("a.png"), self.guarded("b.png")
+        code, err, _ = self.run_it(a, b, "--guard", "device-anatomy=pass")
+        self.assertEqual(code, 2)
+        self.assertIn("ONE image", err)
+
+    def test_a_pre_v047_recipe_still_demands_verdicts(self):
+        """`guards` with no `guardGate`: the NAMES are the checkable half."""
+        p = Path(png(self.d / "old.png"))
+        recipe(p, entities=[ent("selah")], guards=["device-anatomy"], gate=[])
+        code, err, _ = self.run_it(str(p))
+        self.assertEqual(code, 1)
+        self.assertIn("predates v0.47", err)
+        self.assertIn("READBACK_GATE", err)
 
 
 if __name__ == "__main__":

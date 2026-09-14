@@ -28,6 +28,27 @@ The quality gate that catches a defective render before it ships or locks. A ren
    lid, and the read-back passed it because no line told the reader to look. A recipe with
    `guards` but no `guardGate` was written before v0.47; apply the same table from
    `providers/gpt-image-2/prompt_guards.py` (`READBACK_GATE`) by hand.
+
+   **RECORD THE VERDICT, because otherwise nothing knows you looked (v0.49).** v0.47 gave
+   the reader the line and gave nobody a way to tell whether the line was read, so a
+   skipped gate and a passed gate look identical from outside. That is the same shape of
+   failure one level up: "evaluate every entry" is an instruction, and an instruction loses
+   some fraction of the time. So `verify_render.py` now FAILS on any render whose recipe
+   records a fired guard with no recorded verdict, and prints the assertion you are
+   supposed to be looking at:
+
+   ```bash
+   python3 <abu>/skills/render-readback/scripts/verify_render.py OUT.png                       # refuses
+   python3 <abu>/skills/render-readback/scripts/verify_render.py OUT.png --guard device-anatomy=pass
+   python3 <abu>/skills/render-readback/scripts/verify_render.py OUT.png --guard no-ui-chrome=defect:"invented menu bar"
+   ```
+
+   A DEFECT is a failure, not a note: regenerate FROM SCRATCH. A waiver is the recorded
+   exception (`--guard NAME=waived:"why"`) and a written reason is required, the same shape
+   as a voice-gate waiver. Verdicts land in `<image>.readback.json`, a build artifact that
+   never ships. One image at a time is enforced: a verdict is a statement about one
+   picture, and letting one look cover a batch of four is the failure this gate exists to
+   stop.
 2b. **The standing EYELINE check, on every scene with a conversation in it (v0.38).** Beyond the
    entity invariants, any render whose scene has people talking with, laughing with, showing
    something to, or being introduced to someone gets one extra look: crop-zoom each

@@ -272,8 +272,19 @@ So, every time art is generated:
    wall of pictures.
 
 A batch of four or more goes as ONE contact sheet plus individual files for anything being
-approved. `render-readback/scripts/contact_sheet.py` already builds the sheet and already
-refuses a partial one, so a short sheet cannot read as "everything I rendered".
+approved. **Pass `--cover <the reference dir>` and the sheet REFUSES to build unless every
+shot in that batch is on it:**
+
+```bash
+python3 <abu>/skills/render-readback/scripts/contact_sheet.py \
+  --out /tmp/<id>-sheet.png --cols 3 --cover <universe>/reference/<id> <universe>/reference/<id>/*.png
+```
+
+That sentence used to read "already refuses a partial one, so a short sheet cannot read as
+'everything I rendered'", and it was not true. The script refused a file that did not EXIST
+and had no idea what the batch was, so a sheet built from three of twelve renders was built
+happily and read, to the person looking at it, as twelve. `--cover` is the half that was
+missing (v0.49), and without it this line was describing a guard nobody had written.
 
 The tell that this is being skipped: a session that generated a dozen images and whose
 transcript contains no delivery, only `Read` calls the agent made to itself.

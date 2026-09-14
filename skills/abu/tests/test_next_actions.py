@@ -139,6 +139,52 @@ class ItRefusesToAskForYou(unittest.TestCase):
         self.assertNotIn("AskUserQuestion(", SRC.read_text())
 
 
+class NoCommandReachesTheBoard(unittest.TestCase):
+    """The front door's one hard rule, applied to the tappable options (v0.49).
+
+    A `fix` that is not verb-shaped is passed through AS THE LABEL, which is right for a
+    plain-English hint and wrong for the half of the grader's real fix strings that are
+    invocations. Before this, the board built to honour "never show the user a shell
+    command" was one of the two places that showed them one.
+    """
+
+    def board(self, issues, **kw):
+        with mock.patch.object(na, "grade", lambda u: fake(issues)):
+            return na.board(pathlib.Path("/tmp/u"), **kw)
+
+    # The grader's ACTUAL fix strings, copied from universe-doctor/scripts/grade.py.
+    REAL = [
+        ("provenance", "abu backfill-provenance (records what is knowable; never re-renders)"),
+        ("stories", "write canon/properties/<id>.json, then `abu build-canon`"),
+        ("setting_nesting", "split the rooms into settings with `partOf`, house rules into "
+                            "`structured.houseRules`"),
+        ("validity", "abu validate"),
+    ]
+
+    def test_no_option_label_or_description_is_a_command(self):
+        b = self.board([issue(f, 9 - n, dimension=d) for n, (d, f) in enumerate(self.REAL)])
+        self.assertTrue(b["options"])
+        for o in b["options"]:
+            self.assertIsNone(na.command_in(o["label"]), o["label"])
+            self.assertIsNone(na.command_in(o["description"]), o["description"])
+
+    def test_a_command_label_becomes_the_OUTCOME_not_a_blank(self):
+        """Refusing must not leave an unlabelled option: say what it is FOR instead."""
+        b = self.board([issue("abu validate", 9, dimension="validity")])
+        label = b["options"][0]["label"]
+        self.assertNotIn("abu validate", label)
+        self.assertIn("canon records do not parse", label.lower())
+
+    def test_a_plain_english_hint_still_passes_through(self):
+        """Not every non-verb fix is a command, and blanking those would be the over-fix."""
+        b = self.board([issue("consolidate assets in-repo", 5, dimension="self_contained")])
+        self.assertIn("consolidate assets in-repo", b["options"][0]["label"])
+
+    def test_a_bare_verb_is_still_slash_prefixed(self):
+        b = self.board([issue("shoot-references", 9, dimension="entities")])
+        self.assertTrue(b["options"][0]["label"].startswith("/abu:shoot-references"))
+
+
 class WiredWhereTheWorkEnds(unittest.TestCase):
     def test_explore_prints_the_board_at_the_end_of_a_fan_out(self):
         src = (HERE.parents[1] / "explore" / "scripts" / "explore.py").read_text()

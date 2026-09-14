@@ -14,6 +14,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import pathlib
 import unittest
 from pathlib import Path
 
@@ -1272,6 +1273,32 @@ class StylePackCarriesTheMedium(TestDeclaredStylePack):
         self._pack()  # name but no styleLine
         r = run(self.root, "--register", "inky", "--print-plan")
         self.assertIn("register=Inky", r.stdout)
+
+
+class TheSheetIsNamedWhereTheShootEnds(unittest.TestCase):
+    """SHOW THE OPERATOR EVERY SHOT is a gate, so its artifact is not remembered (v0.49).
+
+    The gate says delivery is what counts and that a batch of four or more goes as one
+    contact sheet. It named no command, in the file an agent reads AFTER a shoot, so the
+    sheet was a technique rather than a step. Naming it here is the same fix make-a-book
+    already applied to the read-back montage scripts, which were being rewritten by hand
+    roughly fifteen times in one session while the tool sat in the repo.
+    """
+
+    SRC = (pathlib.Path(__file__).resolve().parents[1] / "scripts" / "chain_matrix.py").read_text()
+
+    def test_chain_complete_names_the_contact_sheet_script(self):
+        i = self.SRC.index("CHAIN COMPLETE")
+        after = self.SRC[i:i + 900]
+        self.assertIn("contact_sheet.py", after)
+
+    def test_it_passes_cover_so_the_sheet_cannot_be_short(self):
+        i = self.SRC.index("CHAIN COMPLETE")
+        self.assertIn("--cover", self.SRC[i:i + 900])
+
+    def test_it_says_open_in_preview_is_not_delivery(self):
+        i = self.SRC.index("CHAIN COMPLETE")
+        self.assertIn("Not open-in-preview", self.SRC[i:i + 900])
 
 
 if __name__ == "__main__":

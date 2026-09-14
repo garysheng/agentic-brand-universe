@@ -1,11 +1,21 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.48 — 2026-09-12.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.49 — 2026-09-14.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.49 changelog — three rules that were written as gates and enforced only by prose.**
+> §3.5: a fired prompt guard now needs a RECORDED verdict (`<image>.readback.json`) and
+> `verify_render.py` refuses without one, because an unjudged gate and a passed gate looked
+> identical from outside; and `contact_sheet.py --cover` makes the partial-sheet refusal
+> that `shoot-references` already claimed real. §15: the front door's one hard rule, never
+> show the user a shell command, is enforced in code, because the grader's own `fix` strings
+> reached the operator through two paths the rule was written to close. §12: `add-prop` and
+> `add-visual-metaphor` now force a size the way `add-setting` and `add-character` do, and
+> `PROP-NO-SCALE` reads the field the compiler actually emits.
+>
 > **v0.48 changelog — a prompt guard that fires is also a read-back assertion.** Every standing
 > prompt guard (§3.5, `providers/*/prompt_guards.py`) now has a matching entry in `READBACK_GATE`,
 > and `generate.py` writes the ones that fired into the recipe as `guards` and `guardGate`, which
@@ -1062,6 +1072,40 @@ on the wrong side of its laptop passed read-back because no line told the reader
 readback of that render is the pack gate PLUS the entity gate PLUS the guard gate. A guard with
 no gate entry fails the provider's own test suite, so the two halves cannot drift apart. The
 prompt half asks; the gate half refuses.
+
+**A GATE NOBODY JUDGED IS NOT A GATE (v0.49).** v0.48 put the assertion in the recipe so a
+reader would be told to look. It gave nobody a way to tell whether the reader looked, so a
+skipped gate and a passed gate were indistinguishable from outside, which is the same
+failure one level up: "evaluate every guardGate entry" is an instruction, and an
+instruction loses some fraction of the time. So the verdict is RECORDED, beside the image,
+as `<image>.readback.json`:
+
+    {"guardVerdicts": {"device-anatomy": {"verdict": "pass"},
+                       "no-ui-chrome":   {"verdict": "defect", "why": "invented menu bar"}}}
+
+`verify_render.py` REFUSES any render whose recipe names a fired guard with no recorded
+verdict, and prints that guard's assertion so the reader is told where to look rather than
+merely told they failed. A `defect` is a failure, not a note: the rule is regenerate from
+scratch. A `waived` verdict is the recorded exception and REQUIRES a written reason, the
+same shape as a voice-gate waiver and `--waive-entity`; a waiver with no reason is a skip
+with better manners. Three refusals guard the record itself: a verdict filed under a guard
+that never fired (a typo must not read as a judgement, leaving the real guard unjudged), an
+unknown verdict word, and one verdict spread across a batch (a verdict is a statement about
+ONE picture, and letting one look cover four is the failure the gate exists to stop). A
+render that tripped no guard is untouched, and a recipe carrying `guards` with no
+`guardGate` (written before v0.48) still demands verdicts, because the guard NAMES are the
+checkable half. `<image>.readback.json` is a build artifact and never ships, like the
+recipe beside it.
+
+**A CONTACT SHEET THAT DOES NOT COVER ITS BATCH IS A LIE (v0.49).** `shoot-references`'s
+SHOW THE OPERATOR EVERY SHOT gate told its reader that `contact_sheet.py` "already refuses a
+partial one, so a short sheet cannot read as everything I rendered". The script refused a
+file that did not EXIST and had no idea what the batch was, so a sheet built from three of
+twelve renders was built happily and read, to the person looking at it, as twelve.
+`contact_sheet.py --cover <dir>` names the batch: every `*.png` in that directory that is
+not a sheet or a parked candidate must be on the sheet or the build REFUSES and names what
+is absent. It is opt-in, because a deliberate subset is a legitimate sheet; what was wrong
+was a documented refusal that no code performed.
 
 **Binding an entity inherits its guard (v0.46).** A render made with `--entity` already
 carried the entity's `structured.invariants` into the PROMPT as positives. It did not carry
@@ -3037,6 +3081,36 @@ used verbatim.
   `/abu:` prefix; anything else passes through as the instruction it is, in `instruction` rather
   than `verb`. Prefixing everything produced `/abu:abu backfill-provenance (...)`, which is not
   a command anybody can run.
+
+### The front door's one hard rule, as code (v0.49)
+
+**`abu`'s whole premise is that a person never sees a shell command**: "a command in the
+transcript is a defect in this skill". That was prose, and prose does not bind, so the
+framework's own strings broke it in the two places most likely to be read aloud. The grader's
+`fix` field is written for whoever maintains the GRADER (`write canon/properties/<id>.json,
+then \`abu build-canon\``; `split the rooms into settings with \`partOf\``; `abu
+backfill-provenance (...)`), and it reached the operator by two paths:
+
+- **`workspace.humanize()` used `fix` as its FALLBACK** for any dimension with no sentence in
+  `OUTCOMES`, and `setting_nesting` had no sentence there, so its backticked JSON keys went
+  into `plan.headline.human` -- the one field `abu`'s own method tells the agent to say out
+  loud. The previous test suite named the hole and blessed it, in a test called
+  `test_unknown_dimension_falls_back`.
+- **the board showed a non-verb-shaped `fix` as the LABEL** of a tappable option, by the
+  pass-through rule directly above, which is right for a plain-English hint and wrong for the
+  half of the real fix strings that are invocations.
+
+So: `workspace.command_in(text)` returns the first command-shaped span in any string about to
+reach a person, and nothing command-shaped survives `humanize()` whichever argument it arrived
+in. A command-shaped label on the board is replaced by the dimension's outcome sentence rather
+than blanked, because an option with no label is worse than one with a technical one. And
+**every dimension the grader can emit must have a plain-language sentence in `OUTCOMES`**,
+enforced by a test that reads `grade.py`'s own `RUBRIC`, so a new dimension cannot ship without
+one. Same shape as the guard/`READBACK_GATE` pairing in §3.5.
+
+The detector is deliberately conservative and a PATH is not a command. What it catches is an
+invocation, a flag, a script by name and a shell operator. Over-triggering would silently blank
+real sentences, which is a worse failure than the leak it closes.
 
 ### Why this is not decoration
 
