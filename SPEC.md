@@ -1,11 +1,28 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.50 — 2026-09-14.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.51 — 2026-09-14.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.51 changelog — the board SHOWS the art, because an `AskUserQuestion` preview is
+> TEXT.** §3.5: v0.50 proved the operator tapped a card NAMING a file and proved nothing
+> about whether the picture was ever in front of them, which its own map recorded as still
+> open. A choice that requires LOOKING at an artifact now goes to a **frapp** — a page served
+> off the operator's own machine, reachable from their phone — and the thing that serves the
+> image is the thing that records the tap, so "was the art displayed" stops being a claim an
+> agent makes and becomes a fact the page knows. A decision answerable FROM WORDS stays an
+> `AskUserQuestion` card in the terminal, because a web page for a yes/no spends the
+> operator's attention for nothing; that discriminator is the general rule, and shot approval
+> is its first case. Every board stamps the CHANNEL it was shown on, `record_serve` is
+> written by the page from inside the response that sent the bytes, and an approving tap on a
+> frapp board that never served is REFUSED. With no Freedom install there is no frapp: the
+> board falls back to the card and the approval is recorded as `unshown` with the reason, so
+> a lock resting on a filename is one grep away and can never be mistaken for one resting on
+> a picture. Nothing of the frapp library is vendored; ABU resolves the newest installed
+> Freedom at start, exactly as a scaffolded frapp does.
+>
 > **v0.50 changelog — what COUNTS as an operator having seen a shot, and the half of the
 > no-command rule a gate cannot see.** §3.5: a shot is SEEN when the operator taps an
 > `AskUserQuestion` card, the tap is recorded beside the image in the v0.49 sidecar as
@@ -1177,6 +1194,81 @@ that fires only when remembered is the prose this whole mechanism replaces.
 A board is chunked at four questions, because that is the tool's limit, so a nine-shot matrix
 returns three boards rather than a truncated one. And showing a picture again clears any earlier
 verdict on it: the old yes was about the old look at it.
+
+**AND THE BOARD MUST CARRY THE PICTURE, NOT ITS PATH (v0.51).** v0.50 closed the question it
+set out to close and left one half open, which `shoot-references`' own map recorded rather
+than letting the closed question read as complete: *"whether the board should carry the
+picture itself rather than its path. The preview is text."* It is. An `AskUserQuestion`
+preview carries the shot's path and the entity's invariants and it **cannot carry the
+image**. So the record proved a tap on a card NAMING a file and proved nothing about whether
+the art was ever in front of anyone. Left there it is worse than no gate at all: it refuses
+to lock art nobody tapped, which reads as rigour, while training the operator to tap through
+a list of filenames.
+
+**THE DISCRIMINATOR IS GENERAL, AND IT IS THE PART WORTH REMEMBERING.** A decision the
+operator can answer FROM WORDS stays an `AskUserQuestion` card in the terminal: it is faster
+there, and a web page for a yes/no spends their attention for nothing. **A decision that
+requires SEEING the thing goes to a frapp** — a Freedom app, a small page served off the
+operator's own machine, behind a token, reachable from their phone over their own tailnet.
+Shot approval is the first and clearest case, because it is not answerable from a filename.
+Any future gate in this spec that asks a human to judge an ARTIFACT inherits the same rule.
+
+**IT REMOVES THE UNVERIFIABLE STEP RATHER THAN PATCHING IT.** A viewer opened on the render
+machine would have to be DRIVEN by the agent and then ATTESTED to, which is the same
+unchecked claim one level along: an agent that says it opened a window is exactly as
+checkable as an agent that says the operator looked. In a frapp **the thing that serves the
+image is the thing that records the tap**. The browser asks for the bytes, the bytes go out,
+the page writes `served` with their digest from inside that response, and the verdict comes
+back over the same connection. An agent has no way to call that truthfully about a picture no
+browser requested. It also goes where the OPERATOR is rather than where the render happened,
+which is the failure `shoot-references` earned on 2026-07-30 when ten images were reported
+opened onto a screen the operator was nowhere near.
+
+So the board record gains a channel, and the sidecar gains one field:
+
+    "board": {"id": "...", "options": ["keep", "reroll"], "digest": "8f0f...",
+              "display": {"channel": "frapp", "served": true, "servedOn": "...",
+                          "digest": "8f0f...", "url": "/shot/0"}}
+
+`shot_board.py board` resolves the channel, stamps every board with it, and on the frapp
+channel STARTS the page and prints the link to send the operator. `shot_board.py served` is
+called by the page, never by an agent. `record_tap` REFUSES `keep` on a frapp board that
+never served, and `seen_problem` refuses it again at lock time, because the first check is
+the verb and the second catches a hand-edited sidecar. `reroll` is deliberately exempt —
+turning art down is the safe direction and refusing it would trap the operator — and `waived`
+is exempt because a waiver is by definition not a look.
+
+**NOTHING OF THE FRAPP LIBRARY IS VENDORED.** The token gate, the tailnet route, the journal,
+the secure-origin refusal and the design system are Freedom's, shipped in `freedom-frapp.mjs`;
+ABU resolves the newest INSTALLED copy at start, exactly as a scaffolded frapp does, and
+never a versioned cache path, which is the import that dies at the next plugin update. A copy
+would fork and diverge inside a month. The page is `skills/shoot-references/frapps/
+shot-board.mjs`, it holds no state, and its queue is derived per request from the sidecars,
+so a verdict recorded from the terminal disappears from it by itself.
+
+**THE DEGRADE IS HONEST, WHICH MEANS THE TWO RECORDS DO NOT LOOK ALIKE.** ABU runs on
+machines that are not this one. With no `node` or no Freedom install there is no frapp, and
+the board falls back to the text card — the same cards v0.50 shipped, previews and all. What
+it must never do is produce a record that reads like the real thing, because that is this
+whole gate's own failure mode one level along. So an approval taken on the card channel
+carries its own key:
+
+    "seen": {"verdict": "keep",
+             "unshown": {"channel": "card", "why": "no Freedom install on this machine..."}}
+
+It LOCKS. Refusing it would make ABU unusable anywhere but one machine, which is a worse
+answer than a weaker record honestly labelled. But `unshown` is greppable, `shot_board.py
+status` prints it beside every shot, `tap` prints it the moment it is recorded, and the
+sentence says what the verdict is: a tap on a card naming a file. A frapp that fails to START
+degrades the same way, carrying the start failure as its reason, so a wedged port never
+leaves a board claiming a channel that showed nothing.
+
+**WHAT THE FRAPP CHANNEL PROVES, EXACTLY.** That the picture's bytes were delivered to the
+browser the verdict came from, at a named moment, hashed and tied to the board. It does not
+prove a human looked at the screen, and nothing can: eyes are not addressable. The claim is
+deliberately small and deliberately true, and the sentence after it is the honest one — this
+is the strongest thing a machine can know about a look, and it is strictly stronger than a
+filename.
 
 **A CONTACT SHEET THAT DOES NOT COVER ITS BATCH IS A LIE (v0.49).** `shoot-references`'s
 SHOW THE OPERATOR EVERY SHOT gate told its reader that `contact_sheet.py` "already refuses a

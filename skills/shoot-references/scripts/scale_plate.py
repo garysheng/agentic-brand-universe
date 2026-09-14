@@ -534,7 +534,8 @@ def _register(order, out, uroot):
                 # says so; this names the verb, so the failure has a route out of it.
                 print(f"  ! could not register scale-plate on {eid}. If the refusal above "
                       f"says nobody has seen it, put it on a board first: shot_board.py "
-                      f"board {rel} then tap it.", file=sys.stderr)
+                      f"board {rel}, which opens the page that SHOWS it and takes the "
+                      f"verdict.", file=sys.stderr)
         print(f"registered scale-plate on: {', '.join(e for e, _ in order)}")
 
 

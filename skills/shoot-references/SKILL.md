@@ -267,30 +267,47 @@ machine. Half the time the operator is remote, on a phone, or in another session
 "opened 10 images" reports success for something they cannot see. Earned 2026-07-30, when
 Gary asked directly why images were not reaching him after this exact pattern.
 
-**WHAT COUNTS AS SEEN IS A TAP ON AN `AskUserQuestion` CARD (v0.50).** That question was open
-for months and the map named it as a definition rather than an effort problem; Gary settled it
-on 2026-09-14. It is the one surface where a decision reaches the operator as tappable options
-rather than prose, and a reference shot is exactly the case where the options ARE the artifact,
-so the board carries a `preview` on every option.
+**WHAT COUNTS AS SEEN IS A TAP (v0.50), AND THE BOARD HAS TO SHOW THE ART (v0.51).** The
+first half was settled on 2026-09-14: a tap, not a claim. The second half was the part that
+made the first one thin. **An `AskUserQuestion` preview is TEXT** — it carries the path and
+the checklist and it cannot carry the picture — so the record proved the operator tapped a
+card NAMING a file. That is worse than no gate: it refuses to lock art nobody tapped, which
+reads as rigour, while training the operator to tap through a list of filenames.
+
+**So a choice that requires LOOKING goes to a frapp, and one answerable from WORDS stays a
+card.** That is the discriminator, and it is general. A frapp is a page served off the
+operator's own machine, behind a token, reachable from their phone. It SERVES the picture and
+RECORDS the tap, so nothing here is an agent's account of what the operator was shown: the
+browser asked for the bytes, the page wrote `served` with their digest, and the verdict came
+back over the same connection.
 
 So, every time art is generated:
 
 1. **Send the files to the operator** with the harness's own file-delivery tool, which
-   reaches them wherever they are. Pictures first: a board is a question about something they
-   can see.
-2. **Put every shot on a board**, which also records that it was shown:
+   reaches them wherever they are. Pictures first, and this step stays: a contact sheet in the
+   chat is how a remote operator sees the batch as a batch.
+2. **Open the board:**
 
    ```bash
    python3 <abu>/skills/shoot-references/scripts/shot_board.py board \
      --universe <universe> --entity <id> --json <universe>/reference/<id>/*.png
    ```
 
-   It hands back ready-to-use questions, options and previews, chunked at four questions per
-   `AskUserQuestion` call, because that is the tool's limit and a fifth is a shot the operator
-   is told about and cannot answer. **Do not rewrite the questions.** The off-list answer is
-   already in each question's text, because a preview costs the visible `Other` row, and that
-   is the only place the side-by-side layout cannot drop it.
-3. **Record every answer**, one picture at a time:
+   With Freedom installed it starts the frapp and prints a Mac URL and a **phone URL**.
+   **Text the phone link to the operator through `freedom:message-myself`, without being
+   asked.** The moment they want to judge a shoot is rarely the moment they are at this
+   keyboard, and a `127.0.0.1` link is one they can only use where they already were, which
+   is the one place they did not need it. Then they tap, and every verdict lands on disk
+   without you doing anything: the page calls `shot_board.py` itself.
+
+   With no Freedom install (or no `node`) there is no frapp, and it falls back to
+   ready-to-use `AskUserQuestion` payloads, chunked at four questions per call because that
+   is the tool's limit. **Do not rewrite the questions.** The off-list answer is already in
+   each question's text, because a preview costs the visible `Other` row, and that is the
+   only place the side-by-side layout cannot drop it. **Every approval taken that way is
+   recorded as `unshown`, with the reason**, because a lock resting on a filename must never
+   be mistakable for one resting on a picture.
+3. **Record every answer** — only on the card path, because the frapp does it for you:
 
    ```bash
    python3 <abu>/skills/shoot-references/scripts/shot_board.py tap <png> --verdict keep
@@ -298,12 +315,18 @@ So, every time art is generated:
      --verdict reroll --why "screen on the wrong side of the laptop"
    ```
 
+   `shot_board.py status <png>...` says what each shot is waiting for and exits non-zero
+   while anything is unlockable.
+
    `lock-shot` REFUSES a shot with no approving verdict, so this is not bookkeeping after the
    fact; it is the gate. `waived` with a written reason is the recorded exception for an
    operator who is genuinely absent, and it is never a board option, because a waiver is by
    definition not a tap. Re-rolling a shot invalidates its verdict automatically: the bytes
    changed, so the yes was about a different picture and it goes back on a board.
-4. **Also open them locally** if they are at that machine. Convenience, not the mechanism.
+4. **Never attest to a display.** There is no verb for "I showed them": `shot_board.py served`
+   is called by the page from inside the response that sent the bytes, and an agent has no way
+   to call it truthfully about a picture no browser asked for. If a shot's image is broken in
+   the board, fix the path rather than the record.
 5. **Say what each one is and which are decisions**, so a batch is scannable rather than a
    wall of pictures.
 
@@ -325,7 +348,9 @@ missing (v0.49), and without it this line was describing a guard nobody had writ
 The tell that this is being skipped: a session that generated a dozen images and whose
 transcript contains no delivery, only `Read` calls the agent made to itself. As of v0.50 that
 tell is also a refusal rather than only a symptom, because a lock with no recorded verdict has
-frozen nothing: a golden IS human judgement frozen.
+frozen nothing: a golden IS human judgement frozen. And as of v0.51 the verdict itself is
+about something: a `keep` on a frapp board whose page never served the picture is refused,
+because the operator was looking at a broken image and the tap was a tap on a caption.
 
 ## The photographs decide the SHOOTING ORDER, and the order is load-bearing
 

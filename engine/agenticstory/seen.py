@@ -19,7 +19,16 @@ v0.49 put the guard verdicts in. One sidecar per image, two independent records 
                         "options": ["Keep", "Re-roll"], "digest": "8f0f..."},
               "verdict": "keep", "on": "...", "why": ""}}
 
-Four refusals, and each one is a way the record could otherwise be forged:
+AND THE BOARD MUST CARRY THE PICTURE, NOT ITS PATH (v0.51). A tap proves a decision was
+made; it does not prove there was anything to decide FROM. An `AskUserQuestion` preview is
+TEXT, so the v0.50 record proved the operator tapped a card NAMING a file. So every board
+declares the CHANNEL it was shown on (`agenticstory.display`), a frapp records the moment it
+SERVES the image bytes, and an approving tap against a frapp board that never served is
+refused. The card channel survives as the honest fallback for a machine with no Freedom
+install, and it writes its own weakness into the record under a different key, so the two
+kinds of yes cannot be mistaken for each other by anything reading them later.
+
+Six refusals, and each one is a way the record could otherwise be forged:
 
   NO BOARD        a verdict for a shot that was never put on a board. Same shape as v0.49's
                   refusal of a verdict filed under a guard that never fired: a tap nobody
@@ -32,6 +41,9 @@ Four refusals, and each one is a way the record could otherwise be forged:
                   operator's yes to the old picture silently approves the new one.
   NO REASON       `reroll` and `waived` with nothing written down. A verdict nobody can argue
                   with later is a skip with better manners.
+  NEVER SERVED    an approving tap on a FRAPP board whose page never sent the picture. The
+                  browser not asking for the bytes is the case where the operator was looking
+                  at a broken image, and the tap that followed is a tap on a caption.
 
 Like the recipe beside it, this sidecar is a build artifact and never ships.
 """
@@ -42,6 +54,8 @@ import hashlib
 import json
 import pathlib
 import uuid
+
+from . import display as display_module
 
 SIDECAR_SUFFIX = ".readback.json"
 
@@ -96,7 +110,8 @@ def _now() -> str:
     return _dt.datetime.now().isoformat(timespec="seconds")
 
 
-def record_board(image, *, question: str, options: list[str], labels: list[str] | None = None,
+def record_board(image, *, question: str, options: list[str], display: dict,
+                 labels: list[str] | None = None,
                  board_id: str | None = None, entity: str | None = None,
                  shot: str | None = None, on: str | None = None) -> dict:
     """Stamp `image` as having been put on a board. Written when the board is COMPOSED.
@@ -105,6 +120,12 @@ def record_board(image, *, question: str, options: list[str], labels: list[str] 
     actually read. They are recorded separately because they differ by design -- a card
     reading "Re-roll" records `reroll` -- and comparing a verdict against a label is how a
     legitimate tap gets refused for a spelling nobody chose.
+
+    `display` is the CHANNEL record (`agenticstory.display.pending`), and it is required
+    rather than optional because a board with no declared channel is exactly the board this
+    version exists to stop: one that asks the operator to approve art it never shows them.
+    It is stamped here as not-yet-served in both channels; on the frapp channel the page
+    flips it when the bytes go out, which is the only witness that is not somebody's word.
 
     This is the half a tap is checked against, and it is deliberately written by the
     composer rather than by whoever records the answer: a verdict filed against a board
@@ -124,6 +145,13 @@ def record_board(image, *, question: str, options: list[str], labels: list[str] 
             f"options are not in {list(VERDICTS)} can never be answered, because every tap "
             f"would be refused as off the board. Pass the tokens and put the words the "
             f"operator reads in `labels`.")
+    if not isinstance(display, dict) or display.get("channel") not in display_module.CHANNELS:
+        raise ValueError(
+            f"refusing to board {p}: no display channel. A board is a question ABOUT A "
+            f"PICTURE, and an AskUserQuestion preview is TEXT -- it carries the path and the "
+            f"checklist and cannot carry the art. Composing one without declaring how the "
+            f"picture reaches the operator records a look at a filename. Pass "
+            f"agenticstory.display.pending(*display.resolve_channel()).")
     doc = _read_doc(image)
     seen = doc.setdefault("seen", {})
     # A fresh board supersedes any earlier one AND any verdict taken against it: the
@@ -136,6 +164,9 @@ def record_board(image, *, question: str, options: list[str], labels: list[str] 
         "options": [str(o).strip().lower() for o in options],
         "labels": list(labels or options),
         "digest": digest(image),
+        # The channel travels INSIDE the board, because it is a fact about this showing and
+        # a re-board on another machine is a different showing.
+        "display": dict(display),
     }
     if entity:
         seen["board"]["entity"] = entity
@@ -143,6 +174,58 @@ def record_board(image, *, question: str, options: list[str], labels: list[str] 
         seen["board"]["shot"] = shot
     _write_doc(image, doc)
     return seen
+
+
+def record_serve(image, *, sent_digest: str | None = None, url: str | None = None,
+                 on: str | None = None) -> dict:
+    """Record that the picture's BYTES went out. Written by the page that sent them.
+
+    This is the whole point of v0.51 and the reason it is not another attestation: nobody
+    claims the art was displayed, the thing that displayed it says so, at the moment it did,
+    about the bytes it actually wrote. An agent has no way to call this truthfully on a
+    picture no browser asked for, because the refusals below are about the file on disk and
+    the board that was composed from it, and the honest caller is the frapp handler.
+
+    `sent_digest` is what the server hashed on its way out. It is checked against the file
+    rather than trusted, so a page that read one file and reported another is refused.
+    """
+    p = pathlib.Path(image)
+    doc = _read_doc(image)
+    board = (doc.get("seen") or {}).get("board") or {}
+    if not board:
+        raise ValueError(
+            f"refusing to record a serve for {p.name}: it was never on a board. A picture "
+            f"served against no question is a file download, not a showing.")
+
+    disp = board.get("display") or {}
+    if disp.get("channel") != display_module.FRAPP:
+        raise ValueError(
+            f"refusing to record a serve for {p.name}: the board was composed on the "
+            f"{disp.get('channel')!r} channel, which serves nothing. Only a frapp can report "
+            f"having sent the bytes, because only a frapp sent any.")
+
+    now = digest(image)
+    if board.get("digest") and now and now != board["digest"]:
+        raise ValueError(
+            f"refusing to record a serve for {p.name}: the bytes changed since the board was "
+            f"composed, so the page is showing a picture this board is not about. Compose the "
+            f"board again against what is on disk now.")
+    if sent_digest and now and sent_digest != now:
+        raise ValueError(
+            f"refusing to record a serve for {p.name}: the page reports sending {sent_digest} "
+            f"and the file on disk hashes to {now}. A serve record is about the bytes that "
+            f"left, and these are not the same bytes.")
+
+    disp = dict(disp)
+    disp["served"] = True
+    disp["servedOn"] = on or _now()
+    disp["digest"] = now
+    if url:
+        disp["url"] = url
+    disp.pop("why", None)
+    board["display"] = disp
+    _write_doc(image, doc)
+    return disp
 
 
 def record_tap(image, verdict: str, why: str = "", on: str | None = None) -> dict:
@@ -173,6 +256,21 @@ def record_tap(image, verdict: str, why: str = "", on: str | None = None) -> dic
             f"{sorted(offered) or '[]'}. A verdict the operator was never shown is not "
             f"something they can have chosen.")
 
+    # AND SOMETHING MUST HAVE SHOWN IT (v0.51). On the frapp channel the page records the
+    # moment it sends the bytes, so a `keep` with no serve means the browser never asked for
+    # the picture: the operator was looking at a broken image and the tap is a tap on a
+    # caption. `reroll` is deliberately exempt -- turning art down is the safe direction and
+    # refusing it would trap the operator -- and `waived` is exempt because a waiver is by
+    # definition not a look.
+    disp = board.get("display") or {}
+    if verdict == "keep" and disp.get("channel") == display_module.FRAPP and not disp.get("served"):
+        raise ValueError(
+            f"refusing to record 'keep' for {p.name}: the board's page never served this "
+            f"picture, so nothing has put it in front of anyone. Open the board and look at "
+            f"the shot; if the image is broken there, fix the path rather than the record. "
+            f"An operator who is genuinely absent is a `waived` verdict with a written "
+            f"reason, which says on the record that nobody looked.")
+
     if verdict in NEEDS_REASON and not why:
         raise ValueError(
             f"{p.name} was judged {verdict} with no reason. Write one. A verdict nobody "
@@ -190,6 +288,16 @@ def record_tap(image, verdict: str, why: str = "", on: str | None = None) -> dic
     seen["verdict"] = verdict
     seen["on"] = on or _now()
     seen["digest"] = now
+    # THE DEGRADED YES DOES NOT LOOK LIKE THE REAL ONE. An approval taken against a board
+    # that displayed nothing carries its own key and the reason it displayed nothing, so
+    # every lock resting on a filename is one grep away and can never be mistaken later for
+    # a lock resting on a picture. A degrade whose record matched the real thing would be
+    # this gate's own failure mode, one level along.
+    if verdict in APPROVING and not disp.get("served"):
+        seen["unshown"] = {"channel": disp.get("channel"),
+                           "why": disp.get("why") or "the art was not displayed"}
+    else:
+        seen.pop("unshown", None)
     if why:
         seen["why"] = why
     else:
@@ -226,9 +334,34 @@ def seen_problem(image) -> str | None:
     if verdict not in APPROVING:
         return f"{p.name} carries verdict {verdict!r}, which is not an approval."
 
+    # Defence in depth against a hand-edited sidecar (v0.51). `record_tap` already refuses
+    # this, so reaching it here means the file was written by something other than the verbs.
+    disp = (board.get("display") or {})
+    if verdict == "keep" and disp.get("channel") == display_module.FRAPP and not disp.get("served"):
+        return (f"{p.name} was approved on a frapp board that never served the picture. The "
+                f"page records the moment the bytes go out, and for this shot it never did, "
+                f"so the yes is about a caption.")
+
     now = digest(image)
     was = seen.get("digest") or board.get("digest")
     if was and now and now != was:
         return (f"{p.name} has changed since it was judged. The verdict is about the bytes "
                 f"the operator saw, and these are not those bytes. Show it again.")
     return None
+
+
+def seen_caveat(image) -> str | None:
+    """What a lockable shot's approval does NOT prove, or None when it proves what it says.
+
+    `seen_problem` is the gate and this is the footnote. On a machine with no Freedom install
+    there is no frapp, the board falls back to a text card, and the resulting `keep` is a
+    legitimate verdict about a filename. It locks -- refusing it would make ABU unusable
+    anywhere but one machine -- and it says what it is, everywhere anybody prints it.
+    """
+    seen = read_seen(image)
+    un = seen.get("unshown") or {}
+    if not un:
+        return None
+    return (f"{pathlib.Path(image).name} was approved WITHOUT the art being displayed: "
+            f"{un.get('why') or 'no reason recorded'} The verdict is a tap on a card naming "
+            f"a file, which is weaker than one taken on a frapp that served the picture.")

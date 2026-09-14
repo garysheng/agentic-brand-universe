@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""shot_board.py — put every shot in front of the operator as an AskUserQuestion card,
-and record the tap that comes back.
+"""shot_board.py — put every shot IN FRONT OF the operator, and record the tap that comes back.
 
 WHAT COUNTS AS SEEN (SPEC v0.50). `shoot-references` has said since it was written that no
 shot locks until a human has actually seen it, and its own map named the open half: "the
@@ -9,13 +8,32 @@ blocker is not effort, it is a definition -- what COUNTS as shown". Gary settled
 reaches the operator as tappable options rather than prose, and a reference shot is exactly
 the case where the options ARE the artifact, so the board carries previews.
 
-Two verbs, and they are deliberately separate, because the board is composed BEFORE the
+AND THE BOARD MUST CARRY THE PICTURE (SPEC v0.51). An AskUserQuestion preview is TEXT: it
+carries the path and the checklist and cannot carry the art, so v0.50's record proved the
+operator tapped a card NAMING a file. The discriminator is general and worth stating: a
+decision the operator can answer FROM WORDS stays a card in the terminal, because a web page
+for a yes/no spends their attention for nothing; a decision that requires SEEING the thing
+goes to a FRAPP, a page served off the operator's own machine and reachable from their phone.
+Shot approval is the first and clearest case, because it is not answerable from a filename.
+
+So `board` opens the frapp and the frapp records its own serves, which is why this is not
+another attestation: the thing that sends the bytes is the thing that takes the verdict. On a
+machine with no Freedom install there is no frapp; the board falls back to the text card and
+the record says so, under its own key, so a lock resting on a filename is one grep away.
+
+Three verbs, and they are deliberately separate, because the board is composed BEFORE the
 operator answers and the answer arrives afterwards:
 
     shot_board.py board <png> [<png> ...] --universe <u> --entity <id>
-        Composes the board (up to four questions per AskUserQuestion call, so a nine-shot
-        matrix comes back as three boards) and STAMPS each image's sidecar as having been
-        shown. Prints the payload as JSON with --json.
+        Composes the board, STAMPS each image's sidecar with the channel it is being shown
+        on, and on the frapp channel STARTS the page and prints the link to send the
+        operator. On the card channel it prints AskUserQuestion payloads instead (up to four
+        questions per call, so a nine-shot matrix comes back as three boards).
+
+    shot_board.py served <png> --digest <hex>
+        Records that the picture's bytes went out. Called BY THE FRAPP, from inside the
+        response that sent them; an agent has no way to call it truthfully about a picture no
+        browser asked for.
 
     shot_board.py tap <png> --verdict keep
     shot_board.py tap <png> --verdict reroll --why "screen on the wrong side"
@@ -36,7 +54,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -53,8 +74,9 @@ def _abu_root(start=None) -> Path:
 
 
 sys.path.insert(0, str(_abu_root() / "engine"))
+from agenticstory import display  # noqa: E402
 from agenticstory.seen import (  # noqa: E402
-    VERDICTS, read_seen, record_board, record_tap, seen_problem,
+    VERDICTS, read_seen, record_board, record_serve, record_tap, seen_caveat, seen_problem,
 )
 
 # AskUserQuestion takes at most four questions in one call. A fifth is a shot the operator
@@ -141,8 +163,13 @@ def compose_question(image: Path, entity: dict, universe: Path | None) -> dict:
     }
 
 
-def build(images: list[Path], entity: dict, universe: Path | None, eid: str | None) -> list[dict]:
-    """Compose the boards AND stamp every image as shown. One write per image."""
+def build(images: list[Path], entity: dict, universe: Path | None, eid: str | None,
+          display_rec: dict) -> list[dict]:
+    """Compose the boards AND stamp every image with the channel it is shown on.
+
+    `display_rec` is required all the way down to `record_board`, which refuses without it,
+    so no path through this script can compose a board that shows the operator nothing.
+    """
     questions = [compose_question(p, entity, universe) for p in images]
     boards = []
     for n in range(0, len(questions), MAX_QUESTIONS):
@@ -157,6 +184,7 @@ def build(images: list[Path], entity: dict, universe: Path | None, eid: str | No
                 board_id=bid,
                 entity=eid,
                 shot=q["shot"],
+                display=display_rec,
             )
             bid = rec["board"]["id"]
         boards.append({
@@ -165,6 +193,77 @@ def build(images: list[Path], entity: dict, universe: Path | None, eid: str | No
             "images": [q["image"] for q in chunk],
         })
     return boards
+
+
+FRAPP = HERE.parent / "frapps" / "shot-board.mjs"
+
+TEXT_IT = ("TEXT THE PHONE LINK TO THE OPERATOR, with freedom:message-myself, without being "
+           "asked. The moment they want to judge a shoot is rarely the moment they are at "
+           "this keyboard, and a 127.0.0.1 link is one they can only use where they already "
+           "were, which is the one place they did not need it.")
+
+
+def launch_frapp(images: list[Path], universe: Path | None, eid: str | None,
+                 wait: float = 45.0) -> dict:
+    """Start the board that SERVES the art, and wait for its URLs.
+
+    Returns `{"ok": True, "mac": ..., "phone": ..., "pid": ..., "log": ...}` or
+    `{"ok": False, "why": ...}`. It never raises: a frapp that will not start is a fact the
+    board record has to carry, not an exception to swallow, and the caller degrades to the
+    card channel with the failure written into the record.
+    """
+    node = display.node()
+    if not node:
+        return {"ok": False, "why": "no `node` on this machine"}
+    if not FRAPP.is_file():
+        return {"ok": False, "why": f"the board page is missing at {FRAPP}"}
+    work = Path(tempfile.mkdtemp(prefix="abu-shot-board-"))
+    urls_out, log = work / "urls.json", work / "frapp.log"
+    argv = [node, str(FRAPP), "--urls-out", str(urls_out)]
+    if universe:
+        argv += ["--universe", str(universe)]
+    if eid:
+        argv += ["--entity", eid]
+    argv += [str(p) for p in images]
+    try:
+        with open(log, "w") as fh:
+            # Its own session, so the page outlives this command: the operator answers
+            # minutes later, and a frapp that died with the shell that started it would
+            # have shown them nothing.
+            proc = subprocess.Popen(argv, stdout=fh, stderr=subprocess.STDOUT,
+                                    start_new_session=True)
+    except OSError as e:
+        return {"ok": False, "why": f"could not start the board page: {e}"}
+
+    deadline = time.time() + wait
+    urls: dict = {}
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            tail = ""
+            try:
+                tail = log.read_text().strip()[-500:]
+            except OSError:
+                pass
+            return {"ok": False, "why": f"the board page exited ({proc.returncode}): {tail}",
+                    "log": str(log)}
+        try:
+            urls = json.loads(urls_out.read_text())
+        except (OSError, ValueError):
+            urls = {}
+        if urls.get("mac"):
+            # The phone URL is announced a beat after the Mac one, in the same block.
+            time.sleep(1.2)
+            try:
+                urls = json.loads(urls_out.read_text())
+            except (OSError, ValueError):
+                pass
+            break
+        time.sleep(0.25)
+    if not urls.get("mac"):
+        return {"ok": False, "why": f"the board page did not announce a URL within {wait:.0f}s",
+                "log": str(log)}
+    return {"ok": True, "mac": urls.get("mac"), "phone": urls.get("phone"),
+            "pid": proc.pid, "log": str(log)}
 
 
 def cmd_board(a) -> int:
@@ -176,19 +275,61 @@ def cmd_board(a) -> int:
         print("shot-board: no file at " + ", ".join(missing), file=sys.stderr)
         return 2
 
-    boards = build(images, entity, universe, a.entity)
+    # WHICH SURFACE CAN SHOW THE PICTURE. A decision answerable from words stays a card; one
+    # that needs SEEING goes to a frapp, and a reference shot is not answerable from a
+    # filename. The channel is stamped into every board before anything else happens.
+    channel, why = display.resolve_channel()
+    boards = build(images, entity, universe, a.entity, display.pending(channel, why))
+
+    frapp = None
+    if channel == display.FRAPP:
+        frapp = launch_frapp(images, universe, a.entity)
+        if not frapp["ok"]:
+            # DEGRADE HONESTLY: re-stamp as the card channel, carrying the real reason, so
+            # the record never claims a showing that did not happen. No tap exists yet, so
+            # superseding the boards costs nothing.
+            channel = display.CARD
+            why = (f"the frapp could not start, so the board fell back to a text card: "
+                   f"{frapp['why']}. Nothing here has shown the operator the art.")
+            boards = build(images, entity, universe, a.entity, display.pending(channel, why))
+
     payload = {
         "entity": a.entity,
+        "channel": channel,
         "boards": boards,
-        "askWith": ("Each board is ONE AskUserQuestion call, in order. The questions, options "
-                    "and previews are ready to use; do not rewrite them. The escape for an "
-                    "off-list answer is already in each question's text, because a preview "
-                    "costs the visible Other row."),
-        "thenRecord": ("For every answer, record the tap: shot_board.py tap <png> --verdict "
-                       "keep|reroll [--why ...]. Nothing locks until that verdict is on disk."),
+        "thenRecord": ("Nothing locks until every shot carries a verdict: "
+                       "shot_board.py status <png>... names what is still missing."),
     }
+    if channel == display.FRAPP:
+        payload["frapp"] = {k: frapp.get(k) for k in ("mac", "phone", "pid", "log")}
+        payload["showWith"] = (
+            "The board is OPEN and it serves the pictures itself. Send the operator the phone "
+            "link; the page records each serve and each tap, so no verdict here is anybody's "
+            "claim about what they were shown.")
+        payload["textIt"] = TEXT_IT
+    else:
+        payload["unshown"] = why
+        payload["askWith"] = (
+            "Each board is ONE AskUserQuestion call, in order. The questions, options and "
+            "previews are ready to use; do not rewrite them. The escape for an off-list "
+            "answer is already in each question's text, because a preview costs the visible "
+            "Other row.")
+        payload["thenRecord"] = (
+            "For every answer, record the tap: shot_board.py tap <png> --verdict keep|reroll "
+            "[--why ...]. Nothing locks until that verdict is on disk.")
+
     if a.json:
         print(json.dumps(payload, indent=2))
+        return 0
+
+    if channel == display.FRAPP:
+        print(f"[shot-board] {len(images)} shot(s) on the board, and the board SHOWS them.")
+        print(f"  Mac:    {frapp['mac']}")
+        print(f"  phone:  {frapp['phone'] or 'NOT AVAILABLE (run /freedom:set-up-frapps once)'}")
+        print(f"  log:    {frapp['log']}")
+        print("\n[shot-board] " + payload["showWith"])
+        print("[shot-board] " + TEXT_IT)
+        print("[shot-board] " + payload["thenRecord"])
         return 0
 
     for i, b in enumerate(boards, 1):
@@ -197,9 +338,24 @@ def cmd_board(a) -> int:
             print(f"  Q: {q['question'].splitlines()[0]}")
             for o in q["options"]:
                 print(f"     - {o['label']}: {o['description']}")
-    print(f"\n[shot-board] {len(images)} shot(s) stamped as shown across {len(boards)} board(s).")
+    print(f"\n[shot-board] {len(images)} shot(s) on a TEXT board across {len(boards)} board(s).")
+    print(f"[shot-board] THE ART IS NOT BEING DISPLAYED: {why}")
+    print("[shot-board] Every approval taken here is recorded as `unshown`, with that reason, "
+          "so a lock resting on a filename can never be mistaken for one resting on a picture.")
     print("[shot-board] " + payload["askWith"])
     print("[shot-board] " + payload["thenRecord"])
+    return 0
+
+
+def cmd_served(a) -> int:
+    """Record that the bytes went out. Called by the frapp, from inside the response."""
+    image = Path(a.png).expanduser().resolve()
+    try:
+        disp = record_serve(image, sent_digest=a.digest, url=a.url)
+    except ValueError as e:
+        print(f"shot-board: {e}", file=sys.stderr)
+        return 2
+    print(f"[shot-board] served {image.name} ({disp.get('digest')})")
     return 0
 
 
@@ -215,6 +371,9 @@ def cmd_tap(a) -> int:
     blocked = seen_problem(image)
     print("[shot-board] " + (f"still not lockable: {blocked}" if blocked
                              else "lockable: the verdict is on disk and the bytes match."))
+    caveat = seen_caveat(image)
+    if caveat:
+        print("[shot-board] BUT: " + caveat)
     return 0
 
 
@@ -223,21 +382,28 @@ def cmd_status(a) -> int:
     for p in a.png:
         image = Path(p).expanduser().resolve()
         seen = read_seen(image)
+        disp = ((seen.get("board") or {}).get("display") or {})
         rows.append({
             "image": str(image),
             "board": (seen.get("board") or {}).get("id"),
+            "channel": disp.get("channel"),
+            "served": bool(disp.get("served")),
             "verdict": seen.get("verdict"),
             "why": seen.get("why"),
             "blocked": seen_problem(image),
+            "caveat": seen_caveat(image),
         })
     if a.json:
         print(json.dumps(rows, indent=2))
         return 0
     for r in rows:
-        state = r["verdict"] or ("shown, unanswered" if r["board"] else "never shown")
-        print(f"  {Path(r['image']).name:<32} {state}")
+        state = r["verdict"] or ("boarded, unanswered" if r["board"] else "never boarded")
+        shown = "shown" if r["served"] else f"NOT shown ({r['channel'] or 'no channel'})"
+        print(f"  {Path(r['image']).name:<32} {state:<22} {shown}")
         if r["blocked"]:
             print(f"      {r['blocked']}")
+        if r["caveat"]:
+            print(f"      {r['caveat']}")
     return 0 if not any(r["blocked"] for r in rows) else 1
 
 
@@ -246,8 +412,8 @@ def main(argv: list[str] | None = None) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    b = sub.add_parser("board", help="compose the AskUserQuestion board(s) and stamp each "
-                                     "shot as shown")
+    b = sub.add_parser("board", help="open the board that SHOWS the shots (a frapp), or fall "
+                                     "back to AskUserQuestion cards and say so")
     b.add_argument("png", nargs="+")
     b.add_argument("--universe", default=None, help="universe path, so the slot name and the "
                                                     "checklist come from canon")
@@ -259,12 +425,19 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--verdict", required=True, choices=list(VERDICTS))
     t.add_argument("--why", default="", help="required for reroll and waived")
 
+    v = sub.add_parser("served", help="record that a picture's bytes went out (the frapp "
+                                      "calls this; an agent cannot call it truthfully)")
+    v.add_argument("png")
+    v.add_argument("--digest", default=None, help="what the server hashed on the way out")
+    v.add_argument("--url", default=None)
+
     s = sub.add_parser("status", help="what has been shown, what came back, what still blocks")
     s.add_argument("png", nargs="+")
     s.add_argument("--json", action="store_true")
 
     a = ap.parse_args(argv)
-    return {"board": cmd_board, "tap": cmd_tap, "status": cmd_status}[a.cmd](a)
+    return {"board": cmd_board, "served": cmd_served, "tap": cmd_tap,
+            "status": cmd_status}[a.cmd](a)
 
 
 if __name__ == "__main__":

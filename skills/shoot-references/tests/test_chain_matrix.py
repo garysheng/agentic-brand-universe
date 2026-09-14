@@ -1304,9 +1304,19 @@ class TheSheetIsNamedWhereTheShootEnds(unittest.TestCase):
         """v0.50. An agent that finishes a chain and does not know this verb exists hits
         a refusal at lock time with no route out of it."""
         i = self.SRC.index("CHAIN COMPLETE")
-        after = self.SRC[i:i + 1800]
+        after = self.SRC[i:i + 2200]
         self.assertIn("shot_board.py board", after)
-        self.assertIn("--verdict keep", after)
+        self.assertIn("lock-shot refuses", after)
+
+    def test_it_says_the_board_shows_the_art_and_that_the_link_gets_texted(self):
+        """v0.51. The board is a frapp that serves each picture, and a frapp link that
+        never leaves this machine is a link the operator can only use where they already
+        were, which is the one place they did not need it."""
+        i = self.SRC.index("CHAIN COMPLETE")
+        after = self.SRC[i:i + 2200]
+        self.assertIn("The board SHOWS the art", after)
+        self.assertIn("TEXT THAT LINK", after)
+        self.assertIn("unshown", after)
 
 
 if __name__ == "__main__":

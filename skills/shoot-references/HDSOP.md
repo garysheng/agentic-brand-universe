@@ -8,7 +8,7 @@ tags: [art, canon, gate, provenance, golden]
 frequency: "once per new entity, plus re-shoots when a seed changes"
 est_time_per_run: "30-90 min per entity"
 automation_potential: "medium"
-related_skills: [add-character, add-setting, add-visual-metaphor, render-readback, create-style-pack, lint-universe, open-in-preview, judge-slot]
+related_skills: [add-character, add-setting, add-visual-metaphor, render-readback, create-style-pack, lint-universe, open-in-preview, judge-slot, create-or-manage-frapp]
 related_workflows: []
 concepts: [canon, entity, golden, invariant, register, style pack, provenance, gate]
 ---
@@ -63,14 +63,17 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
    approved. Build the sheet with `contact_sheet.py --cover <the reference dir>`, which REFUSES
    unless every shot in that batch is on it; `chain_matrix.py` prints the exact invocation when a
    chain completes, so the artifact is not something to remember.
-4b. PUT EVERY SHOT ON AN `AskUserQuestion` BOARD and record the tap. `shot_board.py board` composes
-   the cards (four questions per call, a preview on every option, the off-list answer written into
-   the question text because a preview costs the visible `Other` row) and stamps each shot as
-   shown; `shot_board.py tap` records what came back. A tap is what SEEN means, settled 2026-09-14.
+4b. OPEN THE BOARD, WHICH SHOWS THE ART. `shot_board.py board` starts a frapp that serves every
+   shot and records both the serve and the tap, then prints a phone link: TEXT that link to the
+   operator through `freedom:message-myself`. A tap is what SEEN means (v0.50) and the picture has
+   to be in front of them for the tap to mean it (v0.51). With no Freedom install it falls back to
+   `AskUserQuestion` cards (four per call, a preview on every option, the off-list answer in the
+   question text because a preview costs the visible `Other` row) and records every approval as
+   `unshown` with the reason, because a card cannot carry a picture.
 5. Lock each passer WITH its recipe: `lock-shot <universe> <id> <shot> <path> --recipe <path>`.
    This sets the sheet, promotes `requiredForRender` as the required shots lock, and freezes
-   provenance at approval. It REFUSES a shot with no approving verdict, and refuses one whose
-   bytes have changed since the verdict.
+   provenance at approval. It REFUSES a shot with no approving verdict, one whose bytes have
+   changed since the verdict, and one approved on a frapp board that never served the picture.
 6. Validate and commit. `lock-level` reaches `partial` once the required shots pass and `locked`
    once the full matrix does.
 
@@ -157,6 +160,11 @@ contains no delivery, only reads the agent made to itself.**
   nine calls and under a minute. And check whether the staleness is real: the same swap changed a
   character's jewellery, visible in six of the nine plates.
 - **`open-in-preview` alone is NOT delivery.** Half the time the operator is remote or on a phone.
+  This is also why the board is a frapp rather than a viewer on this machine: a page on their
+  tailnet goes where they are, and a window here reports success against a screen nobody is at.
+- **Never attest to a display.** There is no verb for "I showed them". `shot_board.py served` is
+  called by the page from inside the response that sent the bytes, and an agent calling it about a
+  picture no browser requested is the forgery the whole mechanism exists to remove.
 - **A cross-entity selector can only ADD.** The field that lets you say more must not become a way
   to skip a plate the entity's own gate demands.
 
@@ -184,10 +192,23 @@ is never a board option because a waiver is by definition not a tap. It does cha
 every shoot: a matrix now costs two or three boards of four questions each, and that is the price
 of a golden meaning what it says.
 
-**Still open, and genuinely the owner's call:** whether the board should carry the picture itself
-rather than its path. The preview is text, so what the operator taps against is a filename plus
-the entity's invariants, and the picture has to arrive by the delivery step beside it. Nothing in
-the record can tell whether they actually looked at the image before tapping.
+**Closed, v0.51.** The question this section left open -- whether the board should carry the
+picture itself rather than its path -- is answered, and the answer generalises: **a choice that
+requires LOOKING at an artifact goes to a frapp; one answerable from WORDS stays an
+`AskUserQuestion` card.** `shot_board.py board` opens a page that serves each shot and takes each
+verdict, so the display stops being something an agent claims and becomes something the page
+knows, and the link reaches the operator's phone rather than this machine's screen. An approving
+tap on a frapp board that never served is refused.
+
+**Still open, and it is a LIMIT rather than a gap.** Nothing proves a human looked at the screen;
+eyes are not addressable. What the record now says is that the bytes reached the browser the
+verdict came from, which is the strongest thing a machine can know about a look and is strictly
+stronger than a filename. Do not build ceremony on top of it that looks like more proof than that.
+
+**And one step is still prose:** texting the phone link. ABU cannot invoke `freedom:message-myself`
+from Python -- the Skill tool belongs to the agent -- so `shot_board.py board` prints the
+instruction at the moment of use and this map repeats it. The frapp itself is unaffected, because
+the Mac URL works without it; what is lost when it is skipped is the remote operator.
 
 # Related
 

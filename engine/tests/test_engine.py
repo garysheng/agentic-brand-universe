@@ -431,10 +431,13 @@ class TestStoryStatusExemption(unittest.TestCase):
 
 
 def _record_seen(path):
-    """v0.50: a lock also needs a recorded look at the bytes. These tests are about
-    provenance and promotion, so the seen record is fixture; test_seen.py owns the refusal."""
-    from agenticstory import seen
-    seen.record_board(path, question="q", options=["keep", "reroll"])
+    """v0.50: a lock also needs a recorded look at the bytes, and v0.51: the board has to have
+    SHOWN them. These tests are about provenance and promotion, so both are fixture;
+    test_seen.py owns the refusals."""
+    from agenticstory import display, seen
+    seen.record_board(path, question="q", options=["keep", "reroll"],
+                      display=display.pending(display.FRAPP))
+    seen.record_serve(path)
     seen.record_tap(path, "keep")
 
 
