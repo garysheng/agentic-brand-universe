@@ -1,6 +1,6 @@
 ---
 name: make-a-book
-description: The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. Runs the full chain in the load-bearing order (story -> cast -> lock -> render -> cover -> narrate -> deliver -> publish -> land -> pave -> checkup), delegates every step to the matching abu:* skill, and AUTO-ADVANCES between steps instead of asking what to do next. Universe-parameterized: a per-universe CARTRIDGE skill (make-a-nof-book, make-a-hyperagent-book) supplies the universe path, register, mark, delivery wiring and universe law, then invokes this. Use directly when making a book in a universe that has no cartridge yet. NOT for a brand-new universe (start-new-story-universe) and NOT for editing an existing book (update-book).
+description: The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. Runs the full chain in the load-bearing order (story -> cast -> lock -> render -> cover -> doctor -> narrate -> deliver -> publish -> land -> pave -> checkup), delegates every step to the matching abu:* skill, and AUTO-ADVANCES between steps instead of asking what to do next. Universe-parameterized: a per-universe CARTRIDGE skill (make-a-nof-book, make-a-hyperagent-book) supplies the universe path, register, mark, delivery wiring and universe law, then invokes this. Use directly when making a book in a universe that has no cartridge yet. NOT for a brand-new universe (start-new-story-universe) and NOT for editing an existing book (update-book).
 ---
 
 > `$ABU` below is wherever ABU is installed. Find it with `ABU=$(python3 -c "import agenticstory,pathlib;print(pathlib.Path(agenticstory.__file__).resolve().parents[2])" 2>/dev/null || echo ~/.claude/plugins/cache/garysheng/abu/*/)`, or just ask the harness; never hardcode a home directory.
@@ -12,8 +12,13 @@ The single door over the agenticstory pipeline for **any** universe. The engine 
 not one skill; `render-book` is deliberately LAST. This skill sequences the chain and never
 reimplements a step.
 
-**The order is load-bearing: story -> cast -> lock -> render -> cover -> narrate -> deliver ->
-publish -> land -> pave -> checkup.** Invoking `render-book` first cannot work; nothing is cast or locked yet.
+**The order is load-bearing: story -> cast -> lock -> render -> cover -> doctor -> narrate ->
+deliver -> publish -> land -> pave -> checkup.** Invoking `render-book` first cannot work; nothing is cast or locked yet.
+
+That list is a CONTRACT, not a summary. `tests/test_chain.py` reads this file and refuses a
+step that loses its number, a number that skips, and a frontmatter chain that has drifted from
+this line, because prose numbering is the only enforcement a prose orchestrator has and two
+copies of one list go stale in silence.
 
 ## How this is used
 
@@ -84,7 +89,7 @@ compromise you already reported is NOT a major concern. Ship and say what you se
 - A real person is depicted or named in a way that could **dishonor** them, unresolvable in craft.
 - A **doctrinal** claim you are genuinely unsure the universe holds.
 - A **defect you could not fix**: art still failing a canon invariant after re-rolls, a garbled
-  cover title, an asset that will not verify.
+  cover title, an asset that will not verify, or a `book-doctor` check (step 6) still FAILing.
 - The book **contradicts or duplicates a shipped sibling** in a way that needs his call.
 
 If one is live, say so in a sentence or two, publish nothing, and wait. Otherwise ship.
@@ -583,7 +588,42 @@ regenerate from scratch on any typo.
   version to fall back on, and the plate sits behind the overlaid closing verse. Generate a
   dedicated clean plate with a calm, open lower half.
 
-### 6. Narrate -> 7. Deliver -> 8. Publish
+### 6. Doctor the book -> `abu:book-doctor` (ALWAYS, before anything is delivered)
+
+**Run it on every book, without being asked, the moment the last spread and the cover exist
+and before a single asset leaves this machine.**
+
+```bash
+python3 <abu>/skills/book-doctor/scripts/book_doctor.py <book-dir> --universe "$U"
+```
+
+Exit `0` healthy, `1` problems, `2` unreadable. It grades the rendered book against what its
+own render-spec declares: every declared spread on disk, interiors at the spec's aspect,
+BOTH endcaps portrait, a `recipe.json` beside every generated asset, no asset generated from
+another spread render, and with `--universe` every cast entity registered and locked. Checks
+4 and 5 are structurally impossible for any delivery platform's probe, because recipes never
+ship, so this is the only place they are checkable at all.
+
+**Why it is numbered.** It was the one grader in this chain nobody wired in, while
+`land-work`, `pave-the-path` and `universe-doctor` all earned numbers for exactly the reason
+`pave-the-path` states about itself: a step that depends on somebody remembering it does not
+run. That is not a hypothetical here. `book-doctor`'s own file records two periods in which
+it failed EVERY book (the endcaps graded twice and the caption check comparing a caption to a
+renderer instruction), which is the state an uninvoked check rots in: nobody reads it, so
+nobody notices it has stopped working, so the run it finally catches something real is the
+run its operator ignores.
+
+**Auto-advance, like its neighbours.** A FAIL you can fix, you fix and re-run: a missing
+recipe is a re-render through the adapter, a landscape endcap is a `conform_cover.py` pass, an
+unlocked cast entity is `shoot-references`. Do not ask permission to fix any of those. A FAIL
+you could NOT fix is a MAJOR concern under the publish rule above ("a defect you could not
+fix"), so publish nothing and say which check failed and what you tried.
+
+**Per-book overrides live in the spec** under `"doctor": {...}`; the defaults are the contract
+and you should need them rarely. Reaching for an override to make a FAIL go away is the one
+move that turns this step back into decoration.
+
+### 7. Narrate -> 8. Deliver -> 9. Publish
 Cartridge-specific wiring. The universal parts:
 - **Words changed means narration is re-cut.** TTS spend is unconstrained; a stale clip is not.
 - **Verify at the reader's own path, then at the live page.** A storage probe proves the bucket
@@ -592,7 +632,7 @@ Cartridge-specific wiring. The universal parts:
 - **Captions may not be server-rendered.** Grepping the live HTML for caption text is an invalid
   check on a client-rendered reader. Verify against the deployed bundle or the reader itself.
 
-## Land the work -> `abu:land-work` (ALWAYS, never "parked")
+## 10. Land the work -> `abu:land-work` (ALWAYS, never "parked")
 
 The run is not over until every branch it opened is merged or queued. Never end a report with
 "committed but parked". Parking is an unfinished job that compounds into stale worktrees.
@@ -613,7 +653,7 @@ worktree, QUEUES when a live session holds it dirty, and never uses `git update-
 - **Historical provenance keeps its pre-rename paths.** A recipe records what was actually passed
   at generation time; rewriting it to match a later move falsifies it.
 
-## 9. Pave the path -> `abu:pave-the-path` (ALWAYS, the real last step)
+## 11. Pave the path -> `abu:pave-the-path` (ALWAYS, the real last step)
 
 **Run it after the book ships and the branches land, on every book, without being asked.**
 
@@ -631,7 +671,7 @@ The signal that this step is being skipped: a scratchpad full of `*.sh` files at
 and a framework that is byte-identical to how it started. Every one of those scripts is a thing
 you will write again on the next book.
 
-## 10. Checkup -> `abu:universe-doctor` (every run, for the NEXT round of work)
+## 12. Checkup -> `abu:universe-doctor` (every run, for the NEXT round of work)
 
 **After pave-the-path, run universe-doctor on the universe and report its top punch-list items
 as follow-up opportunities** (Gary, 2026-08-02: "every run of make-a-book should run universe
@@ -659,7 +699,8 @@ Batch of four or more: one contact sheet plus individual files for anything bein
 ## Gates honored
 Words-before-art + voice-gate; casting reuse-first; register-anchor-first on every render;
 readback-from-scratch on any defect; spine declared not assumed; provenance per beat; render only
-against locked references; publish proven at the reader's own path; the run's hand-rolled work swept and paved; the universe re-graded by universe-doctor with follow-ups filed.
+against locked references; the finished book graded by `book-doctor` before anything is delivered;
+publish proven at the reader's own path; the run's hand-rolled work swept and paved; the universe re-graded by universe-doctor with follow-ups filed.
 
 ## The cartridge contract
 

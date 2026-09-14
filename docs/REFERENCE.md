@@ -52,7 +52,7 @@ or a set of page heroes without ever declaring canon.
 | `judge-slot` | Judge one generated slot against an entity's locked golden, item by item over its declared invariants, in a context that has NOT been told how the slot was made. |  |
 | `land-work` | Merge a finished work branch home instead of leaving it parked, in ANY git repo (a universe, a platform repo, a site, anything). |  |
 | `lint-universe` | Lint a brand universe. Static checks over the universe and everything it declares (style packs, entities, goldens, provenance, craft canon, provider quirks) with no generation, no API calls, and no cost. | yes |
-| `make-a-book` | The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. |  |
+| `make-a-book` | The base orchestrator for making an illustrated, narrated picture book in ANY Agentic Brand Universe universe. | yes |
 | `make-a-playable-deck` | Build a mobile-friendly PLAYABLE slide deck from slides declared as data, for sending someone an argument they can sit with on their phone. | yes |
 | `make-a-work` | Make ONE work in a form a universe already declares — a flyer, a card, a poster, a scene, whatever forms/ holds. | yes |
 | `on-brand-image` | Generate ONE on-brand image from a Style Pack (SPEC §4.7) — a portable folder of style references plus a read-back gate — with NO universe required. | yes |
