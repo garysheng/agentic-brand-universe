@@ -7,14 +7,17 @@ import pathlib
 import tempfile
 import unittest
 
-from agenticstory import seen
+from agenticstory import display, seen
 from agenticstory.authoring import lock_shot
 
 
 def _seen(path):
-    """v0.50: a lock also needs a recorded look. Every test here is about the FILE, so
-    the seen record is fixture, not subject; test_seen.py owns that refusal."""
-    seen.record_board(path, question="q", options=["keep", "reroll"])
+    """v0.50: a lock also needs a recorded look, and v0.51: the board has to have SHOWN the
+    picture. Every test here is about the FILE, so both are fixture, not subject; test_seen.py
+    owns those refusals."""
+    seen.record_board(path, question="q", options=["keep", "reroll"],
+                      display=display.pending(display.FRAPP))
+    seen.record_serve(path)
     seen.record_tap(path, "keep")
 
 

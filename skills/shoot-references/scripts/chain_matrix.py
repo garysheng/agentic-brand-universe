@@ -1558,15 +1558,20 @@ def _main() -> int:
           f"  python3 {_abu}/skills/render-readback/scripts/contact_sheet.py \\\n"
           f"    --out /tmp/{plan['entity']}-sheet.png --cols 3 "
           f"--cover {refdir} {refdir}/*.png")
-    # ...AND THEN THE BOARD, WHICH IS WHAT SEEN MEANS (v0.50). The sheet is delivery; the
-    # tap is the record. `lock-shot` refuses without one, so an agent that finishes a chain
-    # and does not know this verb exists hits a refusal with no route out of it. Named
-    # here for the same reason the sheet is: this is the file being read after a shoot.
-    print(f"\nTHEN PUT EVERY SHOT ON A BOARD. A tap is what SEEN means, and lock-shot "
-          f"refuses a shot with no verdict.\n"
+    # ...AND THEN THE BOARD, WHICH IS WHAT SEEN MEANS (v0.50) AND WHICH SHOWS THE ART (v0.51).
+    # The sheet is delivery; the board is the record, and on a machine with Freedom the board
+    # is a frapp that SERVES each picture and records having served it, so nothing here rests
+    # on an agent's account of what the operator was shown. `lock-shot` refuses without a
+    # verdict, so an agent that finishes a chain and does not know this verb exists hits a
+    # refusal with no route out of it. Named here for the same reason the sheet is: this is
+    # the file being read after a shoot.
+    print(f"\nTHEN PUT EVERY SHOT ON A BOARD. The board SHOWS the art and lock-shot refuses "
+          f"a shot with no verdict.\n"
           f"  python3 {_abu}/skills/shoot-references/scripts/shot_board.py board \\\n"
           f"    --universe {uroot} --entity {plan['entity']} --json {refdir}/*.png\n"
-          f"  (then: shot_board.py tap <png> --verdict keep)")
+          f"  It opens a frapp and prints a phone link: TEXT THAT LINK to the operator.\n"
+          f"  With no Freedom install it falls back to AskUserQuestion cards and records\n"
+          f"  every approval as `unshown`, because a card cannot carry a picture.")
     return 0
 
 

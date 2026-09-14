@@ -303,10 +303,12 @@ class OneSidecarTwoWriters(unittest.TestCase):
 
     def test_a_seen_record_survives_a_guard_verdict_being_written(self):
         sys.path.insert(0, str(_HERE.parents[2] / "engine"))
-        from agenticstory import seen
+        from agenticstory import display, seen
         with tempfile.TemporaryDirectory() as d:
             p = png(Path(d) / "x.png")
-            seen.record_board(p, question="q", options=["keep"])
+            seen.record_board(p, question="q", options=["keep"],
+                              display=display.pending(display.FRAPP))
+            seen.record_serve(p)
             seen.record_tap(p, "keep")
             vr.record_verdicts(p, {"device-anatomy": {"verdict": "pass"}})
             doc = json.loads(open(vr.readback_path(p)).read())
