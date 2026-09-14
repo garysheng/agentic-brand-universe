@@ -14,8 +14,25 @@ montage. Ten times in one session (nation-of-fire, 2026-07-30) before this was p
 
   python3 contact_sheet.py --out sheet.png a.png b.png c.png d.png
   python3 contact_sheet.py --out sheet.png --cols 3 --width 700 spreads/*.png
+  python3 contact_sheet.py --out sheet.png --cover reference/jerry a.png b.png
+
+A PARTIAL SHEET IS A LIE, AND `--cover` IS THE HALF THAT WAS MISSING (SPEC v0.49).
+`shoot-references` tells its reader that this script "already refuses a partial one, so a
+short sheet cannot read as 'everything I rendered'". That was only ever true of a file
+that does not exist. Nothing here knew what the BATCH was, so a sheet built from three of
+twelve renders was built happily and read, to the operator looking at it, as twelve. That
+is the exact failure the refusal below was described as preventing, and the SHOW THE
+OPERATOR EVERY SHOT gate is the rule it was protecting.
+
+`--cover DIR` names the batch: every `*.png` in DIR that is not itself a sheet or a
+parked candidate must appear on the sheet, or this REFUSES and names what is missing.
 """
 import argparse, os, sys
+
+# A sheet is not one of its own inputs, and neither is a parked roll: `candidates/` is
+# history, by the make-a-book rule that every roll the operator has seen is copied there
+# before the next one overwrites it.
+_NOT_A_SHOT = ("contact-sheet", "contact_sheet", "sheet", "crop", "zoom", "montage")
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -25,6 +42,9 @@ def main() -> int:
     ap.add_argument("--width", type=int, default=690, help="per-cell width in px")
     ap.add_argument("--label", action="store_true", default=True)
     ap.add_argument("--no-label", dest="label", action="store_false")
+    ap.add_argument("--cover", metavar="DIR", default=None,
+                    help="the batch this sheet must cover: refuse unless every shot in "
+                         "DIR is on it, so a short sheet cannot read as everything")
     a = ap.parse_args()
     try:
         from PIL import Image, ImageDraw
@@ -45,6 +65,34 @@ def main() -> int:
     if not paths:
         sys.stderr.write("contact_sheet: no images\n")
         return 1
+
+    if a.cover:
+        if not os.path.isdir(a.cover):
+            sys.stderr.write(f"contact_sheet: --cover {a.cover} is not a directory\n")
+            return 1
+        on_sheet = {os.path.realpath(p) for p in paths}
+        want = []
+        for name in sorted(os.listdir(a.cover)):
+            if not name.lower().endswith(".png"):
+                continue
+            if any(tell in name.lower() for tell in _NOT_A_SHOT):
+                continue
+            full = os.path.join(a.cover, name)
+            if os.path.realpath(full) == os.path.realpath(a.out):
+                continue
+            want.append(full)
+        absent = [p for p in want if os.path.realpath(p) not in on_sheet]
+        if absent:
+            sys.stderr.write(
+                f"contact_sheet: REFUSING a partial sheet. {len(absent)} of "
+                f"{len(want)} shot(s) in {a.cover} are not on it:\n")
+            for p in absent:
+                sys.stderr.write(f"  {p}\n")
+            sys.stderr.write(
+                "  A short sheet reads to whoever looks at it as everything that was\n"
+                "  rendered, which is how a shot reaches nobody while the step reports\n"
+                "  success. Add them, or point --cover at the batch you actually mean.\n")
+            return 1
 
     # NEVER DISTORT. Until 2026-09-12 the cell was shaped from the FIRST image and every
     # image was hard-resized into it, so a sheet mixing orientations stretched everything

@@ -129,5 +129,78 @@ class AspectRatio(unittest.TestCase):
         self.assertAlmostEqual(h, 600, delta=2)
 
 
+class CoverTheWholeBatch(unittest.TestCase):
+    """The refusal `shoot-references` already claimed this script had (v0.49).
+
+    Its SKILL.md says the sheet "already refuses a partial one, so a short sheet cannot
+    read as 'everything I rendered'". That was true only of a file that did not EXIST.
+    Nothing knew what the batch was, so three of twelve renders built a sheet happily and
+    read, to the person looking at it, as twelve.
+    """
+
+    def batch(self, tmp, n=4):
+        return [os.path.join(tmp, f"shot-{i}.png") for i in range(n)]
+
+    def test_a_short_sheet_is_refused_and_names_what_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shots = self.batch(tmp)
+            for s in shots:
+                _png(s)
+            r = _run(shots[:2] + ["--out", os.path.join(tmp, "sheet.png"), "--cover", tmp])
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("REFUSING a partial sheet", r.stderr)
+            self.assertIn("shot-2.png", r.stderr)
+            self.assertIn("shot-3.png", r.stderr)
+            self.assertFalse(os.path.exists(os.path.join(tmp, "sheet.png")),
+                             "a refused sheet must not be written")
+
+    def test_a_complete_sheet_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shots = self.batch(tmp)
+            for s in shots:
+                _png(s)
+            out = os.path.join(tmp, "sheet.png")
+            r = _run(shots + ["--out", out, "--cover", tmp])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertTrue(os.path.exists(out))
+
+    def test_the_sheet_being_written_into_the_batch_dir_is_not_itself_a_shot(self):
+        """Otherwise the first run poisons the second: the sheet becomes a missing shot."""
+        with tempfile.TemporaryDirectory() as tmp:
+            shots = self.batch(tmp, 2)
+            for s in shots:
+                _png(s)
+            out = os.path.join(tmp, "sheet.png")
+            self.assertEqual(_run(shots + ["--out", out, "--cover", tmp]).returncode, 0)
+            r = _run(shots + ["--out", out, "--cover", tmp])
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_parked_candidate_is_history_not_a_shot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shots = self.batch(tmp, 2)
+            for s in shots:
+                _png(s)
+            _png(os.path.join(tmp, "shot-0-contact-sheet.png"))
+            r = _run(shots + ["--out", os.path.join(tmp, "s.png"), "--cover", tmp])
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_without_cover_nothing_changes(self):
+        """The flag is opt-in: an existing caller building a deliberate subset still works."""
+        with tempfile.TemporaryDirectory() as tmp:
+            shots = self.batch(tmp)
+            for s in shots:
+                _png(s)
+            r = _run(shots[:2] + ["--out", os.path.join(tmp, "sheet.png")])
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_cover_dir_that_is_not_a_dir_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            s = os.path.join(tmp, "a.png")
+            _png(s)
+            r = _run([s, "--out", os.path.join(tmp, "o.png"), "--cover", s])
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("not a directory", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

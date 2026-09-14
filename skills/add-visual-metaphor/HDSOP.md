@@ -31,7 +31,7 @@ following a character or a place. The tell is that every page depends on the obj
 # Inputs / Prerequisites
 
 - The target universe, a path containing `universe.json`.
-- The object, and the property it is the spine of: what it is, its material, its scale, and why
+- The object, and the property it is the spine of: what it is, its material, and why
   IT rather than any other object can carry the argument.
 - Its ARGUED STATES, named explicitly. A visual metaphor is not static: it is the same object
   shown across the states the argument turns on, and each state becomes a plate.
@@ -48,17 +48,26 @@ following a character or a place. The tell is that every page depends on the obj
 Steps say WHAT happens. The flowchart says who; Automation Opportunities holds the ROI.
 
 1. Casting sweep first. Proceed only if no existing object already carries this argument.
-2. Interview for three things: the object itself and why it can carry the whole argument, its
-   argued states named one by one, and confirmation that it is genuinely load-bearing rather than
-   scenery.
+2. Interview for four things: the object itself and why it can carry the whole argument, HOW BIG
+   it is in human terms (asked explicitly, never skipped), its argued states named one by one, and
+   confirmation that it is genuinely load-bearing rather than scenery.
 3. Scaffold with `add-entity <universe> visual-metaphor <id> --name`, which writes
-   `status: "unlocked"` and a contract whose fields are all null or empty.
+   `status: "unlocked"` and a contract whose fields are all null or empty, INCLUDING `scalePlate`
+   and `scale`. It always has; the skill's own field list omitted them, which is part of why
+   nobody filled them.
 4. Fill `contract.map`, `contract.blocking` and `contract.dressing`. These three are load-bearing
    text: the resolver requires them non-empty and every render passes them in the prompt. Fill
    `prose.rules` for any never-render constraint.
+4a. Fill `contract.scale` with the size in words, pinned to something a render already contains,
+   and declare a `contract.scalePlate`: the same object with ANONYMOUS scale figures, never a canon
+   character. Prose matters most, because prose survives a re-render and a plate does not. If the
+   object's own invariants forbid a figure in every plate, write `contract.scalePlateWaiver` saying
+   why: declining the plate is allowed, declining to state the size is not. `lint-universe` warns
+   `SETTING-NO-SCALE-PLATE` and `SETTING-NO-SCALE-DESCRIPTOR` on this kind as of v0.49, under the
+   setting's own codes because `universe-doctor` treats the two kinds as one dimension.
 5. Write `reference/<id>/prompts.md`: a locked master in the object's default state mapped to
-   `contract.turnaround`, one state plate per argued state mapped into `contract.emptyPlates`, and
-   a blueprint where internal structure matters. Each prompt passes the register anchor first,
+   `contract.turnaround`, one state plate per argued state mapped into `contract.emptyPlates`, the
+   `scalePlate` from step 4a, and a blueprint where internal structure matters. Each prompt passes the register anchor first,
    bakes the rejected poles as negatives, states which state it depicts and what must stay
    invariant across all of them, and names the output path.
 6. Validate and commit. An `unlocked` visual metaphor validating is correct, not an error. Report
@@ -78,19 +87,22 @@ flowchart TD
     E -->|Load-bearing| G{Which states does the argument turn on?}
     G --> H[Scaffold with add-entity visual-metaphor, status unlocked]
     H --> I[Fill map, blocking, dressing, and any never-render rule]
-    I --> J[Write prompts: master, one plate per state, blueprint if needed]
+    I --> I2[Fill contract.scale, and a scalePlate or a written scalePlateWaiver]
+    I2 --> J[Write prompts: master, one plate per state, scalePlate, blueprint if needed]
     J --> K[Validate and commit, still unlocked]
     K --> L[Hand off to shoot-references]
     classDef human fill:#fde68a,stroke:#b45309,color:#111827;
     classDef agent fill:#bfdbfe,stroke:#1e40af,color:#111827;
     class A,C,E,G human;
-    class B,D,F,H,I,J,K,L agent;
+    class B,D,F,H,I,I2,J,K,L agent;
 ```
 
 # Done / Verification
 
-`abu validate <universe>` is green with the entity still `unlocked`. `contract.map`, `blocking`
-and `dressing` are all non-empty. `reference/<id>/prompts.md` holds one block for the master and
+`abu validate <universe>` is green with the entity still `unlocked`. `contract.map`, `blocking`,
+`dressing` and `scale` are all non-empty, and `contract.scalePlate` is declared or
+`contract.scalePlateWaiver` says why it cannot be, so `lint-universe` reports neither scale
+warning. `reference/<id>/prompts.md` holds one block for the master and
 one per argued state, each naming its output path. `assert-story` and `assert-spread` still refuse
 the entity, which is the load-bearing feature rather than a bug to route around.
 
@@ -119,11 +131,15 @@ requirement on the three descriptors, and the gate refusal until the plates are 
 **Irreducibly human:** whether the object is genuinely load-bearing, and what its argued states
 are. Both are statements about the argument the property is making.
 
-**Strongest next candidate:** carrying `add-setting`'s scale plate and `contract.scale` discipline
-across to this kind. A visual metaphor is contracted like a setting in every respect except size,
-and it is exactly as free to render at any scale, which is the defect the scale plate exists for.
-`universe-doctor` already scores settings and visual metaphors together on that dimension, so the
-gap is visible in the grade while nothing asks for it at authoring time.
+**Built, v0.49** (it was this map's own strongest next candidate): the interview asks the size,
+step 4a fills `contract.scale` and declares a `scalePlate`, and `lint-universe` warns on this kind
+rather than settings alone. Three surfaces had disagreed about one kind: the doctor graded it, the
+scaffolder gave it the fields, and neither the linter nor this skill knew.
+
+**Strongest next candidate:** `emptyPlatesExpected`, which the scaffolder writes from the declared
+state count and which this procedure never mentions. It is the field that stops a three-state
+object promoting itself to `locked` after one plate and improvising the other two, differently, at
+render time, and a field nobody is told about is a field nobody checks.
 
 # Related
 

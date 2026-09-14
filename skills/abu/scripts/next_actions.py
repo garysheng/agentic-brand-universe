@@ -42,6 +42,22 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 GRADER = HERE.parents[1] / "universe-doctor" / "scripts" / "grade.py"
 
+
+def _abu_root(start=None):
+    """Walk up for a marker, never count parents: a fixed depth encodes ONE layout and
+    this runs from a clone and from a plugin cache. Same finder as status.py."""
+    p = Path(start or __file__).resolve()
+    for c in [p, *p.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            return c
+    raise SystemExit("next_actions: cannot locate the ABU root from " + str(p))
+
+
+# The no-command rule and the plain-language outcome sentences live in the ENGINE, so the
+# board and `status.py` cannot drift into two opinions about what a person may be shown.
+sys.path.insert(0, str(_abu_root() / "engine"))
+from agenticstory.workspace import command_in, humanize  # noqa: E402
+
 # What naturally follows a verb. Not a workflow graph and deliberately not one: it is the
 # answer to "I just did X, what does X make possible", which is a much smaller question.
 # A verb absent here simply contributes no promotion, which is the correct default.
@@ -140,6 +156,17 @@ def board(universe: Path, after: str | None = None, max_options: int = 4) -> dic
         # verb-shaped token, and everything else is passed through as the instruction it is.
         bare = bool(re.fullmatch(r"[a-z][a-z0-9-]*", r["fix"]))
         label = (f"/abu:{r['fix']}" if bare else r["fix"])
+        # ...AND A PASSED-THROUGH INSTRUCTION MAY NOT BE A COMMAND (v0.49). The
+        # pass-through above is right for a plain-English hint and wrong for the half of
+        # the grader's `fix` strings that are invocations: "abu backfill-provenance
+        # (records what is knowable)" and "write canon/properties/<id>.json, then `abu
+        # build-canon`" both became the LABEL of a tappable option, which is the front
+        # door's one hard rule broken in the board built to honour it. When the hint
+        # reads as a command, say the OUTCOME instead; the grader's own sentence is
+        # already written for a person in workspace.OUTCOMES.
+        if not bare and command_in(label):
+            label = humanize(r["dimension"]).split(" (")[0]
+            label = label[0].upper() + label[1:]
         options.append({
             "verb": r["fix"] if bare else None,
             "instruction": None if bare else r["fix"],

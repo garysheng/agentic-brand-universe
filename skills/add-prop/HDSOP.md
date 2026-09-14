@@ -30,7 +30,9 @@ characters can share one canonical prop, so the sweep runs before the naming doe
 
 - The target universe, a path containing `universe.json`. Its `identity` and `assetRoot` are read
   here.
-- What the object is: form, scale, material, and who holds, wears or uses it and how.
+- What the object is: form, material, and who holds, wears or uses it and how.
+- HOW BIG IT IS, in human terms, pinned to something a render already contains. Asked explicitly
+  and never skipped, the way `add-setting` asks a room's size and `add-character` a person's.
 - Its LOAD-BEARING DETAIL: the one feature that must never drift, such as an engraving, a wear
   mark, a colour, a proportion. Without it the prop reads as a similar object rather than the
   same one.
@@ -48,11 +50,18 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
 
 1. Casting sweep first. Sweep `canon/entities/` and any CANON.md for an existing object that
    already covers this role. Proceed only if genuinely new.
-2. Interview one question at a time: what the object is, and its load-bearing detail.
+2. Interview one question at a time: what the object is, HOW BIG it is in human terms, and its
+   load-bearing detail.
 3. Scaffold with `add-entity <universe> prop <id> --name`, which writes
    `structured.sheets: {"hero": null, "detail": null}` and an empty `requiredForRender`.
 4. Fill `prose` with what the object means and who may touch it, and `structured.invariants` with
    the load-bearing rules the read-back will check.
+4a. Fill `structured.scale.absolute` with the size, as one sentence pinned to things a render
+   already contains ("about twice the height of the mug beside it"), because a measurement alone
+   is unverifiable in a painting. It is the ONLY key `compose-spread` reads for a prop, and it
+   emits it as the TRUE SIZE line whenever the prop is in frame. `lint-universe` warns
+   `PROP-NO-SCALE` when it is absent and `PROP-SCALE-NOT-EMITTED` when the size sits under any
+   other key, which is worse: the prop looks compliant and reaches no prompt.
 5. Write `reference/<id>/prompts.md`: a hero shot with the object cleanly framed and its full form
    visible, and a detail crop tight on the load-bearing feature. Each prompt passes
    `identity.register.anchor` FIRST, bakes `register.rejectedPoles` as negatives, states the
@@ -74,19 +83,21 @@ flowchart TD
     E -->|Object| G[Interview: form, scale, material, user, load-bearing detail]
     G --> H[Scaffold with add-entity prop]
     H --> I[Fill prose and invariants]
-    I --> J[Write prompts.md: hero plus detail crop]
+    I --> I2[Fill structured.scale.absolute: the size, pinned to things a render contains]
+    I2 --> J[Write prompts.md: hero plus detail crop]
     J --> K[Validate and commit at stub]
     K --> L[Hand off to shoot-references]
     classDef human fill:#fde68a,stroke:#b45309,color:#111827;
     classDef agent fill:#bfdbfe,stroke:#1e40af,color:#111827;
     class A,C,E,G human;
-    class B,D,F,H,I,J,K,L agent;
+    class B,D,F,H,I,I2,J,K,L agent;
 ```
 
 # Done / Verification
 
 `abu validate <universe>` is green. The entity exists with both sheet slots present and null,
-non-empty invariants, and prose. `reference/<id>/prompts.md` holds exactly two blocks, each
+non-empty invariants, prose, and a non-empty `structured.scale.absolute`, so `lint-universe`
+reports neither `PROP-NO-SCALE` nor `PROP-SCALE-NOT-EMITTED`. `reference/<id>/prompts.md` holds exactly two blocks, each
 naming its output path and leading with the register anchor. Nothing under `reference/<id>/` is a
 generated image.
 
@@ -109,13 +120,20 @@ generated image.
 
 **Already automated:** the entity scaffold, and schema validation.
 
-**Irreducibly human:** the load-bearing detail, the ownership rule, and the reuse call.
+**Irreducibly human:** the load-bearing detail, the ownership rule, the size itself, and the reuse
+call.
 
-**Strongest next candidate:** carrying `structured.scale` into the scaffold prompt for props, the
-way `add-setting` forces size and `add-character` forces relative height. A prop's size is
-exactly as unconstrained as a room's was, and `compose-spread` already emits a TRUE SIZE line
-from `structured.scale` for any kind. A supercharged laptop ranged from a notebook to a small
-television across one book because nothing asked.
+**Built, v0.49** (it was this map's own strongest next candidate): the interview asks the size and
+step 4a fills `structured.scale.absolute`, the way `add-setting` forces `contract.scale` and
+`add-character` forces `structured.scale`. The machinery and the grading both already existed; only
+the authoring prompt was missing, so nothing ever put the question in front of an author, and a
+supercharged laptop ranged from a notebook to a small television across one book.
+
+**Strongest next candidate:** a refusal rather than a warning. `PROP-NO-SCALE` is advisory, so a
+prop with no size still locks and still renders, and a warning in a long lint run is a thing to
+scroll past. The question worth settling is whether an entity whose size is never stated should be
+refused by `assert-story` the way an unlocked reference is, which is a decision about how much
+existing canon it would stop rather than about how to implement it.
 
 # Related
 

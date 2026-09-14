@@ -1,11 +1,21 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.48 — 2026-09-12.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.49 — 2026-09-14.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.49 changelog — three rules that were written as gates and enforced only by prose.**
+> §3.5: a fired prompt guard now needs a RECORDED verdict (`<image>.readback.json`) and
+> `verify_render.py` refuses without one, because an unjudged gate and a passed gate looked
+> identical from outside; and `contact_sheet.py --cover` makes the partial-sheet refusal
+> that `shoot-references` already claimed real. §15: the front door's one hard rule, never
+> show the user a shell command, is enforced in code, because the grader's own `fix` strings
+> reached the operator through two paths the rule was written to close. §12: `add-prop` and
+> `add-visual-metaphor` now force a size the way `add-setting` and `add-character` do, and
+> `PROP-NO-SCALE` reads the field the compiler actually emits.
+>
 > **v0.48 changelog — a prompt guard that fires is also a read-back assertion.** Every standing
 > prompt guard (§3.5, `providers/*/prompt_guards.py`) now has a matching entry in `READBACK_GATE`,
 > and `generate.py` writes the ones that fired into the recipe as `guards` and `guardGate`, which
@@ -1062,6 +1072,40 @@ on the wrong side of its laptop passed read-back because no line told the reader
 readback of that render is the pack gate PLUS the entity gate PLUS the guard gate. A guard with
 no gate entry fails the provider's own test suite, so the two halves cannot drift apart. The
 prompt half asks; the gate half refuses.
+
+**A GATE NOBODY JUDGED IS NOT A GATE (v0.49).** v0.48 put the assertion in the recipe so a
+reader would be told to look. It gave nobody a way to tell whether the reader looked, so a
+skipped gate and a passed gate were indistinguishable from outside, which is the same
+failure one level up: "evaluate every guardGate entry" is an instruction, and an
+instruction loses some fraction of the time. So the verdict is RECORDED, beside the image,
+as `<image>.readback.json`:
+
+    {"guardVerdicts": {"device-anatomy": {"verdict": "pass"},
+                       "no-ui-chrome":   {"verdict": "defect", "why": "invented menu bar"}}}
+
+`verify_render.py` REFUSES any render whose recipe names a fired guard with no recorded
+verdict, and prints that guard's assertion so the reader is told where to look rather than
+merely told they failed. A `defect` is a failure, not a note: the rule is regenerate from
+scratch. A `waived` verdict is the recorded exception and REQUIRES a written reason, the
+same shape as a voice-gate waiver and `--waive-entity`; a waiver with no reason is a skip
+with better manners. Three refusals guard the record itself: a verdict filed under a guard
+that never fired (a typo must not read as a judgement, leaving the real guard unjudged), an
+unknown verdict word, and one verdict spread across a batch (a verdict is a statement about
+ONE picture, and letting one look cover four is the failure the gate exists to stop). A
+render that tripped no guard is untouched, and a recipe carrying `guards` with no
+`guardGate` (written before v0.48) still demands verdicts, because the guard NAMES are the
+checkable half. `<image>.readback.json` is a build artifact and never ships, like the
+recipe beside it.
+
+**A CONTACT SHEET THAT DOES NOT COVER ITS BATCH IS A LIE (v0.49).** `shoot-references`'s
+SHOW THE OPERATOR EVERY SHOT gate told its reader that `contact_sheet.py` "already refuses a
+partial one, so a short sheet cannot read as everything I rendered". The script refused a
+file that did not EXIST and had no idea what the batch was, so a sheet built from three of
+twelve renders was built happily and read, to the person looking at it, as twelve.
+`contact_sheet.py --cover <dir>` names the batch: every `*.png` in that directory that is
+not a sheet or a parked candidate must be on the sheet or the build REFUSES and names what
+is absent. It is opt-in, because a deliberate subset is a legitimate sheet; what was wrong
+was a documented refusal that no code performed.
 
 **Binding an entity inherits its guard (v0.46).** A render made with `--entity` already
 carried the entity's `structured.invariants` into the PROMPT as positives. It did not carry
@@ -2921,6 +2965,35 @@ Default measured reference, when a universe declares no `identity.scaleReference
     collarbone"`) and shoot a `scale-plate` when the object's size is load-bearing. Advisory:
     `lint-universe` warns `PROP-NO-SCALE`. A motif is a graphic signature rather than a physical
     object, so it takes neither.
+  - **THE KEY IS `structured.scale.absolute`, and the checker used to name a different one
+    (v0.49).** `assemble_prompt.py` emits the TRUE SIZE line from `structured.scale.absolute`,
+    for an in-frame entity of ANY kind, and that is what a prop's size has to be written under
+    to reach a prompt at all. `PROP-NO-SCALE` asked for `size` or `height`, so the two halves of
+    one rule named different keys: a prop written the documented way still tripped the warning,
+    and a prop written to satisfy the warning contributed nothing to any prompt. Both readings
+    of "state the prop's size" produced a prop whose size never reached the model. The lint now
+    accepts `absolute`, and warns `PROP-SCALE-NOT-EMITTED` on a size recorded under any other
+    key, which is the worse of the two states because it looks compliant.
+  - **`add-prop` now ASKS (v0.49).** The machinery and the grading both predate this; only the
+    authoring prompt was missing, so nothing ever put the question in front of an author. The
+    interview asks how big the object is in human terms, and a step fills
+    `structured.scale.absolute` before the prompts are written, matching how `add-setting`
+    forces `contract.scale` and `add-character` forces `structured.scale`. The incident: the
+    supercharged laptop on `what-a-book-is-made-of` appears in most of twenty-one spreads and
+    ranged from a notebook to a small television, because the entity declared its form, its
+    colour and its rules and never once declared its size. That is the prop version of the
+    hearth room that earned the setting rule in v0.9.
+
+**A VISUAL-METAPHOR IS GRADED ON SIZE, SO IT IS NOW ASKED AND LINTED FOR IT (v0.49).** Three
+surfaces disagreed about one kind. `universe-doctor` has scored `setting` and `visual-metaphor`
+together on the `setting_size` dimension since v0.9; `scaffold_entity` gives a visual-metaphor the
+setting's `contract` shape including `scalePlate` and `scale`; and neither `lint-universe` (which
+asked for `kind == "setting"`) nor `add-visual-metaphor` (whose contract field list omitted both
+keys and whose interview never mentioned size) knew. So a visual-metaphor lost points for a gap
+nothing warned about and no author was ever asked to close. `lint-universe` now emits
+`SETTING-NO-SCALE-PLATE` and `SETTING-NO-SCALE-DESCRIPTOR` for this kind too, under the same codes
+because the grader treats them as one dimension, and the room-shaped checks (nesting, house rules,
+the locked-gate agreement) stay setting-only, since a visual-metaphor has no rooms inside it.
 
 **`lock_level(entity) -> stub | partial | locked`** (engine) reports completeness against the kind's
 matrix. It is **advisory** in v0.4 and back-compatible: an entity that predates the matrix, or uses
@@ -3037,6 +3110,36 @@ used verbatim.
   `/abu:` prefix; anything else passes through as the instruction it is, in `instruction` rather
   than `verb`. Prefixing everything produced `/abu:abu backfill-provenance (...)`, which is not
   a command anybody can run.
+
+### The front door's one hard rule, as code (v0.49)
+
+**`abu`'s whole premise is that a person never sees a shell command**: "a command in the
+transcript is a defect in this skill". That was prose, and prose does not bind, so the
+framework's own strings broke it in the two places most likely to be read aloud. The grader's
+`fix` field is written for whoever maintains the GRADER (`write canon/properties/<id>.json,
+then \`abu build-canon\``; `split the rooms into settings with \`partOf\``; `abu
+backfill-provenance (...)`), and it reached the operator by two paths:
+
+- **`workspace.humanize()` used `fix` as its FALLBACK** for any dimension with no sentence in
+  `OUTCOMES`, and `setting_nesting` had no sentence there, so its backticked JSON keys went
+  into `plan.headline.human` -- the one field `abu`'s own method tells the agent to say out
+  loud. The previous test suite named the hole and blessed it, in a test called
+  `test_unknown_dimension_falls_back`.
+- **the board showed a non-verb-shaped `fix` as the LABEL** of a tappable option, by the
+  pass-through rule directly above, which is right for a plain-English hint and wrong for the
+  half of the real fix strings that are invocations.
+
+So: `workspace.command_in(text)` returns the first command-shaped span in any string about to
+reach a person, and nothing command-shaped survives `humanize()` whichever argument it arrived
+in. A command-shaped label on the board is replaced by the dimension's outcome sentence rather
+than blanked, because an option with no label is worse than one with a technical one. And
+**every dimension the grader can emit must have a plain-language sentence in `OUTCOMES`**,
+enforced by a test that reads `grade.py`'s own `RUBRIC`, so a new dimension cannot ship without
+one. Same shape as the guard/`READBACK_GATE` pairing in §3.5.
+
+The detector is deliberately conservative and a PATH is not a command. What it catches is an
+invocation, a flag, a script by name and a shell operator. Over-triggering would silently blank
+real sentences, which is a worse failure than the leak it closes.
 
 ### Why this is not decoration
 

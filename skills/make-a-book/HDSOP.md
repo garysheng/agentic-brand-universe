@@ -8,7 +8,7 @@ tags: [orchestrator, chain, book, gate]
 frequency: "once per book"
 est_time_per_run: "a full day, sometimes several"
 automation_potential: "medium"
-related_skills: [add-story, casting-sweep, shoot-references, render-book, cover, voice-gate, land-work, pave-the-path, universe-doctor, compose-spread, update-book]
+related_skills: [add-story, casting-sweep, shoot-references, render-book, cover, voice-gate, book-doctor, land-work, pave-the-path, universe-doctor, compose-spread, update-book]
 related_workflows: []
 concepts: [universe, canon, spine, register, gate, golden, provenance]
 ---
@@ -18,8 +18,10 @@ concepts: [universe, canon, spine, register, gate, golden, provenance]
 One illustrated, narrated picture book gets made, end to end, in any universe, without a human
 being asked "should I proceed to narration?" at every hand-off.
 
-The order is the product: story, cast, lock, render, cover, narrate, deliver, publish, land, pave,
-checkup. Invoking `render-book` first cannot work, because nothing is cast or locked yet.
+The order is the product: story, cast, lock, render, cover, doctor, narrate, deliver, publish, land,
+pave, checkup. Invoking `render-book` first cannot work, because nothing is cast or locked yet.
+That list is a contract: `tests/test_chain.py` refuses a step that loses its number and a
+frontmatter chain that has drifted from the body.
 
 # When to use (Trigger)
 
@@ -61,12 +63,15 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
    4c. Any mid-book beat change goes through `insert_spread.py`, never by hand.
 5. Cover, through `cover`: portrait, register anchor first, the mark, the title baked and checked
    letter by letter.
-6-8. Narrate, deliver, publish. Cartridge-specific wiring; the universal parts are that changed
+6. Doctor, through `book-doctor`, on every book, once the last spread and the cover exist and
+   before a single asset leaves the machine. A FAIL you can fix, you fix and re-run; a FAIL you
+   cannot fix is a MAJOR concern and nothing publishes.
+7-9. Narrate, deliver, publish. Cartridge-specific wiring; the universal parts are that changed
    words mean re-cut narration, and that delivery is verified at the reader's own path AND at the
    live page.
-9. Land, through `land-work`, drain first and land last, once per repo.
-10. Pave, through `pave-the-path`, after the book ships and the branches land, on every book.
-11. Checkup, through `universe-doctor`, reporting its top punch-list items as follow-ups.
+10. Land, through `land-work`, drain first and land last, once per repo.
+11. Pave, through `pave-the-path`, after the book ships and the branches land, on every book.
+12. Checkup, through `universe-doctor`, reporting its top punch-list items as follow-ups.
 
 # Process Flowchart
 
@@ -92,8 +97,12 @@ flowchart TD
     N --> J
     L -->|None| O[Vision pass for caption placement]
     O --> P[Cover via the cover skill, lettering checked from bands]
-    P --> Q[Narrate, deliver]
-    Q --> R{Any MAJOR concern?}
+    P --> P2[book-doctor on the rendered book, before anything is delivered]
+    P2 --> P3{Does it exit zero?}
+    P3 -->|Fixable FAIL| P4[Fix it and re-run: re-render for a recipe, conform an endcap, shoot an unlocked entity]
+    P4 --> P2
+    P3 -->|Yes| Q[Narrate, deliver]
+    Q --> R{Any MAJOR concern? An unfixable book-doctor FAIL is one}
     R -->|Yes| S[Say so in two sentences, publish nothing, wait]
     R -->|No| T[Publish. Do not ask]
     T --> U[land-work: drain first, land last, per repo]
@@ -102,7 +111,7 @@ flowchart TD
     classDef human fill:#fde68a,stroke:#b45309,color:#111827;
     classDef agent fill:#bfdbfe,stroke:#1e40af,color:#111827;
     class A,I,N,R,S human;
-    class B,C,D,E,F,G,H,J,K,L,M,O,P,Q,T,U,V,W agent;
+    class B,C,D,E,F,G,H,J,K,L,M,O,P,P2,P3,P4,Q,T,U,V,W agent;
 ```
 
 # Done / Verification
@@ -115,7 +124,8 @@ as named follow-ups.
 
 Every gate is honoured: words-before-art plus voice-gate; casting reuse-first; register-anchor-
 first on every render; readback-from-scratch on any defect; spine declared not assumed; provenance
-per beat; render only against locked references.
+per beat; render only against locked references; the finished book graded by `book-doctor` before
+anything is delivered.
 
 # Exceptions & Troubleshooting
 

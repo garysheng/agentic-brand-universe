@@ -22,6 +22,20 @@ The single exception is a prerequisite the harness genuinely cannot satisfy for 
 which today is only installing the console itself and holding an API key. Say those in
 prose and hand them off to `onboard`.
 
+**It is enforced in code now, because prose did not bind it (v0.49).** The framework's own
+strings were breaking it. The grader's `fix` field is written for whoever maintains the
+GRADER, and it reached the operator two ways: `humanize()` fell back to it for any dimension
+with no sentence in `OUTCOMES` (which `setting_nesting` had not), so backticked JSON keys
+went into `plan.headline.human`, the one field this file tells you to say out loud; and the
+board below showed a non-verb-shaped `fix` as the LABEL of a tappable option. Both paths are
+closed: `workspace.command_in()` is the detector, `humanize()` drops anything command-shaped
+whichever argument it arrived in, a command-shaped board label becomes the outcome sentence
+instead, and a test reads `grade.py`'s own `RUBRIC` so a new dimension cannot ship without a
+plain-language sentence.
+
+That closes the framework's own leaks. **The rest is still yours**: a command you type into
+the transcript is not something any of this can catch.
+
 ## Procedure
 
 **1. Read the situation before saying anything.**

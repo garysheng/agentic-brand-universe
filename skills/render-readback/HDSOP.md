@@ -53,7 +53,10 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
    Pass `--grid 4x4` instead of a box when you do not already know where the detail sits.
 2a. Evaluate EVERY `guardGate` assertion the recipe carries, the same way as an entity invariant,
    and crop-zoom to do it. A prompt guard is an instruction to the model and it loses some
-   fraction of the time; this gate is what refuses when it lost.
+   fraction of the time; this gate is what refuses when it lost. RECORD each verdict with
+   `verify_render.py --guard NAME=pass` (or `=defect:"why"` / `=waived:"why"`): the script FAILS
+   until every fired guard is judged, because an unjudged gate and a passed gate look identical
+   from outside. A defect regenerates from scratch; a waiver needs a written reason.
 2b. Run the standing EYELINE check on every scene with a conversation in it: crop-zoom each
    participant's eyes and ask who they are looking at.
 3. Return PASS or DEFECT per invariant, with a one-line reason on any DEFECT.
@@ -97,7 +100,8 @@ flowchart TD
 # Done / Verification
 
 Every invariant has its own verdict, judged from a crop rather than from a thumbnail or from
-memory of the prompt. Every guard that fired has been evaluated. Every numeric claim has a
+memory of the prompt. Every guard that fired has a RECORDED verdict in `<image>.readback.json`
+and `verify_render.py` exits zero, which it will not do while one is unjudged. Every numeric claim has a
 `<image>.measure.json` beside it recording HOW it was measured, because a bare number is not a
 measurement.
 
@@ -131,16 +135,21 @@ measurement.
 
 **Already automated:** the crop, contact-sheet and measurement tooling with fraction-based boxes,
 the recipe-carried entity gate and guard gate, the required-and-recorded patch, the self-validating
-detectors that REFUSE rather than guessing, and the measurement sidecar.
+detectors that REFUSE rather than guessing, the measurement sidecar, and (v0.49) the guard-verdict
+refusal plus `contact_sheet.py --cover`, which refuses a sheet that does not cover its batch.
 
 **Irreducibly human:** judging a mark against its blessed plate, and any invariant where a computed
 proxy would produce false precision. The distinction worth keeping: measure a quantity a human
 cannot eyeball reliably, never a judgement a human makes instantly.
 
-**Strongest next candidate:** a refusal when a render is accepted with a `guardGate` in its recipe
-and no recorded verdict per assertion. The gate exists precisely because a prompt guard loses some
-fraction of the time, and today it is evaluated by an agent reading step 2a and remembering, which
-is exactly how the shipped hero passed with its screen facing the wrong way.
+**Built, v0.49** (it was this map's own strongest next candidate): `verify_render.py` refuses a
+render whose recipe names a fired guard with no recorded verdict, and prints that guard's assertion
+so the reader is told where to look rather than merely told they failed.
+
+**Strongest next candidate:** the EYELINE check of step 2b, which is in exactly the state the guard
+gate was in before v0.49 -- a standing rule, applied to every conversational scene, evaluated by an
+agent who read it and remembered. It has no recipe field naming it and no verdict slot, so nothing
+can tell a scene that was checked from one that was not.
 
 # Related
 

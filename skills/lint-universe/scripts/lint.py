@@ -469,8 +469,17 @@ def lint(root):
     if ents_dir.exists():
         for ef in sorted(ents_dir.glob("*.json")):
             e = jload(ef) or {}
-            if e.get("kind") != "setting":
+            # A VISUAL-METAPHOR IS GRADED ON SIZE AND WAS NEVER LINTED FOR IT (v0.49).
+            # `universe-doctor` has scored `setting` and `visual-metaphor` together on the
+            # `setting_size` dimension since v0.9, and `scaffold_entity` gives a
+            # visual-metaphor the same `contract` shape including `scalePlate` and `scale`.
+            # This loop asked for `kind == "setting"` only, so a visual-metaphor lost points
+            # for a gap nothing warned about and whose authoring skill never asked for it:
+            # three surfaces, three different answers. The room-shaped checks below stay
+            # setting-only, because a visual-metaphor has no rooms nested in it.
+            if e.get("kind") not in ("setting", "visual-metaphor"):
                 continue
+            is_setting = e.get("kind") == "setting"
             con = e.get("contract") or {}
             eid = e.get("id", ef.stem)
             sp = con.get("scalePlate")
@@ -498,6 +507,16 @@ def lint(root):
             elif not (root/sp).exists():
                 warn("SETTING-NO-SCALE-PLATE",
                      f"{eid}: contract.scalePlate -> {sp} (NOT ON DISK)")
+            if not is_setting:
+                # A visual-metaphor gets the SIZE half above and the descriptor below, and
+                # none of the room-shaped checks between them.
+                if not (con.get("scale") or "").strip():
+                    warn("SETTING-NO-SCALE-DESCRIPTOR",
+                         f"{eid}: no contract.scale descriptor. State the size in human "
+                         f"terms, pinned to something a render already contains (\"about "
+                         f"waist height, roughly as wide as a doorway\"); it is passed in "
+                         f"every prompt like `dressing`, and prose survives a re-render.")
+                continue
             # ---- `status: locked` MUST MEAN THE GATE WOULD ACCEPT IT (v0.29)
             #
             # `lock_shot` and `refs.resolve_setting` disagreed about what locked meant, so
@@ -591,12 +610,31 @@ def lint(root):
             eid = e.get("id", ef.stem)
             st = e.get("structured") or {}
             sc = st.get("scale") or {}
-            if not (sc.get("size") or sc.get("height") or "").strip():
+            # THE CHECKER AND THE EMITTER MUST AGREE ON THE FIELD NAME (v0.49).
+            # This asked for `size` or `height`. `assemble_prompt.py` emits the TRUE SIZE
+            # line from `structured.scale.absolute`, for an entity of ANY kind, and that is
+            # the field `compose-spread`'s own method documents. So the two halves of one
+            # rule named different keys: a prop written the documented way still tripped
+            # this warning, and a prop written to satisfy this warning contributed NOTHING
+            # to any prompt. Both readings of "state the prop's size" produced a prop whose
+            # size never reached the model, which is exactly the drift the rule exists for
+            # (the supercharged laptop ranged from a notebook to a small television across
+            # twenty-one spreads).
+            absolute = (sc.get("absolute") or "").strip()
+            legacy = (sc.get("size") or sc.get("height") or "").strip()
+            if not absolute and not legacy:
                 warn("PROP-NO-SCALE",
-                     f"{eid}: no structured.scale size descriptor, so nothing states how big "
-                     f"this object is and it will render at whatever size the model assumes "
-                     f"next to a figure. State it in human terms (\"about 40 mm across, worn "
-                     f"at the collarbone\").")
+                     f"{eid}: no structured.scale.absolute descriptor, so nothing states how "
+                     f"big this object is and it will render at whatever size the model "
+                     f"assumes next to a figure. State it in human terms, pinned to things a "
+                     f"render already contains (\"about 40 mm across, worn at the "
+                     f"collarbone\"); compose-spread emits it as the TRUE SIZE line.")
+            elif not absolute:
+                warn("PROP-SCALE-NOT-EMITTED",
+                     f"{eid}: structured.scale states a size but not under `absolute`, which "
+                     f"is the only key compose-spread reads. This prop looks compliant and "
+                     f"contributes nothing to any prompt. Move the sentence to "
+                     f"`structured.scale.absolute`.")
 
     # ---- A SETTING'S DRESSING IS THE ROOM, NEVER WHAT A PERSON IS HOLDING (v0.29)
     #

@@ -1548,6 +1548,16 @@ def _main() -> int:
 
     print(f"CHAIN COMPLETE: {len(goldens)} mutually-consistent shot(s). "
           f"Read back each, then lock-shot the passers.")
+    # SHOW THE OPERATOR EVERY SHOT is a GATE, and a gate whose artifact has to be
+    # remembered is a suggestion. Name the command that builds it, here, where an agent
+    # that has just finished a shoot is actually reading. `--cover` makes the sheet refuse
+    # unless it covers this whole batch, so it cannot be short and read as complete.
+    _abu = _abu_root()
+    print(f"\nSEND THE OPERATOR THE SHEET. Not open-in-preview: they are frequently not "
+          f"at this machine.\n"
+          f"  python3 {_abu}/skills/render-readback/scripts/contact_sheet.py \\\n"
+          f"    --out /tmp/{plan['entity']}-sheet.png --cols 3 "
+          f"--cover {refdir} {refdir}/*.png")
     return 0
 
 

@@ -60,7 +60,9 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
    shot FROM SCRATCH with the defect named, never an edit pass.
 4. SHOW THE OPERATOR EVERY SHOT, by sending the files with the harness's own file-delivery tool. A
    batch of four or more goes as one contact sheet plus individual files for anything being
-   approved.
+   approved. Build the sheet with `contact_sheet.py --cover <the reference dir>`, which REFUSES
+   unless every shot in that batch is on it; `chain_matrix.py` prints the exact invocation when a
+   chain completes, so the artifact is not something to remember.
 5. Lock each passer WITH its recipe: `lock-shot <universe> <id> <shot> <path> --recipe <path>`.
    This sets the sheet, promotes `requiredForRender` as the required shots lock, and freezes
    provenance at approval.
@@ -160,10 +162,17 @@ backfill and scaffold for old entities, and the multi-character scale plate as a
 **Irreducibly human:** the approval, both the subject's and the operator's look at every shot. A
 golden IS human judgement frozen, so a shoot that locks without one has frozen nothing.
 
-**Strongest next candidate:** a refusal to `lock-shot` a slot with no recorded delivery to the
-operator. The show-the-operator rule is written here as a GATE rather than a courtesy, it has
-already failed in the exact way described, and it is the one gate in this skill still enforced by
-prose while every other one is a refusal in code.
+**Partly built, v0.49.** The sheet can no longer be SHORT: `contact_sheet.py --cover` refuses a
+sheet that does not cover its batch, which is the refusal this skill's own method already claimed
+the script performed and which no code performed. And the command that builds it is printed where a
+shoot ends, so it is a step rather than a technique.
+
+**Strongest next candidate, still open and genuinely the owner's call:** a refusal to `lock-shot` a
+slot with no recorded delivery. The blocker is not effort, it is a definition -- what COUNTS as
+shown, and what happens when the operator is absent. The framework already has one human-gate
+primitive to copy, the `--bless-seed` marker that `chain_matrix.py` refuses a chain without
+("golden is not something the agent may award itself"), and extending it to every shot changes the
+cost of every shoot, which is a decision rather than an implementation.
 
 # Related
 

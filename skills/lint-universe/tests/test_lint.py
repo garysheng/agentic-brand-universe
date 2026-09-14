@@ -525,6 +525,93 @@ class TestSettingScale(unittest.TestCase):
             self.assertNotIn("SETTING-NO-SCALE-PLATE", w)
 
 
+class TestVisualMetaphorSize(unittest.TestCase):
+    """A visual-metaphor is GRADED on size and was never linted for it (v0.49).
+
+    universe-doctor has scored `setting` and `visual-metaphor` together on the
+    `setting_size` dimension since v0.9, and the scaffolder gives a visual-metaphor the
+    same contract shape including `scalePlate` and `scale`. This loop asked for
+    `kind == "setting"`, so a visual-metaphor lost points for a gap nothing warned about
+    and whose authoring skill never asked for: three surfaces, three answers.
+    """
+
+    def _vm(self, tmp, **contract):
+        con = {"map": "m", "blocking": "b", "dressing": "d"}
+        con.update(contract)
+        return build(tmp, entity={"id": "the-door", "kind": "visual-metaphor",
+                                  "contract": con})
+
+    def test_warns_when_a_visual_metaphor_cannot_prove_its_size(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._vm(t))
+            self.assertIn("SETTING-NO-SCALE-PLATE", w)
+            self.assertIn("SETTING-NO-SCALE-DESCRIPTOR", w)
+
+    def test_clean_when_both_present(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._vm(t, scalePlate="reference/the-door/scale.png",
+                            scale="about the height of a doorway, twice a person's shoulders")
+            (root / "reference" / "the-door").mkdir(parents=True, exist_ok=True)
+            (root / "reference" / "the-door" / "scale.png").write_bytes(b"\x89PNG")
+            _, w = run(root)
+            self.assertNotIn("SETTING-NO-SCALE-PLATE", w)
+            self.assertNotIn("SETTING-NO-SCALE-DESCRIPTOR", w)
+
+    def test_room_shaped_checks_stay_off_a_visual_metaphor(self):
+        """It has no rooms nested in it, so nesting advice would be noise."""
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._vm(t))
+            self.assertNotIn("SETTING-WANTS-NESTING", w)
+            self.assertNotIn("HOUSE-RULES-WITH-NO-CHILDREN", w)
+
+    def test_is_never_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            e, _ = run(self._vm(t))
+            self.assertNotIn("SETTING-NO-SCALE-PLATE", e)
+
+
+class TestPropScale(unittest.TestCase):
+    """The checker and the emitter must agree on the FIELD NAME (v0.49).
+
+    PROP-NO-SCALE asked for `structured.scale.size` or `.height`. assemble_prompt.py emits
+    the TRUE SIZE line from `structured.scale.absolute`, which is also what compose-spread's
+    own method documents. So a prop written the documented way tripped the warning, and a
+    prop written to satisfy the warning contributed nothing to any prompt.
+    """
+
+    def _prop(self, tmp, scale=None):
+        st = {"sheets": {"hero": None, "detail": None}, "requiredForRender": [],
+              "invariants": []}
+        if scale is not None:
+            st["scale"] = scale
+        return build(tmp, entity={"id": "laptop", "kind": "prop", "structured": st})
+
+    def test_warns_when_a_prop_states_no_size_at_all(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._prop(t))
+            self.assertIn("PROP-NO-SCALE", w)
+
+    def test_absolute_SATISFIES_it(self):
+        """The regression: the documented field did not satisfy the check."""
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._prop(t, {"absolute": "a 14-inch notebook, about twice the "
+                                                  "height of the mug beside it"}))
+            self.assertNotIn("PROP-NO-SCALE", w)
+            self.assertNotIn("PROP-SCALE-NOT-EMITTED", w)
+
+    def test_a_size_under_the_OLD_key_is_named_as_not_emitted(self):
+        """It looks compliant and reaches no prompt, which is the worse of the two states."""
+        with tempfile.TemporaryDirectory() as t:
+            _, w = run(self._prop(t, {"size": "about 40 mm across"}))
+            self.assertNotIn("PROP-NO-SCALE", w)
+            self.assertIn("PROP-SCALE-NOT-EMITTED", w)
+
+    def test_is_never_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            e, _ = run(self._prop(t))
+            self.assertNotIn("PROP-NO-SCALE", e)
+
+
 
 
 class TestSettingContractLeaks(unittest.TestCase):
