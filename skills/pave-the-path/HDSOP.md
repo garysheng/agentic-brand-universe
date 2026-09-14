@@ -54,7 +54,9 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
    fixes: a real gap wants a BUILD, a discovery failure wants a POINTER placed where the work
    happens.
 1c. Score the run itself with `review_run.py`, and read an orientation-heavy verdict as evidence of
-   a missing DIRECT ROUTE rather than a missing capability.
+   a missing DIRECT ROUTE rather than a missing capability. The same pass reports every shell
+   command the run SHOWED the operator, which is the half of the no-command rule no in-run gate
+   can see; each one is a gap, not a scolding.
 2. Classify each candidate: PAVE, GATE, BUG, GUIDANCE or LEAVE.
 3. Apply the bar. Pave only when you can complete the sentence "I hand-rolled X, and the next
    invocation that needs X is Y" with a specific named case. If you cannot name Y, do not pave.
@@ -157,3 +159,4 @@ account: five of six rows in its worked example felt like getting unstuck at the
 | Version | Date | Changes |
 |---|---|---|
 | 0.1 | 2026-09-14 | Written from the skill file, read rather than recalled. |
+| 0.2 | 2026-09-14 | v0.50: the run scorer also reports commands the agent showed the operator. |

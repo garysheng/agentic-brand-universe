@@ -7,7 +7,15 @@ import pathlib
 import tempfile
 import unittest
 
+from agenticstory import seen
 from agenticstory.authoring import lock_shot
+
+
+def _seen(path):
+    """v0.50: a lock also needs a recorded look. Every test here is about the FILE, so
+    the seen record is fixture, not subject; test_seen.py owns that refusal."""
+    seen.record_board(path, question="q", options=["keep", "reroll"])
+    seen.record_tap(path, "keep")
 
 
 def _entity():
@@ -32,6 +40,7 @@ class LockRequiresFileTest(unittest.TestCase):
             p = pathlib.Path(root) / "reference" / "x"
             p.mkdir(parents=True)
             (p / "master.png").write_bytes(b"\x89PNG")
+            _seen(p / "master.png")
             ent = lock_shot(_entity(), "master", "reference/x/master.png", root=root)
             self.assertEqual(ent["structured"]["sheets"]["master"], "reference/x/master.png")
 

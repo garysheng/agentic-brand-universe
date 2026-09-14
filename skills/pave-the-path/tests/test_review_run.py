@@ -135,5 +135,83 @@ class Cli(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
 
 
+def say(text):
+    """An assistant TEXT block: what the operator actually read."""
+    return {"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}}
+
+
+class CommandsShownToTheOperator(unittest.TestCase):
+    """The other half of the front door's one hard rule, read retrospectively (v0.50).
+
+    v0.49 closed every path where the FRAMEWORK hands a command to a person. Nothing
+    watched the agent speaking on its own account, and no gate inside the run can: the
+    string never passes through a framework function. So it is caught here, in the
+    transcript, where the evidence already sits.
+    """
+
+    def test_a_command_in_an_assistant_message_is_flagged(self):
+        """THE TEST THAT FAILS WITHOUT THE FIX."""
+        with tempfile.TemporaryDirectory() as td:
+            p = write_run(td, [say("All set. Run `abu validate` and you should be green."),
+                               GEN, RESULT])
+            s = rv.score(p)
+            self.assertEqual(len(s["commandsShownToOperator"]), 1)
+            self.assertIn("abu validate", s["commandsShownToOperator"][0]["span"])
+            self.assertIn("showed the operator a shell command", s["commandVerdict"])
+
+    def test_a_command_the_agent_RAN_is_not_a_leak(self):
+        # The distinction is the whole point: running one is the job, typing one at the
+        # operator is the rule broken. A tool input is not something anybody read.
+        with tempfile.TemporaryDirectory() as td:
+            s = rv.score(write_run(td, [LS, READ_RENDER, GEN, RESULT]))
+            self.assertEqual(s["commandsShownToOperator"], [])
+            self.assertIn("clean", s["commandVerdict"])
+
+    def test_thinking_blocks_are_not_the_operator(self):
+        with tempfile.TemporaryDirectory() as td:
+            ev = {"type": "assistant", "message": {"content": [
+                {"type": "thinking", "thinking": "I should run python3 grade.py next"}]}}
+            s = rv.score(write_run(td, [ev, RESULT]))
+            self.assertEqual(s["commandsShownToOperator"], [])
+            self.assertEqual(s["messagesToOperator"], 0)
+
+    def test_plain_prose_is_not_flagged(self):
+        # Over-triggering is worse than the leak: it would score every honest report dirty.
+        with tempfile.TemporaryDirectory() as td:
+            s = rv.score(write_run(td, [
+                say("The cover is rendered and both plates read back clean."),
+                say("Jerry's matrix is locked; the universe validates."), RESULT]))
+            self.assertEqual(s["commandsShownToOperator"], [])
+            self.assertEqual(s["messagesToOperator"], 2)
+
+    def test_a_fenced_block_and_a_flag_both_count(self):
+        with tempfile.TemporaryDirectory() as td:
+            s = rv.score(write_run(td, [
+                say("Next:\n```bash\npython3 skills/cover/scripts/render_cover.py u s\n```"),
+                say("Pass --skip-existing so it only shoots what is missing."), RESULT]))
+            self.assertEqual(len(s["commandsShownToOperator"]), 2)
+
+    def test_the_excerpt_carries_the_sentence_not_just_the_span(self):
+        with tempfile.TemporaryDirectory() as td:
+            s = rv.score(write_run(td, [say("When you get back, run `abu validate` on it."),
+                                        RESULT]))
+            self.assertIn("When you get back", s["commandsShownToOperator"][0]["excerpt"])
+
+    def test_the_detector_is_the_engine_s_own(self):
+        # Reusing it is the point: two opinions about what counts as a command is how one
+        # of them goes stale, and the front door would then be judged by the wrong rule.
+        from agenticstory.workspace import command_in
+        self.assertIs(rv.command_in, command_in)
+
+    def test_the_human_output_names_the_leak(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = write_run(td, [say("Run `abu validate` when you land."), GEN, RESULT])
+            r = subprocess.run([sys.executable, str(SCRIPT), str(p)],
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("COMMANDS SHOWN:", r.stdout)
+            self.assertIn("abu validate", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

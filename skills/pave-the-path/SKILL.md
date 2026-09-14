@@ -267,3 +267,21 @@ to the answer, not a missing capability. That exact verdict on the 2026-08-07
 closing-plate run is what earned `reroll-slot`: the reproduction context sat in the
 slot's own `.recipe.json` the whole time and no verb read it back.
 
+### It also reads what the run SAID to the operator (v0.50)
+
+The front door's one hard rule is that a person never sees a shell command, and since v0.49 it
+is enforced in code on every path where the FRAMEWORK hands a string to a person. That is only
+half of them. The other half is the agent speaking on its own account, in its own prose, which
+passes through no framework function on the way out, so no gate inside a run can see it.
+
+So `review_run.py` reads every assistant TEXT block through the SAME `workspace.command_in()`
+detector and reports `commandsShownToOperator` with the span and the sentence around it, plus a
+`commandVerdict`. Retrospective on purpose: it adds no surface, polices nothing mid-run, and
+lands in the sweep that already asks what a finished run should have done differently.
+
+**A command the agent RAN is not a finding.** That is the job. A command the agent TYPED AT THE
+OPERATOR is the rule broken, and the two are told apart by where the string sits: a tool input
+versus a message somebody read. Each finding is a gap like any other: either the outcome should
+have been said in plain language, or the work should have routed through the verb that owns it,
+which is usually a missing front-door route rather than a careless sentence.
+

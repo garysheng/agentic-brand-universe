@@ -8,7 +8,7 @@ tags: [art, canon, gate, provenance, golden]
 frequency: "once per new entity, plus re-shoots when a seed changes"
 est_time_per_run: "30-90 min per entity"
 automation_potential: "medium"
-related_skills: [add-character, add-setting, add-visual-metaphor, render-readback, create-style-pack, lint-universe, open-in-preview]
+related_skills: [add-character, add-setting, add-visual-metaphor, render-readback, create-style-pack, lint-universe, open-in-preview, judge-slot]
 related_workflows: []
 concepts: [canon, entity, golden, invariant, register, style pack, provenance, gate]
 ---
@@ -63,9 +63,14 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
    approved. Build the sheet with `contact_sheet.py --cover <the reference dir>`, which REFUSES
    unless every shot in that batch is on it; `chain_matrix.py` prints the exact invocation when a
    chain completes, so the artifact is not something to remember.
+4b. PUT EVERY SHOT ON AN `AskUserQuestion` BOARD and record the tap. `shot_board.py board` composes
+   the cards (four questions per call, a preview on every option, the off-list answer written into
+   the question text because a preview costs the visible `Other` row) and stamps each shot as
+   shown; `shot_board.py tap` records what came back. A tap is what SEEN means, settled 2026-09-14.
 5. Lock each passer WITH its recipe: `lock-shot <universe> <id> <shot> <path> --recipe <path>`.
    This sets the sheet, promotes `requiredForRender` as the required shots lock, and freezes
-   provenance at approval.
+   provenance at approval. It REFUSES a shot with no approving verdict, and refuses one whose
+   bytes have changed since the verdict.
 6. Validate and commit. `lock-level` reaches `partial` once the required shots pass and `locked`
    once the full matrix does.
 
@@ -92,20 +97,24 @@ flowchart TD
     L --> M[render-readback every invariant]
     M --> N{All PASS?}
     N -->|No| L
-    N -->|Yes| O{Operator has SEEN it, delivered wherever they are}
-    O --> P[lock-shot with its recipe. Provenance frozen at approval]
+    N -->|Yes| R[Deliver the files, then compose the AskUserQuestion board]
+    R --> O{Operator TAPS a verdict on each shot}
+    O -->|Re-roll| L
+    O -->|Keep| P[lock-shot with its recipe. Provenance frozen at approval]
     P --> Q[Validate, commit, report lock-level]
     classDef human fill:#fde68a,stroke:#b45309,color:#111827;
     classDef agent fill:#bfdbfe,stroke:#1e40af,color:#111827;
     class A,I,O human;
-    class B,C,D,E,F,G,H,J,K,L,M,N,P,Q agent;
+    class B,C,D,E,F,G,H,J,K,L,M,N,P,Q,R agent;
 ```
 
 # Done / Verification
 
 `abu validate` is green. `lock-level` reports `partial` or `locked`. Every locked sheet has a
 single `<asset>.recipe.json` beside it, never two. A real person's entity is still `gated`. The
-operator has received the files, not just had them opened on one machine.
+operator has received the files, not just had them opened on one machine, and every locked shot
+carries a recorded tap: `shot_board.py status <png>...` exits non-zero while anything is
+unlockable and names why.
 
 **The tell that delivery was skipped: a session that generated a dozen images and whose transcript
 contains no delivery, only reads the agent made to itself.**
@@ -167,12 +176,18 @@ sheet that does not cover its batch, which is the refusal this skill's own metho
 the script performed and which no code performed. And the command that builds it is printed where a
 shoot ends, so it is a step rather than a technique.
 
-**Strongest next candidate, still open and genuinely the owner's call:** a refusal to `lock-shot` a
-slot with no recorded delivery. The blocker is not effort, it is a definition -- what COUNTS as
-shown, and what happens when the operator is absent. The framework already has one human-gate
-primitive to copy, the `--bless-seed` marker that `chain_matrix.py` refuses a chain without
-("golden is not something the agent may award itself"), and extending it to every shot changes the
-cost of every shoot, which is a decision rather than an implementation.
+**Closed, v0.50.** The refusal this section called the strongest next candidate is built:
+`lock_shot` refuses a slot with no recorded verdict. Both halves of the definition it was waiting
+on were settled by the owner on 2026-09-14 -- what COUNTS as shown is a tap on an
+`AskUserQuestion` card, and an absent operator is a `waived` verdict with a written reason, which
+is never a board option because a waiver is by definition not a tap. It does change the cost of
+every shoot: a matrix now costs two or three boards of four questions each, and that is the price
+of a golden meaning what it says.
+
+**Still open, and genuinely the owner's call:** whether the board should carry the picture itself
+rather than its path. The preview is text, so what the operator taps against is a filename plus
+the entity's invariants, and the picture has to arrive by the delivery step beside it. Nothing in
+the record can tell whether they actually looked at the image before tapping.
 
 # Related
 
@@ -185,3 +200,4 @@ cost of every shoot, which is a decision rather than an implementation.
 | Version | Date | Changes |
 |---|---|---|
 | 0.1 | 2026-09-14 | Written from the skill file, read rather than recalled. |
+| 0.2 | 2026-09-14 | v0.50: the board is the delivery record, and `lock-shot` refuses without a tap. |

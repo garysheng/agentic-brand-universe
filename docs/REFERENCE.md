@@ -88,7 +88,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.49) |
+| `init` | scaffold a new universe (conforms to spec v0.50) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -163,6 +163,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.50 | what COUNTS as an operator having seen a shot, and the half of the > no-command rule a gate cannot see. |
 | v0.49 | three rules that were written as gates and enforced only by prose. |
 | v0.48 | a prompt guard that fires is also a read-back assertion. |
 | v0.47 | the board of next moves. |

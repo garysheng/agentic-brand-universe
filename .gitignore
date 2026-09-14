@@ -6,3 +6,7 @@ build/
 .vercel
 __pycache__/
 *.pyc
+
+# Read-back verdicts: a judgement about one render, in one run. A build artifact
+# SPEC 3.5 says never ships, beside the recipe, which does.
+*.readback.json

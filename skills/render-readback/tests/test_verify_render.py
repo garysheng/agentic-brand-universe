@@ -287,5 +287,32 @@ class GuardGateIsJudged(unittest.TestCase):
         self.assertIn("READBACK_GATE", err)
 
 
+class OneSidecarTwoWriters(unittest.TestCase):
+    """The guard verdicts and the seen record share one file, so they share one filename.
+
+    v0.50 added `agenticstory.seen`, which writes the operator's tap into the SAME
+    `<image>.readback.json` this script writes guard verdicts into. Two spellings of that
+    name would each keep passing their own tests while writing to different files, and the
+    symptom would be a lock refusing art the operator had just approved.
+    """
+
+    def test_the_two_writers_agree_on_the_filename(self):
+        sys.path.insert(0, str(_HERE.parents[2] / "engine"))
+        from agenticstory import seen
+        self.assertEqual(vr.readback_path("/tmp/a/b.png"), str(seen.sidecar_path("/tmp/a/b.png")))
+
+    def test_a_seen_record_survives_a_guard_verdict_being_written(self):
+        sys.path.insert(0, str(_HERE.parents[2] / "engine"))
+        from agenticstory import seen
+        with tempfile.TemporaryDirectory() as d:
+            p = png(Path(d) / "x.png")
+            seen.record_board(p, question="q", options=["keep"])
+            seen.record_tap(p, "keep")
+            vr.record_verdicts(p, {"device-anatomy": {"verdict": "pass"}})
+            doc = json.loads(open(vr.readback_path(p)).read())
+            self.assertEqual(doc["seen"]["verdict"], "keep")
+            self.assertEqual(doc["guardVerdicts"]["device-anatomy"]["verdict"], "pass")
+
+
 if __name__ == "__main__":
     unittest.main()

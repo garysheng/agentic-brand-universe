@@ -1300,6 +1300,14 @@ class TheSheetIsNamedWhereTheShootEnds(unittest.TestCase):
         i = self.SRC.index("CHAIN COMPLETE")
         self.assertIn("Not open-in-preview", self.SRC[i:i + 900])
 
+    def test_it_also_names_the_board_that_lock_shot_now_demands(self):
+        """v0.50. An agent that finishes a chain and does not know this verb exists hits
+        a refusal at lock time with no route out of it."""
+        i = self.SRC.index("CHAIN COMPLETE")
+        after = self.SRC[i:i + 1800]
+        self.assertIn("shot_board.py board", after)
+        self.assertIn("--verdict keep", after)
+
 
 if __name__ == "__main__":
     unittest.main()
