@@ -2965,6 +2965,35 @@ Default measured reference, when a universe declares no `identity.scaleReference
     collarbone"`) and shoot a `scale-plate` when the object's size is load-bearing. Advisory:
     `lint-universe` warns `PROP-NO-SCALE`. A motif is a graphic signature rather than a physical
     object, so it takes neither.
+  - **THE KEY IS `structured.scale.absolute`, and the checker used to name a different one
+    (v0.49).** `assemble_prompt.py` emits the TRUE SIZE line from `structured.scale.absolute`,
+    for an in-frame entity of ANY kind, and that is what a prop's size has to be written under
+    to reach a prompt at all. `PROP-NO-SCALE` asked for `size` or `height`, so the two halves of
+    one rule named different keys: a prop written the documented way still tripped the warning,
+    and a prop written to satisfy the warning contributed nothing to any prompt. Both readings
+    of "state the prop's size" produced a prop whose size never reached the model. The lint now
+    accepts `absolute`, and warns `PROP-SCALE-NOT-EMITTED` on a size recorded under any other
+    key, which is the worse of the two states because it looks compliant.
+  - **`add-prop` now ASKS (v0.49).** The machinery and the grading both predate this; only the
+    authoring prompt was missing, so nothing ever put the question in front of an author. The
+    interview asks how big the object is in human terms, and a step fills
+    `structured.scale.absolute` before the prompts are written, matching how `add-setting`
+    forces `contract.scale` and `add-character` forces `structured.scale`. The incident: the
+    supercharged laptop on `what-a-book-is-made-of` appears in most of twenty-one spreads and
+    ranged from a notebook to a small television, because the entity declared its form, its
+    colour and its rules and never once declared its size. That is the prop version of the
+    hearth room that earned the setting rule in v0.9.
+
+**A VISUAL-METAPHOR IS GRADED ON SIZE, SO IT IS NOW ASKED AND LINTED FOR IT (v0.49).** Three
+surfaces disagreed about one kind. `universe-doctor` has scored `setting` and `visual-metaphor`
+together on the `setting_size` dimension since v0.9; `scaffold_entity` gives a visual-metaphor the
+setting's `contract` shape including `scalePlate` and `scale`; and neither `lint-universe` (which
+asked for `kind == "setting"`) nor `add-visual-metaphor` (whose contract field list omitted both
+keys and whose interview never mentioned size) knew. So a visual-metaphor lost points for a gap
+nothing warned about and no author was ever asked to close. `lint-universe` now emits
+`SETTING-NO-SCALE-PLATE` and `SETTING-NO-SCALE-DESCRIPTOR` for this kind too, under the same codes
+because the grader treats them as one dimension, and the room-shaped checks (nesting, house rules,
+the locked-gate agreement) stay setting-only, since a visual-metaphor has no rooms inside it.
 
 **`lock_level(entity) -> stub | partial | locked`** (engine) reports completeness against the kind's
 matrix. It is **advisory** in v0.4 and back-compatible: an entity that predates the matrix, or uses
