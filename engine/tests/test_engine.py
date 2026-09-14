@@ -219,6 +219,17 @@ class TestScaffold(unittest.TestCase):
             self.assertIn("agenticbranduniverse.com", man["spec"]["wiki"])
             self.assertIn(f"v{SPEC_VERSION}", man["spec"]["conformsTo"])
 
+    def test_scaffold_ignores_the_build_artifacts_the_framework_writes(self):
+        """A read-back verdict never ships (SPEC 3.5) and until v0.50 nothing ignored it,
+        so every universe was one `git add -A` away from committing them. The recipe is
+        the opposite case and must NOT be ignored: provenance is canon."""
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "myverse"
+            scaffold.scaffold_universe(target, name="myverse")
+            ig = (target / ".gitignore").read_text()
+            self.assertIn("*.readback.json", ig)
+            self.assertNotIn("*.recipe.json", ig)
+
     def test_gate_wrapper_written_and_executable(self):
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "myverse"
@@ -419,6 +430,14 @@ class TestStoryStatusExemption(unittest.TestCase):
             "a story with no explicit status is 'full' and must still be checked")
 
 
+def _record_seen(path):
+    """v0.50: a lock also needs a recorded look at the bytes. These tests are about
+    provenance and promotion, so the seen record is fixture; test_seen.py owns the refusal."""
+    from agenticstory import seen
+    seen.record_board(path, question="q", options=["keep", "reroll"])
+    seen.record_tap(path, "keep")
+
+
 class TestLockShot(unittest.TestCase):
     def test_lock_shot_promotes_required_and_keeps_validate_green(self):
         import json, tempfile
@@ -461,6 +480,7 @@ class TestLockShot(unittest.TestCase):
         from agenticstory.authoring import recipe_sidecar_path
         d = Path(tempfile.mkdtemp()); (d / "art").mkdir()
         (d / "art" / "ff.png").write_bytes(b"golden-bytes")
+        _record_seen(d / "art" / "ff.png")
         ch = scaffold_entity("character", "hero", "Hero")
         lock_shot(ch, "forward-fullbody", "art/ff.png", root=str(d))
         self.assertFalse(recipe_sidecar_path(d / "art" / "ff.png").exists())
@@ -476,6 +496,7 @@ class TestLockShot(unittest.TestCase):
         (d / "art").mkdir(); (d / "refs").mkdir()
         (d / "art" / "ff.png").write_bytes(b"the-approved-golden")
         (d / "refs" / "anchor.png").write_bytes(b"the-anchor-input")
+        _record_seen(d / "art" / "ff.png")
         ch = scaffold_entity("character", "hero", "Hero")
         recipe = {"provider": "gpt-image-2", "prompt": "a hero, front, full body",
                   "specVersion": "0.6",
@@ -503,6 +524,7 @@ class TestLockShot(unittest.TestCase):
         from agenticstory.authoring import recipe_sidecar_path
         d = Path(tempfile.mkdtemp()); (d / "art").mkdir()
         (d / "art" / "ff.png").write_bytes(b"g")
+        _record_seen(d / "art" / "ff.png")
         ch = scaffold_entity("character", "hero", "Hero")
         lock_shot(ch, "forward-fullbody", "art/ff.png",
                   recipe={"refs": [{"path": "refs/gone.png"}]}, root=str(d))

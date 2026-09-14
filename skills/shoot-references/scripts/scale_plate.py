@@ -529,7 +529,12 @@ def _register(order, out, uroot):
                  eid, shot, rel, "--recipe", str(out) + ".recipe.json"],
                 cwd=str(cli_root))
             if r != 0:
-                print(f"  ! could not register scale-plate on {eid}", file=sys.stderr)
+                # Since v0.50 the commonest cause is that nobody has seen the plate yet:
+                # lock-shot refuses a shot with no recorded verdict. Its own refusal above
+                # says so; this names the verb, so the failure has a route out of it.
+                print(f"  ! could not register scale-plate on {eid}. If the refusal above "
+                      f"says nobody has seen it, put it on a board first: shot_board.py "
+                      f"board {rel} then tap it.", file=sys.stderr)
         print(f"registered scale-plate on: {', '.join(e for e, _ in order)}")
 
 

@@ -267,6 +267,23 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
             f"first."
         )
 
+    # AND SOMEBODY MUST HAVE SEEN IT (v0.50). `shoot-references` has said since it was
+    # written that no shot locks until a human has actually seen it, and that was prose:
+    # an agent could crop-zoom forty renders, pass every invariant, lock them all, and the
+    # person who commissioned the work had seen nothing. The skill's own map named the
+    # blocker as a DEFINITION rather than effort -- what counts as shown -- and Gary
+    # settled it on 2026-09-14: an AskUserQuestion card. So the tap is recorded beside the
+    # image, in the same sidecar the v0.49 guard verdicts live in, and the lock reads it.
+    #
+    # Guarded by the SAME resolvability rule as the existence check above, and for the same
+    # reason: a relative path with no root resolves to nowhere, and every unit test that
+    # locks symbolically is a legitimate caller.
+    if _abs is not None:
+        from .seen import seen_problem
+        _why = seen_problem(_abs)
+        if _why:
+            raise ValueError(f"refusing to lock {entity.get('id')}.{shot}: {_why}")
+
     if look is not None:
         _looks = (entity.get("structured") or {}).get("altLooks") or {}
         if look not in _looks:

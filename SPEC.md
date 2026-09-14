@@ -1,11 +1,25 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.49 — 2026-09-14.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.50 — 2026-09-14.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
 
+> **v0.50 changelog — what COUNTS as an operator having seen a shot, and the half of the
+> no-command rule a gate cannot see.** §3.5: a shot is SEEN when the operator taps an
+> `AskUserQuestion` card, the tap is recorded beside the image in the v0.49 sidecar as
+> `seen`, and `lock_shot` refuses a shot with no approving verdict; the board carries a
+> `preview` on every option, so the off-list answer is written into the question TEXT, which
+> is the only place the side-by-side layout cannot drop it. Five refusals guard the record,
+> including bytes that changed after the yes, because a re-roll writes the new picture at the
+> same path. §15: `review_run.py` now reads every assistant TEXT block through the same
+> `command_in()` and reports what the agent showed the operator on its own account, which is
+> the half no in-run gate can see. The guard check declines an off switch, written down as a
+> decision so nobody restores it as an oversight. And the scaffolder's `.gitignore` finally
+> ignores `*.readback.json`, which the SPEC has called a never-shipped build artifact since
+> v0.49 while nothing ignored it.
+>
 > **v0.49 changelog — three rules that were written as gates and enforced only by prose.**
 > §3.5: a fired prompt guard now needs a RECORDED verdict (`<image>.readback.json`) and
 > `verify_render.py` refuses without one, because an unjudged gate and a passed gate looked
@@ -1095,7 +1109,74 @@ ONE picture, and letting one look cover four is the failure the gate exists to s
 render that tripped no guard is untouched, and a recipe carrying `guards` with no
 `guardGate` (written before v0.48) still demands verdicts, because the guard NAMES are the
 checkable half. `<image>.readback.json` is a build artifact and never ships, like the
-recipe beside it.
+recipe beside it, and since v0.50 the universe scaffolder's `.gitignore` says so: the
+SPEC had asserted it never ships while nothing ignored it, which left every universe one
+`git add -A` from committing a run's judgements into canon. The recipe is the opposite case
+and is deliberately NOT ignored, because provenance IS canon.
+
+**AND IT HAS NO OFF SWITCH, WHICH IS A DECISION RATHER THAN AN OVERSIGHT (v0.50).** The check
+is default-on and a `waived` verdict with a written reason is the only escape. A flag to skip
+it was proposed and DECLINED, because nobody could name the caller that would need one: a
+flag added before there is a real caller exists to be found by the next person in a hurry
+and used to silence the gate, which is the failure the recorded verdict was built to close.
+It is written down here so that absence reads as a choice and nobody adds the flag back
+believing it was forgotten.
+
+**A GOLDEN NOBODY LOOKED AT IS NOT A GOLDEN, AND A TAP IS WHAT LOOKING MEANS (v0.50).**
+`shoot-references` has carried a rule since it was written: no shot locks until a human has
+actually seen it, because reading an image back yourself is QA and not delivery. It was prose,
+and prose does not bind, so an agent could crop-zoom forty renders, pass every invariant, lock
+them all, and the person who commissioned the work had seen nothing. The skill's own map named
+the open half precisely -- *"the blocker is not effort, it is a definition: what COUNTS as
+shown"* -- and that definition is now settled: **a tap on an `AskUserQuestion` card** (Gary,
+2026-09-14). It is the one surface where a decision reaches the operator as tappable options
+rather than prose, and a reference shot is exactly the case where the options ARE the artifact,
+so **the board carries a `preview` on every option**.
+
+The record is the sidecar v0.49 already established, one file per image, with two independent
+records inside it:
+
+    {"guardVerdicts": {...},
+     "seen": {"board": {"id": "...", "shownOn": "...", "question": "...",
+                        "options": ["keep", "reroll"], "labels": ["Keep", "Re-roll"],
+                        "digest": "8f0f..."},
+              "verdict": "keep", "on": "...", "digest": "8f0f..."}}
+
+`shoot-references`'s `shot_board.py board <png> ...` composes the board AND stamps every shot
+in it as shown; `shot_board.py tap <png> --verdict keep` records what came back; and
+`lock_shot` -- the function, so every caller inherits it, exactly as the file-existence refusal
+does -- REFUSES a shot whose sidecar carries no approving verdict. Its carve-out is the same
+one: a relative path with no root resolves to nowhere, and refusing it would break every caller
+that locks symbolically.
+
+**A preview costs the visible `Other` row**, because it flips the tool into a side-by-side
+layout that does not draw that row at all. So the off-list answer -- something else is wrong,
+canon needs changing, stop the shoot -- is written into the question TEXT, where no layout can
+drop it, and it is appended by the composer rather than by whoever calls it, because a rule
+that fires only when remembered is the prose this whole mechanism replaces.
+
+**Five refusals, each one a way the record could otherwise be forged:**
+
+- **A verdict for a shot that was never on a board.** The same shape as v0.49's refusal of a
+  verdict filed under a guard that never fired: the command looks like it worked and the shot
+  stays unseen.
+- **A verdict the board did not offer.** A board stores the verdict TOKENS and, separately, the
+  LABELS the operator read, because they differ by design (a card reading "Re-roll" records
+  `reroll`) and comparing one against the other refuses a legitimate tap for a spelling nobody
+  chose.
+- **`reroll` or `waived` with no written reason.** Same shape as a voice-gate waiver,
+  `--waive-entity`, and a waived guard. `waived` is the recorded exception for an operator who
+  is genuinely absent, and it is never a board option, because a waiver is by definition not a
+  tap.
+- **Bytes that changed between the board and the tap, or between the tap and the lock.** A
+  re-roll writes the new picture at the SAME path, so without this the operator's yes to the old
+  one silently approves art nobody has looked at. The verdict is about the bytes they saw.
+- **A `reroll` verdict at lock time.** The operator turned it down; regenerate from scratch with
+  the defect named, never lock what was refused.
+
+A board is chunked at four questions, because that is the tool's limit, so a nine-shot matrix
+returns three boards rather than a truncated one. And showing a picture again clears any earlier
+verdict on it: the old yes was about the old look at it.
 
 **A CONTACT SHEET THAT DOES NOT COVER ITS BATCH IS A LIE (v0.49).** `shoot-references`'s
 SHOW THE OPERATOR EVERY SHOT gate told its reader that `contact_sheet.py` "already refuses a
@@ -3140,6 +3221,30 @@ one. Same shape as the guard/`READBACK_GATE` pairing in §3.5.
 The detector is deliberately conservative and a PATH is not a command. What it catches is an
 invocation, a flag, a script by name and a shell operator. Over-triggering would silently blank
 real sentences, which is a worse failure than the leak it closes.
+
+### The other half of that rule, read retrospectively (v0.50)
+
+The code above closes every path where the FRAMEWORK hands a string to a person. It cannot
+close the other half: **the agent speaking on its own account**, in its own prose, in a message
+that passes through no framework function on its way to the operator. No gate inside the run can
+see that string, and building one would mean policing every sentence an agent writes, which is
+a surface this framework does not want and could not enforce.
+
+So it is caught AFTERWARDS, where the evidence already sits. `pave-the-path`'s `review_run.py`
+already scores a run's transcript after the fact; it now also reads every assistant TEXT block
+through the same `workspace.command_in()` and reports `commandsShownToOperator` with the span
+and the sentence around it, plus a `commandVerdict` that says what to do rather than only
+counting. Retrospective on purpose: it adds no new surface, interrupts nothing, and lands in
+the sweep that already asks what a finished run should have done differently.
+
+**Tool inputs are excluded, and that distinction is the whole point.** A command the agent RUNS
+is the job. A command the agent TYPES AT THE OPERATOR is the rule broken. Thinking blocks are
+excluded for the same reason: nobody reads them.
+
+**The detector is imported, never re-implemented.** Two opinions about what counts as a command
+is how one of them goes stale, and the front door would then be judged by the wrong rule. That
+also means the conservatism carries over intact: a PATH is not a command, while an invocation, a
+flag, a script by name and a shell operator all are.
 
 ### Why this is not decoration
 

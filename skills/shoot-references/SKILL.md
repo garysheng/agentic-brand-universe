@@ -79,6 +79,10 @@ Check which register a story declares before shooting its cast: `stories/<id>.js
    a. **Generate** via the `chatgpt-images` skill (gpt-image-2): pass `identity.register.anchor` as the FIRST input image; bake `register.rejectedPoles` as negatives; for a real person pass the photo stack (build from real photos, never a painting-of-a-painting) and honor the sensitive list; pass any already-locked shots of this entity so the face/build stays consistent; use the shot's prompt block from `prompts.md`. Write to `reference/<id>/<shot>.png`.
    b. **Read back** with `render-readback`: crop-zoom each of the entity's invariants, PASS/DEFECT. On any DEFECT, regenerate that shot FROM SCRATCH (never an edit pass), naming the defect as an explicit negative.
    c. **The shot's recipe is `reference/<id>/<shot>.png.recipe.json`** — ONE sidecar per asset, at the engine-wide `<asset>.recipe.json` name. The provider adapter writes it on every render and `chain_matrix` merges its conditioning metadata (photo stack, goldens conditioned on, cross-entity refs, method) into that same file. Never write a second `<shot>.recipe.json` beside it: two sidecars for one asset can diverge, and did (2026-08-02). Provenance is not optional: a golden locked without it is un-auditable and can never enter a divergence check.
+   c2. **Put it on a board and record the tap** (v0.50). `shot_board.py board ... ` composes the
+   `AskUserQuestion` card and stamps the shot as shown; `shot_board.py tap <png> --verdict keep`
+   records the answer. A whole matrix goes on boards at once, after the read-back pass, which is
+   the section below. Step (d) REFUSES without it.
    d. **Lock the passer WITH its recipe:** `python3 -m agenticstory.cli lock-shot <universe> <id> <shot> reference/<id>/<shot>.png --recipe reference/<id>/<shot>.png.recipe.json`. This sets the sheet path, promotes `requiredForRender` as the required shots lock, and freezes provenance at approval (the golden's own bytes plus each input's bytes now), so `lint-universe` can later tell you if the golden drifts from what Gary blessed.
 3. **Verify + commit.** `abu validate <universe>` stays green. `lock-level` should reach `partial` once the required shots pass and `locked` once the full matrix passes. Commit the generated art + the updated entity JSON.
 
@@ -263,12 +267,44 @@ machine. Half the time the operator is remote, on a phone, or in another session
 "opened 10 images" reports success for something they cannot see. Earned 2026-07-30, when
 Gary asked directly why images were not reaching him after this exact pattern.
 
+**WHAT COUNTS AS SEEN IS A TAP ON AN `AskUserQuestion` CARD (v0.50).** That question was open
+for months and the map named it as a definition rather than an effort problem; Gary settled it
+on 2026-09-14. It is the one surface where a decision reaches the operator as tappable options
+rather than prose, and a reference shot is exactly the case where the options ARE the artifact,
+so the board carries a `preview` on every option.
+
 So, every time art is generated:
 
 1. **Send the files to the operator** with the harness's own file-delivery tool, which
-   reaches them wherever they are. This is the delivery that counts.
-2. **Also open them locally** if they are at that machine. Convenience, not the mechanism.
-3. **Say what each one is and which are decisions**, so a batch is scannable rather than a
+   reaches them wherever they are. Pictures first: a board is a question about something they
+   can see.
+2. **Put every shot on a board**, which also records that it was shown:
+
+   ```bash
+   python3 <abu>/skills/shoot-references/scripts/shot_board.py board \
+     --universe <universe> --entity <id> --json <universe>/reference/<id>/*.png
+   ```
+
+   It hands back ready-to-use questions, options and previews, chunked at four questions per
+   `AskUserQuestion` call, because that is the tool's limit and a fifth is a shot the operator
+   is told about and cannot answer. **Do not rewrite the questions.** The off-list answer is
+   already in each question's text, because a preview costs the visible `Other` row, and that
+   is the only place the side-by-side layout cannot drop it.
+3. **Record every answer**, one picture at a time:
+
+   ```bash
+   python3 <abu>/skills/shoot-references/scripts/shot_board.py tap <png> --verdict keep
+   python3 <abu>/skills/shoot-references/scripts/shot_board.py tap <png> \
+     --verdict reroll --why "screen on the wrong side of the laptop"
+   ```
+
+   `lock-shot` REFUSES a shot with no approving verdict, so this is not bookkeeping after the
+   fact; it is the gate. `waived` with a written reason is the recorded exception for an
+   operator who is genuinely absent, and it is never a board option, because a waiver is by
+   definition not a tap. Re-rolling a shot invalidates its verdict automatically: the bytes
+   changed, so the yes was about a different picture and it goes back on a board.
+4. **Also open them locally** if they are at that machine. Convenience, not the mechanism.
+5. **Say what each one is and which are decisions**, so a batch is scannable rather than a
    wall of pictures.
 
 A batch of four or more goes as ONE contact sheet plus individual files for anything being
@@ -287,7 +323,9 @@ happily and read, to the person looking at it, as twelve. `--cover` is the half 
 missing (v0.49), and without it this line was describing a guard nobody had written.
 
 The tell that this is being skipped: a session that generated a dozen images and whose
-transcript contains no delivery, only `Read` calls the agent made to itself.
+transcript contains no delivery, only `Read` calls the agent made to itself. As of v0.50 that
+tell is also a refusal rather than only a symptom, because a lock with no recorded verdict has
+frozen nothing: a golden IS human judgement frozen.
 
 ## The photographs decide the SHOOTING ORDER, and the order is load-bearing
 

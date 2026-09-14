@@ -237,6 +237,20 @@ def scaffold_universe(
                 f"defined at {SPEC_WIKI}.",
     }, indent=2) + "\n")
 
+    # 1b. THE BUILD ARTIFACTS THIS FRAMEWORK WRITES BESIDE ITS ART. A read-back verdict
+    #     (`<image>.readback.json`, SPEC 3.5) is a judgement about one render in one run;
+    #     the SPEC has said since v0.49 that it never ships, and until v0.50 nothing
+    #     ignored it, so every universe was one `git add -A` away from committing them.
+    #     The recipe beside it is the opposite case and is NOT listed: provenance is canon.
+    write(".gitignore", "\n".join([
+        "# Read-back verdicts: a judgement about one render, in one run. Never shipped.",
+        "*.readback.json",
+        "",
+        ".DS_Store",
+        "__pycache__/",
+        "*.pyc",
+    ]) + "\n")
+
     # 2. canon dirs (keep empty dirs in git)
     for d in ("canon/entities", "canon/relations", "stories", "reference/register"):
         write(f"{d}/.gitkeep", "")
