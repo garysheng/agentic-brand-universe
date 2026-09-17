@@ -119,13 +119,13 @@ def adapter_default_model(provider="gpt-image-2"):
     REFUSES rather than guessing. A default this cannot find is a broken assumption about the
     adapter's shape, and silently substituting a model name is how the original defect worked.
     """
-    src = pathlib.Path(provider_script(provider))
-    m = re.search(r'--model["\']\s*,\s*default\s*=\s*["\']([^"\']+)["\']', src.read_text())
-    if not m:
-        sys.exit(f"generate.py: cannot read the default model out of {src}. "
-                 f"Pass --model explicitly, and fix this resolver: a wrapper that guesses a "
-                 f"model name is the defect it was written to prevent.")
-    return m.group(1)
+    _engine_on_path()
+    from agenticstory.providers import adapter_default_model as _resolve
+    try:
+        return _resolve(provider)
+    except LookupError as e:
+        sys.exit(f"generate.py: {e}. A wrapper that guesses a model name is the defect "
+                 f"this resolver was written to prevent.")
 
 
 def sha256(p):

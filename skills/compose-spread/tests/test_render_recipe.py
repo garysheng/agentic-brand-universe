@@ -26,6 +26,11 @@ from test_assemble_prompt import build_universe, write_spec, png  # noqa: E402
 from assemble_prompt import build, load  # noqa: E402
 from render_spread import write_recipe, _sha16  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "engine"))
+from agenticstory.providers import adapter_default_model, SUPERSEDED_MODELS  # noqa: E402
+
+ADAPTER_DEFAULT = adapter_default_model()
+
 
 class TestRenderRecipe(unittest.TestCase):
     def setUp(self):
@@ -53,9 +58,22 @@ class TestRenderRecipe(unittest.TestCase):
     def test_recipe_pins_the_exact_prompt_and_model(self):
         _, r = self.recipe()
         self.assertEqual(r["prompt"], self.job["prompt"])
-        self.assertEqual(r["model"], "gpt-image-2")
+        self.assertEqual(r["model"], ADAPTER_DEFAULT)
         self.assertEqual(r["size"], self.job["size"])
         self.assertEqual(r["quality"], "high")
+
+    def test_the_model_the_ADAPTER_recorded_survives_the_rewrite(self):
+        """The adapter writes its recipe at this same path first, naming the --model it
+        used. This file used to overwrite that with a typed-in "gpt-image-2", so every 2.5
+        spread claimed the old model and reroll-slot re-rendered it there (2026-09-16)."""
+        sidecar = self.out.with_suffix(self.out.suffix + ".recipe.json")
+        sidecar.write_text(json.dumps({"model": "gpt-image-2.5-flare", "prompt": "x"}))
+        _, r = self.recipe()
+        self.assertEqual(r["model"], "gpt-image-2.5-flare")
+
+    def test_with_no_adapter_recipe_it_records_the_adapter_default_never_an_old_model(self):
+        _, r = self.recipe()
+        self.assertNotIn(r["model"], SUPERSEDED_MODELS)
 
     def test_every_ref_is_recorded_by_path_and_hash(self):
         _, r = self.recipe()

@@ -116,6 +116,31 @@ def _git_head(repo) -> str:
         return ""
 
 
+def _model_that_drew(recipe_path: Path) -> str:
+    """The model that actually drew this spread, never a name typed into this file.
+
+    The adapter writes its own recipe at this same path, recording the `--model` it used,
+    and this script overwrites that file with the richer spread recipe. So read the
+    adapter's answer first; when there is none (a legacy provider, or a test), ask the
+    adapter what it defaults to, since this script never passes --model.
+
+    Earned 2026-09-16: this line said "gpt-image-2" for a week after the adapter moved to
+    gpt-image-2.5-sunburst, so every spread recipe named a model that never drew it, and
+    reroll-slot replayed that name and re-rendered the spread on the old model.
+    """
+    try:
+        recorded = json.loads(recipe_path.read_text()).get("model")
+        if recorded:
+            return recorded
+    except (OSError, ValueError, AttributeError):
+        pass
+    eng = str(_abu_root() / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.providers import adapter_default_model
+    return adapter_default_model()
+
+
 def write_recipe(out: Path, universe: Path, spec: dict, spread_id: str,
                  job: dict, quality: str) -> Path:
     """Write `<out>.recipe.json` beside the render.
@@ -127,11 +152,12 @@ def write_recipe(out: Path, universe: Path, spec: dict, spread_id: str,
     descriptor = next(
         (s for s in spec.get("spreads", []) if s.get("id") == spread_id), None
     )
+    path = out.with_suffix(out.suffix + ".recipe.json")
     recipe = {
         "asset": out.name,
         "assetSha256_16": _sha16(out),
         "provider": "openai",
-        "model": "gpt-image-2",
+        "model": _model_that_drew(path),
         "quality": quality,
         "size": job["size"],
         "generatedBy": "abu:compose-spread render_spread.py",
@@ -145,7 +171,6 @@ def write_recipe(out: Path, universe: Path, spec: dict, spread_id: str,
         "refs": [{"path": r, "sha256_16": _sha16(r)} for r in job["refs"]],
         "qa": job["qa"],
     }
-    path = out.with_suffix(out.suffix + ".recipe.json")
     path.write_text(json.dumps(recipe, indent=2) + "\n")
     return path
 
