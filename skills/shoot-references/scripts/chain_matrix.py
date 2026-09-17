@@ -64,6 +64,14 @@ def _engine_on_path():
     return eng
 
 
+def _adapter_default_model(provider="gpt-image-2"):
+    """The model the adapter draws with when --model is not passed, which this chain never
+    passes. Only reached when the adapter wrote no recipe of its own (a legacy provider)."""
+    _engine_on_path()
+    from agenticstory.providers import adapter_default_model
+    return adapter_default_model(provider)
+
+
 def _provider_script(provider="gpt-image-2"):
     """The generation script, resolved rather than assumed. This script lives at
     <repo>/skills/<name>/scripts/, so the repo root is 3 up; `.resolve()` first
@@ -1247,7 +1255,11 @@ def _shoot(plan, shot, goldens, args, anchor_abs, neg, refdir, uroot) -> int:
         recipe = {}
     recipe.update({
         "shot": shot, "entity": plan["entity"], "kind": plan["kind"],
-        "model": "gpt-image-2", "size": shot_size, "prompt": prompt,
+        # The ADAPTER's recorded model survives the merge. This line used to stamp
+        # "gpt-image-2" over it, so every 2.5 plate claimed the old model and reroll-slot
+        # replayed that claim (2026-09-16). No model name is typed here.
+        "model": recipe.get("model") or _adapter_default_model(),
+        "size": shot_size, "prompt": prompt,
         # A DELIBERATE ABSENCE IS RECORDED, NEVER OMITTED. `anchor: null` alone reads
         # exactly like a forgotten input; `registerNeutral` beside it is the record that
         # nothing was forgotten, and it carries the medium the shoot was steered by, so a

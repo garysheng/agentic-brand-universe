@@ -165,8 +165,8 @@ A universe binds a lookbook everywhere via a `craft-canon` register-rule that na
 
 ## Rendering operations (hard-won)
 
-- **A render is NOT reproducible.** gpt-image-2 has no seed parameter; nano's `seed` is not pixel-deterministic. So **never delete an un-locked candidate** — once a good roll is gone it cannot be regenerated. Stage candidates, prune only AFTER the winner is locked. (A blessed yoke roll was lost exactly this way.)
-- **Batch renders in the background.** gpt-image-2 at `--quality high` is ~2 minutes per image; a foreground call under a 2-minute cap, or several in parallel, gets killed mid-generation with nothing saved. Run multi-image batches detached and collect them when they finish.
+- **A render is NOT reproducible.** The OpenAI image models (gpt-image-2.5 included) have no seed parameter; nano's `seed` is not pixel-deterministic. So **never delete an un-locked candidate** — once a good roll is gone it cannot be regenerated. Stage candidates, prune only AFTER the winner is locked. (A blessed yoke roll was lost exactly this way.)
+- **Batch renders in the background.** A high-tier render is minutes per image (measured ~2 minutes on gpt-image-2 at `--quality high`; not re-measured on 2.5); a foreground call under a 2-minute cap, or several in parallel, gets killed mid-generation with nothing saved. Run multi-image batches detached and collect them when they finish.
 - **Renders that HANG with no error are a stale SDK, not a slow API. Check the resolved client
   version FIRST.** `generate_image.py` pins `openai>=2.48` for exactly this reason. When its
   PEP-723 header said only `openai`, uv happily reused a months-old cached environment on openai

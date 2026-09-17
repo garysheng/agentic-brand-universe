@@ -1,6 +1,6 @@
 ---
 name: reroll-slot
-description: Re-roll ONE already-rendered slot (a spread, cover, closing plate, or any asset with a .recipe.json beside it) EXACTLY as its recipe records — same model, same prompt, same refs — with an optional one-line delta, in one command and one image call, reading ZERO canon. Resolves the recipe chain (including derive sidecars and the broken pre-v0.33 in-place-conform hole), regenerates through the provider adapter so provenance is written by construction, replays the recorded conform + publish steps for endcaps, backs up the previous roll, and ends with the render-readback reminder. Use when someone says "re-roll this image", "same but warmer/darker/at dusk", "regenerate the closing plate as-is", "run that render again", "identical but without X", or any art-only tweak to an existing rendered slot. NOT for edits that change text, cast, look, setting or register — those moved canon out from under the recipe, so use update-book / compose-spread, which re-resolve canon. Generic and recipe-parameterized: point it at any asset in any universe.
+description: Re-roll ONE already-rendered slot (a spread, cover, closing plate, or any asset with a .recipe.json beside it) as its recipe records — same prompt, same refs, and the recorded model unless that model is superseded, in which case the adapter's current one — with an optional one-line delta, in one command and one image call, reading ZERO canon. Resolves the recipe chain (including derive sidecars and the broken pre-v0.33 in-place-conform hole), regenerates through the provider adapter so provenance is written by construction, replays the recorded conform + publish steps for endcaps, backs up the previous roll, and ends with the render-readback reminder. Use when someone says "re-roll this image", "same but warmer/darker/at dusk", "regenerate the closing plate as-is", "run that render again", "identical but without X", or any art-only tweak to an existing rendered slot. NOT for edits that change text, cast, look, setting or register — those moved canon out from under the recipe, so use update-book / compose-spread, which re-resolve canon. Generic and recipe-parameterized: point it at any asset in any universe.
 ---
 
 # Reroll Slot
@@ -37,6 +37,25 @@ python3 skills/reroll-slot/scripts/reroll_from_recipe.py \
   `cover/scripts/conform_cover.py` with the recorded args, then the byte-identical
   platform publish with a derivative recipe. The previous roll is backed up to
   `candidates/pre-reroll-<ts>/` first.
+
+## Which model a re-roll draws with
+
+**The recorded model, unless it is superseded; then the adapter's current default.** The
+superseded list and the current default both live in `engine/agenticstory/providers.py`
+(`SUPERSEDED_MODELS`, `adapter_default_model()`), so nothing here names a model.
+
+- A recipe saying `gpt-image-2` (or an older OpenAI image model, or no model at all) re-rolls
+  on the adapter's default, today `gpt-image-2.5-sunburst`. The plan prints the substitution
+  and the new roll's recipe records `rerolledFrom.modelUpgradedFrom`. The OLD recipe is never
+  edited: it is the record of what the previous roll claimed.
+- A recipe naming a current model (`gpt-image-2.5-flare`, `nano-banana-pro`) replays it.
+- `--model <name>` forces any model, including a superseded one, for a like-for-like comparison.
+
+Why not replay faithfully: none of these models takes a seed, so a re-roll is a new roll either
+way, and the prompt plus refs are what carry the slot. And a recorded `gpt-image-2` is not
+proof of what drew a slot: until 2026-09-16 compose-spread and shoot-references stamped that
+name into the recipe of renders the adapter had drawn on 2.5, so replaying it sent re-rolls
+back to the old model.
 
 ## When this is the WRONG verb
 

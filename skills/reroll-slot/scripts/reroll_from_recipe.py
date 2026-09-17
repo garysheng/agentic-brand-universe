@@ -178,7 +178,9 @@ def resolve_chain(start: Path) -> dict:
         if is_generation(cur_rec):
             generation = {
                 "prompt": cur_rec["prompt"],
-                "model": cur_rec.get("model") or cur_rec.get("provider") or "gpt-image-2",
+                # What the recipe RECORDS, verbatim, or None. Never a typed-in model
+                # name: build_plan decides what this roll draws with.
+                "model": cur_rec.get("model") or None,
                 "size": cur_rec.get("size") or "1536x1024",
                 "quality": cur_rec.get("quality") or "high",
                 "refs": ref_paths(cur_rec),
@@ -224,7 +226,7 @@ def resolve_chain(start: Path) -> dict:
                            f"(prompt similarity {ratio:.2f})")
         generation = {
             "prompt": sr["prompt"],
-            "model": sr.get("model") or "gpt-image-2",
+            "model": sr.get("model") or None,
             "size": sr.get("size") or "1536x1024",
             "quality": sr.get("quality") or "high",
             "refs": refs,
@@ -253,12 +255,44 @@ def with_note(prompt: str, note: str | None) -> str:
               "composition, same style.")
 
 
+def current_model(provider: str = "gpt-image-2") -> str:
+    """The model the provider adapter draws with today. The engine owns the answer."""
+    eng = str(abu_root() / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.providers import adapter_default_model
+    return adapter_default_model(provider)
+
+
+def is_superseded(model: str | None) -> bool:
+    eng = str(abu_root() / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.providers import SUPERSEDED_MODELS
+    return not model or model in SUPERSEDED_MODELS
+
+
 def build_plan(chain: dict, note: str | None, overrides: dict, out_override: Path | None,
                allow_no_refs: bool = False) -> dict:
     gen = dict(chain["generation"])
     for k in ("model", "size", "quality"):
         if overrides.get(k):
             gen[k] = overrides[k]
+    # A RE-ROLL DRAWS WITH THE CURRENT MODEL WHEN THE RECORDED ONE IS SUPERSEDED.
+    #
+    # Replaying a recorded model buys no fidelity: none of these models takes a seed, so a
+    # re-roll is a new roll either way, and the recipe's prompt and refs are what carry the
+    # slot. What replaying DID buy, until 2026-09-16, was the old model: compose-spread and
+    # shoot-references stamped "gpt-image-2" into the recipe of every render for a week
+    # after the adapter moved to gpt-image-2.5-sunburst, so a re-roll of a spread silently
+    # went back to gpt-image-2. A recorded name is therefore not proof of what drew a slot.
+    # The old recipe is never edited; the new roll's recipe records what actually ran, and
+    # `modelUpgradedFrom` says what the old one claimed. `--model <name>` still forces any
+    # model, including a superseded one, when a like-for-like comparison is the point.
+    if not overrides.get("model") and is_superseded(gen.get("model")):
+        recorded = gen.get("model")
+        gen["model"] = current_model()
+        gen["modelUpgradedFrom"] = recorded
     gen["prompt"] = with_note(gen["prompt"], note)
 
     if not gen["refs"] and chain["source"].startswith("sourceRender") and not allow_no_refs:
@@ -338,6 +372,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[reroll] slot:    {plan['final']}")
     print(f"[reroll] source:  {plan['source']}")
     print(f"[reroll] model:   {gen['model']}  size: {gen['size']}  quality: {gen['quality']}")
+    if "modelUpgradedFrom" in gen:
+        print(f"[reroll]          (recipe recorded {gen['modelUpgradedFrom'] or 'no model'}, "
+              f"which is superseded; pass --model to replay it anyway)")
     print(f"[reroll] prompt:  {len(gen['prompt'])} chars"
           + (f"  (+ note: {plan['note']!r})" if plan['note'] else "  (identical re-roll)"))
     for r in gen["refs"]:
@@ -385,6 +422,8 @@ def main(argv: list[str] | None = None) -> int:
         rec = load(gen_recipe)
         rec["rerolledFrom"] = {"target": str(plan["final"]),
                                "source": plan["source"], "note": plan["note"]}
+        if "modelUpgradedFrom" in gen:
+            rec["rerolledFrom"]["modelUpgradedFrom"] = gen["modelUpgradedFrom"]
         gen_recipe.write_text(json.dumps(rec, indent=2))
     except (json.JSONDecodeError, OSError):
         pass

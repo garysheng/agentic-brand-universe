@@ -118,7 +118,7 @@ the model to reinterpret everything it was not told to keep. List the invariants
 
 ## Every roll is kept
 
-A render is not reproducible: `gpt-image-2` has no seed, so a candidate that is deleted is
+A render is not reproducible: the OpenAI image models (gpt-image-2.5 included) take no seed, so a candidate that is deleted is
 gone. Stage them all, and prune only after a winner is locked. Losing a good roll to
 tidiness is a real and permanent loss.
 

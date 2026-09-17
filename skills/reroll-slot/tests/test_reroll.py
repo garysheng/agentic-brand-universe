@@ -23,6 +23,10 @@ spec = importlib.util.spec_from_file_location("reroll_from_recipe", SCRIPT)
 rr = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rr)
 
+# What the adapter draws with today, read from the adapter rather than typed here, so this
+# file does not become the next stale copy of a model name.
+CURRENT = rr.current_model()
+
 PROMPT = ("PORTRAIT picture-book COVER in the warm editorial style. The plain door, "
           "open a little, warm light through the gap. NEGATIVES: neon, 3D, any person, "
           "any human figure, anyone standing in the room.")
@@ -193,6 +197,57 @@ class Plan(unittest.TestCase):
             self.assertEqual(plan["gen_target"], png)
 
 
+class ModelOnReroll(unittest.TestCase):
+    """A re-roll never goes back to a superseded model on its own (2026-09-16).
+
+    compose-spread and shoot-references recorded "gpt-image-2" for renders the adapter drew
+    on gpt-image-2.5-sunburst, and this script replayed the recorded name, so a re-roll of
+    a spread re-rendered it on the old model. No model here takes a seed, so replaying the
+    recorded name bought no fidelity. What stays faithful is the prompt and the refs.
+    """
+
+    def test_the_current_model_is_a_2_5_model(self):
+        self.assertTrue(CURRENT.startswith("gpt-image-2.5"), CURRENT)
+
+    def test_a_recipe_recording_gpt_image_2_rerolls_on_the_current_model(self):
+        with tempfile.TemporaryDirectory() as td:
+            png, _ = build_direct(Path(td))
+            chain = rr.resolve_chain(png)
+            # the chain still reports what the recipe RECORDED, faithfully
+            self.assertEqual(chain["generation"]["model"], "gpt-image-2")
+            plan = rr.build_plan(chain, None, {}, None)
+            self.assertEqual(plan["generation"]["model"], CURRENT)
+            self.assertEqual(plan["generation"]["modelUpgradedFrom"], "gpt-image-2")
+
+    def test_a_recipe_with_no_model_rerolls_on_the_current_model(self):
+        with tempfile.TemporaryDirectory() as td:
+            png, _ = build_direct(Path(td))
+            rp = png.with_name(png.name + ".recipe.json")
+            rec = json.loads(rp.read_text())
+            del rec["model"]  # provider id alone must never be treated as a model
+            rp.write_text(json.dumps(rec))
+            plan = rr.build_plan(rr.resolve_chain(png), None, {}, None)
+            self.assertEqual(plan["generation"]["model"], CURRENT)
+
+    def test_a_recorded_current_model_is_replayed_as_recorded(self):
+        with tempfile.TemporaryDirectory() as td:
+            png, _ = build_direct(Path(td))
+            rp = png.with_name(png.name + ".recipe.json")
+            rec = json.loads(rp.read_text())
+            rec["model"] = "gpt-image-2.5-flare"
+            rp.write_text(json.dumps(rec))
+            plan = rr.build_plan(rr.resolve_chain(png), None, {}, None)
+            self.assertEqual(plan["generation"]["model"], "gpt-image-2.5-flare")
+            self.assertNotIn("modelUpgradedFrom", plan["generation"])
+
+    def test_explicit_model_flag_can_still_replay_the_old_model(self):
+        with tempfile.TemporaryDirectory() as td:
+            png, _ = build_direct(Path(td))
+            plan = rr.build_plan(rr.resolve_chain(png), None, {"model": "gpt-image-2"}, None)
+            self.assertEqual(plan["generation"]["model"], "gpt-image-2")
+            self.assertNotIn("modelUpgradedFrom", plan["generation"])
+
+
 class Backup(unittest.TestCase):
     def test_backup_covers_assets_their_sidecars_and_bare_recipes(self):
         # The `<slot>-gen.recipe.json` is an ATTESTATION of the previous roll; the
@@ -222,7 +277,10 @@ class CliDryRun(unittest.TestCase):
                                capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertIn("DRY RUN", r.stdout)
-            self.assertIn("gpt-image-2", r.stdout)
+            # The endcap's recipe recorded gpt-image-2; the plan draws with the current
+            # adapter model and says what it replaced.
+            self.assertIn(CURRENT, r.stdout)
+            self.assertIn("recipe recorded gpt-image-2, which is superseded", r.stdout)
             self.assertIn(str(ref1), r.stdout)
             self.assertIn("conform", r.stdout)
             self.assertIn("verify_render.py", r.stdout)  # the readback reminder

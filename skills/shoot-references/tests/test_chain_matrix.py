@@ -945,7 +945,7 @@ class FakeShoot(unittest.TestCase):
             out = Path(cmd[cmd.index("--filename") + 1])
             Image.new("RGB", (8, 8), (10, 20, 30)).save(out)
             (out.parent / (out.name + ".recipe.json")).write_text(json.dumps({
-                "asset": str(out), "model": "gpt-image-2",
+                "asset": str(out), "model": "gpt-image-2.5-flare",
                 "prompt": captured["prompt"],
                 "inputs": [c for c in cmd if str(c).endswith(".png")],
                 "generatedAt": "2026-08-02T00:00:00+00:00"}))
@@ -997,6 +997,14 @@ class FakeShoot(unittest.TestCase):
         self.assertIn("method", rec)
         self.assertEqual(rec["shot"], "c2-work")
         self.assertEqual(rec["entity"], "room")
+
+    def test_the_merge_keeps_the_model_the_adapter_recorded(self):
+        """The chain used to stamp "gpt-image-2" over the adapter's model, so every 2.5
+        plate claimed the old one and reroll-slot replayed that claim (2026-09-16)."""
+        root = build(Path(self.tmp.name))
+        _, refdir = self._shoot_one(root)
+        rec = json.loads((refdir / "c2-work.png.recipe.json").read_text())
+        self.assertEqual(rec["model"], "gpt-image-2.5-flare")
 
 
 # --- code-drawn shots are conditioning, never work ---------------------------
