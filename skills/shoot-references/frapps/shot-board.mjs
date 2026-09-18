@@ -104,17 +104,63 @@ const entity = (() => {
 })();
 const INVARIANTS = ((entity.structured || {}).invariants || []).map(String).filter(Boolean);
 
+// THE QUEUE IS THE ENTITY'S WHOLE FOLDER, not the list this process was started with.
+// Until 2026-09-18 a board served only its launch-time images, so every later batch (a
+// re-roll, the seven chained views) started ANOTHER board process on the same store slug.
+// Four boards stacked in one morning, each showing its own stale idea of one file, and the
+// operator saw two full-body cards with the same name and asked which was new. Now every
+// request re-reads `reference/<entity>/*.png`: anything boarded and unanswered is on the
+// page, whichever command boarded it, and `shot_board.py board` reuses a live board rather
+// than starting one. Images passed on the command line are still honoured (a board with no
+// universe has nothing else to read).
+function candidates() {
+  const set = new Map(IMAGES.map((p) => [p, true]));
+  if (UNIVERSE && ENTITY) {
+    const dir = join(UNIVERSE, "reference", ENTITY);
+    try {
+      for (const f of readdirSync(dir)) if (/\.(png|jpe?g|webp)$/i.test(f)) set.set(join(dir, f), true);
+    } catch { /* no folder yet */ }
+  }
+  return [...set.keys()].sort();
+}
+
+/** Take number and render time, so two takes of one shot can never look the same on a card. */
+function provenance(img) {
+  let rendered = "";
+  try {
+    const r = JSON.parse(readFileSync(`${img}.recipe.json`, "utf8"));
+    const t = r.timestamp || r.at || r.generatedAt;
+    if (t) {
+      const d = new Date(t);
+      rendered = isNaN(d) ? String(t) : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+  } catch { /* no recipe */ }
+  // Earlier takes of the same shot are set aside in rejected/<shot>-*.png, so the count of
+  // those plus one is which take this is.
+  const stem = basename(img).replace(/\.[^.]+$/, "");
+  let take = 1;
+  try {
+    take += readdirSync(join(dirname(img), "rejected")).filter((f) => f.startsWith(`${stem}-`) && /\.(png|jpe?g|webp)$/i.test(f)).length;
+  } catch { /* no rejects */ }
+  return { rendered, take };
+}
+
 function queue() {
-  return IMAGES.map((img, index) => ({ index, img, seen: readSeen(img) }))
+  return candidates().map((img) => ({ img, seen: readSeen(img) }))
     .filter((r) => r.seen.board && !r.seen.verdict)
     .map((r) => ({
-      index: r.index,
+      // The stem, never the filename: the store serves any path with an extension as a
+      // static asset, so `/shot/back.png` 404s before the board sees it (2026-09-18).
+      key: basename(r.img).replace(/\.[^.]+$/, ""),
       img: r.img,
       name: basename(r.img),
       shot: r.seen.board.shot || basename(r.img).replace(/\.[^.]+$/, ""),
       served: Boolean((r.seen.board.display || {}).served),
+      ...provenance(r.img),
     }));
 }
+/** The image a key names, from the live queue, so a stale card cannot reach a file. */
+const byKey = (key) => queue().find((i) => i.key === key)?.img || null;
 
 // ── 2. WRITE BACK IN THE SAME SHAPE. ─────────────────────────────────────────────────────
 //
@@ -141,17 +187,22 @@ const checklist = INVARIANTS.length
   ? INVARIANTS.map((i) => `<li>${esc(i)}</li>`).join("")
   : `<li>No invariants are declared on this entity, so there is no checklist beyond your own eye.</li>`;
 
-// `base` is "" standalone and "/abu-shot-board" through the store. Every URL goes through it,
-// so the same page works at both addresses.
+// `base` is "" standalone and "/abu-shot-board" when MOUNTED in the store. A one-shot board
+// reached THROUGH the store (proxied by port, which is how a phone reaches it) also gets "",
+// because the frapp sees a request identical to one on its own port. So every URL the page
+// builds is RELATIVE: "shot/back" resolves to /abu-shot-board/shot/back under the proxy and to
+// /shot/back standalone. An absolute "/shot/back" broke every picture on the phone
+// (2026-09-18: a board of seven grey question marks).
+const at = (base, rel) => (base ? `${base}/${rel}` : rel);
 const page = (items, token, base) => shell({
   title: ENTITY ? `${ENTITY} — shot board` : "shot board",
   subtitle: items.length ? `${items.length} to judge` : "",
   body: items.length
-    ? items.map((i) => `<section class="card" data-i="${i.index}">
-        <img class="shot" src="${base}/shot/${i.index}?k=${encodeURIComponent(token)}"
+    ? items.map((i) => `<section class="card" data-key="${esc(i.key)}">
+        <img class="shot" src="${at(base, `shot/${encodeURIComponent(i.key)}?k=${encodeURIComponent(token)}`)}"
              alt="${esc(i.shot)}" loading="eager">
-        <h2>${esc(i.shot)}</h2>
-        <p class="file">${esc(i.name)}</p>
+        <h2>${esc(i.shot)} <span class="take">take ${i.take}</span></h2>
+        <p class="file">${esc(i.name)}${i.rendered ? ` · rendered ${esc(i.rendered)}` : ""}</p>
         <p class="look">Look for:</p>
         <ul class="look">${checklist}</ul>
         <div class="row">
@@ -168,6 +219,7 @@ const page = (items, token, base) => shell({
   head: `<style>
     .shot{width:100%;height:auto;border-radius:10px;display:block}
     .file{opacity:.6;font-size:.85rem;margin:.2rem 0 .8rem}
+    .take{font-size:.8rem;font-weight:500;opacity:.7;padding:.1em .5em;border:1px solid currentColor;border-radius:999px;vertical-align:middle;margin-left:.4em}
     p.look{margin:.6rem 0 .2rem;font-weight:600}
     ul.look{margin:0 0 .4rem 1.1rem;padding:0}
     .row{display:flex;gap:10px;margin-top:14px}.row button{flex:1;margin:0}
@@ -186,9 +238,9 @@ const page = (items, token, base) => shell({
       const note = act === 'reroll-send' ? (why.querySelector('input').value || '').trim() : '';
       if (act === 'reroll-send' && !note) { why.querySelector('input').focus(); return; }
       b.disabled = true; err.hidden = true;
-      const r = await fetch(BASE + '/answer?k=' + encodeURIComponent(TOKEN), {
+      const r = await fetch((BASE ? BASE + '/' : '') + 'answer?k=' + encodeURIComponent(TOKEN), {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ index: Number(card.dataset.i),
+        body: JSON.stringify({ key: card.dataset.key,
                                verdict: act === 'keep' ? 'keep' : 'reroll', why: note }),
       }).catch(() => null);
       const body = r ? await r.json().catch(() => null) : null;
@@ -223,9 +275,10 @@ function handler(req, res, { token, base = "" } = {}) {
   // THE SERVE, WHICH IS THE WHOLE MECHANISM. The bytes go out and this page records that
   // they did, hashed, at that moment. Nobody attests to anything: an agent cannot call this
   // truthfully about a picture no browser asked for.
-  const m = /^\/shot\/(\d+)$/.exec(path);
+  const m = /^\/shot\/([^/]+)$/.exec(path);
   if (req.method === "GET" && m) {
-    const img = IMAGES[Number(m[1])];
+    const key = decodeURIComponent(m[1]);
+    const img = byKey(key);
     if (!img || !existsSync(img)) { res.writeHead(404); res.end("no such shot"); return true; }
     let bytes;
     try { bytes = readFileSync(img); }
@@ -234,7 +287,7 @@ function handler(req, res, { token, base = "" } = {}) {
     res.on("finish", () => {
       // AFTER the bytes have left, never before: the record says what happened, and a serve
       // recorded for a response that died in flight is the same lie in a smaller size.
-      const r = recordServe(img, digest, `/shot/${Number(m[1])}`);
+      const r = recordServe(img, digest, `/shot/${encodeURIComponent(key)}`);
       if (!r.ok) journal(NAME, "error", "serve-not-recorded", { shot: basename(img), out: r.out });
     });
     res.writeHead(200, { "content-type": "image/png", "cache-control": "no-store" });
@@ -247,8 +300,8 @@ function handler(req, res, { token, base = "" } = {}) {
     req.on("data", (d) => { body += d; if (body.length > 8192) req.destroy(); });
     req.on("end", () => {
       try {
-        const { index, verdict, why } = JSON.parse(body);
-        const img = IMAGES[Number(index)];
+        const { key, verdict, why } = JSON.parse(body);
+        const img = byKey(String(key));
         if (!img) throw new Error("no such shot");
         const r = recordTap(img, String(verdict), why ? String(why) : "");
         if (!r.ok) {

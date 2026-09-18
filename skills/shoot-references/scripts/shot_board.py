@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -203,15 +204,62 @@ TEXT_IT = ("TEXT THE PHONE LINK TO THE OPERATOR, with freedom:message-myself, wi
            "were, which is the one place they did not need it.")
 
 
+BOARD_RECORDS = Path(os.environ.get("ABU_BOARD_RECORDS")
+                     or Path.home() / ".freedom" / "frapps" / "abu-shot-board")
+
+
+def _record_path(eid: str | None) -> Path:
+    return BOARD_RECORDS / f"{eid or '_'}.json"
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def live_board(eid: str | None) -> dict | None:
+    """The board already serving this entity, if its process is still up.
+
+    ONE BOARD PER ENTITY. Until 2026-09-18 every `board` call started another page on the same
+    store slug, so a re-roll and a chained batch left four boards stacked in one morning, each
+    with its own stale idea of one file; the operator saw two full-body cards and asked which
+    was new. The page now reads the entity's whole folder per request, so a second `board`
+    call only has to stamp the sidecars and hand back the link that is already live.
+    """
+    try:
+        rec = json.loads(_record_path(eid).read_text())
+    except (OSError, ValueError):
+        return None
+    if not rec.get("pid") or not _alive(rec["pid"]) or not rec.get("mac"):
+        return None
+    return rec
+
+
+def _remember_board(eid: str | None, rec: dict) -> None:
+    try:
+        BOARD_RECORDS.mkdir(parents=True, exist_ok=True)
+        _record_path(eid).write_text(json.dumps(rec))
+    except OSError:
+        pass  # a record that cannot be written costs a duplicate board, never a lost verdict
+
+
 def launch_frapp(images: list[Path], universe: Path | None, eid: str | None,
                  wait: float = 45.0) -> dict:
-    """Start the board that SERVES the art, and wait for its URLs.
+    """Start the board that SERVES the art, and wait for its URLs; or reuse the one already up.
 
-    Returns `{"ok": True, "mac": ..., "phone": ..., "pid": ..., "log": ...}` or
+    Returns `{"ok": True, "mac": ..., "phone": ..., "pid": ..., "log": ...}` (plus
+    `"reused": True` when an earlier board for this entity is still serving) or
     `{"ok": False, "why": ...}`. It never raises: a frapp that will not start is a fact the
     board record has to carry, not an exception to swallow, and the caller degrades to the
     card channel with the failure written into the record.
     """
+    if universe and eid:
+        prior = live_board(eid)
+        if prior:
+            return {**prior, "ok": True, "reused": True}
     node = display.node()
     if not node:
         return {"ok": False, "why": "no `node` on this machine"}
@@ -262,8 +310,11 @@ def launch_frapp(images: list[Path], universe: Path | None, eid: str | None,
     if not urls.get("mac"):
         return {"ok": False, "why": f"the board page did not announce a URL within {wait:.0f}s",
                 "log": str(log)}
-    return {"ok": True, "mac": urls.get("mac"), "phone": urls.get("phone"),
-            "pid": proc.pid, "log": str(log)}
+    rec = {"ok": True, "mac": urls.get("mac"), "phone": urls.get("phone"),
+           "pid": proc.pid, "log": str(log)}
+    if universe and eid:
+        _remember_board(eid, rec)
+    return rec
 
 
 def cmd_board(a) -> int:
@@ -301,7 +352,7 @@ def cmd_board(a) -> int:
                        "shot_board.py status <png>... names what is still missing."),
     }
     if channel == display.FRAPP:
-        payload["frapp"] = {k: frapp.get(k) for k in ("mac", "phone", "pid", "log")}
+        payload["frapp"] = {k: frapp.get(k) for k in ("mac", "phone", "pid", "log", "reused")}
         payload["showWith"] = (
             "The board is OPEN and it serves the pictures itself. Send the operator the phone "
             "link; the page records each serve and each tap, so no verdict here is anybody's "

@@ -279,13 +279,76 @@ class ThePageItself(unittest.TestCase):
     def test_the_serve_records_the_route_it_served_rather_than_the_filename(self):
         # A record that states a URL nothing serves is a small lie in the one file whose job
         # is being true about what happened.
-        self.assertIn("`/shot/${Number(m[1])}`", self.SRC)
+        self.assertIn("`/shot/${encodeURIComponent(key)}`", self.SRC)
 
     def test_the_serve_is_recorded_after_the_bytes_leave_never_before(self):
         i = self.SRC.index('res.on("finish"')
         self.assertLess(i, self.SRC.index("res.end(bytes)"))
         self.assertIn("recordServe(img, digest,", self.SRC)
 
+
+
+class FrappCardsAreTellable(unittest.TestCase):
+    """Two takes of one shot must never look the same on a card, and one board serves every
+    batch. Earned 2026-09-18: four boards stacked on one store slug, each with a card named
+    only by shot, and the operator asked which full body was the new one.
+
+    The proxy through the store rejects any path with a file extension as a static asset, and
+    the board's page cannot know the store's prefix, so every URL it builds is relative and
+    keyed by the shot's stem.
+    """
+
+    SRC = (Path(__file__).resolve().parents[1] / "frapps" / "shot-board.mjs").read_text()
+
+    def test_a_card_says_which_take_and_when_it_was_rendered(self):
+        self.assertIn("take ${i.take}", self.SRC)
+        self.assertIn("rendered ${esc(i.rendered)}", self.SRC)
+        self.assertIn('"rejected"', self.SRC, "the take number is counted from rejected/<shot>-*.png")
+
+    def test_the_queue_is_the_entity_folder_not_the_launch_list(self):
+        self.assertIn('join(UNIVERSE, "reference", ENTITY)', self.SRC)
+        self.assertIn("readdirSync(dir)", self.SRC)
+
+    def test_urls_are_relative_and_keyed_by_stem(self):
+        self.assertNotIn('src="${base}/shot/', self.SRC, "an absolute /shot/ URL breaks under the store's prefix")
+        self.assertIn("at(base, `shot/", self.SRC)
+        self.assertIn('key: basename(r.img).replace(/\\.[^.]+$/, "")', self.SRC,
+                      "a key with an extension is served as a static asset by the store and 404s")
+        self.assertNotIn("/shot/(\\d+)", self.SRC, "index routing dies the moment the queue changes under a live page")
+
+
+class OneBoardPerEntity(unittest.TestCase):
+    """A second `board` call for the same entity reuses the page that is already up."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self._records = mock.patch.object(sb, "BOARD_RECORDS", Path(self.tmp))
+        self._records.start()
+
+    def tearDown(self):
+        self._records.stop()
+
+    def test_a_live_board_is_reused_and_no_second_process_starts(self):
+        rec = {"pid": os.getpid(), "mac": "http://127.0.0.1:7462/?k=x", "phone": None, "log": "/tmp/x"}
+        sb._remember_board("desi", rec)
+        with mock.patch.object(subprocess, "Popen", side_effect=AssertionError("must not start a second board")):
+            out = sb.launch_frapp([Path("/tmp/a.png")], Path("/tmp/u"), "desi")
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["reused"])
+        self.assertEqual(out["mac"], rec["mac"])
+
+    def test_a_dead_board_is_not_reused(self):
+        sb._remember_board("desi", {"pid": 2**22 + 12345, "mac": "http://127.0.0.1:7462/?k=x"})
+        self.assertIsNone(sb.live_board("desi"))
+
+    def test_no_entity_means_no_reuse(self):
+        rec = {"pid": os.getpid(), "mac": "http://127.0.0.1:7462/?k=x"}
+        sb._remember_board(None, rec)
+        # No universe/entity: the launcher must not consult the record at all.
+        with mock.patch.object(sb, "live_board", side_effect=AssertionError("must not be consulted")):
+            with mock.patch.object(sb.display, "node", return_value=None):
+                out = sb.launch_frapp([Path("/tmp/a.png")], None, None)
+        self.assertFalse(out["ok"])
 
 if __name__ == "__main__":
     unittest.main()
