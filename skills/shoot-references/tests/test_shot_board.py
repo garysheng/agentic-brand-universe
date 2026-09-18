@@ -307,12 +307,12 @@ class FrappCardsAreTellable(unittest.TestCase):
 
     def test_the_queue_is_the_entity_folder_not_the_launch_list(self):
         self.assertIn('join(UNIVERSE, "reference", ENTITY)', self.SRC)
-        self.assertIn("readdirSync(dir)", self.SRC)
+        self.assertIn("readdirSync(dir, { withFileTypes: true })", self.SRC, "the entity folder AND each look folder one level down")
 
     def test_urls_are_relative_and_keyed_by_stem(self):
         self.assertNotIn('src="${base}/shot/', self.SRC, "an absolute /shot/ URL breaks under the store's prefix")
         self.assertIn("at(base, `shot/", self.SRC)
-        self.assertIn('key: basename(r.img).replace(/\\.[^.]+$/, "")', self.SRC,
+        self.assertIn("basename(r.img).replace(/\\.[^.]+$/, \"\")", self.SRC,
                       "a key with an extension is served as a static asset by the store and 404s")
         self.assertNotIn("/shot/(\\d+)", self.SRC, "index routing dies the moment the queue changes under a live page")
 

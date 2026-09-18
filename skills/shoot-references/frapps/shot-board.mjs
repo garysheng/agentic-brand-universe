@@ -117,8 +117,21 @@ function candidates() {
   const set = new Map(IMAGES.map((p) => [p, true]));
   if (UNIVERSE && ENTITY) {
     const dir = join(UNIVERSE, "reference", ENTITY);
+    // The entity's own plates, and one level down for each declared LOOK
+    // (reference/<id>/<look>/*.png). Not `photos/` or `rejected/`, which hold sources and
+    // set-aside takes, never candidates. A look's plates sat invisible to the board until
+    // 2026-09-18, so a "reused" board showed nothing new and the lock refused, correctly.
+    const SKIP = new Set(["photos", "rejected", "candidates"]);
     try {
-      for (const f of readdirSync(dir)) if (/\.(png|jpe?g|webp)$/i.test(f)) set.set(join(dir, f), true);
+      for (const f of readdirSync(dir, { withFileTypes: true })) {
+        if (f.isFile() && /\.(png|jpe?g|webp)$/i.test(f.name)) set.set(join(dir, f.name), true);
+        else if (f.isDirectory() && !SKIP.has(f.name)) {
+          try {
+            for (const g of readdirSync(join(dir, f.name)))
+              if (/\.(png|jpe?g|webp)$/i.test(g)) set.set(join(dir, f.name, g), true);
+          } catch { /* unreadable look folder */ }
+        }
+      }
     } catch { /* no folder yet */ }
   }
   return [...set.keys()].sort();
@@ -151,7 +164,8 @@ function queue() {
     .map((r) => ({
       // The stem, never the filename: the store serves any path with an extension as a
       // static asset, so `/shot/back.png` 404s before the board sees it (2026-09-18).
-      key: basename(r.img).replace(/\.[^.]+$/, ""),
+      key: (dirname(r.img) === join(UNIVERSE || "", "reference", ENTITY || "") ? "" : basename(dirname(r.img)) + "--")
+        + basename(r.img).replace(/\.[^.]+$/, ""),
       img: r.img,
       name: basename(r.img),
       shot: r.seen.board.shot || basename(r.img).replace(/\.[^.]+$/, ""),
@@ -203,8 +217,7 @@ const page = (items, token, base) => shell({
              alt="${esc(i.shot)}" loading="eager">
         <h2>${esc(i.shot)} <span class="take">take ${i.take}</span></h2>
         <p class="file">${esc(i.name)}${i.rendered ? ` · rendered ${esc(i.rendered)}` : ""}</p>
-        <p class="look">Look for:</p>
-        <ul class="look">${checklist}</ul>
+        <details class="look"><summary>Look for (${INVARIANTS.length || 0})</summary><ul class="look">${checklist}</ul></details>
         <div class="row">
           <button data-a="reroll">Re-roll</button>
           <button class="primary" data-a="keep">Keep</button>
@@ -220,10 +233,16 @@ const page = (items, token, base) => shell({
     .shot{width:100%;height:auto;border-radius:10px;display:block}
     .file{opacity:.6;font-size:.85rem;margin:.2rem 0 .8rem}
     .take{font-size:.8rem;font-weight:500;opacity:.7;padding:.1em .5em;border:1px solid currentColor;border-radius:999px;vertical-align:middle;margin-left:.4em}
-    p.look{margin:.6rem 0 .2rem;font-weight:600}
+    /* COLLAPSED BY DEFAULT. Fourteen invariants under every card pushed the Keep button a
+       full screen below the picture on a phone, and the checklist is the reader's to open when
+       a shot looks off, not to scroll past seven times (Gary, 2026-09-18: "obnoxious"). */
+    details.look{margin:.4rem 0 .2rem;font-size:.9rem;opacity:.8}
+    details.look summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
     ul.look{margin:0 0 .4rem 1.1rem;padding:0}
     .row{display:flex;gap:10px;margin-top:14px}.row button{flex:1;margin:0}
-    .why{display:flex;gap:10px;margin-top:10px}.why input{flex:1}
+    /* :not([hidden]), because a bare display:flex outranks the hidden attribute and showed the
+       re-roll box under every card before anyone tapped Re-roll. */
+    .why:not([hidden]){display:flex;gap:10px;margin-top:10px}.why input{flex:1}
     .err{color:#b3261e;margin-top:8px}
   </style>`,
   script: `
