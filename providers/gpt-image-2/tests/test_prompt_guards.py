@@ -258,5 +258,57 @@ class TestEveryGuardHasAReadbackGate(unittest.TestCase):
         self.assertIn("over the user's shoulder", g)
 
 
+class TestScreenSubjectIsOverTheShoulder(unittest.TestCase):
+    """When the beat is ABOUT what is on a screen, the camera goes behind the person.
+
+    Earned 2026-09-22 on userexperience.wiki's the-history-layer hero. The guard already
+    said "if both the user's face and the screen content must be visible, shoot it over the
+    user's shoulder", and that is a TIEBREAKER, not a default. So the model put the camera
+    in front of the woman, gave a clean view of her face, and showed the BACK of the phone
+    in the panel whose whole argument was that her swipe did nothing to what was on it.
+
+    Nothing caught it. Anatomically the render was correct: a back-of-phone view breaks no
+    rule here, and the readback gate only refused a screen visible from the WRONG side. The
+    beat had simply been staged from the one camera position that cannot show its subject.
+
+    Gary: "screen is still on wrong side of phone. When showing something about screen it
+    should be default over the shoulder." So the default moves, and the gate learns the
+    second defect: not only a screen on the wrong side, but a screen-subject scene shot from
+    a position that cannot see the screen at all.
+    """
+
+    def test_the_guard_makes_over_the_shoulder_the_default(self):
+        prompt, added = pg.apply_prompt_guards("She frowns at her phone and the photo does not move.")
+        self.assertIn("device-anatomy", added)
+        # Not phrased as a conditional. The words that made it a tiebreaker are gone.
+        self.assertIn("DEFAULT", prompt)
+        self.assertNotIn("If both the user's face and the screen content must", prompt)
+
+    def test_the_guard_says_what_to_do_with_the_face(self):
+        """The reason the old rule lost: a beat that describes an expression reads as an
+        instruction to point the camera at it. The guard has to answer that directly, or the
+        model resolves the conflict by moving the camera round to the face again."""
+        prompt, _ = pg.apply_prompt_guards("She frowns at her phone.")
+        self.assertIn("three-quarter", prompt.lower())
+
+    def test_the_gate_refuses_a_screen_subject_shot_from_the_front(self):
+        g = pg.READBACK_GATE["device-anatomy"]
+        self.assertIn("wrong side", g)          # the original defect, still refused
+        self.assertIn("over the user's shoulder", g)
+        # The new one: the screen is the subject and the camera cannot see it.
+        self.assertIn("back of the device", g)
+
+    def test_it_is_still_one_guard_and_still_idempotent(self):
+        once, a1 = pg.apply_prompt_guards("She looks at her phone.")
+        twice, a2 = pg.apply_prompt_guards(once)
+        self.assertEqual(a2, [], f"a second pass added {a2}")
+        self.assertEqual(twice.count("DEVICE ANATOMY"), 1)
+
+    def test_a_scene_with_no_device_is_untouched(self):
+        prompt, added = pg.apply_prompt_guards("She walks along a stone wall at dusk.")
+        self.assertNotIn("device-anatomy", added)
+        self.assertNotIn("DEVICE ANATOMY", prompt)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

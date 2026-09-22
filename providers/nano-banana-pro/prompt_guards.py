@@ -93,14 +93,37 @@ _TWO_PERSON_CUES = (
     "both of them", "facing him", "facing her", "the other man", "the other woman",
 )
 
+# The over-the-shoulder half was a TIEBREAKER until 2026-09-22 ("if both the user's face and
+# the screen content must be visible") and it therefore lost every time a beat mentioned an
+# expression, which is most beats. On userexperience.wiki's the-history-layer hero the model
+# put the camera in front of the woman, framed her face beautifully, and showed the BACK of
+# the phone in the panel whose entire argument was what her swipe failed to do to the screen.
+#
+# Nothing caught it, and that is the instructive part. The render was anatomically CORRECT:
+# a back-of-phone view breaks no rule above, and the readback gate only refused a screen seen
+# from the wrong side. The beat had simply been staged from the one camera position that
+# cannot show its own subject. So the default moves rather than the wording being sharpened.
+#
+# Gary: "when showing something about screen it should be default over the shoulder".
 _GUARD_DEVICE = (
     "DEVICE ANATOMY, NON-NEGOTIABLE: any phone, laptop, tablet or monitor is anatomically correct. "
     "The GLOWING DISPLAY is on the SCREEN side, and that side FACES ITS USER. A person looking at a "
     "device sees its screen; the viewer therefore sees the device's BACK or EDGE plus the light it "
     "throws onto the user's face and hands. NEVER put the screen image on the back of a phone, on a "
     "laptop's outer lid, or on a monitor's rear. NEVER show a screen facing the camera while the "
-    "person using it looks at the opposite side. If both the user's face and the screen content must "
-    "be visible, shoot it over the user's shoulder."
+    "person using it looks at the opposite side. "
+    "WHEN THE BEAT IS ABOUT WHAT IS ON THE SCREEN, THE DEFAULT CAMERA IS OVER THE USER'S SHOULDER. "
+    "Not a tiebreaker and not a last resort: if what the screen shows, or fails to show, is any part "
+    "of what the panel is arguing, the camera stands BEHIND the person at their shoulder height and "
+    "looks down the same line they are looking, so the viewer reads the display over them and sees "
+    "what they see. A camera placed in FRONT of someone using a device can only ever show its back "
+    "or its edge, so a screen-subject beat shot from the front has been staged from the one position "
+    "that cannot see its own subject, however well the face is framed. "
+    "THE FACE IS NOT A REASON TO MOVE THE CAMERA ROUND. A beat that names an expression is naming "
+    "how the moment FEELS, never where the lens goes. Solve it from behind: a three-quarter angle "
+    "from just past the shoulder carries the screen, the hands, the set of the jaw and a cheek at "
+    "once, and posture reads a mood at any angle. Shoulders, neck, grip and the tilt of the head do "
+    "the work when the face is turned away."
 )
 
 _GUARD_TWO_HANDER = (
@@ -294,7 +317,13 @@ READBACK_GATE = {
         "faces its user. If the viewer can see the screen's content AND the user is on the far "
         "side of the device (the device sits between the camera and the user's face), the "
         "screen is on the wrong side of the device: DEFECT. A visible screen passes only when "
-        "the shot is over the user's shoulder, or when nobody in frame is using the device."
+        "the shot is over the user's shoulder, or when nobody in frame is using the device. "
+        "AND THE SECOND DEFECT, which an anatomically correct render still commits: if what the "
+        "screen shows (or fails to show) is part of what this beat argues, and the camera is in "
+        "FRONT of the user so the viewer sees the back of the device and not the display, the "
+        "beat has been shot from a position that cannot show its own subject: DEFECT. Judge it "
+        "by the beat, not by the anatomy; a clean view of the back of the device is a correct "
+        "picture of the wrong thing."
     ),
     "readable-surface": (
         "READABLE SURFACE: every page, card, sign, letter or other writing surface is oriented "
