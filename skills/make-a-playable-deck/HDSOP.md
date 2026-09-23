@@ -1,7 +1,7 @@
 ---
 title: "Build a deck someone can sit with on a phone, from slides declared as data"
 id: HDSOP-ABU-025
-version: 0.1
+version: 0.2
 skill: make-a-playable-deck
 doc_status: drafting
 tags: [work, deck, mobile, review]
@@ -61,7 +61,7 @@ Steps say WHAT happens. The flowchart says who; Automation Opportunities holds t
    rest; one who meets it on slide three reads the whole deck as an audit.
 5. Declare `review` when the deck will be reviewed, and give every image its `source`. The build
    refuses until every image is traceable.
-6. Build with `scripts/build_deck.py`, passing `--palette`, `--assets`, and `--repo-root` so every
+6. Build with `scripts/build_deck.py` (a wrapper over Freedom's builder that supplies the universe palette itself from the deck's `universe` declaration or the universe it sits in), passing `--assets`, and `--repo-root` so every
    source path, `governs` entry and canon path is checked to exist.
 7. OPEN IT ON A PHONE before sending it. This is the step that gets skipped and the only one the
    generator cannot do.
@@ -148,3 +148,4 @@ carries no taste today, and the ten kinds remain a hypothesis resting on a singl
 | Version | Date | Changes |
 |---|---|---|
 | 0.1 | 2026-09-14 | Written from the skill file, read rather than recalled. |
+| 0.2 | 2026-09-23 | The builder and shell live in Freedom; this skill wraps them and adds the palette. |

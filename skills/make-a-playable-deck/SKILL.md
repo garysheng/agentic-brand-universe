@@ -11,6 +11,21 @@ python3 skills/make-a-playable-deck/scripts/build_deck.py <deck.json> \
     [--repo-root <universe>]
 ```
 
+**This skill is a wrapper over Freedom's deck builder** (`freedom:create-or-update-deck`), which
+owns the builder, the shell and their tests since 2026-09-18. The script here finds that builder
+(`$FREEDOM_DECK_BUILDER`, else `$FREEDOM_PLUGIN`, else `~/.freedom/plugin`), passes every
+argument through, and adds the one thing a universe knows: **`--palette`**, resolved in order
+from the deck's own `"universe"`/`"palette"` declaration, then `--repo-root`, then the universe
+the deck sits in (nearest folder above it holding `canon/craft/palette.json`). A flag you pass
+wins. A declared brand that does not resolve is refused. With no Freedom installed it refuses by
+name. A mechanism change goes to Freedom, never back into a copy here.
+
+**Name the brand in the deck itself** so every build, including Freedom's frapp store, wears it:
+
+```json
+{ "title": "...", "universe": "../..", "slides": [...] }
+```
+
 **A deck is DATA plus a shell.** You write `deck.json`; the shell is the same every time and
 is not yours to edit per deck. If the shell cannot express something, that is a gap in the
 shell and it gets fixed there, because the second deck is where a per-deck edit silently
@@ -68,9 +83,10 @@ handlers on a page that escapes everything else it is handed.
    pick invites a real reader to disagree with the pick; a gallery of finals does not.
 4. **Surface the flaws early, and name them.** A reader who finds a weakness you hid stops
    trusting the rest. A reader who meets it on slide three reads the whole deck as an audit.
-5. **Pass `--palette`** so the deck carries the universe's own tokens. Without it the shell's
-   neutral defaults apply and the deck SAYS SO in its own provenance comment, so nobody can
-   mistake an unthemed deck for a themed one.
+5. **Declare `"universe"` in `deck.json`** (or keep the deck under the universe's `works/`) so
+   the deck carries the universe's own tokens. With no palette the shell's neutral defaults
+   apply and the deck SAYS SO in its own provenance comment, so nobody can mistake an unthemed
+   deck for a themed one.
 6. **`--assets` copies the images beside the HTML**, so the folder travels and the deck works
    offline. Reference them by plain filename in the slides.
 7. **OPEN IT ON A PHONE BEFORE SENDING IT.** The fit is measured at run time against a real
@@ -134,6 +150,9 @@ Pair it with a `handoff` slide at the end carrying a conforming
 becomes one paste for the reviewer instead of a list of instructions they have to follow.
 
 ## Refusals
+
+The wrapper refuses a declared `universe`/`palette` that does not resolve, and a machine with no
+Freedom builder. Everything below is Freedom's builder refusing, unchanged:
 
 - A deck with no slides.
 - An unknown `kind`, naming the ones that exist.
