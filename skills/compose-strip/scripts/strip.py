@@ -43,7 +43,9 @@ readback and a `.reject.json` with the reason) in `panels/rejected/`. Nothing is
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as _dt
+import fcntl
 import hashlib
 import json
 import re
@@ -207,7 +209,24 @@ def load_state(spec: dict) -> dict:
 
 
 def save_state(spec: dict, st: dict) -> None:
-    state_path(spec).write_text(json.dumps(st, indent=1) + "\n")
+    tmp = state_path(spec).with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(st, indent=1) + "\n")
+    tmp.replace(state_path(spec))
+
+
+@contextlib.contextmanager
+def locked(spec: dict):
+    """Every read-modify-write of the state holds this lock. Panels render in PARALLEL (three at
+    once is the working number), and before the lock each render loaded the state, waited minutes
+    on the model, and saved: the last one to finish erased the other panels' rolls (2026-09-25,
+    the first strip made through this script)."""
+    lp = spec["_dir"] / "strip-state.lock"
+    with open(lp, "w") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
 
 
 def panels_dir(spec: dict) -> Path:
@@ -312,27 +331,39 @@ def verify(spec: dict, p: dict, png: Path, guards: list[str] | None = None) -> t
 
 def cmd_render(spec: dict, pid: str, dry_run: bool = False, runner=subprocess.run) -> dict:
     p = panel(spec, pid)
-    st = load_state(spec)
-    n = next_roll(spec, st, pid)
     pdir = panels_dir(spec)
-    pdir.mkdir(parents=True, exist_ok=True)
-    out = pdir / f"{pid}.r{n}.png"
-    pf = pdir / f"{pid}.r{n}.prompt.txt"
-    prompt = assemble_prompt(spec, p, st["panels"][pid]["counters"])
-    cmd = generate_cmd(spec, p, out, pf)
-    if dry_run:
-        return {"panel": pid, "roll": n, "cmd": cmd, "promptChars": len(prompt)}
-    pf.write_text(prompt + "\n")
+    with locked(spec):
+        st = load_state(spec)
+        n = next_roll(spec, st, pid)
+        out = pdir / f"{pid}.r{n}.png"
+        pf = pdir / f"{pid}.r{n}.prompt.txt"
+        prompt = assemble_prompt(spec, p, st["panels"][pid]["counters"])
+        cmd = generate_cmd(spec, p, out, pf)
+        if dry_run:
+            return {"panel": pid, "roll": n, "cmd": cmd, "promptChars": len(prompt)}
+        pdir.mkdir(parents=True, exist_ok=True)
+        pf.write_text(prompt + "\n")
+        # Reserve the roll before the minutes-long call, so a second render of the SAME panel
+        # started meanwhile is refused as "not judged" rather than taking the same number.
+        roll = {"roll": n, "path": _rel(spec, out), "prompt": _rel(spec, pf),
+                "binding": "rendering", "problems": [], "verdict": None}
+        st["panels"][pid]["rolls"].append(roll)
+        save_state(spec, st)
     rc = runner(cmd).returncode
-    if rc != 0 or not out.exists() or not Path(str(out) + ".recipe.json").exists():
-        raise StripError(f"generate.py exited {rc} for {pid} roll {n}; no image and recipe pair. "
-                         f"Nothing was recorded, so the same roll number is free to try again.")
-    ok, problems = verify(spec, p, out)
-    roll = {"roll": n, "path": _rel(spec, out), "prompt": _rel(spec, pf), "renderedOn": _now(),
-            "binding": "ok" if ok else "broken", "problems": problems, "verdict": None}
-    st["panels"][pid]["rolls"].append(roll)
-    save_state(spec, st)
-    return roll
+    ok_files = rc == 0 and out.exists() and Path(str(out) + ".recipe.json").exists()
+    ok, problems = verify(spec, p, out) if ok_files else (False, [])
+    with locked(spec):
+        st = load_state(spec)
+        rolls = st["panels"][pid]["rolls"]
+        rec = next(r for r in rolls if r["roll"] == n and r["binding"] == "rendering")
+        if not ok_files:
+            rolls.remove(rec)
+            save_state(spec, st)
+            raise StripError(f"generate.py exited {rc} for {pid} roll {n}; no image and recipe "
+                             f"pair. Nothing was recorded, so the same roll number is free again.")
+        rec.update(renderedOn=_now(), binding="ok" if ok else "broken", problems=problems)
+        save_state(spec, st)
+    return rec
 
 
 def _move_reject(spec: dict, rel: str, reason: str, counter: str | None) -> str:
@@ -352,6 +383,12 @@ def _move_reject(spec: dict, rel: str, reason: str, counter: str | None) -> str:
 
 def cmd_judge(spec: dict, pid: str, roll: int, verdict: str, reason: str = "",
               counter: str | None = None, guards: list[str] | None = None) -> dict:
+    with locked(spec):
+        return _judge(spec, pid, roll, verdict, reason, counter, guards)
+
+
+def _judge(spec: dict, pid: str, roll: int, verdict: str, reason: str = "",
+           counter: str | None = None, guards: list[str] | None = None) -> dict:
     p = panel(spec, pid)
     st = load_state(spec)
     ps = st["panels"][pid]
@@ -360,6 +397,8 @@ def cmd_judge(spec: dict, pid: str, roll: int, verdict: str, reason: str = "",
         raise StripError(f"panel {pid} has no roll {roll}")
     if rec.get("verdict") is not None:
         raise StripError(f"panel {pid} roll {roll} was already judged {rec['verdict']}")
+    if rec.get("binding") == "rendering":
+        raise StripError(f"panel {pid} roll {roll} is still rendering")
     if verdict == "defect" and not reason.strip():
         raise StripError("a DEFECT needs --reason: a reject with no reason teaches the next roll "
                          "nothing, and the reason is the only record the attempt existed for.")
@@ -387,6 +426,11 @@ def cmd_judge(spec: dict, pid: str, roll: int, verdict: str, reason: str = "",
 
 
 def cmd_reopen(spec: dict, pid: str, reason: str, counter: str | None = None) -> dict:
+    with locked(spec):
+        return _reopen(spec, pid, reason, counter)
+
+
+def _reopen(spec: dict, pid: str, reason: str, counter: str | None = None) -> dict:
     """A kept panel goes back to rolling (a re-roll tap on the board names it). The kept roll is
     moved to rejected/ with the reason, and the roll count restarts its cap from here, because a
     reopen is a new judgement by a person, not a continuation of the agent's own attempts."""

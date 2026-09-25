@@ -170,6 +170,29 @@ class RollTest(Base):
         strip.cmd_render(s, "p1", runner=fake_generate)
         self.assertIn("LEFT wrist", (self.work / "panels" / "p1.r2.prompt.txt").read_text())
 
+    def test_parallel_renders_of_different_panels_all_land(self):
+        import threading, time
+        s = self.spec()
+
+        def slow(cmd):
+            time.sleep(0.5)
+            return fake_generate(cmd)
+        ts = [threading.Thread(target=strip.cmd_render, args=(s, pid), kwargs={"runner": slow})
+              for pid in ("p1", "p2", "p3")]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        st = strip.load_state(s)
+        self.assertEqual([len(st["panels"][p]["rolls"]) for p in ("p1", "p2", "p3")], [1, 1, 1],
+                         "a parallel render erased another panel's roll")
+
+    def test_a_failed_render_releases_its_roll_number(self):
+        s = self.spec()
+        with self.assertRaisesRegex(strip.StripError, "free again"):
+            strip.cmd_render(s, "p1", runner=lambda cmd: SimpleNamespace(returncode=1))
+        self.assertEqual(strip.cmd_render(s, "p1", runner=fake_generate)["roll"], 1)
+
     def test_unjudged_roll_blocks_the_next(self):
         s = self.spec()
         strip.cmd_render(s, "p1", runner=fake_generate)

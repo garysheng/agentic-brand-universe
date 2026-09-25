@@ -999,3 +999,5 @@ CLASS, and immediately found a seventh site the manual pass had missed.
 - 2026-09-23 v1.30.0 — make-a-playable-deck is a wrapper over Freedom's deck builder instead of a copy of it. It supplies the palette itself: the deck's own `universe`/`palette` declaration, then `--repo-root`, then the universe the deck sits in. A declared brand that does not resolve is refused. The builder's suite moved to Freedom with it; 8 wrapper tests here.
 
 - 2026-09-25 v1.33.0 (spec v0.53) — compose-strip: a strip of 2 to 4 panels from a spec, each roll judged by an agent who looked, rejects kept with reasons, capped at 1 + 4 re-rolls, composed in code with one recipe that passes a wiki provenance gate by construction. Four hand-built strips' recipes were refused by that gate. 20 tests, mutation-proven; a works-board re-roll of a strip now reopens a panel.
+
+- 2026-09-25 v1.33.1 — compose-strip locks its state file and reserves a roll before rendering. Three panels rendered in parallel on the first strip through it, and the last to finish erased the other two rolls. 22 tests; the lock mutation is caught 5 of 5 runs.
