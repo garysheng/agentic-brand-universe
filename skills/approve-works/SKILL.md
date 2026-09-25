@@ -55,10 +55,24 @@ afterwards, which forgets the serve on every UNJUDGED work (never a verdict).
 `source: abu-works-board`), so a session that ends its turn still learns of it. Read the state
 with `works_board.py status <id>`; it exits 1 while anything is unjudged.
 
-**5. Apply the re-rolls.** `works_board.py rerolls <id>` prints, per re-roll, the note (typed,
-and the transcript of anything spoken, with the audio path) and the exact
-`reroll_from_recipe.py <image> --note "..."` command. Run those, read each result back
-(`render-readback`), then `open` the manifest again so the new rolls go back on the page.
+**5. A re-roll applies itself.** A RE-ROLL tap starts a DETACHED job (own session, nohup, a
+`claude -p` run with bypass permissions reading a generated brief, logging to a file), so the
+work re-rolls whether or not any session is watching: this session is restarted every time the
+network drops, and every restart kills an in-session watcher (2026-09-25: a tap sat unread).
+The job re-rolls that one work from its recipe with the note applied (`reroll-slot`), keeps
+every rule the manifest and recipe carry, puts the new take back on the board, commits the
+files it wrote, pushes, and texts the operator one line. Brief, log and report live in
+`~/.freedom/frapps/abu-works-board/jobs/`; the job's state is in the sidecar under `rerollJob`,
+so the card shows **Re-rolling now**, and a failed run says so on the card until a new take lands.
+
+- **One job per work.** While one runs, a second tap on that card is refused (the page shows
+  the refusal), so it can never start a second job. A lock whose process died is taken over.
+- **Manual control:** `ABU_WORKS_AUTOREROLL=0` in the store's environment. Then
+  `works_board.py rerolls <id>` prints, per re-roll, the note (typed, and the transcript of
+  anything spoken, with the audio path) and the exact `reroll_from_recipe.py <image> --note "..."`
+  command. Run those, read each result back (`render-readback`), then `open` the manifest again
+  so the new rolls go back on the page.
+- A CLI `tap` spawns nothing unless it passes `--spawn`; only the page does.
 
 ## What the page will not do
 
@@ -73,7 +87,7 @@ and the transcript of anything spoken, with the audio path) and the exact
 ## Files
 
 - `scripts/works_board.py` the verbs (`open`, `boards`, `batch`, `item`, `served`, `tap`,
-  `status`, `rerolls`, `close`). The page reads and writes only through it.
+  `status`, `rerolls`, `close`, and `job-done`, which only the detached job's wrapper calls). The page reads and writes only through it.
 - `frapps/works-board.mjs` the page. Freedom's shell, recorder and notify bus, resolved from the
   newest installed Freedom at every start.
 - `frapps/mount.mjs` puts the page in the store and prints its links.

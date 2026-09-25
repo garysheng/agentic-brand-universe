@@ -97,23 +97,32 @@ export const takeId = (bid, n) => `${bid}--b${String(n).padStart(2, "0")}`;
 
 const VERDICT_WORD = { keep: "Approved", reroll: "Re-roll" };
 
+// A RE-ROLL RUNS BY ITSELF (a detached job the tap starts), so the card says so and takes no
+// second tap until the new take is back: a second tap would be refused by works_board.py anyway.
+export function jobHtml(job) {
+  if (!job) return "";
+  if (job.state === "running") return `<p class="verdict rolling"><b>Re-rolling now</b> · the new take comes back on this card</p>`;
+  return `<p class="err">The automatic re-roll ${job.state === "stalled" ? "stopped without finishing" : `failed (exit ${esc(job.exit)})`}. Tap Re-roll to try again.</p>`;
+}
+
 function cardHtml(it, { bid, base, token }) {
   const src = withKey(at(base, `img/${encodeURIComponent(bid)}/${encodeURIComponent(it.key)}`), token);
-  const state = it.verdict
+  const rolling = it.job && it.job.state === "running";
+  const state = rolling ? "" : it.verdict
     ? `<p class="verdict ${esc(it.verdict)}"><b>${esc(VERDICT_WORD[it.verdict] || it.verdict)}</b>`
       + `${it.note ? ` · ${esc(it.note)}` : ""}${it.audio && it.audio.length ? " · voice note kept" : ""}</p>`
     : "";
-  return `<section class="card${it.verdict ? " judged" : ""}" data-key="${esc(it.key)}" data-verdict="${esc(it.verdict || "")}">
+  return `<section class="card${it.verdict || rolling ? " judged" : ""}" data-key="${esc(it.key)}" data-verdict="${esc(it.verdict || (rolling ? "reroll" : ""))}">
     <a href="${src}${src.includes("?") ? "&" : "?"}full=1" target="_blank" rel="noopener"><img class="work" src="${src}" alt="${esc(it.title)}" loading="eager"></a>
     <h2>${esc(it.title)} <span class="take">take ${Number(it.take) || 1}</span></h2>
     ${it.context ? `<p class="ctx">${esc(it.context)}</p>` : ""}
     <p class="file">${esc(it.file)}</p>
-    ${state}
-    <div class="row">
+    ${state}${jobHtml(it.job)}
+    <div class="row"${rolling ? " hidden" : ""}>
       <button type="button" data-a="reroll">Re-roll</button>
       <button type="button" class="primary" data-a="keep">Approve</button>
     </div>
-    <button type="button" class="linkish" data-a="note">Add a note</button>
+    <button type="button" class="linkish" data-a="note"${rolling ? " hidden" : ""}>Add a note</button>
     <div class="note" hidden>
       <div class="recslot"></div>
       <textarea rows="2" maxlength="1000" placeholder="What should change? Optional. Or tap the red dot and say it."></textarea>
@@ -161,7 +170,7 @@ function batchPage(v, { base, token }) {
       .note:not([hidden]){display:block;margin-top:8px}
       .note textarea{width:100%;box-sizing:border-box;font:inherit;padding:10px;border-radius:10px}
       .verdict{margin:.3rem 0;padding:.4rem .6rem;border-radius:8px;border:1px solid currentColor}
-      .verdict.keep{color:var(--good,#1b7f3b)}.verdict.reroll{color:var(--bad,#b3261e)}
+      .verdict.keep{color:var(--good,#1b7f3b)}.verdict.reroll,.verdict.rolling{color:var(--bad,#b3261e)}
       .judged .work{opacity:.8}
       .err{color:#b3261e;margin-top:8px}
       .bnav{display:flex;gap:8px;align-items:flex-start;margin:0 0 16px}
@@ -190,7 +199,7 @@ function batchPage(v, { base, token }) {
       }
       card.querySelector('[data-a="note"]').hidden = true;
     }
-    function done(card, verdict, note) {
+    function done(card, verdict, note, job) {
       card.dataset.verdict = verdict; card.classList.add('judged');
       let v = card.querySelector('.verdict');
       if (!v) { v = document.createElement('p'); card.querySelector('.row').before(v); }
@@ -199,6 +208,11 @@ function batchPage(v, { base, token }) {
       card.querySelector('.note').hidden = true;
       card.querySelector('[data-a="note"]').hidden = false;
       card.querySelector('textarea').value = '';
+      if (job && job.spawned) {
+        v.className = 'verdict rolling';
+        v.innerHTML += ' · <b>Re-rolling now</b>, the new take comes back on this card';
+        card.querySelector('.row').hidden = true; card.querySelector('[data-a="note"]').hidden = true;
+      }
       const left = [...document.querySelectorAll('.card')].filter((c) => !c.dataset.verdict).length;
       if (!left) document.querySelector('.finished').hidden = false;
       else { const nx = [...document.querySelectorAll('.card')].find((c) => !c.dataset.verdict); if (nx) nx.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
@@ -221,7 +235,7 @@ function batchPage(v, { base, token }) {
       card.querySelectorAll('button').forEach((x) => x.disabled = false);
       // A FAILED WRITE MUST NOT LOOK LIKE PROGRESS. Stay on the card and say what the engine said.
       if (!r || !r.ok) { err.hidden = false; err.textContent = (r && r.error) || 'not recorded, try again'; return; }
-      done(card, verdict, r.note || note);
+      done(card, verdict, r.note || note, r.job);
     });`,
   });
 }
@@ -343,15 +357,20 @@ export function handler(req, res, { token = "", base = "" } = {}) {
             else if (!text) text = `voice note, not transcribed: ${got.audio.files.join(", ")}`;
           }
         }
+        // A re-roll tap starts the detached re-roll job (`--spawn`), so the work re-rolls whether
+        // or not any session is watching; `ABU_WORKS_AUTOREROLL=0` keeps it manual.
         const r = py(["tap", "--board", bid, "--key", k, "--verdict", String(verdict), "--note", text,
-          ...audio.flatMap((a) => ["--audio", a]), "--json"]);
+          ...audio.flatMap((a) => ["--audio", a]), ...(verdict === "reroll" ? ["--spawn"] : []), "--json"]);
         if (!r.ok) {
           journal(NAME, "warn", "verdict-refused", { work: k, out: r.err || r.out });
           return json(res, 409, { ok: false, error: (r.err || r.out).replace(/^works-board:\s*/, "") });
         }
         NOTIFY.judged({ source: SOURCE, title: `works board: ${bid}`, item: `${k}: ${verdict}${text ? ` (${text.slice(0, 120)})` : ""}`,
           notes: `${it.image}.readback.json` });
-        return json(res, 200, { ok: true, verdict, note: text });
+        let job = null;
+        try { job = JSON.parse(r.out).job || null; } catch { /* recorded; no job info */ }
+        if (job && !job.spawned) journal(NAME, "info", "reroll-not-spawned", { work: k, why: job.why });
+        return json(res, 200, { ok: true, verdict, note: text, job });
       } catch (e) {
         return json(res, 500, { ok: false, error: String((e && e.message) || e) });
       }

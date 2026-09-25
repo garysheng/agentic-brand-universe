@@ -12,7 +12,10 @@ What is load-bearing:
     apply it with `reroll-slot`;
   * re-opening a board never erases a tap, and `--restamp` forgets only an unjudged serve;
   * the page shows only the current candidates, HEAD proves an image serves WITHOUT recording a
-    serve, a GET records one, and a tap is announced on the Freedom bus as `judged`.
+    serve, a GET records one, and a tap is announced on the Freedom bus as `judged`;
+  * a re-roll tap starts ONE detached re-roll job, recorded in the sidecar, and while it runs a
+    second tap on that work is refused and never spawns a second job; the job's end releases the
+    card, a dead job's lock is taken over, and `ABU_WORKS_AUTOREROLL=0` keeps it manual.
 
 NOTHING HERE MOUNTS OR SERVES ON A PORT. The page's handler is driven with fake request and
 response objects, because a test that takes the operator's tailnet mapping changes the machine
@@ -60,8 +63,12 @@ class Base(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.state = self.tmp / "state"
+        # Auto re-roll is OFF for every test that does not ask for it: a real `claude -p` run
+        # started by a test would re-roll a real work.
         self.env = mock.patch.dict(os.environ, {"ABU_WORKS_BOARDS": str(self.state),
-                                               "FREEDOM_REVIEW_INBOX": str(self.tmp / "inbox.jsonl")})
+                                               "FREEDOM_REVIEW_INBOX": str(self.tmp / "inbox.jsonl"),
+                                               "ABU_WORKS_AUTOREROLL": "0",
+                                               "ABU_WORKS_REROLL_CLAUDE": "/nonexistent/claude"})
         self.env.start()
         self.addCleanup(self.env.stop)
         self.chan = mock.patch.object(wb.display, "resolve_channel", return_value=FRAPP)
@@ -197,6 +204,131 @@ class VerdictTest(Base):
         self.assertEqual(wb.find_item("heroes", "hero-6")["batch"], 2)
 
 
+class RerollJobTest(Base):
+    """The detached re-roll, run against a fake `claude` that records its call and exits."""
+
+    def setUp(self):
+        super().setUp()
+        import warnings
+        # The job is detached on purpose, so its Popen is never waited on.
+        warnings.simplefilter("ignore", ResourceWarning)
+        self.mark = self.tmp / "calls.txt"
+        fake = self.tmp / "fake-claude"
+        fake.write_text('#!/bin/sh\necho "$@" >> "$FAKE_MARK"\nsleep "${FAKE_SLEEP:-0}"\n'
+                        'exit "${FAKE_EXIT:-0}"\n')
+        fake.chmod(0o755)
+        self.jobenv = mock.patch.dict(os.environ, {"ABU_WORKS_AUTOREROLL": "1",
+                                                  "ABU_WORKS_REROLL_CLAUDE": str(fake),
+                                                  "FAKE_MARK": str(self.mark), "FAKE_SLEEP": "30"})
+        self.jobenv.start()
+        self.addCleanup(self.jobenv.stop)
+        self.addCleanup(self.kill_jobs)
+        self.open()
+
+    def kill_jobs(self):
+        import signal
+        for lp in (self.state / "jobs").glob("*.lock") if (self.state / "jobs").exists() else []:
+            try:
+                os.killpg(int(json.loads(lp.read_text()).get("pid")), signal.SIGKILL)
+            except (OSError, ValueError, TypeError):
+                pass
+
+    def img(self, n=2):
+        return self.works / f"hero-{n}.png"
+
+    def tap(self, n=2, note="warmer light", verdict="reroll"):
+        with mock.patch("sys.stdout") as out:
+            code = wb.main(["tap", "--board", "heroes", "--key", f"hero-{n}", "--verdict", verdict,
+                            "--note", note, "--spawn", "--json"])
+        text = "".join(c.args[0] for c in out.write.call_args_list)
+        return code, (json.loads(text) if code == 0 else None)
+
+    def calls(self):
+        import time
+        time.sleep(0.5)   # the fake writes its line as soon as it starts
+        return self.mark.read_text().splitlines() if self.mark.exists() else []
+
+    def wait_done(self, n=2, timeout=20):
+        import time
+        end = time.time() + timeout
+        while time.time() < end:
+            if not wb.lock_path(self.img(n)).exists():
+                return
+            time.sleep(0.2)
+        self.fail("the re-roll job never released its lock")
+
+    def test_a_reroll_tap_starts_one_detached_job_and_the_card_says_so(self):
+        code, out = self.tap()
+        self.assertEqual(code, 0)
+        self.assertTrue(out["job"]["spawned"], out["job"])
+        job = json.loads(seen.sidecar_path(self.img()).read_text())["rerollJob"]
+        self.assertEqual(job["state"], "running")
+        self.assertEqual(job["key"], "hero-2")
+        brief = Path(job["brief"]).read_text()
+        self.assertIn("warmer light", brief)
+        self.assertIn("reroll_from_recipe.py", brief)
+        self.assertIn("--note 'warmer light'", brief)
+        self.assertIn("freedom:message-myself", brief)
+        self.assertIn("NO Co-Authored-By", brief)
+        self.assertIn("open", brief)
+        calls = self.calls()
+        self.assertEqual(len(calls), 1)
+        self.assertIn("--permission-mode bypassPermissions", calls[0])
+        self.assertIn(job["brief"], calls[0])
+        item = [i for i in wb.board_view("heroes")["items"] if i["key"] == "hero-2"][0]
+        self.assertEqual(item["job"]["state"], "running")
+
+    def test_a_second_tap_while_it_runs_never_spawns_a_second_job(self):
+        self.assertEqual(self.tap()[0], 0)
+        # The card refuses the tap outright, keep or re-roll ...
+        self.assertEqual(self.tap(note="again")[0], 2)
+        self.assertEqual(self.tap(verdict="keep")[0], 2)
+        # ... and the spawn itself refuses, even when called past the tap.
+        again = wb.spawn_reroll("heroes", wb.find_item("heroes", "hero-2"), note="again")
+        self.assertFalse(again["spawned"])
+        self.assertEqual(again["why"], "already re-rolling")
+        self.assertEqual(len(self.calls()), 1)
+        self.assertEqual(len(list((self.state / "jobs").glob("*.md"))), 1)
+        # A different work re-rolls independently.
+        self.assertTrue(self.tap(n=3)[1]["job"]["spawned"])
+
+    def test_the_end_of_the_run_releases_the_card(self):
+        os.environ["FAKE_SLEEP"] = "0"
+        self.tap()
+        self.wait_done()
+        job = json.loads(seen.sidecar_path(self.img()).read_text())["rerollJob"]
+        self.assertEqual((job["state"], job["exit"]), ("done", 0))
+        self.assertIsNone(wb.job_view(self.img()))
+        self.assertTrue(self.tap(note="one more")[1]["job"]["spawned"])
+
+    def test_a_failed_run_shows_on_the_card_until_a_new_take_lands(self):
+        os.environ.update({"FAKE_SLEEP": "0", "FAKE_EXIT": "3"})
+        self.tap()
+        self.wait_done()
+        self.assertEqual(wb.job_view(self.img()), {"state": "failed", "exit": 3,
+                                                  "log": wb.job_view(self.img())["log"]})
+        _png(self.img(), "the new take")
+        self.assertIsNone(wb.job_view(self.img()))
+
+    def test_a_dead_jobs_lock_is_taken_over(self):
+        p = subprocess.Popen(["true"])
+        p.wait()
+        lp = wb.lock_path(self.img())
+        lp.parent.mkdir(parents=True, exist_ok=True)
+        lp.write_text(json.dumps({"pid": p.pid}))
+        self.assertIsNone(wb.job_in_flight(self.img()))
+        self.assertTrue(self.tap()[1]["job"]["spawned"])
+
+    def test_opting_out_keeps_rerolls_manual(self):
+        os.environ["ABU_WORKS_AUTOREROLL"] = "0"
+        code, out = self.tap()
+        self.assertEqual(code, 0)
+        self.assertFalse(out["job"]["spawned"])
+        self.assertFalse(wb.lock_path(self.img()).exists())
+        self.assertEqual(self.calls(), [])
+        self.assertEqual(seen.read_seen(self.img())["verdict"], "reroll")
+
+
 class MountFileTest(unittest.TestCase):
     def test_mounts_the_copy_that_survives_an_update(self):
         with tempfile.TemporaryDirectory() as d:
@@ -258,7 +390,14 @@ class PageTest(Base):
 
     def test_the_page_serves_records_and_announces(self):
         self.open()
+        # hero-3 is mid re-roll: a live lock and a running job in its sidecar.
+        lp = wb.lock_path(self.works / "hero-3.png")
+        lp.parent.mkdir(parents=True, exist_ok=True)
+        lp.write_text(json.dumps({"pid": os.getpid()}))
+        wb._set_job(self.works / "hero-3.png", {"state": "running", "pid": os.getpid()})
         out = self.drive()
+        self.assertIn("Re-rolling now", out["page"]["text"])
+        self.assertEqual(out["page"]["text"].count('<p class="verdict rolling">'), 1)
         page = out["page"]["text"]
         self.assertEqual(out["page"]["code"], 200)
         self.assertIn("Batch 1 of 2", page)

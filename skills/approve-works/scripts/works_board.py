@@ -50,6 +50,19 @@ Verbs:
     works_board.py rerolls <id> [--json]          every REROLL with its note, and the exact
                                                   `reroll-slot` command that applies it
     works_board.py close <id>                     take a finished board off the page
+    works_board.py job-done --image PNG --exit N
+                                                  the detached re-roll's wrapper calls this
+                                                  when its run ends; nobody else does
+
+A RE-ROLL TAP RE-ROLLS BY ITSELF. The page records the tap with `tap --spawn`, which starts a
+DETACHED job (its own session, so a restart of the store or of any watching agent does not
+kill it): a `claude -p` run reading a generated brief that re-rolls that one work from its
+recipe with the note applied, puts the new take back on the board, commits, pushes and texts
+the operator. Earned 2026-09-25: a tap sat unread because the session meant to be watching had
+been restarted, and every restart kills an in-session watcher. While a job for a key is in
+flight a second tap on that card is REFUSED, so it can never spawn a second job. The job is
+recorded in the sidecar under `rerollJob`, so the card shows "re-rolling". Set
+`ABU_WORKS_AUTOREROLL=0` to keep re-rolls manual (`rerolls <id>` still prints the commands).
 """
 from __future__ import annotations
 
@@ -59,8 +72,10 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -288,7 +303,8 @@ def _state(img: Path) -> dict:
     if verdict and seen.get("digest") and seen["digest"] != now:
         verdict = None
     note = seen.get("note") or {}
-    return {"boarded": boarded, "verdict": verdict,
+    return {"job": job_view(img),
+            "boarded": boarded, "verdict": verdict,
             "why": seen.get("why") if verdict else None,
             "note": note.get("text") if verdict else None,
             "audio": note.get("audio") if verdict else None,
@@ -382,6 +398,10 @@ def tap(img: Path, verdict: str, note: str = "", audio: list[str] | None = None)
     note = (note or "").strip()
     if verdict not in OPTIONS:
         raise ValueError(f"a works board offers {OPTIONS}; {verdict!r} is not one of them")
+    live = job_in_flight(img)
+    if live:
+        raise ValueError(f"{img.name} is already re-rolling (since {live.get('startedOn', '?')}); "
+                         f"the new take comes back on this card, judge that one")
     why = note or (NOTELESS if verdict == REROLL_V else "")
     seen = record_tap(img, verdict, why=why)
     doc = _read_doc(img)
@@ -398,6 +418,263 @@ def reroll_command(img: str, note: str | None) -> str:
     if note:
         cmd += ["--note", note]
     return " ".join(shlex.quote(c) for c in cmd)
+
+
+# ── the detached re-roll ────────────────────────────────────────────────────────────────────
+#
+# THE LOCK IS THE GUARD, the sidecar is only what the page reads. The lock is a file created with
+# O_EXCL, so two taps racing each other cannot both create it, and it names the wrapper's pid, so
+# a job that died without cleaning up (a reboot, a kill) is recognised as dead and its lock taken
+# over rather than blocking that card forever. A lock written a moment before its pid is known is
+# in flight for PENDING_GRACE seconds.
+
+AUTOREROLL_ENV = "ABU_WORKS_AUTOREROLL"
+CLAUDE_ENV = "ABU_WORKS_REROLL_CLAUDE"   # the binary to run; tests point it at a fake
+JOB_KEY = "rerollJob"
+PENDING_GRACE = 120
+OFF_WORDS = ("0", "off", "false", "no", "manual")
+
+
+def autoreroll_enabled(env=None) -> bool:
+    env = os.environ if env is None else env
+    return str(env.get(AUTOREROLL_ENV, "1")).strip().lower() not in OFF_WORDS
+
+
+def claude_bin(env=None) -> str | None:
+    env = os.environ if env is None else env
+    if env.get(CLAUDE_ENV):
+        return env[CLAUDE_ENV]
+    found = shutil.which("claude", path=env.get("PATH"))
+    if found:
+        return found
+    # The store runs under launchd, whose PATH is whatever its plist says.
+    for c in (Path.home() / ".local" / "bin" / "claude", Path.home() / ".claude" / "local" / "claude",
+              Path("/opt/homebrew/bin/claude"), Path("/usr/local/bin/claude")):
+        if c.exists():
+            return str(c)
+    return None
+
+
+def jobs_dir() -> Path:
+    return state_dir() / "jobs"
+
+
+def lock_path(img: Path) -> Path:
+    import hashlib
+    img = Path(img).resolve()
+    h = hashlib.sha256(str(img).encode()).hexdigest()[:10]
+    return jobs_dir() / f"{slugify(img.name.rsplit('.', 1)[0])}-{h}.lock"
+
+
+def _alive(pid) -> bool:
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    try:
+        # Reap it if it is OUR child and has exited, or a zombie reads as alive forever.
+        if os.waitpid(pid, os.WNOHANG)[0] == pid:
+            return False
+    except ChildProcessError:
+        pass
+    except OSError:
+        pass
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _read_lock(lp: Path) -> dict | None:
+    try:
+        return json.loads(lp.read_text() or "{}")
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError):
+        return {}
+
+
+def job_in_flight(img) -> dict | None:
+    """The live job re-rolling `img`, or None. A dead job's lock does not count."""
+    lp = lock_path(img)
+    info = _read_lock(lp)
+    if info is None:
+        return None
+    if info.get("pid"):
+        return info if _alive(info["pid"]) else None
+    try:
+        age = time.time() - lp.stat().st_mtime
+    except OSError:
+        return None
+    return info if age < PENDING_GRACE else None
+
+
+def claim(img) -> bool:
+    """Take the lock for `img`. False when a live job already holds it."""
+    lp = lock_path(img)
+    lp.parent.mkdir(parents=True, exist_ok=True)
+    for _ in range(2):
+        try:
+            fd = os.open(lp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        except FileExistsError:
+            if job_in_flight(img):
+                return False
+            try:
+                lp.unlink()          # a dead job's lock: take it over
+            except FileNotFoundError:
+                pass
+            continue
+        with os.fdopen(fd, "w") as f:
+            json.dump({"image": str(Path(img).resolve()), "startedOn": _now()}, f)
+        return True
+    return False
+
+
+def _set_job(img: Path, job: dict | None) -> None:
+    # Top level of the sidecar, never under `seen`: re-boarding the new take clears `seen`.
+    doc = _read_doc(img)
+    if job is None:
+        doc.pop(JOB_KEY, None)
+    else:
+        doc[JOB_KEY] = job
+    _write_doc(img, doc)
+
+
+def job_view(img: Path) -> dict | None:
+    """What the card shows about a re-roll job: running, or ended without a new take."""
+    job = _read_doc(img).get(JOB_KEY)
+    if not job:
+        return None
+    if job.get("state") == "running":
+        if job_in_flight(img):
+            return {"state": "running", "startedOn": job.get("startedOn"), "log": job.get("log")}
+        job = {**job, "state": "stalled"}
+    if job.get("state") in ("failed", "stalled") and job.get("digestAtStart") == digest(img):
+        return {"state": job["state"], "exit": job.get("exit"), "log": job.get("log")}
+    return None
+
+
+def _git_root(p: Path) -> Path:
+    try:
+        r = subprocess.run(["git", "-C", str(p), "rev-parse", "--show-toplevel"],
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode == 0 and r.stdout.strip():
+            return Path(r.stdout.strip())
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return p
+
+
+def job_brief(*, bid: str, item: dict, board: dict, note: str, audio: list[str],
+              report: Path) -> str:
+    img, title = item["image"], item["title"]
+    manifest = board.get("manifest", "")
+    q = shlex.quote
+    note_line = (f'Their note, verbatim:\n\n> {note.replace(chr(10), chr(10) + "> ")}\n' if note
+                 else "They left no note: roll it again from the same recipe.\n")
+    reroll = f"python3 {q(str(REROLL))} {q(img)}" + (f" --note {q(note)}" if note else "")
+    reopen = (f"python3 {q(str(Path(__file__).resolve()))} open {q(manifest)} --id {q(bid)} "
+              f"--title {q(board.get('title') or bid)} --no-mount")
+    phone = board.get("phone")
+    return f"""# Re-roll ONE work: {title} (detached run, spawned by the works board)
+
+The operator tapped RE-ROLL on the works board `{bid}` at {_now()} for `{item['key']}`.
+{note_line}
+{"Spoken note audio: " + ", ".join(audio) if audio else ""}
+
+- Image: `{img}`
+- Recipe: `{item.get('recipe') or '(none recorded beside the image)'}`
+- Manifest: `{manifest}`
+- The verdict and note: `{img}.readback.json`
+- What it is for: {item.get('context') or '(no context line)'}
+
+Work SYNCHRONOUSLY to the end. Do not end your turn between steps, and do not wait for anyone.
+
+1. Read the manifest WHOLE (every top-level field, not only this item's entry: a batch's rules
+   live there), this item's entry, and the recipe. Every rule they carry binds the new roll.
+   Where the note conflicts with a rule, the rule wins; say so in the report.
+2. Re-roll with the `abu:reroll-slot` skill: `{reroll}`
+   It keeps the prior roll. If the note changes cast, look, text or setting, that is the wrong
+   verb: render through `abu:on-brand-image`'s entity route as the recipe shows, and write the
+   recipe beside the image.
+3. Read the result back at FULL size against the note and every rule (`render-readback`;
+   `crop_zoom.py` before calling a detail). Re-roll up to 4 times. Keep each reject in
+   `rejected/` beside the image with the reason.
+4. Put the new take back on the board: `{reopen}`
+   Never GET the page's image route and never screenshot the board: that records a serve the
+   operator never saw. If you did, run the same command again with `--restamp`.
+5. Commit ONLY the files this re-roll wrote, with explicit FILE pathspecs (never a directory,
+   never `git add -A`, never `git stash`), a plain message, NO Co-Authored-By line, then push.
+   Other sessions work in these folders: read `git status --porcelain` first and leave every
+   file you did not write alone.
+6. Text the operator ONE line through `freedom:message-myself`: that {title} is back on the
+   board and what changed.{" Link: " + phone if phone else ""} If you could not finish, text
+   one line saying what stopped you instead.
+
+Never print a credentials file. Write your report to `{report}`.
+"""
+
+
+def spawn_reroll(bid: str, item: dict, note: str = "", audio: list[str] | None = None,
+                 env=None) -> dict:
+    """Start the detached re-roll for one work, unless one is already running for it."""
+    env = dict(os.environ if env is None else env)
+    img = Path(item["image"]).resolve()
+    if not autoreroll_enabled(env):
+        return {"spawned": False, "why": f"{AUTOREROLL_ENV}=0: re-rolls are manual here"}
+    claude = claude_bin(env)
+    if not claude:
+        return {"spawned": False, "why": "no `claude` on this machine to run the re-roll"}
+    if not claim(img):
+        return {"spawned": False, "why": "already re-rolling", "job": job_in_flight(img)}
+    try:
+        board = read_board(bid)
+    except ValueError:
+        board = {"id": bid}
+    stamp_ = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    base = jobs_dir() / f"{bid}--{item['key']}-{stamp_}"
+    brief, log, report = (Path(str(base) + s) for s in (".md", ".log", ".REPORT.md"))
+    brief.write_text(job_brief(bid=bid, item=item, board=board, note=note, audio=audio or [],
+                               report=report))
+    q = shlex.quote
+    wrapper = (f"{q(claude)} -p {q('Read ' + str(brief) + ' and do exactly what it says.')} "
+               f"--permission-mode bypassPermissions >> {q(str(log))} 2>&1; code=$?; "
+               f'echo "EXIT $code" >> {q(str(log))}; '
+               f"{q(sys.executable)} {q(str(Path(__file__).resolve()))} job-done "
+               f"--image {q(str(img))} --exit $code >> {q(str(log))} 2>&1")
+    env["ABU_WORKS_BOARDS"] = str(state_dir())
+    env["PATH"] = os.pathsep.join([str(Path(claude).parent), "/opt/homebrew/bin", "/usr/local/bin",
+                                   str(Path.home() / ".local" / "bin"), env.get("PATH", "")])
+    try:
+        # Its own session (setsid) under nohup: the store restarting, or the tap's own process
+        # exiting a moment from now, must not take the run with it.
+        p = subprocess.Popen(["nohup", "/bin/sh", "-c", wrapper], cwd=str(_git_root(img.parent)),
+                             env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True)
+    except OSError as e:
+        lock_path(img).unlink(missing_ok=True)
+        return {"spawned": False, "why": f"could not start the re-roll: {e}"}
+    job = {"state": "running", "pid": p.pid, "board": bid, "key": item["key"],
+           "startedOn": _now(), "brief": str(brief), "log": str(log), "report": str(report),
+           "digestAtStart": digest(img)}
+    lock_path(img).write_text(json.dumps({"image": str(img), "pid": p.pid,
+                                          "startedOn": job["startedOn"], "log": str(log)}))
+    _set_job(img, job)
+    return {"spawned": True, "job": job}
+
+
+def job_done(img: Path, code: int) -> dict:
+    """The wrapper's last act: record how the run ended and release the lock."""
+    img = Path(img).resolve()
+    doc = _read_doc(img)
+    job = dict(doc.get(JOB_KEY) or {})
+    job.update({"state": "done" if code == 0 else "failed", "exit": code, "finishedOn": _now()})
+    _set_job(img, job)
+    lock_path(img).unlink(missing_ok=True)
+    return job
 
 
 # ── mounting ────────────────────────────────────────────────────────────────────────────────
@@ -460,6 +737,11 @@ def cmd_open(a) -> int:
         return 2
     links = {"ok": False, "why": "--no-mount"} if a.no_mount else mount()
     nb = max(i["batch"] for i in items)
+    phone = with_path(links.get("phone"), f"b/{bid}/1") if links.get("ok") else prior.get("phone")
+    if phone:
+        rec = json.loads(board_path(bid).read_text())
+        rec["phone"] = phone
+        board_path(bid).write_text(json.dumps(rec, indent=2))
     payload = {"board": bid, "title": title, "items": len(items), "batches": nb,
                "stamped": counts, "refused": refused, "mount": links,
                "phone": with_path(links.get("phone"), f"b/{bid}/1") if links.get("ok") else None,
@@ -544,12 +826,29 @@ def cmd_tap(a) -> int:
     except ValueError as e:
         print(f"works-board: {e}", file=sys.stderr)
         return 2
+    job = None
+    if a.spawn and seen["verdict"] == REROLL_V:
+        if not (a.board and a.key):
+            job = {"spawned": False, "why": "--spawn needs --board and --key"}
+        else:
+            job = spawn_reroll(a.board, find_item(a.board, a.key), note=a.note or "",
+                               audio=a.audio or [])
     if a.json:
         print(json.dumps({"ok": True, "image": str(img), "sidecar": str(sidecar_path(img)),
-                          "verdict": seen["verdict"], "note": (seen.get("note") or {}).get("text")}))
+                          "verdict": seen["verdict"], "note": (seen.get("note") or {}).get("text"),
+                          "job": job}))
         return 0
     print(f"[works-board] recorded {seen['verdict']} for {img.name}"
           + (f" ({seen['why']})" if seen.get("why") else ""))
+    if job:
+        print(f"[works-board] re-roll job: " + ("started, log " + job["job"]["log"]
+                                                if job.get("spawned") else job.get("why", "")))
+    return 0
+
+
+def cmd_job_done(a) -> int:
+    job = job_done(Path(a.image), int(a.exit))
+    print(f"[works-board] re-roll job for {Path(a.image).name}: {job['state']} (exit {a.exit})")
     return 0
 
 
@@ -642,7 +941,13 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--verdict", required=True, choices=OPTIONS)
     t.add_argument("--note", default="")
     t.add_argument("--audio", action="append", default=[])
+    t.add_argument("--spawn", action="store_true",
+                   help="on a re-roll, start the detached re-roll job (the page passes this)")
     t.add_argument("--json", action="store_true")
+
+    d = sub.add_parser("job-done", help="the detached re-roll's wrapper records how it ended")
+    d.add_argument("--image", required=True)
+    d.add_argument("--exit", required=True, type=int)
 
     s = sub.add_parser("status", help="what is judged and what is not")
     s.add_argument("id")
@@ -660,7 +965,7 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("tap needs a <png>, or --board and --key")
     return {"open": cmd_open, "boards": cmd_boards, "batch": cmd_batch, "served": cmd_served,
             "tap": cmd_tap, "item": cmd_item, "status": cmd_status, "rerolls": cmd_rerolls,
-            "close": cmd_close}[a.cmd](a)
+            "close": cmd_close, "job-done": cmd_job_done}[a.cmd](a)
 
 
 if __name__ == "__main__":
