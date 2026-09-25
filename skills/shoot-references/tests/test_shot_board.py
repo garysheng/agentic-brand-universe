@@ -307,7 +307,9 @@ class FrappCardsAreTellable(unittest.TestCase):
 
     def test_the_queue_is_the_entity_folder_not_the_launch_list(self):
         self.assertIn('join(UNIVERSE, "reference", ENTITY)', self.SRC)
-        self.assertIn("readdirSync(dir, { withFileTypes: true })", self.SRC, "the entity folder AND each look folder one level down")
+        # The entity folder AND each look folder one level down, through the shared rule
+        # (frapps/candidates.mjs), whose scan is exercised in NeverARetiredTake.
+        self.assertIn("entityCandidates(dir)", self.SRC)
 
     def test_urls_are_relative_and_keyed_by_stem(self):
         self.assertNotIn('src="${base}/shot/', self.SRC, "an absolute /shot/ URL breaks under the store's prefix")
@@ -349,6 +351,69 @@ class OneBoardPerEntity(unittest.TestCase):
             with mock.patch.object(sb.display, "node", return_value=None):
                 out = sb.launch_frapp([Path("/tmp/a.png")], None, None)
         self.assertFalse(out["ok"])
+
+class NeverARetiredTake(unittest.TestCase):
+    """The board shows the CURRENT candidate per slot and nothing the record has set aside.
+
+    Earned 2026-09-24: the page read `witney/superseded-unlit-2026-09-24/` as a look folder, and
+    an earlier roll sat beside the live plate, so Gary was shown superseded and rejected rolls.
+    """
+
+    def test_board_refuses_a_rejected_take_and_writes_no_record(self):
+        with tempfile.TemporaryDirectory() as d:
+            u = _universe(Path(d))
+            (u / "reference" / "hero" / "rejected").mkdir()
+            p = u / "reference" / "hero" / "rejected" / "back.png"
+            p.write_bytes(b"\x89PNGx")
+            self.assertEqual(sb.main(["board", "--universe", str(u), "--entity", "hero", str(p)]), 2)
+            self.assertFalse(seen.sidecar_path(p).exists())
+
+    def test_board_refuses_a_superseded_plate_and_an_earlier_roll(self):
+        with tempfile.TemporaryDirectory() as d:
+            u = _universe(Path(d))
+            sup = u / "reference" / "hero" / "superseded-unlit-2026-09-24"
+            sup.mkdir()
+            old = sup / "back.png"
+            old.write_bytes(b"\x89PNGo")
+            roll = _png(u, "back.r1.png")
+            for p in (old, roll):
+                with self.subTest(p=p.name):
+                    self.assertEqual(sb.main(["board", "--universe", str(u), "--entity", "hero",
+                                              str(p)]), 2)
+
+    def test_a_live_plate_beside_them_still_boards(self):
+        with tempfile.TemporaryDirectory() as d:
+            u = _universe(Path(d))
+            live = _png(u, "back.png")
+            _png(u, "back.r1.png")
+            _json_of(["board", "--universe", str(u), "--entity", "hero", "--json", str(live)])
+            self.assertTrue(seen.read_seen(live).get("board"))
+
+    def test_the_page_scans_through_the_shared_rule(self):
+        src = (Path(__file__).resolve().parents[1] / "frapps" / "shot-board.mjs").read_text()
+        self.assertIn('from "./candidates.mjs"', src)
+        self.assertIn("entityCandidates(dir)", src)
+        self.assertNotIn('new Set(["photos", "rejected", "candidates"])', src,
+                         "a skip list here is how superseded folders were read as looks")
+
+    @unittest.skipUnless(display.node(), "no node on this machine")
+    def test_the_page_scan_skips_retired_folders_and_rolls(self):
+        mjs = Path(__file__).resolve().parents[1] / "frapps" / "candidates.mjs"
+        with tempfile.TemporaryDirectory() as d:
+            ent = Path(d) / "witney"
+            for rel in ("back.png", "back.r1.png", "casual/front.png", "casual/rejected/x.png",
+                        "rejected/back-1.png", "superseded-unlit-2026-09-24/back.png",
+                        "photos/src.jpg", "notes.md"):
+                f = ent / rel
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_bytes(b"x")
+            js = (f"import {{ entityCandidates }} from {json.dumps(mjs.as_uri())};"
+                  f"console.log(JSON.stringify(entityCandidates({json.dumps(str(ent))})));")
+            out = subprocess.run([display.node(), "--input-type=module", "-e", js],
+                                 capture_output=True, text=True, check=True).stdout
+            got = sorted(Path(p).relative_to(ent).as_posix() for p in json.loads(out))
+            self.assertEqual(got, ["back.png", "casual/front.png"])
+
 
 if __name__ == "__main__":
     unittest.main()

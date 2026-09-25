@@ -32,6 +32,8 @@ import { spawnSync } from "node:child_process";
 import { join, resolve, dirname, basename } from "node:path";
 import { homedir } from "node:os";
 import { pathToFileURL, fileURLToPath } from "node:url";
+// THE CANDIDATE RULE, one definition for both boards (engine/agenticstory/candidates.py).
+import { entityCandidates, isCandidate } from "./candidates.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SHOT_BOARD = resolve(HERE, "..", "scripts", "shot_board.py");
@@ -121,20 +123,18 @@ function candidates() {
     // (reference/<id>/<look>/*.png). Not `photos/` or `rejected/`, which hold sources and
     // set-aside takes, never candidates. A look's plates sat invisible to the board until
     // 2026-09-18, so a "reused" board showed nothing new and the lock refused, correctly.
-    const SKIP = new Set(["photos", "rejected", "candidates"]);
-    try {
-      for (const f of readdirSync(dir, { withFileTypes: true })) {
-        if (f.isFile() && /\.(png|jpe?g|webp)$/i.test(f.name)) set.set(join(dir, f.name), true);
-        else if (f.isDirectory() && !SKIP.has(f.name)) {
-          try {
-            for (const g of readdirSync(join(dir, f.name)))
-              if (/\.(png|jpe?g|webp)$/i.test(g)) set.set(join(dir, f.name, g), true);
-          } catch { /* unreadable look folder */ }
-        }
-      }
-    } catch { /* no folder yet */ }
+    //
+    // WHAT IS NOT A CANDIDATE IS DECIDED BY `isCandidate`, never by a skip list here. This used
+    // to skip exactly `photos`, `rejected` and `candidates`, so `superseded-unlit-2026-09-24/`
+    // was read as a LOOK folder and its retired plates came back as cards, and an earlier roll
+    // kept as `<slot>.r1.png` sat beside the live one (Gary, 2026-09-24: shown superseded and
+    // rejected rolls). The rule is the engine's, applied to every path from the entity folder.
+    for (const p of entityCandidates(dir)) set.set(p, true);
   }
-  return [...set.keys()].sort();
+  // Launch-list images too: a board started on a rejected take refuses it here as well as in
+  // `shot_board.py board`, bounded by the universe's reference folder when there is one.
+  const root = UNIVERSE ? join(UNIVERSE, "reference") : null;
+  return [...set.keys()].filter((p) => isCandidate(p, root)).sort();
 }
 
 /** Take number and render time, so two takes of one shot can never look the same on a card. */

@@ -76,6 +76,7 @@ def _abu_root(start=None) -> Path:
 
 sys.path.insert(0, str(_abu_root() / "engine"))
 from agenticstory import display  # noqa: E402
+from agenticstory.candidates import why_not_candidate  # noqa: E402
 from agenticstory.seen import (  # noqa: E402
     VERDICTS, read_seen, record_board, record_serve, record_tap, seen_caveat, seen_problem,
 )
@@ -324,6 +325,16 @@ def cmd_board(a) -> int:
     missing = [str(p) for p in images if not p.exists()]
     if missing:
         print("shot-board: no file at " + ", ".join(missing), file=sys.stderr)
+        return 2
+    # NEVER A TURNED-DOWN OR RETIRED TAKE. A shot under `rejected/` or `superseded*/`, or an
+    # earlier roll kept as `<slot>.rN.png`, has already been judged; boarding it asks the
+    # operator to judge it again and a `keep` would lock art somebody turned down (v0.52).
+    stale = [f"{p}: {why}" for p in images
+             for why in [why_not_candidate(p, Path(universe) / "reference" if universe else None)]
+             if why]
+    if stale:
+        print("shot-board: refusing to board what is not a current candidate:\n  "
+              + "\n  ".join(stale), file=sys.stderr)
         return 2
 
     # WHICH SURFACE CAN SHOW THE PICTURE. A decision answerable from words stays a card; one
