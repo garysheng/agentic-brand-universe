@@ -23,7 +23,7 @@
 // as it was and shows the refusal, because a page that advances on a failed save discards work.
 import { existsSync, readdirSync, readFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { spawnSync, execFile } from "node:child_process";
+import { spawnSync, execFile, execFileSync } from "node:child_process";
 import { join, resolve, dirname, basename, extname } from "node:path";
 import { homedir } from "node:os";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -104,7 +104,7 @@ function cardHtml(it, { bid, base, token }) {
       + `${it.note ? ` · ${esc(it.note)}` : ""}${it.audio && it.audio.length ? " · voice note kept" : ""}</p>`
     : "";
   return `<section class="card${it.verdict ? " judged" : ""}" data-key="${esc(it.key)}" data-verdict="${esc(it.verdict || "")}">
-    <a href="${src}" target="_blank" rel="noopener"><img class="work" src="${src}" alt="${esc(it.title)}" loading="eager"></a>
+    <a href="${src}${src.includes("?") ? "&" : "?"}full=1" target="_blank" rel="noopener"><img class="work" src="${src}" alt="${esc(it.title)}" loading="eager"></a>
     <h2>${esc(it.title)} <span class="take">take ${Number(it.take) || 1}</span></h2>
     ${it.context ? `<p class="ctx">${esc(it.context)}</p>` : ""}
     <p class="file">${esc(it.file)}</p>
@@ -289,7 +289,16 @@ export function handler(req, res, { token = "", base = "" } = {}) {
     let bytes;
     try { bytes = readFileSync(it.image); } catch (e) { res.writeHead(500); res.end(String(e.message || e)); return true; }
     const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
-    const type = MIME[extname(it.image).toLowerCase()] || "application/octet-stream";
+    let type = MIME[extname(it.image).toLowerCase()] || "application/octet-stream";
+    // PHONE PREVIEW (Gary, 2026-09-25: "The viewer should show a compressed version of images so
+    // they load faster on mobile"). The WITNESS stays the original: the digest above is of the real
+    // file, so a verdict still binds to the bytes that will ship. What goes over the wire is a cached
+    // 1400px JPEG, a tenth of the size. `?full=1` sends the original.
+    const full = new URL(req.url, "http://x").searchParams.get("full") === "1";
+    if (!full) {
+      const prev = previewFor(it.image, digest);
+      if (prev) { bytes = prev; type = "image/jpeg"; }
+    }
     if (req.method === "HEAD") {
       res.writeHead(200, { "content-type": type, "cache-control": "no-store", "content-length": bytes.length });
       res.end();
@@ -365,4 +374,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const i = argv.indexOf("--port");
   serveFrapp({ name: NAME, port: Number(i > -1 ? argv[i + 1] : 7463) || 7463, title: frapp.title,
     blurb: frapp.blurb, needsSecureContext: true, open: !argv.includes("--no-open"), handler });
+}
+
+// A cached phone-sized JPEG of `image`, keyed by the original's digest so an edit re-renders it.
+// macOS `sips` does the resize with no dependency; any failure falls back to the original.
+function previewFor(image, digest) {
+  try {
+    const dir = join(STATE, "previews"); mkdirSync(dir, { recursive: true });
+    const out = join(dir, `${digest}.jpg`);
+    if (!existsSync(out)) {
+      execFileSync("sips", ["-Z", "1400", "-s", "format", "jpeg", "-s", "formatOptions", "72", image, "--out", out], { stdio: "ignore", timeout: 30000 });
+    }
+    return readFileSync(out);
+  } catch { return null; }
 }
