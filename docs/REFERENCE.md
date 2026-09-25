@@ -38,6 +38,7 @@ or a set of page heroes without ever declaring canon.
 | `add-setting` | Add ONE setting (a location) to an Agentic Brand Universe (interview its fixed geometry, fixed camera angles, and dressing, reuse-first via casting sweep, then scaffold a typed `setting` entity with SPEC §12's contract slots (turnaround, per-angle empty plates, blueprint, plus map/blocking/dressing descriptor prose) and ready-to-run generation prompts). |  |
 | `add-story` | Add ONE story to an Agentic Brand Universe as a typed StorySpec (a medium-neutral work over canon, NOT an `add-entity` kind). |  |
 | `add-visual-metaphor` | Add ONE visual metaphor (a spine-object a whole property argues through, not merely a location) to an Agentic Brand Universe (interview the object and the states it argues across, reuse-first via casting sweep, then scaffold a typed `visual-metaphor` entity with SPEC §12's setting-style contract: a locked master plus per-state plates, and map/blocking/dressing descriptor prose). |  |
+| `approve-works` | Put a BATCH OF WORKS in front of the operator for approval on their phone, one batch per page, and record what they decide about each. | yes |
 | `book-doctor` | Grade a RENDERED book on local disk against what its render-spec declares, BEFORE it is delivered anywhere. | yes |
 | `canon-resolve` | Before writing ANY render prompt in an Agentic Brand Universe, resolve every named character, setting, and motif to its canon entity: output the locked sheet paths (requiredForRender), the invariants to enforce, and the entity's prose rules, then run the load-bearing gate (assert.sh spread\|story). |  |
 | `casting-sweep` | Before naming any NEW character, setting, or motif in a story, sweep the universe's canon for an existing entity that fits the role natively, and emit a casting table (each role: reuse an entity id, or NEW plus a one-line justification). |  |
@@ -88,7 +89,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.51) |
+| `init` | scaffold a new universe (conforms to spec v0.52) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -163,6 +164,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.52 | a batch of WORKS is approved on a board too, and no board shows what > is not a current candidate. |
 | v0.51 | the board SHOWS the art, because an `AskUserQuestion` preview is > TEXT. |
 | v0.50 | what COUNTS as an operator having seen a shot, and the half of the > no-command rule a gate cannot see. |
 | v0.49 | three rules that were written as gates and enforced only by prose. |
