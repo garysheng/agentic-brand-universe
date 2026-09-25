@@ -87,6 +87,26 @@ from agenticstory.seen import (  # noqa: E402
 SLUG = "abu-works"             # the store slug, so the phone URL is the same for every board
 SOURCE = "abu-works-board"     # the bus source every tap is announced under
 FRAPP = HERE.parent / "frapps" / "works-board.mjs"
+# The marketplace clone is updated IN PLACE by `/plugin update`; the plugin cache is versioned and
+# the old version is pruned on the next update, and a worktree is swept when its branch lands.
+MARKETPLACE_FRAPP = (Path.home() / ".claude" / "plugins" / "marketplaces" / "agentic-brand-universe"
+                     / "skills" / "approve-works" / "frapps" / "works-board.mjs")
+
+
+def mount_file(env=None) -> Path:
+    """The page file the store should import: one that will still exist after the next update.
+
+    The store keeps the path it was given. A mount made from the versioned plugin cache or from a
+    worktree works until an update prunes that directory or the branch lands, and then the phone
+    link dies with nothing reporting it (2026-09-25, when the first board was mounted from a
+    worktree). `ABU_WORKS_FRAPP` overrides, for iterating on the page itself.
+    """
+    env = os.environ if env is None else env
+    if env.get("ABU_WORKS_FRAPP"):
+        return Path(env["ABU_WORKS_FRAPP"]).expanduser().resolve()
+    if MARKETPLACE_FRAPP.is_file():
+        return MARKETPLACE_FRAPP
+    return FRAPP
 MOUNT = HERE.parent / "frapps" / "mount.mjs"
 REROLL = ABU / "skills" / "reroll-slot" / "scripts" / "reroll_from_recipe.py"
 
@@ -388,7 +408,7 @@ def mount(env=None) -> dict:
     if not node:
         return {"ok": False, "why": "no `node` on this machine"}
     try:
-        r = subprocess.run([node, str(MOUNT), "--slug", SLUG, "--file", str(FRAPP)],
+        r = subprocess.run([node, str(MOUNT), "--slug", SLUG, "--file", str(mount_file(env))],
                            capture_output=True, text=True, timeout=90)
     except (OSError, subprocess.TimeoutExpired) as e:
         return {"ok": False, "why": f"could not run the mount: {e}"}

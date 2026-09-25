@@ -197,6 +197,18 @@ class VerdictTest(Base):
         self.assertEqual(wb.find_item("heroes", "hero-6")["batch"], 2)
 
 
+class MountFileTest(unittest.TestCase):
+    def test_mounts_the_copy_that_survives_an_update(self):
+        with tempfile.TemporaryDirectory() as d:
+            stable = Path(d) / "works-board.mjs"
+            stable.write_text("")
+            with mock.patch.object(wb, "MARKETPLACE_FRAPP", stable):
+                self.assertEqual(wb.mount_file({}), stable)
+                self.assertEqual(wb.mount_file({"ABU_WORKS_FRAPP": "/x/dev.mjs"}), Path("/x/dev.mjs"))
+            with mock.patch.object(wb, "MARKETPLACE_FRAPP", Path(d) / "missing.mjs"):
+                self.assertEqual(wb.mount_file({}), wb.FRAPP)
+
+
 NODE = shutil.which("node")
 
 
