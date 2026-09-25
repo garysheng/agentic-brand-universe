@@ -284,6 +284,19 @@ class RerollJobTest(Base):
         item = [i for i in wb.board_view("heroes")["items"] if i["key"] == "hero-2"][0]
         self.assertEqual(item["job"]["state"], "running")
 
+    def test_a_strip_reroll_goes_through_compose_strip_not_reroll_slot(self):
+        rec = self.works / "hero-4.png.recipe.json"
+        rec.write_text(json.dumps({"prompt": "p", "stripSpec": "/u/works/x/strip.json"}))
+        brief = wb.job_brief(bid="heroes", item=wb.find_item("heroes", "hero-4"), board={},
+                             note="panel 2 is too dark", audio=[], report=self.tmp / "r.md")
+        self.assertIn("compose-strip", brief)
+        self.assertIn("strip.py reopen /u/works/x/strip.json", brief)
+        self.assertIn("'panel 2 is too dark'", brief)
+        self.assertNotIn("reroll_from_recipe.py", brief)
+        plain = wb.job_brief(bid="heroes", item=wb.find_item("heroes", "hero-2"), board={},
+                             note="n", audio=[], report=self.tmp / "r.md")
+        self.assertIn("reroll_from_recipe.py", plain)
+
     def test_a_second_tap_while_it_runs_never_spawns_a_second_job(self):
         self.assertEqual(self.tap()[0], 0)
         # The card refuses the tap outright, keep or re-roll ...

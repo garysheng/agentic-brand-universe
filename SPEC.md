@@ -1,10 +1,21 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.52 — 2026-09-25.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.53 — 2026-09-25.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.53 changelog — a STRIP is a spec, and its one recipe passes a wiki's provenance gate by
+> construction.** §4.15: `compose-strip` takes two to four panels (world, entities, refs, scene
+> each), renders every roll through the entity route, records the agent's read-back verdict per
+> roll (a defect needs a reason, the reject is moved to `panels/rejected/`, its counter binds the
+> later rolls; cap is the first roll plus four re-rolls), composes in code, and writes ONE
+> composite recipe (`mode: "composite"`, `compositor`, every panel's exact prompt and every ref at
+> the top level, each panel's full recipe under `panelRecipes`), refusing one that would not pass.
+> Earned by four hand-built strips on 2026-09-25 whose `compose.py` recipes the supersuit.wiki
+> gate refused. A works-board re-roll of a strip reopens a panel instead of re-rolling the
+> composite.
 
 > **v0.52 changelog — a batch of WORKS is approved on a board too, and no board shows what
 > is not a current candidate.** §3.5.1: a works board (`approve-works`) takes a manifest of
@@ -2426,6 +2437,53 @@ relief every picture draws the saying instead of the said. The auditor requires
 at least one relief shot per eight spreads in any book where a single setting
 carries more than 60% of it.
 
+
+### 4.15 Strip (a composite of panels, composed in code) — v0.53
+
+A **strip** is two to four panels (three by default) assembled into one image. It is the shape a
+work takes when it argues in beats: the ask in the real room, the work in agentspace, the result
+coming back. The panels are generated; the strip is not, so its provenance is the provenance of
+each panel plus the name of what assembled them.
+
+**The spec.** A `strip.json` in the work folder names the universe, the composite's `out`, a
+canvas (default 1536x1024, 16px margin and gutter, the gutter colour), a `maxRerolls` (default 4),
+named `promptBlocks`, and 2 to 4 panels. Each panel carries a `beat` (what it argues), a `scene`
+(what is in it), `entities` (rendered through `--entity`, so canon arrives as plates and
+invariants), optional `refs` (resolved against the universe, refused if missing), the ordered
+`blocks` of its prompt with `scene` where the scene sits, and optional `width`/`shift` for the
+crop. The scene and the defect counters are the only free text in a panel prompt. A universe's
+form writes the spec; `compose-strip` knows nothing about any universe.
+
+**The loop, and why it is not one verb.** `render` makes one roll through the provider adapter
+and runs `verify_render.py`; `judge` records the verdict of an agent who LOOKED. A PASS is refused
+while the binding check reports anything, including a fired guard with no verdict. A DEFECT needs
+a reason; the reject, its recipe, readback and prompt are MOVED to `panels/rejected/` with a
+`.reject.json`, never deleted; its `counter` sentence is appended to every later roll of that
+panel. `render` refuses a second roll while one is unjudged, and refuses past the first roll plus
+`maxRerolls`. `reopen` un-keeps a kept panel with a reason and restarts its cap, because a
+person's objection is a new judgement. A verb that rendered, judged and composed in one pass would
+approve its own work.
+
+**The composite recipe**, beside the composite, carries: `asset` (its path under the universe, or
+the wiki path on an export), `mode: "composite"`, `compositor` and `generator`, `provider` and
+`model` (every distinct value across the panels), `prompt` (every panel's EXACT prompt, labelled),
+`refs` (every panel image and every ref every panel recipe lists), `panelRecipes` (each panel's
+full recipe, by panel id), `panels` (beat, world, entities, path, hash, roll count, and every
+reject with its reason), `compose` (canvas, widths, gutters, `borders: null`, `text: null`),
+`stripSpec`, `canon`, `timestamp` and `sha256`. `compose` refuses to write a recipe that fails the
+wiki preset's `validateRecipe` rules (ported rule for rule) OR the stricter completeness check,
+which exists because the gate's composite branch returns after checking the parts: a composite
+with no top-level prompt, refs or timestamp would pass it and leave a reader chasing panel files.
+`--export` writes the wiki's copy (EXIF-transposed, 1600px long edge, WebP q82) with the recipe
+restated for its `--export-asset` and a `derived` block naming the transform.
+
+Earned 2026-09-25: four wiki-hero strips were each built from a long prose brief, each wrote a
+one-off `compose.py`, and each recipe (`provider: "code"`, no prompt, no refs, no model) was
+refused by the supersuit.wiki gate and fixed by hand in the wiki worktree.
+
+**On the works board**, a strip's recipe names its `stripSpec`, so a RE-ROLL tap's detached job is
+briefed to reopen the panel the note is about and recompose, never to re-roll the composite from a
+recipe that records a composition rather than a model call.
 
 ## 5. Evolution & versioning
 

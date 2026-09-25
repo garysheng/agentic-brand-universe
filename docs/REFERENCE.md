@@ -44,6 +44,7 @@ or a set of page heroes without ever declaring canon.
 | `casting-sweep` | Before naming any NEW character, setting, or motif in a story, sweep the universe's canon for an existing entity that fits the role natively, and emit a casting table (each role: reuse an entity id, or NEW plus a one-line justification). |  |
 | `compose-spec` | Scaffold and RE-SYNC a book's render-spec from its StorySpec, filling everything canon determines, enumerating every legal choice canon constrains, and never overwriting authored scene text. | yes |
 | `compose-spread` | Render ONE spread of an Agentic Brand Universe book as an atomic unit — resolve canon, deterministically ASSEMBLE the prompt + refs from canon (register-anchor-first, each in-frame entity's block for its SELECTED look including alt-looks, auto-disambiguation, and negatives COMPUTED from the selected looks so a blanket negative can never fight a canon alt-look), generate, then read back. | yes |
+| `compose-strip` | Compose a STRIP, two to four panels (three by default) assembled into ONE image, from a spec file instead of a prose brief. | yes |
 | `cover` | Create a picture-book cover for a story in an Agentic Brand Universe, at the platform's portrait aspect. | yes |
 | `create-form` | Author a NEW form (a new KIND of work) for an Agentic Brand Universe, extracted from works ACTUALLY MADE, never speculated. | yes |
 | `create-lookbook` | Scaffold a Lookbook (SPEC §4.7.1) — a portable folder (lookbook.json + refs/) that defines a curated but intentionally VARIED visual vocabulary (a wardrobe/fashion, a range of building silhouettes, a set of faces), the complement of a Style Pack. | yes |
@@ -89,7 +90,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.52) |
+| `init` | scaffold a new universe (conforms to spec v0.53) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -164,6 +165,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.53 | a STRIP is a spec, and its one recipe passes a wiki's provenance gate by > construction. |
 | v0.52 | a batch of WORKS is approved on a board too, and no board shows what > is not a current candidate. |
 | v0.51 | the board SHOWS the art, because an `AskUserQuestion` preview is > TEXT. |
 | v0.50 | what COUNTS as an operator having seen a shot, and the half of the > no-command rule a gate cannot see. |

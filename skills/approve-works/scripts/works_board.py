@@ -568,6 +568,32 @@ def _git_root(p: Path) -> Path:
     return p
 
 
+STRIP = ABU / "skills" / "compose-strip" / "scripts" / "strip.py"
+
+
+def _strip_spec(item: dict) -> str:
+    """A composite STRIP names its spec in its recipe (compose-strip, SPEC v0.53 §4.15). Such a
+    work cannot be re-rolled from its recipe as one image: the recipe records a composition, not
+    a model call, so `reroll_from_recipe.py` would have nothing to replay."""
+    rp = item.get("recipe") or (item["image"] + ".recipe.json")
+    try:
+        return str(json.loads(Path(rp).read_text()).get("stripSpec") or "")
+    except (OSError, ValueError):
+        return ""
+
+
+def _strip_step(spec: str, note: str) -> str:
+    q = shlex.quote
+    s = f"python3 {q(str(STRIP))}"
+    return f"""2. This work is a STRIP composed by `abu:compose-strip`; its spec is `{spec}`.
+   Never re-roll the composite as one image. Read `{s} plan {q(spec)}` and each panel's kept
+   roll, decide which panel(s) the note is about, and for each one:
+   `{s} reopen {q(spec)} --panel <id> --reason {q(note or "operator asked for a re-roll")}`
+   then `render`, read the roll back, `judge` it (a DEFECT with --reason and --counter), until it
+   passes. Then `{s} compose {q(spec)}` (add the same `--export` if the manifest names one) and
+   `{s} stage {q(spec)} --manifest <this manifest> --no-mount`."""
+
+
 def job_brief(*, bid: str, item: dict, board: dict, note: str, audio: list[str],
               report: Path) -> str:
     img, title = item["image"], item["title"]
@@ -576,6 +602,7 @@ def job_brief(*, bid: str, item: dict, board: dict, note: str, audio: list[str],
     note_line = (f'Their note, verbatim:\n\n> {note.replace(chr(10), chr(10) + "> ")}\n' if note
                  else "They left no note: roll it again from the same recipe.\n")
     reroll = f"python3 {q(str(REROLL))} {q(img)}" + (f" --note {q(note)}" if note else "")
+    strip_spec = _strip_spec(item)
     reopen = (f"python3 {q(str(Path(__file__).resolve()))} open {q(manifest)} --id {q(bid)} "
               f"--title {q(board.get('title') or bid)} --no-mount")
     phone = board.get("phone")
@@ -596,10 +623,10 @@ Work SYNCHRONOUSLY to the end. Do not end your turn between steps, and do not wa
 1. Read the manifest WHOLE (every top-level field, not only this item's entry: a batch's rules
    live there), this item's entry, and the recipe. Every rule they carry binds the new roll.
    Where the note conflicts with a rule, the rule wins; say so in the report.
-2. Re-roll with the `abu:reroll-slot` skill: `{reroll}`
+{_strip_step(strip_spec, note) if strip_spec else f"""2. Re-roll with the `abu:reroll-slot` skill: `{reroll}`
    It keeps the prior roll. If the note changes cast, look, text or setting, that is the wrong
    verb: render through `abu:on-brand-image`'s entity route as the recipe shows, and write the
-   recipe beside the image.
+   recipe beside the image."""}
 3. Read the result back at FULL size against the note and every rule (`render-readback`;
    `crop_zoom.py` before calling a detail). Re-roll up to 4 times. Keep each reject in
    `rejected/` beside the image with the reason.
