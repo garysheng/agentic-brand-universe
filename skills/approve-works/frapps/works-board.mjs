@@ -280,21 +280,28 @@ export function handler(req, res, { token = "", base = "" } = {}) {
   // the serve recorded, hashed, against the board. An agent cannot call this truthfully about a
   // picture no browser asked for.
   m = /^\/img\/([^/]+)\/([^/]+)$/.exec(path);
-  if (req.method === "GET" && m) {
+  // HEAD answers whether the picture would serve WITHOUT recording a serve, so an agent can
+  // prove the route works over the tailnet and leave the witness untouched for the operator.
+  if ((req.method === "GET" || req.method === "HEAD") && m) {
     const bid = decodeURIComponent(m[1]), key = decodeURIComponent(m[2]);
     const it = findItem(bid, key);
     if (!it || !existsSync(it.image)) { res.writeHead(404); res.end("no such work"); return true; }
     let bytes;
     try { bytes = readFileSync(it.image); } catch (e) { res.writeHead(500); res.end(String(e.message || e)); return true; }
     const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+    const type = MIME[extname(it.image).toLowerCase()] || "application/octet-stream";
+    if (req.method === "HEAD") {
+      res.writeHead(200, { "content-type": type, "cache-control": "no-store", "content-length": bytes.length });
+      res.end();
+      return true;
+    }
     res.on("finish", () => {
       execFile(PY, [WORKS_BOARD, "served", it.image, "--digest", digest, "--url", `/img/${bid}/${key}`],
         { env: { ...process.env, ABU_WORKS_BOARDS: STATE }, timeout: 30000 }, (err, out, stderr) => {
           if (err) journal(NAME, "error", "serve-not-recorded", { work: basename(it.image), out: String(stderr || err.message) });
         });
     });
-    res.writeHead(200, { "content-type": MIME[extname(it.image).toLowerCase()] || "application/octet-stream",
-      "cache-control": "no-store", "content-length": bytes.length });
+    res.writeHead(200, { "content-type": type, "cache-control": "no-store", "content-length": bytes.length });
     res.end(bytes);
     return true;
   }

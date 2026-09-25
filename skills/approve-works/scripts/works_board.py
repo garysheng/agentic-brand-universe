@@ -36,6 +36,7 @@ A manifest that points at one of those is refused for that item, by name, rather
 Verbs:
 
     works_board.py open <manifest> [--id ID] [--title T] [--batch-size 5] [--json] [--no-mount]
+                        [--restamp]
         Register the board, stamp every current candidate that has no board yet (or whose bytes
         changed since, which is what a re-roll does), mount the page in the Freedom frapp store
         at a stable URL, and print the phone link to text the operator.
@@ -321,7 +322,7 @@ def find_item(bid: str, key: str) -> dict:
 
 # ── writes ──────────────────────────────────────────────────────────────────────────────────
 
-def stamp(items: list[dict], bid: str, title: str) -> dict:
+def stamp(items: list[dict], bid: str, title: str, restamp: bool = False) -> dict:
     """Put every current candidate on its batch's board, unless it already is.
 
     A picture already boarded with the SAME bytes keeps its board and any verdict on it, so
@@ -338,7 +339,10 @@ def stamp(items: list[dict], bid: str, title: str) -> dict:
         img = Path(it["image"])
         seen = read_seen(img)
         board = seen.get("board") or {}
-        if board and board.get("digest") == digest(img) and board.get("works") == bid:
+        # --restamp shows an UNJUDGED picture afresh (its serve is forgotten); a verdict is never
+        # thrown away by it, because that would erase the operator's tap.
+        if (board and board.get("digest") == digest(img) and board.get("works") == bid
+                and not (restamp and not seen.get("verdict"))):
             kept += 1
             continue
         rec = record_board(img, question=f"{it['title']} ({title}, batch {it['batch']})",
@@ -430,7 +434,7 @@ def cmd_open(a) -> int:
         "batchSize": a.batch_size, "openedOn": prior.get("openedOn") or _now(),
         "reopenedOn": _now() if prior else None}, indent=2))
     try:
-        counts = stamp(items, bid, title)
+        counts = stamp(items, bid, title, restamp=a.restamp)
     except ValueError as e:
         print(f"works-board: {e}", file=sys.stderr)
         return 2
@@ -588,6 +592,9 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--title", default=None)
     o.add_argument("--batch-size", type=int, default=DEFAULT_BATCH)
     o.add_argument("--no-mount", action="store_true", help="stamp and register, do not mount")
+    o.add_argument("--restamp", action="store_true",
+                   help="board every UNJUDGED work afresh, forgetting its serve (after an agent's "
+                        "own screenshot, so the record never claims the operator saw it)")
     o.add_argument("--json", action="store_true")
 
     b = sub.add_parser("boards", help="every open board")
