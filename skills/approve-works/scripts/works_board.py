@@ -42,6 +42,7 @@ Verbs:
 
     works_board.py boards --json                  every open board, with its progress
     works_board.py batch <id> <n> --json          one batch page's items (the page's only read)
+    works_board.py item <id> <key> --json         one item (the page's image route)
     works_board.py served <png> --digest <hex>    the PAGE calls this, from inside the response
     works_board.py tap <png> --verdict keep|reroll [--note TEXT] [--audio F ...]
     works_board.py status <id> [--json]           what is judged, what is not, what came back
@@ -309,7 +310,10 @@ def board_view(bid: str) -> dict:
 
 
 def find_item(bid: str, key: str) -> dict:
-    for it in board_view(bid)["items"]:
+    """One item by key, WITHOUT reading every sidecar: the page calls this once per image."""
+    b = read_board(bid)
+    items, _ = items_of(Path(b["manifest"]), b.get("batchSize") or DEFAULT_BATCH)
+    for it in items:
         if it["key"] == key:
             return it
     raise ValueError(f"no item {key!r} on board {bid!r}")
@@ -483,6 +487,16 @@ def cmd_batch(a) -> int:
     return 0
 
 
+def cmd_item(a) -> int:
+    try:
+        it = find_item(a.id, a.key)
+    except (ValueError, OSError) as e:
+        print(json.dumps({"ok": False, "error": str(e)}))
+        return 2
+    print(json.dumps(it))
+    return 0
+
+
 def cmd_served(a) -> int:
     try:
         disp = record_serve(Path(a.png).expanduser().resolve(), sent_digest=a.digest, url=a.url)
@@ -584,6 +598,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("n", type=int)
     p.add_argument("--json", action="store_true")
 
+    i = sub.add_parser("item", help="one item by key, as JSON (the page's image route)")
+    i.add_argument("id")
+    i.add_argument("key")
+    i.add_argument("--json", action="store_true")
+
     v = sub.add_parser("served", help="record that a picture's bytes went out (the page calls it)")
     v.add_argument("png")
     v.add_argument("--digest", default=None)
@@ -613,7 +632,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "tap" and not a.png and not (a.board and a.key):
         ap.error("tap needs a <png>, or --board and --key")
     return {"open": cmd_open, "boards": cmd_boards, "batch": cmd_batch, "served": cmd_served,
-            "tap": cmd_tap, "status": cmd_status, "rerolls": cmd_rerolls,
+            "tap": cmd_tap, "item": cmd_item, "status": cmd_status, "rerolls": cmd_rerolls,
             "close": cmd_close}[a.cmd](a)
 
 
