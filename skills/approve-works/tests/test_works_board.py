@@ -243,10 +243,16 @@ class RerollJobTest(Base):
         text = "".join(c.args[0] for c in out.write.call_args_list)
         return code, (json.loads(text) if code == 0 else None)
 
-    def calls(self):
+    def calls(self, expect=1, timeout=10):
+        """The fake's recorded calls, once `expect` have arrived (or the timeout), plus a beat
+        more so a DUPLICATE start would have time to show up too."""
         import time
-        time.sleep(0.5)   # the fake writes its line as soon as it starts
-        return self.mark.read_text().splitlines() if self.mark.exists() else []
+        read = lambda: self.mark.read_text().splitlines() if self.mark.exists() else []
+        end = time.time() + timeout
+        while len(read()) < expect and time.time() < end:
+            time.sleep(0.1)
+        time.sleep(1.0)
+        return read()
 
     def wait_done(self, n=2, timeout=20):
         import time
@@ -325,7 +331,7 @@ class RerollJobTest(Base):
         self.assertEqual(code, 0)
         self.assertFalse(out["job"]["spawned"])
         self.assertFalse(wb.lock_path(self.img()).exists())
-        self.assertEqual(self.calls(), [])
+        self.assertEqual(self.calls(expect=0), [])
         self.assertEqual(seen.read_seen(self.img())["verdict"], "reroll")
 
 
@@ -433,6 +439,44 @@ class PageTest(Base):
         self.assertIn("hero-1: keep", judged[0]["item"])
         self.assertIn("1/7 judged", out["index"]["text"])
         self.assertEqual(out["take"], "heroes--b03")
+
+
+    REROLL_DRIVER = textwrap.dedent("""
+        import { EventEmitter } from "node:events";
+        const { handler } = await import(process.env.PAGE_URL);
+        const t0 = Date.now();
+        const req = new EventEmitter(); req.method = "POST"; req.url = "/answer";
+        const res = new EventEmitter(); let code = 0, text = "";
+        res.writeHead = (c) => { code = c; return res; };
+        res.end = (b) => { text = String(b || "");
+          console.log(JSON.stringify({ code, text, ms: Date.now() - t0 })); process.exit(0); };
+        handler(req, res, { token: "T", base: "/abu-works" });
+        req.emit("data", JSON.stringify({ board: "heroes", n: 1, key: "hero-2", verdict: "reroll", note: "cooler" }));
+        req.emit("end");
+    """)
+
+    def test_a_reroll_through_the_page_starts_the_job_and_answers_at_once(self):
+        import signal, warnings
+        warnings.simplefilter("ignore", ResourceWarning)
+        self.open()
+        fake = self.tmp / "fake-claude"
+        fake.write_text("#!/bin/sh\nsleep 30\n")
+        fake.chmod(0o755)
+        f = self.tmp / "reroll.mjs"
+        f.write_text(self.REROLL_DRIVER)
+        r = subprocess.run([NODE, str(f)], capture_output=True, text=True, timeout=60,
+                           env={**os.environ, "PAGE_URL": PAGE.as_uri(), "ABU_WORKS_AUTOREROLL": "1",
+                                "ABU_WORKS_REROLL_CLAUDE": str(fake)})
+        img = self.works / "hero-2.png"
+        self.addCleanup(lambda: os.killpg(int(json.loads(wb.lock_path(img).read_text())["pid"]),
+                                          signal.SIGKILL) if wb.lock_path(img).exists() else None)
+        out = json.loads(r.stdout.strip().splitlines()[-1])
+        self.assertEqual(out["code"], 200, out)
+        body = json.loads(out["text"])
+        self.assertTrue(body["job"]["spawned"], body)
+        # The page waited on the tap, never on the 30-second run it started.
+        self.assertLess(out["ms"], 15000)
+        self.assertEqual(wb.job_view(img)["state"], "running")
 
 
 if __name__ == "__main__":
