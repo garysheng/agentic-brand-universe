@@ -257,6 +257,10 @@ set needs both pinned or the states are siblings rather than the same thing twic
 
 ## SHOW THE OPERATOR EVERY SHOT. This is a GATE, not a courtesy.
 
+> **A batch of finished WORKS is not this board.** Covers, heroes, cards and any other run of
+> finished images go to `approve-works` (one batch per page, approve or re-roll with a note).
+> Both boards share the candidate rule: never a `rejected/`, `superseded*/` or `.rN` take.
+
 **No shot locks until the human has actually seen it.** Reading an image back yourself is
 QA, not delivery. The two are different and conflating them is the failure this rule exists
 to stop: an agent can crop-zoom forty renders, pass every invariant, lock them all, and the

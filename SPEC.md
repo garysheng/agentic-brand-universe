@@ -1,10 +1,21 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.51 — 2026-09-14.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.52 — 2026-09-25.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.52 changelog — a batch of WORKS is approved on a board too, and no board shows what
+> is not a current candidate.** §3.5.1: a works board (`approve-works`) takes a manifest of
+> finished works (image, title, context line, recipe), puts one batch per page on the
+> operator's phone, and records APPROVE (`keep`) or RE-ROLL (`reroll`) with an optional typed or
+> spoken note in the same `seen` sidecar and under the same refusals as the shot board, so a
+> works verdict and a shot verdict are one fact in one place. A re-roll's note is kept for
+> `reroll-slot --note`. And one rule for both boards (`agenticstory/candidates.py`): nothing under
+> `rejected/`, `superseded*/`, `candidates/`, `photos/` or `pre-reroll-*/`, and no earlier roll
+> kept as `<slug>.rN.png`, is ever boarded; the shot board had read a `superseded-*` folder as a
+> look and shown retired plates beside live ones (2026-09-24).
 
 > **v0.51 changelog — the board SHOWS the art, because an `AskUserQuestion` preview is
 > TEXT.** §3.5: v0.50 proved the operator tapped a card NAMING a file and proved nothing
