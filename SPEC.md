@@ -1,10 +1,24 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.54 — 2026-09-27.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.55 — 2026-09-27.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.55 changelog — gap-register sweep, batch 2: declared vocabulary instead of literals.**
+> §12: `contract.anchorShot` names a visual-metaphor's anchor plate (default `master`, G4);
+> `contract.blueprintWaived: "<reason>"` waives the blueprint for a visual-metaphor with no
+> massable geometry and is reported, not honoured, on a setting (G6); `abu add-look` authors an
+> alt-look and refuses one with no face source, `--chain-from` a sibling era enforcing shoot order
+> (G18); `structured.render.poses.<key>.dropSheets` drops a contradicted base sheet exactly as a
+> look's does (G1); `structured.alsoKnownAs` feeds the uncast-name guard, and `allowUncast` may be
+> a LIST of ids so one false positive does not disarm the guard (G14). §4.11: `shape: "transform"`
+> for a generator whose output path is the caller's, and a `generators/` folder holding a program
+> with no manifest is a validate problem. §4.13: an `insert` that casts a person is refused by
+> `audit_spec_shots` (G34). A fresh character is born with an empty `structured.render` block and
+> lint ERRORs on it only once a story casts it (G17). Every `prompts.md` shot body is
+> self-contained; a body deferring to text "described above" is refused (G28b).
 
 > **v0.54 changelog — one register resolver for every tool, and a gap-register sweep.** §4.7: a
 > register that declares only a `stylePack` renders as well as shoots; `compose-spread`, `cover`

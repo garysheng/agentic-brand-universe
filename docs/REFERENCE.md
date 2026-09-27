@@ -49,7 +49,7 @@ or a set of page heroes without ever declaring canon.
 | `create-form` | Author a NEW form (a new KIND of work) for an Agentic Brand Universe, extracted from works ACTUALLY MADE, never speculated. | yes |
 | `create-lookbook` | Scaffold a Lookbook (SPEC §4.7.1) — a portable folder (lookbook.json + refs/) that defines a curated but intentionally VARIED visual vocabulary (a wardrobe/fashion, a range of building silhouettes, a set of faces), the complement of a Style Pack. | yes |
 | `create-style-pack` | Scaffold a Style Pack (SPEC §4.7) — a portable folder (pack.json + refs/) that defines ONE look and is consumable by on-brand-image with no universe. | yes |
-| `evolve-abu` | Evolve the Agentic Brand Universe framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. |  |
+| `evolve-abu` | Evolve the Agentic Brand Universe framework itself — its skills, engine, spec, templates, and plugin — instead of hand-rolling around its gaps. | yes |
 | `explore` | Render a comparison SET that isolates one variable, so a human can decide a visual question by looking instead of by reading a description. | yes |
 | `judge-slot` | Judge one generated slot against an entity's locked golden, item by item over its declared invariants, in a context that has NOT been told how the slot was made. |  |
 | `land-work` | Merge a finished work branch home instead of leaving it parked, in ANY git repo (a universe, a platform repo, a site, anything). |  |
@@ -79,6 +79,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | Verb | What it does |
 |---|---|
 | `add-entity` | scaffold a schema-valid entity stub with reference-matrix slots |
+| `add-look` | author an alt-look (an era, a wardrobe state) on an entity, with a face source it cannot render without |
 | `archive` | retire an entity from NEW casting (history keeps rendering) |
 | `archived` | list retired entities, or who still casts them |
 | `assert-spread` | the pre-render gate for ONE spread's cast and location |
@@ -90,7 +91,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.54) |
+| `init` | scaffold a new universe (conforms to spec v0.55) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -165,6 +166,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.55 | gap-register sweep, batch 2: declared vocabulary instead of literals. |
 | v0.54 | one register resolver for every tool, and a gap-register sweep. |
 | v0.53 | a STRIP is a spec, and its one recipe passes a wiki's provenance gate by > construction. |
 | v0.52 | a batch of WORKS is approved on a board too, and no board shows what > is not a current candidate. |
