@@ -90,7 +90,7 @@ answers questions about it, and refuses renders whose references do not exist on
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.53) |
+| `init` | scaffold a new universe (conforms to spec v0.54) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -165,6 +165,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.54 | one register resolver for every tool, and a gap-register sweep. |
 | v0.53 | a STRIP is a spec, and its one recipe passes a wiki's provenance gate by > construction. |
 | v0.52 | a batch of WORKS is approved on a board too, and no board shows what > is not a current candidate. |
 | v0.51 | the board SHOWS the art, because an `AskUserQuestion` preview is > TEXT. |

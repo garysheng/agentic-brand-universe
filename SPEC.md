@@ -1,10 +1,22 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.53 — 2026-09-25.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.54 — 2026-09-27.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.54 changelog — one register resolver for every tool, and a gap-register sweep.** §4.7: a
+> register that declares only a `stylePack` renders as well as shoots; `compose-spread`, `cover`
+> and `shoot-references` all read `agenticstory.register` (G22). §12: an alt-look's own
+> `photoStack` / `anchorPhoto` REPLACE the base photo stack at shoot time and reach the render too,
+> base photos riding along only with `keepPhotos` (G26); the alt-look face fallback reads the
+> legacy `face` key and refuses a declared-but-missing face sheet (G3); a seed blessing records
+> WHO blessed it (`--bless-seed --by`, G12); a shot body opening "NOT USED" is refused whenever it
+> would be painted (G19); a frozen recipe keeps its `generator` / `deterministic` marker, so a
+> locked massing blueprint stays code-drawn (#47). Covers: a non-character hero's plate is
+> selected by `--hero id:plate`, `--hero-pose` on one is refused, and the default follows canon's
+> `requiredForRender` (G15, G33).
 
 > **v0.53 changelog — a STRIP is a spec, and its one recipe passes a wiki's provenance gate by
 > construction.** §4.15: `compose-strip` takes two to four panels (world, entities, refs, scene

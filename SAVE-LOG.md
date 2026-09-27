@@ -1001,3 +1001,5 @@ CLASS, and immediately found a seventh site the manual pass had missed.
 - 2026-09-25 v1.33.0 (spec v0.53) — compose-strip: a strip of 2 to 4 panels from a spec, each roll judged by an agent who looked, rejects kept with reasons, capped at 1 + 4 re-rolls, composed in code with one recipe that passes a wiki provenance gate by construction. Four hand-built strips' recipes were refused by that gate. 20 tests, mutation-proven; a works-board re-roll of a strip now reopens a panel.
 
 - 2026-09-25 v1.33.1 — compose-strip locks its state file and reserves a roll before rendering. Three panels rendered in parallel on the first strip through it, and the last to finish erased the other two rolls. 22 tests; the lock mutation is caught 5 of 5 runs.
+
+- 2026-09-27 v1.34.0 (spec v0.54) — gap-register sweep, batch 1. One register resolver (a stylePack-only register renders, #16); cover hero plate selection and --dry-run, PEP 723 deps on runners, closing plate published as itself (#20 #35 #34 #27); chain_matrix face keys, --bless-seed --by, NOT USED refusal, look photos lead, frozen recipes stay code-drawn (#4 #13 #24 #28 #47).
