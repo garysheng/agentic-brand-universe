@@ -58,7 +58,7 @@ would use at the moment you need it.
 
 Engine verbs (`python3 -m agenticstory.cli <verb>` from `engine/`):
 `validate` · `list` · `list-craft` · `assert-story` · `assert-spread` · `lock-level` ·
-`wardrobe` · `lock-shot` · `archive` · `import-asset` · `add-entity` · `build-canon` ·
+`wardrobe` · `lock-shot` · `archive` · `import-asset` · `add-entity` · `add-look` · `build-canon` ·
 `build-docs` · `backfill-provenance` · `massing` · `elevation` · `land` · `init`
 
 ## Rendering a named person: ALWAYS use the look binding

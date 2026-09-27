@@ -526,7 +526,7 @@ def lint(root):
             # actual gate-completeness disagree, which is a state the promoter can no
             # longer create and old canon still carries.
             if e.get("status") == "locked" and _gaps is not None:
-                miss = _gaps(con)
+                miss = _gaps(con, e.get("kind"))
                 if miss:
                     warn("SETTING-LOCKED-BUT-GATE-REFUSES",
                          f"{eid}: status is 'locked' but the render gate would refuse it: "
@@ -829,8 +829,20 @@ def lint(root):
                 al = al or {}
                 kept = set(al.get("keepSheets") or [])
                 dropped = set(al.get("dropSheets") or [])
-                has_face = bool(al.get("anchorPhoto") or (al.get("sheets") or {})
+                has_face = bool(al.get("anchorPhoto") or al.get("photoStack")
+                                or (al.get("sheets") or {})
                                 or al.get("keepPhotos") or (kept & FACE_KEYS) - dropped)
+                # SHOOT ORDER (v0.54, G18): a look whose anchorPhoto points into a SIBLING
+                # look's folder (`add-look --chain-from`) is built off that look's face, so
+                # the sibling must be shot first. chain_matrix refuses the missing plate at
+                # shoot time; this says so before anyone reaches for the shoot.
+                ap = al.get("anchorPhoto") or ""
+                mo = re.match(r"reference/[^/]+/([^/]+)/[^/]+$", ap)
+                if mo and mo.group(1) in (st.get("altLooks") or {}) and mo.group(1) != lid \
+                        and not (root/ap).exists():
+                    warn("LOOK-CHAINED-BEFORE-SIBLING",
+                         f"{eid}: altLook '{lid}' is built off '{mo.group(1)}' ({ap}), which "
+                         f"is not shot yet. Shoot '{mo.group(1)}' first, then '{lid}'.")
                 if not has_face:
                     warn("LOOK-NO-IDENTITY-ANCHOR",
                          f"{eid}: altLook '{lid}' supplies no anchorPhoto and no sheets of its "
@@ -1075,6 +1087,18 @@ def lint(root):
     # spec was built. Hit at least three times in nation-of-fire (the-arena, then
     # russ-vibes-apostle and nas, then the-chairman + chief-of-toil + the-battle-axe-girls
     # on It Was Not Broken, 2026-07-25). Static, free, and catches the whole class.
+    # WHO IS ACTUALLY CAST (v0.54, gap G17). `add-entity character` births an entity with
+    # an empty render block, so an unconditional ERROR fired on every fresh character before
+    # an author had touched it, and a linter that errors on "new" teaches people to skim it.
+    # The ERROR now means what it says: an entity a story casts that cannot be rendered.
+    # Not-yet-cast is a WARNING. "Cast" is read generously (the id as a JSON string anywhere
+    # in a story or render-spec), because a false ERROR costs less than a missed one.
+    _cast_text = ""
+    for _sp in list((root/"stories").glob("*.json")) + list(root.glob("**/render-spec.json")):
+        try:
+            _cast_text += _sp.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            pass
     for ej in (root/"canon"/"entities").glob("*.json"):
         e = jload(ej)
         if not e or e.get("kind") not in ("character", "group"): continue
@@ -1085,10 +1109,14 @@ def lint(root):
         render = ((e.get("structured") or {}).get("render") or {})
         poses = render.get("poses") or {}
         if not render.get("always") and not poses:
-            err("CAST-UNRENDERABLE",
-                f"{ej.name}: kind '{e.get('kind')}' has no structured.render block, so the render "
-                f"compiler cannot cast it at all. Add render.always plus at least one pose, "
-                f"restating rules the entity already carries; invent no new design.")
+            cast = f'"{e.get("id") or ej.stem}"' in _cast_text
+            (err if cast else warn)(
+                "CAST-UNRENDERABLE",
+                f"{ej.name}: kind '{e.get('kind')}' has an empty structured.render block, so the "
+                f"render compiler cannot cast it at all"
+                + (" and a story already casts it" if cast else " (not cast in any story yet)")
+                + ". Add render.always plus at least one pose, restating rules the entity "
+                  "already carries; invent no new design.")
             continue
         if not poses:
             err("CAST-NO-POSES",

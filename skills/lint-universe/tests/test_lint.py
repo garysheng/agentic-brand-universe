@@ -897,11 +897,22 @@ class TestCastability(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             return run(build(t, **kw))
 
-    def test_catches_a_character_with_no_render_block(self):
-        e, _ = self.lint_with(entity={
-            "id": "e", "kind": "character",
-            "structured": {"sheets": {"gabr": "reference/e/gabr.png"}}})
+    NO_RENDER = {"id": "e", "kind": "character",
+                 "structured": {"sheets": {"gabr": "reference/e/gabr.png"}}}
+
+    def test_catches_a_CAST_character_with_no_render_block_as_an_error(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = build(t, entity=self.NO_RENDER)
+            (root / "stories").mkdir()
+            (root / "stories" / "s.json").write_text(json.dumps({"id": "s", "features": ["e"]}))
+            e, _ = run(root)
         self.assertIn("CAST-UNRENDERABLE", e)
+
+    def test_an_uncast_fresh_character_is_only_a_warning(self):
+        """G17 (#22): add-entity births exactly this; an ERROR on 'new' teaches skimming."""
+        e, w = self.lint_with(entity=self.NO_RENDER)
+        self.assertNotIn("CAST-UNRENDERABLE", e)
+        self.assertIn("CAST-UNRENDERABLE", w)
 
     def test_catches_a_character_with_always_but_no_poses(self):
         e, _ = self.lint_with(entity={

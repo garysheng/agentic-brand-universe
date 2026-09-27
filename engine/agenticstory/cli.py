@@ -142,6 +142,22 @@ def build_parser() -> argparse.ArgumentParser:
                          "across (SPEC 12 = a locked master plus state plates). Emits "
                          "contract.states, the matching structured.sheets keys, and one "
                          "render pose per state so a spread can select it by name.")
+    al = sub.add_parser("add-look", help="author an alt-look (an era, a wardrobe state) on an "
+                                         "entity, with a face source it cannot render without")
+    al.add_argument("universe"); al.add_argument("eid"); al.add_argument("key")
+    al.add_argument("--era", default=None, metavar="FROM-TO",
+                    help="validFor window, e.g. 1998-2001, 1998- or -2001")
+    al.add_argument("--chain-from", dest="chain_from", default=None, metavar="LOOK",
+                    help="build this look's face off a SIBLING look's face-neutral plate "
+                         "(shoot that look first; the chain refuses until it exists)")
+    al.add_argument("--anchor-photo", dest="anchor_photo", default=None)
+    al.add_argument("--photo", action="append", default=None,
+                    help="a photograph of this era (repeatable); REPLACES the base stack")
+    al.add_argument("--keep-sheets", dest="keep_sheets", action="append", default=None)
+    al.add_argument("--keep-photos", dest="keep_photos", action="store_true")
+    al.add_argument("--supersedes", action="append", default=None,
+                    help="a base invariant this look retires, by exact string (repeatable)")
+    al.add_argument("--drop-sheets", dest="drop_sheets", action="append", default=None)
     bc = sub.add_parser("build-canon", help="regenerate CANON.md from canon/properties + canon/crossovers")
     bc.add_argument("universe")
     bc.add_argument("--check", action="store_true", help="fail if stale or if any crossover number is duplicated")
@@ -654,6 +670,41 @@ def main(argv: list[str] | None = None) -> int:
                   "master plus STATE plates, so this entity has an anchor and nothing to "
                   "argue with. Re-run with --state <name> (repeatable) once the states are "
                   "known, or add the keys to contract.states + structured.sheets by hand.")
+        return 0
+    if args.cmd == "add-look":
+        from .authoring import add_look
+        uni = Path(args.universe)
+        entp = uni / "canon" / "entities" / f"{args.eid}.json"
+        if not entp.exists():
+            print(f"REFUSE: no entity {entp}", file=sys.stderr)
+            return 2
+        era = None
+        if args.era:
+            lo, sep, hi = args.era.partition("-")
+            try:
+                era = (int(lo) if lo else None, int(hi) if hi else None)
+            except ValueError:
+                sep = ""
+            if not sep or era == (None, None):
+                print(f"REFUSE: --era must be FROM-TO, FROM- or -TO, got {args.era!r}",
+                      file=sys.stderr)
+                return 2
+        ent = json.loads(entp.read_text())
+        try:
+            ent, md = add_look(ent, args.key, era=era, chain_from=args.chain_from,
+                               anchor_photo=args.anchor_photo, photo_stack=args.photo,
+                               keep_sheets=args.keep_sheets, keep_photos=args.keep_photos,
+                               supersedes=args.supersedes, drop_sheets=args.drop_sheets)
+        except ValueError as e:
+            print(f"REFUSE: {e}", file=sys.stderr)
+            return 2
+        entp.write_text(json.dumps(ent, indent=2) + "\n")
+        from .refs import entity_ref_dir
+        promptsp = uni / "reference" / entity_ref_dir(ent, args.eid) / args.key / "prompts.md"
+        promptsp.parent.mkdir(parents=True, exist_ok=True)
+        if not promptsp.exists():
+            promptsp.write_text(md + "\n")
+        print(f"added altLook {args.eid}@{args.key}; prompts -> {promptsp.relative_to(uni)}")
         return 0
     if args.cmd == "lock-shot":
         from .authoring import lock_shot, recipe_sidecar_path

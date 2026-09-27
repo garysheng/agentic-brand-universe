@@ -2320,6 +2320,16 @@ framework-shaped work, so the framework owns it.
 - **Provenance is the same contract, different fields.** A generated artifact still carries a
   `.recipe.json` sidecar (§3.2), but it records `generator` + `params` + `seed` + input hashes rather
   than `provider` + `prompt` + `refs`. The invariant is unchanged: no asset without its recipe.
+  Freezing a recipe at lock (`lock-shot --recipe`) KEEPS `generator` / `deterministic` / `mode`
+  (v0.54): dropping them made a locked massing blueprint read as painted.
+- **`shape: "transform"` (v0.54) — a generator whose output path is the CALLER's.** A generator that
+  finishes, converts or grades an asset someone else names (a film finish, a conform, an upscale)
+  writes wherever `--out` says, so it has no fixed output to declare. It declares `shape:
+  "transform"` and its `inputs` / `params`; `validate` checks the declared inputs resolve and waives
+  the fixed-output rule. Any output it does declare (a proof plate) is still checked. The default
+  shape is `"draw"`, which still requires outputs.
+- **A folder under `generators/` with a program and no `generator.json` is a validate ERROR
+  (v0.54).** It declares nothing, so every rule above was unenforced while `validate` stayed green.
 - **`install` makes the universe the source of truth for derived assets.** A favicon set copied by
   hand into three sites is three sites that will drift, and they did: one shipped a mark from a
   rebrand fourteen months stale while another shipped an incomplete set. The manifest declares where
@@ -3188,6 +3198,12 @@ Default measured reference, when a universe declares no `identity.scaleReference
     `the-broken-arrow-ground`, one Oklahoma parcel as a 1900s farm and as the 1976 site bought for
     RHEMA, whose whole argument is that the ground is the same.
 - **visual-metaphor** — a locked master plus `state` plates (the object across its argued states).
+  - **`contract.anchorShot` and `contract.blueprintWaived` (v0.54).** `anchorShot` names the shot
+    that IS a visual-metaphor's anchor plate (`contract.turnaround`); it defaults to `master` and
+    the scaffolder writes it, so an object whose base state has a designed name (`sealed`) locks
+    into the contract instead of falling through to `emptyPlates`. `blueprintWaived: "<reason>"`
+    waives the blueprint gate for a VISUAL-METAPHOR with no massable geometry (an organic aerial
+    city); on a setting it is reported and not honoured, because a setting is architecture.
   - **`contract.states` and `add-entity --state` (v0.31) — the states are DECLARABLE.** A
     visual-metaphor shares the `contract` SHAPE with a setting and shares nothing else: it has no
     fixed cameras, no seating, and no rooms nested inside it, so it carries neither `partOf` nor

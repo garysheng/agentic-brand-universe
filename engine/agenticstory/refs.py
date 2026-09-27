@@ -159,7 +159,7 @@ def resolve_setting(store: CanonStore, eid: str) -> list[str]:
     # fields are load-bearing (file fields non-null, emptyPlates present and up to any
     # declared count, descriptors non-empty); this function adds the one thing a pure
     # predicate cannot know, which is whether the files are actually on disk.
-    problems += [f"{eid}.{g}" for g in setting_contract_gaps(contract)]
+    problems += [f"{eid}.{g}" for g in setting_contract_gaps(contract, e.kind)]
     for f in SETTING_GATE_FILE_FIELDS:
         v = contract.get(f)
         if v and not (root / v).exists():

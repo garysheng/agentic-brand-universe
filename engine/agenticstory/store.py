@@ -417,8 +417,32 @@ class CanonStore:
         """SPEC v0.13 §4.11 disk checks: the entrypoint exists, and a declared output
         that was never written is a lie the manifest tells about itself."""
         problems: list[str] = []
+        # A FOLDER WITH A PROGRAM AND NO MANIFEST WAS INVISIBLE (v0.54, #53). The checks
+        # below are strict about a declared output that does not exist and about a manifest
+        # that declares none, and said nothing at all about a generator that declares
+        # NOTHING: continental-works' workspace-avatar wrote ~140 files across four commits
+        # with validate green. Same direction of failure as its neighbours: refuse.
+        gen_root = self.dir / "generators"
+        if gen_root.is_dir():
+            for d in sorted(x for x in gen_root.iterdir() if x.is_dir()):
+                if (d / "generator.json").exists() or d.name.startswith((".", "_")):
+                    continue
+                progs = sorted(p.name for p in d.iterdir() if p.is_file()
+                               and p.suffix in (".py", ".mjs", ".js", ".ts", ".sh"))
+                if progs:
+                    problems.append(
+                        f"generator folder '{d.name}' has a program ({', '.join(progs)}) and no "
+                        f"generator.json, so nothing declares its inputs, outputs or "
+                        f"determinism. Write the manifest (SPEC 4.11) or move the script out "
+                        f"of generators/.")
         for g in self.generators.values():
             gdir = self.dir / "generators" / g.id
+            # A transform's declared inputs are its contract, so they must resolve.
+            if g.raw.get("shape") == "transform":
+                for i in g.raw.get("inputs") or []:
+                    ip = i.get("path") if isinstance(i, dict) else i
+                    if ip and not ((gdir / ip).exists() or (self.dir / ip).exists()):
+                        problems.append(f"generator '{g.id}': declared input '{ip}' does not exist")
             entry = g.raw.get("entrypoint")
             if entry and not (gdir / entry).exists():
                 problems.append(f"generator '{g.id}': entrypoint '{entry}' does not exist")

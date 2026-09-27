@@ -48,7 +48,7 @@ SETTING_GATE_DESCRIPTOR_FIELDS = ("map", "blocking", "dressing")
 SETTING_ADVISORY_FIELDS = ("scalePlate", "scale", "blockingPlate")
 
 
-def setting_contract_gaps(contract: dict) -> list[str]:
+def setting_contract_gaps(contract: dict, kind: str | None = None) -> list[str]:
     """Every reason this contract is NOT gate-complete. Empty means locked-worthy.
 
     Pure: it never touches the filesystem, so it is safe to call from the promoter,
@@ -59,11 +59,25 @@ def setting_contract_gaps(contract: dict) -> list[str]:
     can only ask "is the list non-empty", so a setting that genuinely needs four
     cameras was promoted to `locked` after the second, and the two cameras nobody shot
     were then improvised at render time, differently every spread.
+
+    `blueprintWaived` (v0.54, gap G6) is a written REASON a VISUAL-METAPHOR has no
+    massable geometry (an organic aerial city, a cloud, a living thing). It waives the
+    blueprint for that kind only: the-city-of-threads could not be staged as a beat
+    location without falsifying a blueprint. A SETTING is architecture and keeps the
+    hard gate, so a waiver on one is reported rather than honoured.
     """
     contract = contract or {}
     gaps: list[str] = []
+    waived = str(contract.get("blueprintWaived") or "").strip()
     for f in SETTING_GATE_FILE_FIELDS:
         if contract.get(f) in (None, ""):
+            if f == "blueprint" and waived and kind == "visual-metaphor":
+                continue
+            if f == "blueprint" and waived and kind not in (None, "visual-metaphor"):
+                gaps.append(f"blueprint is null and blueprintWaived only applies to a "
+                            f"visual-metaphor; a {kind} is architecture, so draw it "
+                            f"(`abu elevation` / `abu massing`)")
+                continue
             gaps.append(f"{f} is null (required image)")
     plates = contract.get("emptyPlates") or []
     want = contract.get("emptyPlatesExpected")
@@ -436,7 +450,7 @@ class Entity:
             return True
         if self.raw.get("status") != "locked":
             return False
-        return not setting_contract_gaps(self.raw.get("contract", {}) or {})
+        return not setting_contract_gaps(self.raw.get("contract", {}) or {}, self.kind)
 
     @staticmethod
     def from_dict(d: dict[str, Any]) -> "Entity":
@@ -887,8 +901,21 @@ class Generator:
         # reading the manifest, which is the whole point of declaring determinism.
         if det == "seeded" and self.raw.get("seed") is None:
             p.append(f"{self.id}: determinism 'seeded' requires a 'seed' in the manifest, not in the code")
-        if not self.outputs:
-            p.append(f"{self.id}: declares no outputs (a generator that writes nothing is not one)")
+        # A TRANSFORM (v0.54, #52) finishes, converts or grades an asset the CALLER names
+        # and writes wherever the caller says, so it has no fixed output to declare: a
+        # placeholder path is a lie validate would report forever, and `[]` was refused.
+        # It declares `shape: "transform"` and owes its INPUT contract instead; any
+        # outputs it does declare (a proof plate) are still checked like any other.
+        shape = self.raw.get("shape", "draw")
+        if shape not in ("draw", "transform"):
+            p.append(f"{self.id}: shape must be 'draw' or 'transform', got {shape!r}")
+        if shape == "transform":
+            if not self.raw.get("inputs") and not (self.raw.get("params") or {}):
+                p.append(f"{self.id}: a transform declares no inputs and no params, so nothing "
+                         f"says what it transforms")
+        elif not self.outputs:
+            p.append(f"{self.id}: declares no outputs (a generator that writes nothing is not one; "
+                     f"one that writes wherever its caller says declares shape: 'transform')")
         for i, o in enumerate(self.outputs, 1):
             if not isinstance(o, dict) or not o.get("path"):
                 p.append(f"{self.id}: output {i} has no 'path'")

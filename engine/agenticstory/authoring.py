@@ -13,6 +13,7 @@ import datetime as _dt
 import hashlib
 import json
 import pathlib
+import re
 
 from .matrix import matrix_for, known_shots_for
 from .model import setting_contract_gaps
@@ -139,6 +140,11 @@ def scaffold_entity(
             "invariants": [],
         }
         ent["prose"] = {"voice": "", "lore": "", "rules": ""}
+        if kind == "character":
+            # The block the render compiler casts from, visible from birth (gap G17). Empty
+            # on purpose: `always` and each pose's `bake` are the author's words, so no stub
+            # text can reach a prompt; lint WARNS until a story casts it, then ERRORs.
+            ent["structured"]["render"] = {"always": "", "poses": {}}
         if kind == "character" and photo_stack:
             ent["realPerson"] = {
                 "photoStack": list(photo_stack),
@@ -188,6 +194,9 @@ def scaffold_entity(
             # visual-metaphors in nation-of-fire converged on independently: the
             # code-drawn blueprint, the master, then each argued state.
             ent["contract"]["states"] = ["blueprint", "master"] + sts
+            # Which shot IS the anchor plate (contract.turnaround). Rename it here, not by
+            # hand-editing turnaround, if the object's base state has its own name (G4).
+            ent["contract"]["anchorShot"] = "master"
             if sts:
                 # SPEC v0.29's declared COUNT, which is what stops a three-state object
                 # promoting itself to `locked` after the first state plate and then
@@ -399,7 +408,15 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # Scoped to the KIND rather than added to the shared map, because a `setting` has no
         # `master` in its matrix and silently promoting one to its turnaround would invent a
         # slot the spec does not give that kind.
-        if kind == "visual-metaphor" and shot == "master":
+        #
+        # THE ANCHOR SHOT IS DECLARED, NOT SPELLED (v0.54, gap G4). Keyed on the literal
+        # word `master`, a visual-metaphor whose base state carries its own designed name
+        # (`sealed`, `present-night`) could never reach `contract.turnaround` through this
+        # tool and sat `unlocked` with no error: the fourth instance of the alias class.
+        # `contract.anchorShot` names the shot that IS the anchor (default `master`), so
+        # the class is closed by data instead of by a fifth literal.
+        anchor_shot = c.get("anchorShot") or ("master" if kind == "visual-metaphor" else None)
+        if anchor_shot and shot == anchor_shot:
             slot = "turnaround"
         if slot in ("turnaround", "blueprint", "scalePlate", "blockingPlate"):
             c[slot] = path
@@ -416,14 +433,17 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
             # a custom name (`frontglass`, `backseat`, `singleRuss` on nation-of-fire's
             # vehicles) is a legitimate use of this branch, and refusing would break shipped
             # universes. `empty`-prefixed names are the documented idiom and stay silent.
-            if not shot.startswith("empty"):
+            # A declared STATE of a visual-metaphor is exactly what emptyPlates is for, so
+            # it is not the silent fall-through this note exists to catch.
+            if not shot.startswith("empty") and shot not in (c.get("states") or []):
                 print(f"NOTE: {entity.get('id')}: '{shot}' is not a contract slot name, so it "
                       f"was filed under contract.emptyPlates. If this plate IS the "
                       f"turnaround / blueprint / scale plate / blocking plate, lock it under "
                       f"that name (or a known alias: scale, scale-plate, blocking, "
-                      f"blocking-plate, seating, seating-chart, master) so the contract field "
-                      f"is set and `status` can promote. If it is genuinely another plate, "
-                      f"ignore this.", file=sys.stderr)
+                      f"blocking-plate, seating, seating-chart; for a visual-metaphor, the "
+                      f"shot named by contract.anchorShot) so the contract field is set and "
+                      f"`status` can promote. If it is genuinely another plate, ignore this.",
+                      file=sys.stderr)
             plates = c.setdefault("emptyPlates", [])
             if path not in plates:
                 plates.append(path)
@@ -438,7 +458,7 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         # never be promoted by this tool and had to be hand-flipped in the JSON, which is
         # the hand-editing this module exists to remove. `setting_contract_gaps` is now the
         # single definition, shared with the gate and with `Entity.is_locked_setting`.
-        if not setting_contract_gaps(c):
+        if not setting_contract_gaps(c, kind):
             entity["status"] = "locked"
     else:
         st = entity.setdefault("structured", {})
@@ -471,6 +491,99 @@ def lock_shot(entity: dict, shot: str, path: str, recipe: dict | None = None,
         recipe_sidecar_path(abspath).write_text(
             json.dumps(freeze_recipe(path, recipe, root=root), indent=2, sort_keys=True) + "\n")
     return entity
+
+
+LOOK_SHOTS = ("face-neutral", "face-3q", "forward-fullbody")
+
+
+def add_look(entity: dict, key: str, *, era: tuple | None = None,
+             chain_from: str | None = None, anchor_photo: str | None = None,
+             photo_stack: list | None = None, keep_sheets: list | None = None,
+             keep_photos: bool = False, supersedes: list | None = None,
+             drop_sheets: list | None = None) -> tuple[dict, str]:
+    """AUTHOR an alt-look (SPEC 12 `structured.altLooks`), correct by construction (v0.54, G18).
+
+    Both consumers of a look REFUSE to create one (`lock-shot --look`, `chain_matrix
+    --look`), so every era was hand-edited JSON, and the shape has an inverted trap the
+    spec spends four paragraphs on: a look with no face source of its own auto-drops the
+    base face sheets and renders a stranger with the right build. This verb makes the
+    face source a REQUIRED decision (anchorPhoto, photoStack, chain-from a sibling look,
+    keepSheets or keepPhotos) and writes the look's own prompts.md skeleton.
+
+    `chain_from` points `anchorPhoto` at the SIBLING look's face plate, which is how
+    josh-howerton's `sixteen` was built off `eighteen` rather than off the adult face.
+    That plate does not exist until the sibling is shot, and `chain_matrix` refuses an
+    anchorPhoto that is not on disk, so the SHOOT ORDER is enforced by construction;
+    `lint-universe` names the order before anyone runs the shoot.
+
+    Returns (entity, prompts_md). Raises ValueError on a refusal.
+    """
+    eid = entity.get("id")
+    st = entity.setdefault("structured", {})
+    looks = st.setdefault("altLooks", {})
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", key or ""):
+        raise ValueError(f"look key {key!r} must be kebab-case (a-z, 0-9, -)")
+    if key in looks:
+        raise ValueError(f"{eid} already declares altLook {key!r}; edit it rather than "
+                         f"re-authoring over it")
+    if chain_from and chain_from not in looks:
+        raise ValueError(f"--chain-from {chain_from!r}: {eid} declares no such look "
+                         f"(known: {sorted(looks) or 'none'}). Author that look first.")
+    if chain_from and anchor_photo:
+        raise ValueError("--chain-from and --anchor-photo both name the look's face; pass one")
+    sheets = st.get("sheets") or {}
+    for k in (keep_sheets or []) + (drop_sheets or []):
+        if k not in sheets:
+            raise ValueError(f"{eid} has no base sheet {k!r} (known: {sorted(sheets)})")
+    base_inv = set(st.get("invariants") or [])
+    for s in supersedes or []:
+        if s not in base_inv:
+            raise ValueError(f"--supersedes {s!r} is not one of {eid}'s invariants; a look "
+                             f"retires a base invariant by EXACT string")
+    from .refs import entity_ref_dir
+    folder = entity_ref_dir(entity, eid)
+    if chain_from:
+        anchor_photo = f"reference/{folder}/{chain_from}/face-neutral.png"
+    if not (anchor_photo or photo_stack or keep_sheets or keep_photos):
+        raise ValueError(
+            f"look {key!r} has NO face source. An alt look auto-drops the base face sheets, "
+            f"so with nothing of its own only the body sheets reach the model and it renders "
+            f"a stranger with the right build. Pass one: --anchor-photo <path> (a photograph "
+            f"of this era), --photo <path> (repeatable), --chain-from <sibling-look>, "
+            f"--keep-sheets face-neutral (a continuous face, e.g. a declared future), or "
+            f"--keep-photos.")
+    look: dict = {"invariants": [], "supersedes": list(supersedes or [])}
+    if anchor_photo:
+        look["anchorPhoto"] = anchor_photo
+    if photo_stack:
+        look["photoStack"] = list(photo_stack)
+    if keep_sheets:
+        look["keepSheets"] = list(keep_sheets)
+    if keep_photos:
+        look["keepPhotos"] = True
+    if drop_sheets:
+        look["dropSheets"] = list(drop_sheets)
+    if era:
+        lo, hi = era
+        look["validFor"] = {k: v for k, v in (("from", lo), ("to", hi)) if v is not None}
+    looks[key] = look
+
+    order = (f"Shoot `{chain_from}` FIRST: this look's anchorPhoto is that look's "
+             f"face-neutral plate, and the chain refuses it until it exists.\n\n"
+             if chain_from else "")
+    md = "\n".join([
+        f"# {eid} @ {key} — generation prompts", "",
+        "### THIS LOOK", "",
+        f"{order}Shoot with `chain_matrix.py <universe> {eid} --look {key}`. The chain seeds off "
+        "this look's own face source and NEVER off `forward-fullbody`, which is the silhouette "
+        "the look supersedes.", "",
+        "TODO(author): state the look's body in `structured.altLooks."
+        f"{key}.invariants` so read-back can check it, then replace each body below.", "",
+        *[l for s in LOOK_SHOTS
+          for l in (f"## {s}  -> reference/{folder}/{key}/{s}.png",
+                    "TODO(author): the prompt for this shot.", "")],
+    ])
+    return entity, md
 
 
 def prompts_skeleton(entity: dict, register: dict | None = None) -> str:
