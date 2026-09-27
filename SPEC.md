@@ -1940,6 +1940,12 @@ them" — which has no recurring-identity requirement and therefore no need for 
   `stylePack: "<id-or-path>"` to source its `anchor` + `rejectedPoles` from a pack instead of inlining
   them, so a universe's canon renders and a one-off image share ONE definition of the look. Registers
   that inline their anchor stay valid; the field is additive.
+- **...and binds the RENDER too (v0.54).** `compose-spread` and `cover` refused a register with a
+  `stylePack` and no inline `anchor` ("identity.register.anchor is null") while the shooter shot it,
+  so a universe could lock its matrix and render nothing (gap G22). Every tool now reads the
+  register through ONE resolver, `agenticstory.register`: an inline `anchor` wins; otherwise the
+  pack's `anchor`, `rejectedPoles` and `anchorSubject` apply, with any inline `rejectedPoles` /
+  `anchorSubject` still winning over the pack's.
 - **A declared `stylePack` binds the reference SHOOT (v0.33).** Full mode was described here from
   v0.12 and read by no compiler: `universe-doctor` scored whether the path resolved, and nothing
   consumed it, so a universe could declare a pack, score for it, and never once shoot against it.

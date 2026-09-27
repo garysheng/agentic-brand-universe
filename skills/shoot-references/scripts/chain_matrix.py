@@ -719,26 +719,20 @@ def _pack_dir(spec: str) -> Path:
 
 
 def _load_pack(uroot: Path, spec: str, why: str):
-    """(anchor, poles, id, anchorSubject) from a Style Pack, or Refuse."""
-    pack_rel = _pack_dir(spec)
-    pack_file = uroot / pack_rel / "pack.json"
-    if not pack_file.exists():
-        raise Refuse(f"{why}: no Style Pack at {pack_file}")
-    pack = load(pack_file)
-    a = pack.get("anchor")
-    if not a:
-        raise Refuse(f"{why}: {pack_file} declares no anchor")
-    # A pack's `anchor` is relative to the pack dir; every other path here is
-    # universe-relative, so normalise it once rather than at each use site.
-    anchor = str(pack_rel / a)
-    if not (uroot / anchor).exists():
-        raise Refuse(f"{why}: anchor not on disk: {uroot / anchor}")
-    # PREFER the pack's own styleLine, then its human name, and only then the slug:
-    # the first two describe a medium and the slug does not. See style_line().
-    described = (pack.get("styleLine") or pack.get("name")
-                 or pack.get("id") or Path(spec).name)
-    return (anchor, list(pack.get("rejectedPoles", [])),
-            described, pack.get("anchorSubject"))
+    """(anchor, poles, id, anchorSubject) from a Style Pack, or Refuse.
+
+    The pack is read by `agenticstory.register.load_style_pack`, the same reader the
+    spread and cover compilers use (gap G22): one contract, one implementation. The
+    anchor comes back universe-relative, and `name` prefers the pack's styleLine, then
+    its human name, then the slug, because the first two describe a medium.
+    """
+    _engine_on_path()
+    from agenticstory.register import load_style_pack, RegisterError
+    try:
+        got = load_style_pack(uroot, spec, why)
+    except RegisterError as e:
+        raise Refuse(str(e))
+    return (got["anchor"], got["rejectedPoles"], got["name"], got["anchorSubject"])
 
 
 def resolve_register(uroot: Path, uni: dict, override=None, no_style_pack=False):

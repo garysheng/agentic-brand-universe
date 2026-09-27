@@ -77,6 +77,23 @@ def load(p: Path):
         return json.load(f)
 
 
+def _render_register(uroot: Path, uni: dict) -> dict:
+    """identity.register as a render passes it, through the engine's one resolver
+    (`agenticstory.register`). Raises ValueError with the reason on failure."""
+    here = Path(__file__).resolve()
+    for c in [here, *here.parents]:
+        if (c / "engine" / "agenticstory").is_dir():
+            if str(c / "engine") not in sys.path:
+                sys.path.insert(0, str(c / "engine"))
+            from agenticstory.register import render_register
+            return render_register(uroot, uni)
+    reg = (uni.get("identity") or {}).get("register") or {}
+    if reg.get("anchor"):
+        return dict(reg)
+    raise ValueError("identity.register.anchor is null (style not locked), and the ABU "
+                     "engine could not be located to resolve identity.register.stylePack")
+
+
 def split_extra(spec: str):
     """`id` or `id=pose` -> (id, pose or None)."""
     eid, _, pose = spec.partition("=")
@@ -144,10 +161,18 @@ def main() -> int:
     uni = load(uroot / "universe.json")
     ident = uni.get("identity", {})
     reg = ident.get("register", {})
-    anchor = args.anchor_ref or reg.get("anchor")
+    anchor = args.anchor_ref
     if not anchor:
-        print("REFUSE: identity.register.anchor is null (style not locked)", file=sys.stderr)
-        return 2
+        # ONE register resolver for shooter, spread compiler and cover (gap G22): a
+        # register declaring only a `stylePack` resolves its anchor from the pack.
+        try:
+            r = _render_register(uroot, uni)
+        except ValueError as e:
+            print(f"REFUSE: {e}", file=sys.stderr)
+            return 2
+        anchor = r["anchor"]
+        reg = {**reg, **{k: r[k] for k in ("rejectedPoles", "anchorSubject", "name")
+                         if r.get(k) is not None}}
     mark = ident.get("mark")
     if not mark and not args.no_mark:
         print("REFUSE: identity.mark is null", file=sys.stderr)

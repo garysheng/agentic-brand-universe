@@ -1551,6 +1551,27 @@ def _abu_root(start=None):
     return None
 
 
+def _render_register(uroot: Path, uni: dict) -> dict:
+    """identity.register as a render passes it, via the engine's ONE resolver."""
+    root = _abu_root()
+    if root is None:
+        reg = (uni.get("identity") or {}).get("register") or {}
+        if reg.get("anchor"):
+            return {"anchor": reg["anchor"], "rejectedPoles": reg.get("rejectedPoles"),
+                    "anchorSubject": reg.get("anchorSubject"), "name": reg.get("name")}
+        raise Refuse("no anchor: identity.register.anchor is null, render-spec has no "
+                     "anchorRef, and the ABU engine could not be located to resolve "
+                     "identity.register.stylePack. Reinstall the plugin.")
+    eng = str(root / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.register import render_register, RegisterError
+    try:
+        return render_register(uroot, uni)
+    except RegisterError as e:
+        raise Refuse(f"no anchor: {e} (or give the render-spec an anchorRef)")
+
+
 def _shots():
     """The SHOT vocabulary, loaded from the engine.
 
@@ -1835,9 +1856,17 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     # anchor is unsuitable (e.g. it points at a photograph, a painterly universe's own
     # rejectedPole, or this spread renders a second register). The override is DATA in
     # the render-spec, with a reason.
-    anchor = eff.get("anchorRef") or reg.get("anchor")
+    #
+    # A REGISTER DECLARING ONLY A `stylePack` IS A REGISTER (SPEC 4.7, gap G22). The
+    # shooter resolved the pack's anchor since v0.33 and this compiler did not, so a
+    # universe could shoot its whole matrix against its pack and then refuse every
+    # spread. Both now read `agenticstory.register`, one resolver for one contract.
+    anchor = eff.get("anchorRef")
     if not anchor:
-        raise Refuse("no anchor: identity.register.anchor is null and render-spec has no anchorRef")
+        resolved_reg = _render_register(uroot, uni)
+        anchor = resolved_reg["anchor"]
+        reg = {**reg, **{k: resolved_reg[k] for k in ("rejectedPoles", "anchorSubject", "name")
+                         if resolved_reg.get(k) is not None}}
 
     # `anchorRef` REPLACES the image passed first, so identity.register.anchorSubject no
     # longer describes what that first reference depicts, and negating it would ban
