@@ -38,7 +38,7 @@ Signatures, each earned by a real script in a real scratchpad:
 
 Exit 1 when it finds anything, so a chain step can gate on it.
 
-  python3 detect_handroll.py <scratchpad-dir> [--universe DIR]
+  python3 detect_handroll.py [<dir>] [--since <git-ref>] [--universe DIR]
 """
 from __future__ import annotations
 
@@ -100,20 +100,9 @@ SIGNATURES = [
 
 
 def scan_scratchpad(d: Path) -> list[str]:
-    out = []
     if not d.is_dir():
-        return out
-    for f in sorted(list(d.rglob("*.sh")) + list(d.rglob("*.py"))):
-        if "detect_handroll" in f.name:
-            continue
-        try:
-            body = f.read_text(errors="ignore")
-        except OSError:
-            continue
-        for rx, also, what, verb in SIGNATURES:
-            if rx.search(body) and (also is None or also.search(body)):
-                out.append(f"{f}: {what}\n      -> {verb}")
-    return out
+        return []
+    return scan_files(sorted(list(d.rglob("*.sh")) + list(d.rglob("*.py"))))
 
 
 def _recipe(plate: Path):
@@ -232,13 +221,71 @@ def scan_universe(u: Path) -> list[str]:
     return out
 
 
+def changed_files(repo: Path, since: str) -> list[Path] | None:
+    """Script files changed since `since` in the git repo at `repo`, plus untracked ones.
+
+    The mode a CONSUMING repo runs as a pre-commit or CI step (gap G28): a books platform, a
+    print export or a site never enters an ABU chain, so the detector has to be able to look
+    at a diff rather than at a chain's scratchpad. None when `repo` is not a git repo.
+    """
+    import subprocess
+    def git(*a):
+        r = subprocess.run(["git", *a], cwd=repo, capture_output=True, text=True)
+        return r.stdout.splitlines() if r.returncode == 0 else None
+    top = git("rev-parse", "--show-toplevel")
+    if not top:
+        return None
+    root = Path(top[0])
+    diff = git("diff", "--name-only", since)
+    if diff is None:
+        raise SystemExit(f"detect-handroll: --since {since!r} is not a ref in {root}")
+    untracked = git("ls-files", "--others", "--exclude-standard") or []
+    out = []
+    for rel in dict.fromkeys(diff + untracked):
+        p = root / rel
+        if p.suffix in (".py", ".sh") and p.is_file():
+            out.append(p)
+    return out
+
+
+def scan_files(files: list[Path]) -> list[str]:
+    out = []
+    for f in files:
+        if "detect_handroll" in f.name:
+            continue
+        try:
+            body = f.read_text(errors="ignore")
+        except OSError:
+            continue
+        for rx, also, what, verb in SIGNATURES:
+            if rx.search(body) and (also is None or also.search(body)):
+                out.append(f"{f}: {what}\n      -> {verb}")
+    return out
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("scratchpad")
+    ap = argparse.ArgumentParser(
+        description="Find framework bypasses. Runs from ANY directory: with no argument it "
+                    "scans the current directory; with --since <ref> it scans only the script "
+                    "files a git diff touched, for a pre-commit or CI step in a consuming repo.")
+    ap.add_argument("scratchpad", nargs="?", default=".",
+                    help="directory to scan (default: the current directory)")
+    ap.add_argument("--since", default=None, metavar="REF",
+                    help="scan only .py/.sh files changed since REF (plus untracked ones) in "
+                         "the git repo containing the scratchpad directory")
     ap.add_argument("--universe", default=None)
     a = ap.parse_args()
 
-    findings = scan_scratchpad(Path(a.scratchpad).expanduser())
+    target = Path(a.scratchpad).expanduser()
+    if a.since:
+        files = changed_files(target, a.since)
+        if files is None:
+            print(f"detect-handroll: {target} is not inside a git repo; --since needs one",
+                  file=sys.stderr)
+            return 2
+        findings = scan_files(files)
+    else:
+        findings = scan_scratchpad(target)
     if a.universe:
         findings += scan_universe(Path(a.universe).expanduser())
 

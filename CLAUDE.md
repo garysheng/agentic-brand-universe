@@ -48,7 +48,7 @@ would use at the moment you need it.
 | **backfill prompts onto old plates** | `shoot-references/scripts/backfill_prompts.py` |
 | **judge a slot against its golden** | `judge-slot/scripts/judge.py` |
 | **voice-check a manuscript before locking** | `voice-gate/scripts/voice_gate.py <universe> <manuscript.md>` — rules fetched from https://garysheng.com/voice.md; fails on unadjudicated findings, waivable with a written reason |
-| **find what a session hand-rolled** | `pave-the-path/scripts/detect_handroll.py` |
+| **find what a session hand-rolled** | `pave-the-path/scripts/detect_handroll.py [dir]` from ANY directory (default: the cwd); `--since <ref>` scans only the scripts a git diff touched, so a consuming repo (books platform, a site, a print export) can run it as a pre-commit or CI step |
 | **install the framework for someone** | `onboard/scripts/install.py` |
 | **check whether this is a KNOWN gap** (before you work around one) | `gh issue list --label gap` — the standing register of found-and-proven, not-yet-closed gaps, with the verb that would close each one. Search it before hand-rolling around something, and `gh issue create --label gap` when you decline to build. Was `docs/GAPS.md` until 2026-09-12; all 50 entries are issues now, carrying their original G-ids in their titles, so `gh issue list --search G38` still finds one. |
 | **render one spread** | `compose-spread/scripts/render_spread.py` |
