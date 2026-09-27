@@ -586,7 +586,11 @@ regenerate from scratch on any typo.
   are on the wrong path; `--no-platform-copy` opts out for a book that genuinely wants only the raw.
 - **The closing plate needs its OWN title-free art.** A baked-title cover leaves no untitled
   version to fall back on, and the plate sits behind the overlaid closing verse. Generate a
-  dedicated clean plate with a calm, open lower half.
+  dedicated clean plate with a calm, open lower half, through the SAME runner, which conforms
+  it and publishes `closing-plate.png` + its recipe exactly as it does the cover:
+  `render_cover.py <u> <story> --title "<T>" --no-text --no-cast --scene "..." --out
+  <book>/closing-plate-raw.png` (drop `--no-cast` when the plate should hold the hero).
+  `--dry-run` prints the compiled prompt without paying; `--print-prompt` prints AND renders.
 
 ### 6. Doctor the book -> `abu:book-doctor` (ALWAYS, before anything is delivered)
 

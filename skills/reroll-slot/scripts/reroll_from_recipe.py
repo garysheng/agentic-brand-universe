@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pillow"]
+# ///
+# ^ PEP 723: this runner spawns generate.py and conform_cover.py with sys.executable, so
+#   under `uv run` it must carry their dependencies itself (gap G32).
 """reroll_from_recipe.py — re-run a rendered slot EXACTLY as its recipe records.
 
 THE ONE-COMMAND EDIT PATH. Every rendered asset carries a `.recipe.json` beside it

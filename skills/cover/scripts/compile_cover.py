@@ -123,11 +123,12 @@ def main() -> int:
                          "scene prose, which is the weakest place to put a prohibition: a "
                          "denominational cross appeared on a cover against the hero's own "
                          "locked 'nothing denominational' rule and took a re-roll to remove.")
-    ap.add_argument("--hero-pose", dest="hero_pose", default="front",
-                    help="which of the hero's poses the cover composes (default 'front'). "
-                         "A hero seen from BEHIND on a cover is 'back', and needs this: a pose "
-                         "is a wardrobe selector, so the wrong one bakes front-only markings "
-                         "onto a back view.")
+    ap.add_argument("--hero-pose", dest="hero_pose", default=None,
+                    help="which of a CHARACTER hero's poses the cover composes (default "
+                         "'front'). A hero seen from BEHIND on a cover is 'back', and needs "
+                         "this: a pose is a wardrobe selector, so the wrong one bakes "
+                         "front-only markings onto a back view. REFUSED on a non-character "
+                         "hero, whose plate is selected as --hero <id>:<plate>.")
     ap.add_argument("--with", dest="extras", action="append", default=[],
                     help="another canon entity on the cover, as `id` or `id=pose`. A COMPANION "
                          "IS NOT FRONT-FACING BY DEFINITION either: this used to hardcode 'front' "
@@ -222,14 +223,28 @@ def main() -> int:
             print(f"REFUSE: '{eid}' is not a canon entity", file=sys.stderr)
             return 2
         ent = load(ent_file)
+        # A POSE SELECTS WARDROBE ON A CHARACTER; IT SELECTS NOTHING ON ANYTHING ELSE
+        # (gaps G15/G33). `--hero-pose` on a visual-metaphor, setting, motif or prop was
+        # accepted and ignored, and the hero fell to its FIRST empty plate: a cover of
+        # the-house-of-three-rooms' sealed state rendered its as-built plate, and
+        # the-pace-engine's cover was conditioned on `roar` while its canon says only
+        # `master` may stand alone. Same shape `_selector_bake_guard` refuses on spreads.
+        if eid == hero_id and args.hero_pose and ent.get("kind") not in (None, "character"):
+            names = sorted(((ent.get("structured") or {}).get("sheets") or {}).keys()) or [
+                Path(p).stem for p in ((ent.get("contract") or {}).get("emptyPlates") or [])]
+            print(f"REFUSE: --hero-pose selects wardrobe on a CHARACTER; '{eid}' is a "
+                  f"{ent.get('kind')}, so it would be ignored and the default plate passed. "
+                  f"Select this hero's plate as --hero {eid}:<plate> "
+                  f"(available: {', '.join(names) or '(none)'}).", file=sys.stderr)
+            return 2
         if ent.get("kind") in ("setting", "visual-metaphor"):
             con = ent.get("contract", {})
             if ent.get("status") != "locked":
                 print(f"REFUSE: setting {eid} is not locked", file=sys.stderr)
                 return 2
             plates = con.get("emptyPlates") or []
+            sheets = (ent.get("structured") or {}).get("sheets") or {}
             if want_plate:
-                sheets = (ent.get("structured") or {}).get("sheets") or {}
                 cand = _sheet_path(sheets.get(want_plate)) or next(
                     (p for p in plates + [con.get("turnaround")]
                      if p and Path(p).stem == want_plate), None)
@@ -238,7 +253,16 @@ def main() -> int:
                     return 2
                 plate = cand
             else:
-                plate = plates[0] if plates else con.get("turnaround")
+                # THE DEFAULT AGREES WITH CANON'S OWN CONTRACT (G33): the sheet(s) the
+                # entity names in `requiredForRender`, then its `master` pose's sheets,
+                # and only then the first empty plate.
+                st_ = ent.get("structured") or {}
+                canon_default = [k for k in (st_.get("requiredForRender") or [])] + list(
+                    (((st_.get("render") or {}).get("poses") or {}).get("master") or {})
+                    .get("sheets") or [])
+                plate = next((_sheet_path(sheets.get(k)) for k in canon_default
+                              if _sheet_path(sheets.get(k))), None) \
+                    or (plates[0] if plates else con.get("turnaround"))
             if plate and not (uroot / plate).exists():
                 print(f"REFUSE: {eid} plate -> {uroot / plate} (NOT ON DISK)", file=sys.stderr)
                 return 2
@@ -250,6 +274,22 @@ def main() -> int:
         st = ent.get("structured", {})
         sheets = st.get("sheets", {})
         required = st.get("requiredForRender", [])
+        if want_plate:
+            # `<id>:<plate>` on a motif or prop was split off and dropped, so the named
+            # plate never reached the model. Honour it (ahead of the required set), or
+            # refuse on a name the entity does not have.
+            if ent.get("kind") in (None, "character"):
+                print(f"REFUSE: '{eid}' is a character; select its pose with --hero-pose "
+                      f"(hero) or --with {eid}=<pose>, not '{eid}:{want_plate}'",
+                      file=sys.stderr)
+                return 2
+            p = _sheet_path(sheets.get(want_plate))
+            if not p:
+                print(f"REFUSE: {eid} has no plate '{want_plate}' (available: "
+                      f"{', '.join(sorted(sheets)) or '(none)'})", file=sys.stderr)
+                return 2
+            if p not in refs:
+                refs.append(p)
         for key in required:
             p = _sheet_path(sheets.get(key))
             if not p:
@@ -305,7 +345,7 @@ def main() -> int:
         if r.get("always"):
             render_parts.append(r["always"])
         poses = r.get("poses") or {}
-        want_pose = args.hero_pose if eid == hero_id else extra_poses.get(eid, "front")
+        want_pose = (args.hero_pose or "front") if eid == hero_id else extra_poses.get(eid, "front")
         if poses and want_pose not in poses:
             print(f"REFUSE: '{eid}' has no pose {want_pose!r} "
                   f"(available: {', '.join(sorted(poses))})", file=sys.stderr)

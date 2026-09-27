@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pillow"]
+# ///
+# ^ PEP 723. This runner imports no Pillow itself, but it SPAWNS conform_cover.py with
+#   sys.executable, and under `uv run render_cover.py` that interpreter carries only what
+#   THIS block declares. With no block the render was paid for and then the conform died on
+#   `No module named 'PIL'` (gap G32, the-goldilocks-pace 2026-08-09).
 """Render a cover END TO END: compile -> generate -> conform -> report.
 
 `compile_cover.py` emitted a JSON job and NOTHING CONSUMED IT. The SKILL.md says "never
@@ -59,15 +66,20 @@ def publish_platform_copy(out: Path) -> Path | None:
     dst = platform_path(out)
     if dst is None:
         return None
+    # THE CLOSING PLATE IS THE OTHER ENDCAP AND SHIPS THE SAME WAY (gap G25). It goes
+    # through this runner with --no-text --no-cast --out .../closing-plate-raw.png, and its
+    # published recipe must say what it is: a sidecar calling a closing plate a "cover"
+    # sends the next reader looking for a title that is correct to be absent.
+    what = "closing plate" if dst.stem.startswith("closing-plate") else "cover"
     dst.write_bytes(out.read_bytes())
     write_derivative_recipe(
         dst, out,
         tool="abu:cover/scripts/render_cover.py",
-        args={"publish": "platform-facing copy of the conformed cover"},
+        args={"publish": f"platform-facing copy of the conformed {what}"},
         transform="copy (byte-identical; no resample, no crop, no repaint)",
-        role="conformed cover",
+        role=f"conformed {what}",
         note=("DERIVATIVE, not a generation. This is the platform-facing name for the "
-              "conformed cover: byte-identical to the file in derivedFrom, which "
+              f"conformed {what}: byte-identical to the file in derivedFrom, which "
               "carries the recipe of the render that made the art. Published by "
               "render_cover.py so that the copy and its provenance can never be done "
               "by hand, or half-done."))
@@ -123,7 +135,14 @@ def main() -> int:
     ap.add_argument("--no-mark", action="store_true")
     ap.add_argument("--no-author", action="store_true",
                     help="omit the byline even when the universe declares identity.author")
-    ap.add_argument("--print-prompt", action="store_true")
+    ap.add_argument("--print-prompt", action="store_true",
+                    help="print the compiled prompt and refs, THEN STILL RENDER. Pair with "
+                         "--dry-run to inspect without spending.")
+    # Same trap render_spread closed on 2026-07-26: --print-prompt reads like a free
+    # preview and is a paid render. the-goldilocks-pace (G33) reached for it as a dry
+    # run. --dry-run compiles, prints, and never calls the model.
+    ap.add_argument("--dry-run", action="store_true",
+                    help="compile and print only: never calls the image model")
     ap.add_argument("--no-platform-copy", action="store_true",
                     help="do NOT publish the `-raw` render under its platform-facing "
                          "name (cover-raw.png -> cover.png + recipe). The copy is on by "
@@ -178,7 +197,7 @@ def main() -> int:
         return r.returncode
     job = json.loads(r.stdout)
 
-    if a.print_prompt:
+    if a.print_prompt or a.dry_run:
         print(job["prompt"])
         print("\nREFS:")
         for x in job["refs"]:
@@ -188,6 +207,9 @@ def main() -> int:
     # to check against that is not the operator's memory of what they asked for.
     for line in text_report(a.no_text, job.get("textLines") or []):
         print(line)
+    if a.dry_run:
+        print("cover: DRY RUN, nothing generated")
+        return 0
 
     sys.path.insert(0, str(_abu_root() / "engine"))
     from agenticstory.providers import resolve_str

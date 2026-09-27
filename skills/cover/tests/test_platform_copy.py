@@ -147,5 +147,48 @@ class TestBookDoctorIsHealthyWithNoManualCopy(unittest.TestCase):
                         res["problems"])
 
 
+class TestClosingPlateIsPublishedAsItself(unittest.TestCase):
+    """G25 (#27): the closing plate goes through the same runner and publish step, and its
+    published recipe must name it a closing plate, not a cover."""
+
+    def test_closing_plate_raw_publishes_closing_plate_with_its_own_role(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw = _raw_cover(Path(tmp))
+            plate_raw = raw.with_name("closing-plate-raw.png")
+            raw.rename(plate_raw)
+            raw.with_name(raw.name + ".recipe.json").rename(
+                plate_raw.with_name(plate_raw.name + ".recipe.json"))
+            dst = rc.publish_platform_copy(plate_raw)
+            self.assertEqual(dst.name, "closing-plate.png")
+            rec = json.loads(dst.with_name(dst.name + ".recipe.json").read_text())
+        blob = json.dumps(rec)
+        self.assertIn("conformed closing plate", blob)
+        self.assertNotIn("conformed cover", blob)
+
+    def test_cover_still_says_cover(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = rc.publish_platform_copy(_raw_cover(Path(tmp)))
+            rec = json.loads(dst.with_name(dst.name + ".recipe.json").read_text())
+        self.assertIn("conformed cover", json.dumps(rec))
+
+
+class TestDryRunNeverGenerates(unittest.TestCase):
+    """--print-prompt prints AND renders (a paid call); --dry-run is the free preview (G33)."""
+
+    def test_dry_run_exits_zero_and_writes_nothing(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_cover_scripts import build_universe
+        with tempfile.TemporaryDirectory() as tmp:
+            u = build_universe(Path(tmp) / "u")
+            out = Path(tmp) / "book" / "cover-raw.png"
+            r = subprocess.run([sys.executable, str(SCRIPTS / "render_cover.py"), str(u),
+                                "tale", "--title", "T", "--out", str(out), "--dry-run"],
+                               capture_output=True, text=True, timeout=60)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("DRY RUN", r.stdout)
+            self.assertIn("PORTRAIT picture-book COVER", r.stdout)
+            self.assertFalse(out.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
