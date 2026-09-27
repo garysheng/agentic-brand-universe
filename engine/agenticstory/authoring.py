@@ -72,13 +72,24 @@ def freeze_recipe(golden_path, recipe: dict, root=None) -> dict:
     for r in raw_inputs:
         p = r["path"] if isinstance(r, dict) else r
         inputs.append({"path": p, "digest": _digest(resolve(p))})
-    return {
+    frozen = {
         "goldenDigest": _digest(resolve(golden_path)),
         "provider": recipe.get("provider") or recipe.get("model"),
         "prompt": recipe.get("prompt"),
         "specVersion": recipe.get("specVersion"),
         "inputs": inputs,
     }
+    # WHAT MADE IT SURVIVES THE FREEZE (gap #47). A code-drawn plate's recipe says
+    # `generator: agenticstory.massing` + `deterministic: true`, and that marker is how
+    # `shoot-references` knows the plate is conditioning rather than a shot to paint.
+    # Locking it with `--recipe` rewrote the sidecar in THIS shape and dropped the marker,
+    # so the frozen blueprint counted as PAINTED: `--shoot-seed` refused ("already has 1
+    # plate on disk") and `--seed blueprint` refused ("not a shot"), a deadlock with no
+    # legal first shot (nation-of-fire the-academy-hall, 2026-08-21).
+    for k in ("generator", "deterministic", "mode", "universe", "entity"):
+        if recipe.get(k) is not None:
+            frozen[k] = recipe[k]
+    return frozen
 
 
 def scaffold_entity(
@@ -505,9 +516,10 @@ def prompts_skeleton(entity: dict, register: dict | None = None) -> str:
             "else**, with `abu elevation` or `abu massing` from a declarative spec in "
             "`canon/blueprints/`, so the geometry is a number rather than a guess. Once it is on "
             "disk with its recipe, `shoot-references` never regenerates it and passes it as "
-            "conditioning to EVERY shot automatically (SPEC 12), and its section below is never "
-            "used. The section is only the fallback for an object with no fixed geometry, and it "
-            "is what you will get by default if you skip this step.",
+            "conditioning to EVERY shot automatically (SPEC 12). Then DELETE the `## blueprint` "
+            "section below: a level-2 heading is a LIVE SHOT, and a body reading \"not used\" is "
+            "sent to the model as a prompt if the PNG is ever missing (gap G19). The section is "
+            "only for PAINTING a blueprint for an object with no fixed geometry.",
             "2. **`master` is the seed** and the plate the human blesses. Shoot it with "
             "`--shoot-seed`, look at it, then `--bless-seed master`.",
             "3. **Every state chains off `master`, never off a sibling state.** Pass `--star`. "
@@ -542,7 +554,15 @@ def prompts_skeleton(entity: dict, register: dict | None = None) -> str:
             out.append("")
 
     for s in slots:
-        out += [f"## {s}  -> reference/{eid}/{s}.png", "TODO(author): the prompt for this shot.", ""]
+        body = "TODO(author): the prompt for this shot."
+        if s == "blueprint" and kind in ("setting", "visual-metaphor"):
+            # Never invite a "NOT USED" stub (gap G19): the-lunch-booth's author followed
+            # the old wording, the PNG was missing, and the stub was painted into a
+            # restaurant scene with two invented people and filed as the geometry.
+            body = ("TODO(author): DELETE this heading when the blueprint is CODE-DRAWN "
+                    "(`abu elevation` / `abu massing`, the usual case). Keep it only to PAINT "
+                    "a blueprint, and then write a real prompt here.")
+        out += [f"## {s}  -> reference/{eid}/{s}.png", body, ""]
     return "\n".join(out)
 
 

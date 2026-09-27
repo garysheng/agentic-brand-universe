@@ -1255,6 +1255,17 @@ def resolve_character(ent: dict, look: str | None, uroot=None):
             raise Refuse(f"{ent['id']} has no altLook '{look}'")
         if al.get("anchorPhoto"):
             refs.append(al["anchorPhoto"])
+        # The look's OWN photoStack, which SPEC says outranks the base face, was read by
+        # nothing at render time (gap G26): the shooter now builds an era from it, so a
+        # render that dropped it would hand the spreads a different face from the matrix.
+        for p in al.get("photoStack") or []:
+            d = (Path(uroot) / p) if uroot else None
+            items = ([str(Path(p) / x.name) for x in sorted(d.iterdir())
+                      if x.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".heic")]
+                     if d is not None and d.is_dir() else [p])
+            for q in items:
+                if q not in refs:
+                    refs.append(q)
         for v in (al.get("sheets") or {}).values():
             pth = _sheet_path(v)
             if pth:
@@ -1293,7 +1304,7 @@ def resolve_character(ent: dict, look: str | None, uroot=None):
         # this look shows the FACE: its own anchorPhoto or alt sheets, a kept base
         # face sheet, or the kept photo stack. Body-only refs pass the silhouette
         # being superseded and nothing that says who this is.
-        has_face = bool(al.get("anchorPhoto") or (al.get("sheets") or {})
+        has_face = bool(al.get("anchorPhoto") or al.get("photoStack") or (al.get("sheets") or {})
                         or al.get("keepPhotos")
                         or (kept & FACE_SHEET_KEYS) - dropped)
         if not has_face:

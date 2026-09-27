@@ -999,14 +999,32 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
             q = (uroot / rel).resolve()
             if not q.exists():
                 raise Refuse(f"{eid}.altLooks.{look} names {rel} (NOT ON DISK)")
-            if str(q) not in look_refs:
-                look_refs.append(str(q))
+            # A directory expands to its images, as a realPerson photoStack entry does.
+            for f in (sorted(x for x in q.iterdir()
+                             if x.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".heic"))
+                      if q.is_dir() else [q]):
+                if str(f) not in look_refs:
+                    look_refs.append(str(f))
         if not look_refs:
-            for k in ("face-neutral", "face-3q", "expressions"):
+            # THE FACE KEYS ARE THE COMPILER'S, NOT A LITERAL LIST (gap G3). This read
+            # exactly face-neutral/face-3q/expressions, so an entity locked under the
+            # legacy key `face` (SPEC 12 permits it; jerry-man uses it) resolved NOTHING,
+            # printed a note, and shot the era off the style anchor alone: a stranger's
+            # face filed as an era of a locked character. Same set assemble_prompt uses.
+            # And a face sheet DECLARED but not on disk is a refusal, not a note: the
+            # run would otherwise continue and spend on an identity-free seed.
+            for k in ("face-neutral", "face-3q", "face", "expressions"):
                 rel = base_sheets.get(k)
+                rel = rel.get("path") if isinstance(rel, dict) else rel
                 if rel:
                     q = (uroot / rel).resolve()
-                    if q.exists():
+                    if not q.exists():
+                        raise Refuse(
+                            f"{eid}.structured.sheets.{k} -> {rel} is NOT ON DISK. It is the "
+                            f"face {look!r} would be built from; shooting without it seeds "
+                            f"the look off the style anchor alone and returns a stranger. "
+                            f"Restore the plate, or give the look its own anchorPhoto.")
+                    if str(q) not in look_refs:
                         look_refs.append(str(q))
         # No face reference at all is NOT an error. Some looks exist to introduce a face
         # the default matrix never had: `the-lord`'s default look holds his face inside
@@ -1028,6 +1046,25 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         photos = _photo_stack(ent, uroot)
     except FileNotFoundError as e:
         raise Refuse(f"{eid}.realPerson.photoStack: {e}")
+
+    # A LOOK'S OWN PHOTOGRAPHS REPLACE THE BASE STACK; THEY DO NOT FOLLOW IT (gap G26).
+    # The base realPerson stack rode first on every shot and the look's anchorPhoto +
+    # photoStack came after it, on the seed only, so for an age era five present-day
+    # photos led the conditioning and the young-era anchor arrived sixth of eight:
+    # david-kobrosky@college fought adult-face drift and stubble for three seed rolls
+    # until the base stack was hand-swapped out. SPEC says a look's own anchorPhoto and
+    # photoStack OUTRANK the base face, so they become the stack (anchorPhoto first) and
+    # ride every shot; the base photos ride along only when the look sets `keepPhotos`,
+    # the same switch compose-spread reads at render time.
+    if look:
+        al = ((ent.get("structured") or {}).get("altLooks") or {}).get(look) or {}
+        # Scoped to a look that brings PHOTOGRAPHS: its own photoStack, or an anchorPhoto
+        # on a real person (whose base stack is what it replaces). A fictional entity's
+        # look anchored on a painted sibling plate keeps the seed-only path it had.
+        if al.get("photoStack") or (al.get("anchorPhoto") and photos):
+            own = list(look_refs)          # exactly the look's anchorPhoto + photoStack
+            photos = own + ([p for p in photos if p not in own] if al.get("keepPhotos") else [])
+            look_refs = []
 
     # SPLIT OFF THE CODE-DRAWN SHOTS BEFORE PICKING A SEED (v0.31). They are not
     # shots this chain may take; they are conditioning it must carry. See
@@ -1064,6 +1101,24 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
         raise Refuse(
             f"every shot in {refdir / 'prompts.md'} is already CODE-DRAWN "
             f"({', '.join(sorted(drawn))}). There is nothing for this chain to paint.")
+
+    # A BODY THAT SAYS IT IS NOT A PROMPT IS NOT A PROMPT (gap G19). A code-drawn slot's
+    # section written as "NOT USED. Code-drawn by `abu elevation`" is harmless only while
+    # its PNG is on disk and the code-drawn split above removes it. the-lunch-booth
+    # (2026-08-06) had no blueprint.png, so the stub was painted as a full restaurant scene
+    # with two invented people and filed as the setting's geometry. Checked on the shots
+    # this chain would actually PAINT, and on the body's opening words only.
+    for s in shots:
+        m = re.match(r"\s*(NOT USED|ALIAS OF|DO NOT SHOOT|NEVER USED)\b",
+                     prompts.get(s, ""), flags=re.I)
+        if m:
+            raise Refuse(
+                f"{refdir / 'prompts.md'}: the body under '## {s}' opens with "
+                f"{m.group(1)!r}, a note that it is not a prompt, and this chain would PAINT "
+                f"it (no code-drawn {s}.png with a generator recipe is on disk). A level-2 "
+                "heading is a live shot. Draw the plate first (`abu elevation` / `abu "
+                "massing`) and it is found from its recipe, or delete the heading, or write a "
+                "real prompt.")
 
     seed = pick_seed(kind, shots, seed_override)
     rest = [s for s in shots if s != seed]
@@ -1372,7 +1427,12 @@ def _main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--print-plan", action="store_true")
     ap.add_argument("--bless-seed", metavar="SHOT",
-                    help="record HUMAN approval of the seed so the chain may proceed")
+                    help="record approval of the seed so the chain may proceed")
+    ap.add_argument("--by", default=None, metavar="WHO",
+                    help="who approved the seed, written verbatim into the marker's blessedBy "
+                         "(default 'human'). An agent readback under an operator's direction "
+                         "records itself honestly, e.g. --by 'agent-readback (steward, for "
+                         "Gary)', instead of falsifying a human attestation.")
     ap.add_argument("--look", default=None,
                     help="shoot a declared altLook (an era body, a wardrobe state) into "
                          "reference/<id>/<look>/ instead of the default matrix. The chain seeds "
@@ -1401,11 +1461,25 @@ def _main() -> int:
         if not img.exists():
             print(f"REFUSE: cannot bless '{shot}': {img} does not exist", file=sys.stderr)
             return 2
+        # WHO BLESSED IT IS RECORDED AS STATED, never assumed (gap G12). This wrote
+        # `blessedBy: "human"` unconditionally, so a seed an agent approved after a
+        # crop-zoom readback, under an operator's direction, got an attestation claiming a
+        # person looked at it: the record stated what canon says a blessing IS rather
+        # than what the run DID. `--by` records the actual approver; the default is
+        # unchanged, and the chain's existence check does not care who.
+        by = (args.by or "human").strip() or "human"
+        import datetime as _dt
+        human = not by.lower().startswith("agent")
         marker(refdir, shot).write_text(json.dumps(
-            {"shot": shot, "sha256_16": sha(img), "blessedBy": "human",
-             "note": "Golden is a human gate. This marker records that a person looked at this "
-                     "seed and approved it; the chain conditions every later shot on it."}, indent=1))
-        print(f"blessed seed: {shot}")
+            {"shot": shot, "sha256_16": sha(img), "blessedBy": by,
+             "blessedOn": _dt.date.today().isoformat(),
+             "note": ("Golden is a human gate. This marker records that a person looked at "
+                      "this seed and approved it; the chain conditions every later shot on it."
+                      if human else
+                      "Blessed by an AGENT readback, not by a person looking. The chain "
+                      "conditions every later shot on it; a human bless-seed replaces this "
+                      "marker with a human attestation.")}, indent=1))
+        print(f"blessed seed: {shot} (by {by})")
         return 0
 
     if args.print_plan or args.dry_run:
