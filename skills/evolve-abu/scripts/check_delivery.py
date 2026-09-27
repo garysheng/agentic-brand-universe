@@ -69,9 +69,21 @@ def version_of(blob):
         return ""
 
 
+def default_branch(repo) -> str:
+    """origin's default branch (what an install tracks), else `master`."""
+    ok, ref = sh(["git", "symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"], cwd=repo)
+    if ok and ref.startswith("origin/"):
+        return ref[len("origin/"):]
+    ok, out = sh(["git", "ls-remote", "--symref", "origin", "HEAD"], cwd=repo)
+    m = re.search(r"ref: refs/heads/(\S+)\s+HEAD", out or "")
+    return m.group(1) if ok and m else "master"
+
+
 def main():
     ap = argparse.ArgumentParser(description="Verify a framework change reached the installed plugin.")
     ap.add_argument("--repo", default=None, help="Framework repo root (default: infer from this script).")
+    ap.add_argument("--branch", default=None,
+                    help="the remote branch installs track (default: origin's default branch)")
     ap.add_argument("--expect", action="append", default=[],
                     help="Repo-relative path that MUST exist in the installed plugin. Repeatable.")
     ap.add_argument("--no-fetch", action="store_true", help="Skip `git fetch` (offline).")
@@ -99,9 +111,15 @@ def main():
     _, head_blob = sh(["git", "show", "HEAD:.claude-plugin/plugin.json"], cwd=repo)
     head_v = version_of(head_blob)
 
+    # THE MARKETPLACE INSTALLS FROM THE DEFAULT BRANCH, so that is the remote that counts,
+    # never `origin/<whatever is checked out>`. Keyed on the current branch, a release
+    # shipped from a worktree with `git push origin HEAD:master` read as NO-REMOTE (2026-09-27),
+    # and worse, a feature branch pushed to origin/feature read as STALE-CACHE: a handoff
+    # telling Gary to `/plugin update` for a change that never reached master.
+    target = args.branch or default_branch(repo)
     if not args.no_fetch:
-        sh(["git", "fetch", "-q", "origin", branch], cwd=repo)
-    remote_ref = f"origin/{branch}"
+        sh(["git", "fetch", "-q", "origin", target], cwd=repo)
+    remote_ref = f"origin/{target}"
     has_remote, _ = sh(["git", "rev-parse", "--verify", "-q", remote_ref], cwd=repo)
     _, remote_blob = sh(["git", "show", f"{remote_ref}:.claude-plugin/plugin.json"], cwd=repo)
     remote_v = version_of(remote_blob) if has_remote else ""
@@ -141,7 +159,8 @@ def main():
         verdict, whose, why = "UNPUSHED", "yours", (
             f"{ahead_n} commit(s) ahead of {remote_ref}, which is at {remote_v or 'nothing'}. "
             f"`/plugin update` pulls from the remote, so it will report 'already at the latest "
-            f"version' and be telling the truth. Push to {remote_ref}.")
+            f"version' and be telling the truth. Push to {remote_ref} "
+            f"(from a worktree: git push origin HEAD:{target}).")
     elif not installed_v:
         verdict, whose, why = "NOT-INSTALLED", "gary", (
             f"published at {declared}, but no plugin cache at {cache_dir}. "
