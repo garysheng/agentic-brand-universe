@@ -1109,6 +1109,20 @@ def build_plan(uroot: Path, eid: str, seed_override=None, shots_override=None,
     # with two invented people and filed as the setting's geometry. Checked on the shots
     # this chain would actually PAINT, and on the body's opening words only.
     for s in shots:
+        # A BODY THAT DEFERS TO TEXT THE PARSER NEVER SENDS (gap G28b). Only the text under
+        # a shot's own `## ` heading reaches the model (plus the `**Negatives (every shot):**`
+        # and `**Refs (every shot):**` headers). nation-of-fire's four Inklings seeds each read
+        # "the full signature wardrobe described above", deferring to a "THE MAN, restated in
+        # full on every shot" block that reached no shot, and came back as four generic period
+        # men matching no invariant. Four renders, found only by reading the recipes.
+        d = re.search(r"\b(?:described|stated|restated|listed|given|detailed|specified) above\b"
+                      r"|\b(?:see|as) above\b|\babove description\b", prompts.get(s, ""), flags=re.I)
+        if d:
+            raise Refuse(
+                f"{refdir / 'prompts.md'}: the body under '## {s}' says {d.group(0)!r}, but only "
+                "the text under a shot's own heading reaches the model; a shared block above "
+                "the shots is sent on NO shot. Write the description into this body, or put what "
+                "every render of the entity needs in its `structured.render.always`.")
         m = re.match(r"\s*(NOT USED|ALIAS OF|DO NOT SHOOT|NEVER USED)\b",
                      prompts.get(s, ""), flags=re.I)
         if m:

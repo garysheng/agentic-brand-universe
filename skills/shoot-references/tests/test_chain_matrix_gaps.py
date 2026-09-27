@@ -131,6 +131,28 @@ class TestNotUsedStubIsNotAPrompt(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
 
 
+class TestBodyDeferringToASharedBlock(unittest.TestCase):
+    """G28b (#30): a body that says 'described above' defers to text no shot is sent."""
+
+    def test_refused_before_any_spend(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = build(Path(t), kind="character", shots=("face-neutral",))
+            md = root / "reference" / "room" / "prompts.md"
+            md.write_text("# room\n\nTHE MAN, restated in full on every shot: tweed, pipe.\n\n"
+                          "## face-neutral -> `reference/room/face-neutral.png`\n"
+                          "The full signature wardrobe described above, head and shoulders.\n")
+            r = run(root, "--print-plan")
+            self.assertEqual(r.returncode, 2, r.stdout)
+            self.assertIn("described above", r.stderr)
+            self.assertIn("render.always", r.stderr)
+
+    def test_the_skeleton_says_every_body_is_self_contained(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "engine"))
+        from agenticstory.authoring import prompts_skeleton, scaffold_entity
+        md = prompts_skeleton(scaffold_entity("character", "jo", "Jo"), {"anchor": "a.png"})
+        self.assertIn("SELF-CONTAINED", md)
+
+
 class TestCodeDrawnWithNoSection(unittest.TestCase):
     """G11: compose_prompts writes no `## blueprint` section; detection must not need one."""
 

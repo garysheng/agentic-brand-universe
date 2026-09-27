@@ -182,6 +182,35 @@ def main() -> int:
                 f"is who is IN FRAME, not who the spread is about; a background person who "
                 f"is merely out of focus is still cast.")
 
+    # ---- R5 insert with a person cast (v0.54, gap G34) ------------------------
+    # SPEC 4.13 defines `insert` as "no whole figures and no faces in shot", while the
+    # compiler emits the cast closure, the character's whole-body `render.always` and its
+    # pose bake for everyone cast. The two contradict and the entity block wins, so the
+    # model returns an ANATOMICALLY ORPHANED limb: the-factory-manager spread-09 came back
+    # twice as a giant disembodied mitten plus a face in a machine port. Both sides are
+    # structured fields, so this is free and fires before any spend. A prop or motif cast
+    # in an insert is exactly what an insert is for, so only people are refused.
+    ents = pathlib.Path(a.universe).expanduser() / "canon" / "entities"
+    for sp in spreads:
+        if sp.get("shot") != "insert":
+            continue
+        people = []
+        for c in sp.get("cast") or []:
+            cid = c.get("id") if isinstance(c, dict) else c
+            try:
+                kind = json.loads((ents / f"{cid}.json").read_text()).get("kind")
+            except (OSError, ValueError, TypeError):
+                continue
+            if kind in ("character", "group"):
+                people.append(cid)
+        if people:
+            problems.append(
+                f"R5 INSERT WITH A PERSON CAST ({sp['id']}): shot is `insert` (no whole "
+                f"figures, no faces) but it casts {', '.join(people)}, whose whole-body "
+                f"description reaches the prompt and wins, returning an orphaned limb. Either "
+                f"change the shot (`close` gives the hands an owner and a scale), or drop "
+                f"the person from `cast` and describe the hand/object under `anonymous`.")
+
     if a.json:
         print(json.dumps({"problems": problems, "notes": notes}, indent=2))
         return 2 if problems else 0

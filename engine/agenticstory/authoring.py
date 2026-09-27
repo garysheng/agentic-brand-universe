@@ -612,6 +612,14 @@ def prompts_skeleton(entity: dict, register: dict | None = None) -> str:
     out += ["", "TODO(author): replace each body below. A prompt must (a) lead with the register "
             "anchor, (b) bake the rejected poles as negatives, (c) state the invariants that must "
             "not drift, and (d) contain no legible text unless the design calls for it.", ""]
+    # EVERY BODY IS SELF-CONTAINED (gap G28b). Nothing above the first shot heading reaches
+    # the model except the two bold headers, so a shared description block here was sent on
+    # no shot while the bodies said "described above".
+    out += ["Each shot body is SELF-CONTAINED: only the text under its own `## ` heading reaches "
+            "the model, plus a `**Negatives (every shot):** a, b` or `**Refs (every shot):** id` "
+            "header. Notes up here are for the author only. A description every render needs "
+            "belongs in the entity's `structured.render.always`, not in a block above the shots.",
+            ""]
 
     if kind == "visual-metaphor":
         # A VISUAL-METAPHOR'S SLOTS ARE ITS OWN (v0.31). This used to emit a SETTING's

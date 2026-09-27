@@ -125,6 +125,23 @@ THESE RULES ARE BINDING AND EVERY ONE MUST HOLD:
 ONE single continuous image of ONE scene: no panels, no grid, no contact sheet, no multiple views, no before-and-after. No stray or invented lettering anywhere."""
 
 CONTRACT_SHAPED = {"setting", "visual-metaphor"}
+OBJECT_SHAPED = {"prop", "motif"}
+OBJECT_PLATE = ("The object alone, whole and centred, three-quarter view, every edge inside the "
+                "frame, evenly lit so its shape and markings read.")
+OBJECT_PREFIX = """A single {kind} reference plate for a picture-book universe. ONE image only, no panels.
+
+Rendered in the style of the FIRST reference image, which is a STYLE ANCHOR ONLY and whose contents must never be drawn.
+
+WHAT THIS IS: {always}
+
+THIS PLATE: {pose}
+
+THESE RULES ARE BINDING AND EVERY ONE MUST HOLD:
+{rules}
+
+BACKGROUND: a plain neutral field, completely empty. No hands, no people, no table unless the rules above name one.
+
+ONE single image only: no panels, no grid, no contact sheet, no multiple views. No stray or invented lettering anywhere."""
 TODO_MARKER = "TODO(author)"
 
 HEADER = """# {eid} — generation prompts
@@ -166,6 +183,14 @@ def compose_body(ent: dict, shot: str, pose_id: str | None) -> str:
                  f"has nothing binding to state. Fill structured.invariants first.")
     kind = ent.get("kind", "character")
     rules = "\n".join("- " + i for i in invs)
+    if kind in OBJECT_SHAPED:
+        # A PROP OR MOTIF HAS NO FACE, NO EXPRESSION AND NO FEET (gap G7). It fell through to
+        # the person template, so a shot of a bell asked for "Full body, standing, head to
+        # feet" and "calm neutral expression, mouth closed" against a WARM studio field.
+        plate = ((render.get("poses") or {}).get(pose_id or "", {}) or {}).get("bake") \
+            if pose_id else None
+        return OBJECT_PREFIX.format(kind=kind, always=always,
+                                    pose=(plate or "").strip() or OBJECT_PLATE, rules=rules)
     if kind in CONTRACT_SHAPED:
         # A place has no body and no expression, so it takes neither the framing line
         # nor the studio-field background. Its pose bake already says what the plate is.

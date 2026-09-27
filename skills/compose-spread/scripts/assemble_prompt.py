@@ -671,7 +671,20 @@ def _cast_name_tokens(eid: str) -> set[str]:
     return {t for t in eid.split("-") if len(t) > 3 and t not in _ID_STOPWORDS}
 
 
-def uncast_characters(uroot: Path, scene: str, cast_ids: set[str]) -> list[tuple[str, str]]:
+def _also_known_as(ent: dict) -> set[str]:
+    """`structured.alsoKnownAs` (v0.54, gap #48): names the PROSE uses that the id does not
+    carry as a token. `larrance-dopson` is "Rance" in every scene, and "rance" is an INFIX of
+    "larrance", so a spread naming RANCE with him uncast rendered a boy invented in his place.
+    Declared rather than fuzzy-matched, because this guard's value is that it fails closed
+    without firing on ordinary words."""
+    aka = ((ent.get("structured") or {}).get("alsoKnownAs")) or []
+    if isinstance(aka, str):
+        aka = [aka]
+    return {str(a).strip().lower() for a in aka if str(a).strip()}
+
+
+def uncast_characters(uroot: Path, scene: str, cast_ids: set[str],
+                      allow: set[str] | None = None) -> list[tuple[str, str]]:
     """Character entities NAMED in the scene text but never CAST in this spread.
 
     Promoted from the Nation of Fire fork 2026-07-25 (earned on why-do-i-get-to-meet-them).
@@ -705,18 +718,26 @@ def uncast_characters(uroot: Path, scene: str, cast_ids: set[str]) -> list[tuple
     cast_tokens: set[str] = set()
     for cid in cast_ids:
         cast_tokens |= _cast_name_tokens(cid)
+        try:
+            cast_tokens |= _also_known_as(load(ents / f"{cid}.json"))
+        except (ValueError, OSError):
+            pass
 
     missing: list[tuple[str, str]] = []
     for path in sorted(ents.glob("*.json")):
         eid = path.stem
-        if eid in cast_ids:
+        # A SCOPED allowUncast (v0.54, G14) names the one entity whose name is also an
+        # ordinary word here ("impossible to MISS" vs miss-odessa), without disarming the
+        # guard for every other person on the spread, which a blanket `true` does.
+        if eid in cast_ids or eid in (allow or set()):
             continue
         try:
-            if load(path).get("kind") != "character":
+            ent = load(path)
+            if ent.get("kind") != "character":
                 continue
         except (ValueError, OSError):
             continue
-        for tok in _name_tokens(eid):
+        for tok in sorted(_name_tokens(eid)) + sorted(_also_known_as(ent)):
             if tok in cast_tokens:
                 continue
             if re.search(rf"\b{re.escape(tok)}\b", low):
@@ -2111,6 +2132,25 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         # block, the QA checklist and the computed negatives below all read the SAME
         # resolved list, exactly as `supersedes` already works for an alt look.
         inv = pose_invariants(inv, ent, c.get("pose"), c.get("look"))
+        # A POSE MAY DROP A BASE SHEET TOO (v0.54, gap G1), with the same semantics as an
+        # alt-look's dropSheets. A pose that changes the BODY or the WARDROBE (an age era, a
+        # wound, a soaked or torn garment, something held that hides a locked sheet's subject)
+        # was silently outranked by the base reference it contradicts, because a reference
+        # image outranks a word. An Amazing Sex Life (2026-08-04) had to declare a same-keyed
+        # altLook purely to buy this one field.
+        _pose = selected_pose(ent, c.get("pose"), c.get("look")) or {}
+        _pose_dropped = set(_pose.get("dropSheets") or [])
+        if _pose_dropped:
+            _sm = (ent.get("structured") or {}).get("sheets") or {}
+            _unknown = sorted(k for k in _pose_dropped if k not in _sm)
+            if _unknown:
+                raise Refuse(f"{c['id']} pose '{c.get('pose')}' drops {_unknown}, which "
+                             f"are not sheets of {c['id']} (known: {sorted(_sm)})")
+            _dead = {_sheet_path(_sm.get(k)) for k in _pose_dropped}
+            r = [p for p in r if p not in _dead]
+            if not r:
+                raise Refuse(f"{c['id']} pose '{c.get('pose')}' drops every reference, so "
+                             f"no identity reaches the model. Keep a face sheet.")
         resolved_canon.append((ent, None, c.get("bake"), c.get("look"), None))
         add_refs(r)
         # Canon's prescribed prompt-craft (structured.render) is emitted ALONGSIDE
@@ -2129,7 +2169,7 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         # v0.23) is a dict, and the raw form crashed resolve_ref with a TypeError
         # (the-introducer, 2026-08-08). Same failure class as the v0.37 linter crash:
         # the slot form the spec recommends must never be the form that breaks a path.
-        add_refs([p for k in pose_sheets if k not in look_dropped
+        add_refs([p for k in pose_sheets if k not in look_dropped and k not in _pose_dropped
                   for p in [_sheet_path(sheets_map.get(k))] if p])
         derived = (
             f"{c['id']} rendered exactly per the supplied reference images: "
@@ -2317,15 +2357,19 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     scene = sp.get("scene", "")
 
     # Refuse BEFORE returning a job that will invent a stranger. Costs nothing: pure text.
-    if not eff.get("allowUncast"):
+    _allow = eff.get("allowUncast")
+    if not _allow or isinstance(_allow, list):
         cast_ids = {c["id"] for c in entries}
-        uncast = uncast_characters(uroot, scene, cast_ids)
+        allow_ids = set(_allow) if isinstance(_allow, list) else set()
+        uncast = uncast_characters(uroot, scene, cast_ids, allow_ids)
         if uncast:
             named = "; ".join(f"scene says '{tok}' but never casts '{eid}'" for eid, tok in uncast)
             raise Refuse(
                 f"UNCAST CHARACTERS NAMED IN SCENE TEXT ({spread_id}): {named}. "
-                "The model invents a stranger for each. Cast them, or set allowUncast if the "
-                "mention is genuinely not an in-frame person."
+                "The model invents a stranger for each. Cast them, or, if a word here is "
+                "ordinary English and not that person, set allowUncast to a LIST naming just "
+                f"that entity (e.g. \"allowUncast\": [\"{uncast[0][0]}\"]), which keeps the "
+                "guard armed for everyone else. `true` disarms it for the whole spread."
             )
 
     prompt = " ".join(
