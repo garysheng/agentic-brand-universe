@@ -635,6 +635,10 @@ Cartridge-specific wiring. The universal parts:
   title is present before reporting a link.
 - **Captions may not be server-rendered.** Grepping the live HTML for caption text is an invalid
   check on a client-rendered reader. Verify against the deployed bundle or the reader itself.
+- **Never hand-build a rename bridge for a platform that wants other names.** An ABU book is
+  `cover.png` + `spreads/spread-01..NN.png` + `closing-plate.png`; a platform expecting composer
+  naming (`cover-0`, `spread-0..N-1`, `plate-0`) owns the translation. The books platform ships
+  `apps/web/scripts/stage-abu-book.py <book-dir> <slug>` for exactly this (gap G24).
 
 ## 10. Land the work -> `abu:land-work` (ALWAYS, never "parked")
 
