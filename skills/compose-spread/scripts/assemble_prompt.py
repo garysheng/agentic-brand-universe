@@ -683,6 +683,41 @@ def _also_known_as(ent: dict) -> set[str]:
     return {str(a).strip().lower() for a in aka if str(a).strip()}
 
 
+def occupancy_violations(uroot: Path, entries: list, guests=()) -> list[tuple[str, str, list]]:
+    """[(setting, person, occupants)] for every person cast into a setting that does not
+    admit them (v0.56, gap G16).
+
+    A setting could declare its geometry and dressing and not its OCCUPANTS, so nothing
+    refused staging a stranger in a named real family's home: keep-god-out-of-the-state
+    spread 9 put canon's white American everyman and an anonymous wife in `vegas-home`,
+    the real Sheng family home dressed with their own belongings, and it shipped. Opt-in:
+    only a setting declaring `structured.occupants` is checked. `structured.allowGuests`
+    on the setting, or the spread's `guests: [ids]`, admits a visitor deliberately.
+    """
+    ents = uroot / "canon" / "entities"
+    loaded = {}
+    for c in entries:
+        cid = c.get("id") if isinstance(c, dict) else None
+        if cid and cid not in loaded:
+            try:
+                loaded[cid] = load(ents / f"{cid}.json")
+            except (OSError, ValueError):
+                loaded[cid] = {}
+    out = []
+    for sid, s in loaded.items():
+        if s.get("kind") != "setting":
+            continue
+        st = s.get("structured") or {}
+        occ = st.get("occupants")
+        if not isinstance(occ, list) or st.get("allowGuests"):
+            continue
+        for pid, p in loaded.items():
+            if p.get("kind") in ("character", "group") and pid not in occ \
+                    and pid not in (guests or ()):
+                out.append((sid, pid, occ))
+    return out
+
+
 def uncast_characters(uroot: Path, scene: str, cast_ids: set[str],
                       allow: set[str] | None = None) -> list[tuple[str, str]]:
     """Character entities NAMED in the scene text but never CAST in this spread.
@@ -2357,6 +2392,13 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
     scene = sp.get("scene", "")
 
     # Refuse BEFORE returning a job that will invent a stranger. Costs nothing: pure text.
+    for st_id, pid, occ in occupancy_violations(uroot, entries, sp.get("guests") or ()):
+        raise Refuse(
+            f"NOT AN OCCUPANT ({spread_id}): '{pid}' is cast into '{st_id}', which declares "
+            f"structured.occupants {occ}. A home dressed with one household's belongings "
+            f"renders a stranger among them. Cast an occupant, move the scene, or admit a "
+            f"visitor deliberately with the spread's \"guests\": [\"{pid}\"].")
+
     _allow = eff.get("allowUncast")
     if not _allow or isinstance(_allow, list):
         cast_ids = {c["id"] for c in entries}

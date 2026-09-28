@@ -98,6 +98,23 @@ class TestComposeSpec(unittest.TestCase):
             self.assertIn("spread-99", ids, "a non-beat spread must never be deleted")
             self.assertIn("kept, not deleted", r.stdout)
 
+    def test_rerun_keeps_every_key_it_does_not_own(self):
+        """G35 records a re-sync DELETING the caption `pos` a placement pass wrote; the
+        class is every spread key outside the tool's own tuples (v0.56)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp); out = Path(tmp) / "spec.json"
+            _run(root, out)
+            spec = json.loads(out.read_text())
+            sp = spec["spreads"][0]
+            sp.update({"pos": "bottom-left", "anonymous": "a hand on the rail",
+                       "guests": ["her"], "allowArchived": True})
+            out.write_text(json.dumps(spec))
+            r = _run(root, out); self.assertEqual(r.returncode, 0, r.stderr)
+            again = json.loads(out.read_text())["spreads"][0]
+            for k, v in (("pos", "bottom-left"), ("anonymous", "a hand on the rail"),
+                         ("guests", ["her"]), ("allowArchived", True)):
+                self.assertEqual(again.get(k), v, f"re-sync dropped {k}")
+
     def test_force_is_the_only_way_to_lose_authored_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = _universe(tmp); out = Path(tmp) / "spec.json"

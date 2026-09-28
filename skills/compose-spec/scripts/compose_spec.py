@@ -225,6 +225,14 @@ def main() -> int:
         for k in AUTHORED:
             if k in old:
                 sp[k] = old[k]
+        # AND EVERY OTHER KEY THE SPREAD ALREADY CARRIES (v0.56). The tuples above name the
+        # keys this tool knows how to derive or choose; everything else was DROPPED on a
+        # re-sync, silently: the caption `pos` a placement pass wrote (gap G35 records it
+        # being deleted outright), `anonymous`, `guests`, `allowArchived`,
+        # `guardedNegatives`. A key re-sync does not own is a key it must not delete.
+        for k, v in old.items():
+            if k not in sp and not k.startswith("_"):
+                sp[k] = v
         sp.setdefault("scene", "")
         if not sp["scene"]:
             notes.append(f"{sid}: scene is empty and must be authored")

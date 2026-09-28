@@ -138,5 +138,36 @@ class TestInsertWithAPersonCast(Base):
         self.assertFalse(any("R5" in p for p in probs), probs)
 
 
+class TestSettingOccupants(Base):
+    """G16 (#21): a setting that declares its occupants refuses a stranger in its home."""
+
+    def setUp(self):
+        super().setUp()
+        _edit(self.root, "home", lambda d: d.setdefault("structured", {}).update(
+            {"occupants": ["clean", "stache"]}))
+
+    def test_an_occupant_is_fine(self):
+        r = run(self.root, self.spec([{"id": "clean"}]))
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_stranger_is_refused(self):
+        r = run(self.root, self.spec([{"id": "scout"}]))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("NOT AN OCCUPANT", r.stderr + r.stdout)
+        self.assertIn("guests", r.stderr + r.stdout)
+
+    def test_a_declared_guest_is_admitted(self):
+        r = run(self.root, self.spec([{"id": "scout"}], guests=["scout"]))
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_allow_guests_on_the_setting_admits_anyone(self):
+        _edit(self.root, "home", lambda d: d["structured"].update({"allowGuests": True}))
+        self.assertEqual(run(self.root, self.spec([{"id": "scout"}])).returncode, 0)
+
+    def test_a_setting_without_occupants_is_unchanged(self):
+        _edit(self.root, "home", lambda d: d["structured"].pop("occupants"))
+        self.assertEqual(run(self.root, self.spec([{"id": "scout"}])).returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
