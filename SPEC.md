@@ -1528,6 +1528,14 @@ count, a paper colour, a line weight, an ink density.
 Relations are their own records so the graph is queryable ("every crossover Jerry is in", "every
 story that touches this doctrine") and so contradictions/supersessions are explicit.
 
+**A side may name ANOTHER universe as `<universe>:<id>` (v0.56).** A copied entity's most
+important fact is where it came from (`{"from": "freedom-character", "rel": "derived-from", "to":
+"nof-universe:the-wingman"}`), and a side resolved only inside one universe, so two universes
+wrote that provenance into prose rather than fake a local stub. A foreign side is well-formed but
+unresolvable: `validate` accepts it when the sibling universe (the directory beside this one) is not
+on disk, and CHECKS it when it is, reporting a source that has moved or gone. `abu relations <u>
+<universe>:<id>` lists what derives from it.
+
 ### 4.3 Story Spec
 ```jsonc
 {

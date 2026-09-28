@@ -23,6 +23,7 @@ Stdlib only.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -157,7 +158,10 @@ class CanonStore:
             problems += r.validate()
             for side in (r.from_, r.to):
                 if side and side not in known:
-                    problems.append(f"relation references unknown id '{side}' ({r.rel})")
+                    foreign = self._foreign_side_problem(side, r.rel)
+                    if foreign is None:
+                        continue
+                    problems.append(foreign or f"relation references unknown id '{side}' ({r.rel})")
         for s in self.stories.values():
             problems += s.validate()
             # SPEC §"Story status": the features/beats/provenance requirements apply
@@ -412,6 +416,36 @@ class CanonStore:
             out.append(f"duplicate crossover number {n}: {ids}")
         return out
 
+
+    _FOREIGN = re.compile(r"^([a-z0-9][a-z0-9._-]*):([a-z0-9][a-z0-9._-]*)$")
+
+    def _foreign_side_problem(self, side: str, rel: str):
+        """A relation side naming ANOTHER universe, `<universe>:<id>` (v0.56, #54).
+
+        A copied entity's most important fact is where it came from, and a relation side
+        resolved only inside one universe, so `nof-universe:the-wingman` failed as an unknown
+        id and two universes, five weeks apart, wrote the provenance into a note instead
+        (both refusing to fake a local stub). A foreign side is now WELL-FORMED but
+        unresolvable: accepted when the sibling universe is not on disk, and checked when it
+        is, so a copied entity whose source was renamed or removed is named rather than
+        silently orphaned.
+
+        Returns None when the side is a well-formed foreign reference that is fine, a problem
+        string when the sibling is present and lacks the id, and "" when the side is not a
+        foreign reference at all (the caller reports it as unknown).
+        """
+        m = self._FOREIGN.match(side)
+        if not m:
+            return ""
+        uni, eid = m.groups()
+        sib = self.dir.parent / uni
+        if not (sib / "universe.json").exists():
+            return None
+        if (sib / "canon" / "entities" / f"{eid}.json").exists() or \
+                (sib / "stories" / f"{eid}.json").exists():
+            return None
+        return (f"relation references '{side}' ({rel}), but the sibling universe at {sib} has "
+                f"no entity or story '{eid}': the source this relation records has moved or gone")
 
     def _validate_generators(self) -> list[str]:
         """SPEC v0.13 §4.11 disk checks: the entrypoint exists, and a declared output
