@@ -51,6 +51,7 @@ Turn a blessed set of images into a **Style Pack** (SPEC §4.7): `pack.json` + `
      --palette-ground '#..,#..' [--palette-fill '#..'] [--palette-line '#..'] \
      --reject painterly --reject photoreal [...] \
      --gate "<assertion 1>" --gate "<assertion 2>" [...] \
+     --text-policy none|diegetic|furniture \
      --max-elements 5
    ```
    It copies every ref INTO `<pack>/refs/` (self-contained, §3a), writes `pack.json`, and fails loudly if a ref is missing, the count is out of 3-8, the anchor is not among the refs, or there is no gate.

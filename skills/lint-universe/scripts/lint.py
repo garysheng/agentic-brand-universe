@@ -976,6 +976,16 @@ def lint(root):
             if not (d/r).exists(): err("PACK-REF-MISSING", f"{pj}: ref {r} missing")
         if not p.get("gate"): err("PACK-NO-GATE", f"{pj}: no gate; a pack without one is a mood board")
         if not p.get("styleLine"): err("PACK-NO-STYLELINE", f"{pj}: no styleLine")
+        # The sweep gap G41 asked for, made visible rather than guessed at: which of the
+        # three a pack means is its author's call, so the lint names it and sets nothing.
+        tp = p.get("textPolicy")
+        if tp is None:
+            warn("PACK-NO-TEXT-POLICY",
+                 f"{pj}: no textPolicy, so SPEC 4.7 reads it as 'diegetic' (a fallback for "
+                 f"pre-v0.12 packs). Declare none | diegetic | furniture; a gate that forbids "
+                 f"every glyph means 'none'.")
+        elif tp not in ("none", "diegetic", "furniture"):
+            err("PACK-BAD-TEXT-POLICY", f"{pj}: textPolicy {tp!r} is not none|diegetic|furniture")
         n = len(p.get("refs") or [])
         if n < 3: warn("PACK-THIN", f"{pj}: {n} ref(s); the spec expects 3 to 8")
 

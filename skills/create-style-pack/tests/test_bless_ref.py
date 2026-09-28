@@ -150,7 +150,8 @@ class BlessRefTest(unittest.TestCase):
         out = pathlib.Path(self.tmp.name) / "newpack"
         r = subprocess.run([sys.executable, str(SCAFFOLD), "--dir", str(out),
                             "--id", "np", "--name", "NP", "--anchor", str(src / "a.png"),
-                            *args, "--style-line", "x", "--gate", "y"],
+                            *args, "--style-line", "x", "--gate", "y",
+                            "--text-policy", "none"],
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("0 of 3", r.stdout)

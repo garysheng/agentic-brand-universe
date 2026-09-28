@@ -14,6 +14,7 @@ Usage:
     --palette-ground '#0a1030,#141c46' [--palette-fill ... --palette-line ...] \\
     --reject <pole> [--reject ...] \\
     --gate "<assertion>" [--gate ...]       (>=1 required) \\
+    --text-policy none|diegetic|furniture    (required, SPEC 4.7) \\
     --max-elements 5 \\
     [--require-entity <canon-entity-id> ...] (SPEC 4.7 requiredEntities: a render in this
                                               pack must bind each via --entity or it refuses)
@@ -52,6 +53,17 @@ def main():
     ap.add_argument("--reject", action="append", default=[])
     ap.add_argument("--gate", action="append", default=[])
     ap.add_argument("--max-elements", type=int, default=5)
+    # REQUIRED, like --gate and for the same reason (gap G41, #44). SPEC 4.7 has said since
+    # v0.12 that textPolicy is REQUIRED on new packs, and this scaffolder could not write it,
+    # so the pre-v0.12 fallback ("absent reads as diegetic") silently applied to packs written
+    # long after it: pov-fine-screen-halftone's gate says NO GLYPH ANYWHERE while its manifest
+    # silence let in-world text through. A pack that cannot say whether glyphs are allowed is
+    # not finished.
+    ap.add_argument("--text-policy", dest="text_policy", default=None,
+                    choices=("none", "diegetic", "furniture"),
+                    help="REQUIRED (SPEC 4.7 v0.12): none = no glyphs at all; diegetic = text "
+                         "that exists in the depicted world; furniture = diegetic plus the "
+                         "image's own explanatory chrome (title bar, panel captions)")
     ap.add_argument("--require-entity", action="append", default=[], metavar="ID",
                     help="Canon entity id this pack's law depends on (e.g. north-star-cross). "
                          "generate.py refuses a render in the pack that does not bind it.")
@@ -59,6 +71,10 @@ def main():
 
     if not a.gate:
         sys.exit("scaffold: a Style Pack MUST have >=1 --gate assertion (a gateless pack is a mood board)")
+    if not a.text_policy:
+        sys.exit("scaffold: a Style Pack MUST declare --text-policy none|diegetic|furniture "
+                 "(SPEC 4.7). Silence reads as 'diegetic', a fallback written for pre-v0.12 packs; "
+                 "if the gate forbids every glyph, the policy is 'none'.")
 
     pack = os.path.abspath(a.dir)
     refs_dir = os.path.join(pack, "refs")
@@ -126,6 +142,7 @@ def main():
         "styleLine": a.style_line,
         "rejectedPoles": a.reject,
         "gate": a.gate,
+        "textPolicy": a.text_policy,
         "maxElements": a.max_elements,
         **({"requiredEntities": [x.strip() for x in a.require_entity if x.strip()]} if a.require_entity else {}),
     }
