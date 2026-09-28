@@ -728,6 +728,15 @@ A per-universe cartridge is thin. It supplies **only** what is not true of every
 Anything a cartridge writes that would be true in another universe belongs HERE instead. If two
 cartridges ever say the same thing, that is the signal to promote it.
 
+**The rule applies to the cartridge's `description:` too, and hardest there**, because the
+description is what a skill listing routes on and the one place a repeated sentence costs
+something every session. Lead with the universe and what makes it itself (its look, its cast,
+its world), keep every trigger phrase, and leave "a cartridge over make-a-book" to the body.
+Do not name the sibling cartridges in the NOT clause: the universe names already separate them,
+and naming a sibling copies its distinguishing words back in. Write a placeholder as `{idea}`,
+never `<idea>`. Measured 2026-09-28: the two book cartridges opened with the same cartridge
+sentence and scored 0.84 on the Superskill overlap check; led by their universes they score 0.41.
+
 ## Skill improvement
 When a run earns a lesson, route it by scope: universal to this file, universe-specific to the
 cartridge. If the engine schema or a CLI verb changes, fix it here in the same session.
