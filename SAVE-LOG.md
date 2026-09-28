@@ -1007,3 +1007,5 @@ CLASS, and immediately found a seventh site the manual pass had missed.
 - 2026-09-27 v1.35.0 (spec v0.55) — gap-register sweep, batch 2. Declared VM anchorShot and waivable organic blueprint (#5 #7), fresh characters lint as warnings until cast (#22), abu add-look (#23), transform generators and manifest-less generator folders (#52 #53), pose dropSheets (#2), scoped allowUncast + alsoKnownAs (#19 #48), insert-with-person refusal (#36), self-contained prompt bodies (#30), object prompts for props/motifs (#8). check_delivery measures the default branch.
 
 - 2026-09-27 v1.36.0 — gap-register sweep, batch 3. detect_handroll runs from any directory and over a git diff with --since, for consuming repos (#18); make-a-book names the platform ABU stager instead of a rename bridge (#26); Style Pack scaffold requires --text-policy and lint warns PACK-NO-TEXT-POLICY (#44).
+
+- 2026-09-27 v1.37.0 (spec v0.56) — gap-register sweep, batch 4. Settings declare occupants and refuse strangers (#21); cross-universe relation sides <universe>:<id> (#54); compose-spec re-sync keeps every spread key it does not own (the caption pos, anonymous, guests).

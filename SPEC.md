@@ -1,10 +1,19 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.55 — 2026-09-27.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.56 — 2026-09-27.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.56 changelog — who may be in a place, where a copy came from, and nothing re-sync does
+> not own is lost.** §12: a setting may declare `structured.occupants: [ids]`; a spread casting
+> any other character or group into it is refused unless the setting sets `allowGuests` or the
+> spread lists the visitor in `guests: [ids]` (G16: a stranger staged in a real family's home
+> shipped). §4.2: a relation side may name another universe as `<universe>:<id>`, well-formed
+> when the sibling is absent and checked when it is present (#54). §4.6: `compose-spec` re-sync
+> carries forward every spread key it does not own (it silently dropped the caption `pos`,
+> `anonymous`, `guests`). A Style Pack scaffold requires `textPolicy` (G41).
 
 > **v0.55 changelog — gap-register sweep, batch 2: declared vocabulary instead of literals.**
 > §12: `contract.anchorShot` names a visual-metaphor's anchor plate (default `master`, G4);
