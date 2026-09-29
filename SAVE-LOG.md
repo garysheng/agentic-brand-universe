@@ -1009,3 +1009,5 @@ CLASS, and immediately found a seventh site the manual pass had missed.
 - 2026-09-27 v1.36.0 — gap-register sweep, batch 3. detect_handroll runs from any directory and over a git diff with --since, for consuming repos (#18); make-a-book names the platform ABU stager instead of a rename bridge (#26); Style Pack scaffold requires --text-policy and lint warns PACK-NO-TEXT-POLICY (#44).
 
 - 2026-09-27 v1.37.0 (spec v0.56) — gap-register sweep, batch 4. Settings declare occupants and refuse strangers (#21); cross-universe relation sides <universe>:<id> (#54); compose-spec re-sync keeps every spread key it does not own (the caption pos, anonymous, guests).
+
+- 2026-09-29 v1.38.0 (spec v0.57) — a recurring element that code or a locked render already draws declares structured.implementation (component, generator, asset or none) with a captured original; compose-spread and on-brand-image pass it first and check against it, lint warns MOTIF-PROSE-ONLY and errors IMPLEMENTATION-MISSING. Earned by continental-works' continent motif, redrawn from prose. Design-system gap filed as #55.

@@ -1087,6 +1087,75 @@ def lint(root):
                      f"fact about an image. Read-back checks are generated from invariants, so "
                      f"this becomes an uncheckable check. Move it to `status` or `authority`.")
 
+    # ---- a recurring element with a REFERENCE IMPLEMENTATION (v0.57, SPEC 4.1.1)
+    #
+    # A motif, prop or visual-metaphor that a site component, a generator or a locked
+    # render already draws is DEFINED by that implementation; prose is a lossy summary of
+    # it. Earned 2026-09-29 on continental-works: the "continent" (figured tiles with the
+    # ribbons threading up through the gutters) was canon only as a sentence, and a new
+    # surface drawn from that sentence came back as flat squares beside the ribbon.
+    #
+    # Two checks. IMPLEMENTATION-MISSING (error): the pointer names a file that is not
+    # there, which is worse than no pointer because it reads as a guarantee. A path in a
+    # SIBLING repo (`repo`) is checked only when that repo is checked out beside the
+    # universe; its absence on this machine is not the universe's defect.
+    # MOTIF-PROSE-ONLY (warn): an element some story, render-spec or work already uses
+    # that has neither a locked render on disk nor an implementation, so every use of it
+    # is drawn from its description.
+    _use_text = ""
+    for _sp in (list((root/"stories").glob("*.json")) + list(root.glob("**/render-spec.json"))
+                + list((root/"works").glob("**/*.json"))):
+        try:
+            _use_text += _sp.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            pass
+    for ej in sorted((root/"canon"/"entities").glob("*.json")):
+        e = jload(ej) or {}
+        eid = e.get("id") or ej.stem
+        st = e.get("structured") or {}
+        impl = st.get("implementation")
+        if isinstance(impl, dict) and impl.get("kind") in ("component", "generator", "asset"):
+            base = root
+            if impl.get("repo"):
+                base = root.parent / impl["repo"]
+            pth = impl.get("path") or ""
+            if impl.get("kind") == "generator" and pth:
+                gid = pth.rstrip("/").split("/")[-1]
+                target = root/"generators"/gid/"generator.json"
+                if not target.exists():
+                    err("IMPLEMENTATION-MISSING",
+                        f"{eid}: structured.implementation names generator '{gid}', but "
+                        f"generators/{gid}/generator.json does not exist.")
+            elif pth and base.is_dir() and not (base/pth).exists():
+                err("IMPLEMENTATION-MISSING",
+                    f"{eid}: structured.implementation.path '{pth}'"
+                    + (f" (in {impl['repo']})" if impl.get("repo") else "")
+                    + " does not exist. A pointer to nothing reads as a guarantee it cannot "
+                      "keep; fix the path or drop the field.")
+            cmp_ = impl.get("compareAgainst")
+            if cmp_ and not (root/cmp_).exists():
+                err("IMPLEMENTATION-MISSING",
+                    f"{eid}: structured.implementation.compareAgainst '{cmp_}' does not "
+                    f"exist in the universe. Capture the live original (a screenshot of the "
+                    f"component as it ships) and save it there.")
+        if e.get("kind") not in ("motif", "prop", "visual-metaphor"):
+            continue
+        if f'"{eid}"' not in _use_text:
+            continue
+        has_render = any((root/p).exists()
+                         for p in (_sheet_path(v) for v in (st.get("sheets") or {}).values())
+                         if p)
+        has_impl = isinstance(impl, dict) and impl.get("kind") in ("component", "generator", "asset")
+        if not has_render and not has_impl:
+            said = isinstance(impl, dict) and impl.get("kind") == "none"
+            warn("MOTIF-PROSE-ONLY",
+                 f"{eid}: a {e.get('kind')} that a story or work uses, with no locked render "
+                 f"on disk and no structured.implementation"
+                 + (" (it declares kind 'none', honestly)" if said else "")
+                 + ", so every use is redrawn from its description and drifts. If code or a "
+                   "locked image already draws it, point at it (SPEC 4.1.1); otherwise shoot "
+                   "its references (shoot-references).")
+
     # ---- castability: a character the renderer cannot cast
     #
     # An entity can be fully locked, fully art-approved, pass `validate` AND pass

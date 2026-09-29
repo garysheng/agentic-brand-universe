@@ -115,6 +115,22 @@ SHEET_ROLES = {
     "scale",     # how big the subject is (see `scale-plate`)
 }
 
+# SPEC v0.57 §4.1.1: WHERE A RECURRING VISUAL ELEMENT ALREADY EXISTS AS SOMETHING OTHER
+# THAN PROSE. A motif (or prop, or visual-metaphor) that a site component, a generator or
+# a locked render already draws is DEFINED by that implementation, and its written
+# description is a lossy summary of it. Earned 2026-09-29 on continental-works: the
+# "continent" (a mosaic of figured tiles with ribbons threading up through the gutters)
+# was canon only as a sentence, "a tile = a seat, dim vs lit", and an agent building a new
+# surface from that sentence drew flat squares beside the ribbon. Gary: "This is what i
+# meant by team squares dawg notice how the ribbons relate to it."
+#   component  code in a site or app that renders it (path, optional repo); REQUIRES
+#              `compareAgainst`, an image of the live original, because nothing else
+#              lets a reviewer tell a reuse from a reinterpretation
+#   generator  a §4.11 generator in this universe (path = its id or generators/<id>)
+#   asset      a locked render or file that IS the element (path); it is its own original
+#   none       no implementation exists yet; `reason` says so, and the prose is all there is
+IMPLEMENTATION_KINDS = {"component", "generator", "asset", "none"}
+
 
 def sheet_parts(v) -> tuple[str | None, str | None]:
     """Normalise one sheet slot to `(path, role)`.
@@ -206,7 +222,32 @@ class Entity:
         """
         declared = {k: sheet_parts(v)[0] for k, v in (self.structured.get("sheets") or {}).items()}
         declared = {k: v for k, v in declared.items() if v}
-        return declared or contract_sheets(self.raw)
+        out = dict(declared or contract_sheets(self.raw))
+        # v0.57 §4.1.1: the original an implemented element is compared against is
+        # itself a legal reference, so every consumer that asks "what may I pass for
+        # this entity" is offered it without knowing the field exists.
+        img = self.implementation_image()
+        if img and img not in out.values() and "implementation" not in out:
+            out["implementation"] = img
+        return out
+
+    def implementation(self) -> dict[str, Any] | None:
+        """`structured.implementation` when it is a well-formed object, else None."""
+        impl = self.structured.get("implementation")
+        return impl if isinstance(impl, dict) else None
+
+    def implementation_image(self) -> str | None:
+        """The image a new render of this element is COMPARED AGAINST, universe-relative.
+
+        For an `asset` in this universe that is the asset itself; for everything else it
+        is the declared `compareAgainst`. None for `kind: none` or no implementation.
+        """
+        impl = self.implementation()
+        if not impl or impl.get("kind") == "none":
+            return None
+        if impl.get("kind") == "asset" and not impl.get("repo") and impl.get("path"):
+            return impl["path"]
+        return impl.get("compareAgainst") or None
 
     @property
     def real_person(self) -> dict[str, Any] | None:
@@ -606,6 +647,33 @@ class Entity:
                                                 f"{self.id}: render.poses['{key}'] names sheet "
                                                 f"'{sk}' which is not in structured.sheets"
                                             )
+        # REFERENCE IMPLEMENTATION (v0.57, §4.1.1). Shape only: whether the files exist is
+        # lint-universe's IMPLEMENTATION-MISSING, because this method is filesystem-free.
+        if "implementation" in self.structured and self.structured["implementation"] is not None:
+            impl = self.structured["implementation"]
+            if not isinstance(impl, dict):
+                p.append(f"{self.id}: structured.implementation must be an object with a 'kind'")
+            else:
+                ik = impl.get("kind")
+                if ik not in IMPLEMENTATION_KINDS:
+                    p.append(f"{self.id}: structured.implementation.kind '{ik}' is not one of "
+                             f"{sorted(IMPLEMENTATION_KINDS)}")
+                elif ik == "none":
+                    if not (isinstance(impl.get("reason"), str) and impl["reason"].strip()):
+                        p.append(f"{self.id}: structured.implementation kind 'none' needs a "
+                                 f"'reason': a prose-only element must SAY it has no "
+                                 f"implementation yet, and why")
+                else:
+                    if not (isinstance(impl.get("path"), str) and impl["path"].strip()):
+                        p.append(f"{self.id}: structured.implementation kind '{ik}' needs a "
+                                 f"'path' to the thing that draws it")
+                    if ik == "component" and not impl.get("compareAgainst"):
+                        p.append(f"{self.id}: structured.implementation kind 'component' needs "
+                                 f"'compareAgainst', an image of the live original. Without "
+                                 f"it nothing can tell a reuse from a reinterpretation")
+                    if "repo" in impl and not (isinstance(impl["repo"], str) and impl["repo"].strip()):
+                        p.append(f"{self.id}: structured.implementation.repo must be a "
+                                 f"non-empty string (a sibling repo's folder name)")
         if self.kind in ("setting", "visual-metaphor"):
             if "status" not in self.raw:
                 p.append(f"{self.id}: {self.kind} needs a 'status' (locked|unlocked)")

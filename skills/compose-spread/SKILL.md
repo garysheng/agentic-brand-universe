@@ -154,6 +154,14 @@ declares a camera you have not used, ask why not before you finish.
 
 A per-universe `compile_render.py` / `gen-spread.py` is the failure this skill exists to prevent, and it is not hypothetical: Nation of Fire ran one for months (SPEC v0.5 even named it the reference impl). The two implementations drifted into **disjoint** feature sets. The fork held all four guards above; the framework held alt-looks, auto-disambiguation, guarded negatives and `anchorRef`. Neither could see the other's, so every guard earned in one universe was invisible to every other, and every framework capability was invisible to the universe doing the most rendering. If the assembler is missing something you need, add it HERE with a test (`evolve-abu`), never in a universe.
 
+## A motif or prop with a reference implementation (SPEC v0.57 §4.1.1)
+
+When a cast motif or prop declares `structured.implementation`, the assembler passes its
+captured original (`compareAgainst`, or the asset itself) AHEAD of the entity's own plates
+on every spread that casts it, and adds a qa line requiring the render to match it side by
+side. `plate: "implementation"` selects the original alone. Nothing to author: the
+field in canon is the whole switch.
+
 ## Procedure
 
 1. **Resolve (gate).** Invoke `canon-resolve` on the spread's cast + setting: it resolves each entity's locked references + invariants and runs `assert-spread`. A non-zero exit BLOCKS the render — lock the missing reference, never render around it.

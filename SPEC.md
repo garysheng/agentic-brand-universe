@@ -1,10 +1,21 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.56 — 2026-09-27.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.57 — 2026-09-29.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.57 changelog — reuse what already draws it, never redraw it from prose.**
+> §4.1.1: any entity may declare
+> `structured.implementation` (`component` | `generator` | `asset` | `none`) naming what
+> already draws it, with `compareAgainst`, an image of the live original, required for a
+> component. `referenceable_sheets` offers that original to every consumer, `on-brand-image
+> --entity` passes it first and makes the side-by-side comparison a read-back invariant,
+> and `lint-universe` errors `IMPLEMENTATION-MISSING` on a pointer to nothing and warns
+> `MOTIF-PROSE-ONLY` on a used motif, prop or visual-metaphor with neither a locked render
+> nor an implementation. Earned by continental-works' continent motif, redrawn from one
+> sentence as flat squares beside the ribbon.
 
 > **v0.56 changelog — who may be in a place, where a copy came from, and nothing re-sync does
 > not own is lost.** §12: a setting may declare `structured.occupants: [ids]`; a spread casting
@@ -1529,6 +1540,58 @@ count, a paper colour, a line weight, an ink density.
   (Brenda, Russ, Nait, Panama, Apostle Lee) need the photo stack, approval state, sensitive list,
   activity-wardrobe eras, and exact group counts — the multi-ref rule, the subject-approval gate, and
   the group-lineup lesson all live here.
+
+### 4.1.1 Reference implementation: when the element already exists as something other than prose (v0.57)
+
+A motif, prop, visual-metaphor (or any entity) that a site component, a §4.11 generator or a
+locked render ALREADY DRAWS is defined by that implementation. Its prose is a lossy summary,
+and a new surface drawn from the summary is a reinterpretation, not the element.
+
+```jsonc
+"structured": {
+  "implementation": {
+    "kind": "component",                          // component | generator | asset | none
+    "repo": "freedom-site",                       // optional: a sibling repo's folder name
+    "path": "components/home/Continent.tsx",      // what draws it (a generator's id for `generator`)
+    "compareAgainst": "reference/continent/live-original.png",  // an image of the live original
+    "note": "import it, port it, or render it and use the output"
+  }
+}
+```
+
+- **`component`**: code in a site or app. `compareAgainst` is REQUIRED (`validate`), because it
+  is the only thing that lets a reviewer tell a reuse from a reinterpretation. Capture it from
+  the shipping surface, not from a redraw.
+- **`generator`**: a generator in this universe (§4.11); `path` is its id or `generators/<id>`.
+- **`asset`**: a locked render or file that IS the element; it is its own original.
+- **`none`**: no implementation exists yet, and `reason` says so. This is the ONLY honest state
+  for a prose-only element; the absence of the field says nothing.
+
+**THE REUSE RULE.** Work that shows an element with an implementation REUSES it: import or
+extract the component, run the generator, or pass the locked render as a reference. It never
+regenerates the element from its description. Whatever is made is then COMPARED against
+`compareAgainst` side by side before it ships. Where a painted medium genuinely has to depict the
+element (an illustration that contains the site, say), the original is the reference, never the
+prose.
+
+**What enforces it.** `Entity.referenceable_sheets()` offers the original under the key
+`implementation`, so every consumer that asks the engine what it may pass for an entity
+(`compose-spec`, `shoot-references`' chaining) is handed it without knowing the field exists.
+`on-brand-image --entity` passes it FIRST among that entity's refs, writes the comparison into
+the prompt and the recipe as an entity invariant (so `render-readback` checks it), prints a note
+when the implementation is code, and refuses when the original is missing on disk.
+`lint-universe` errors `IMPLEMENTATION-MISSING` when a pointer names a file that is not there (a
+path in a sibling `repo` is checked only when that repo is checked out beside the universe), and
+warns `MOTIF-PROSE-ONLY` when a motif, prop or visual-metaphor that a story, render-spec or work
+uses has neither a locked render on disk nor an implementation, including one that declares
+`none`, since that element is drawn from its description on every use.
+
+**Earned 2026-09-29 on continental-works.** The "continent" (a mosaic of tiles each carrying a
+geometric figure, with multi-stripe ribbons threading up through the gutters between tile
+columns) was canon only as a sentence, "a tile = a seat, dim vs lit". An agent building a new
+surface from that sentence produced flat seat squares beside the ribbon. Gary, with a screenshot
+of the live site: "This is what i meant by team squares dawg notice how the ribbons relate to
+it." The component that renders it on the live site was the definition all along.
 
 ### 4.2 Relation
 ```jsonc
@@ -3272,6 +3335,11 @@ Default measured reference, when a universe declares no `identity.scaleReference
     collarbone"`) and shoot a `scale-plate` when the object's size is load-bearing. Advisory:
     `lint-universe` warns `PROP-NO-SCALE`. A motif is a graphic signature rather than a physical
     object, so it takes neither.
+  - **A motif or prop that code already draws points at it (v0.57, §4.1.1).** `add-motif` and
+    `add-prop` ask for an existing implementation FIRST: when a component, generator or locked
+    render already draws the element, `structured.implementation` names it and its captured
+    original is the reference, and the `hero` / `detail` shots are optional rather than the
+    element's definition.
   - **THE KEY IS `structured.scale.absolute`, and the checker used to name a different one
     (v0.49).** `assemble_prompt.py` emits the TRUE SIZE line from `structured.scale.absolute`,
     for an in-frame entity of ANY kind, and that is what a prop's size has to be written under

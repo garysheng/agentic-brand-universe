@@ -123,5 +123,46 @@ class TestQaFromEveryKind(unittest.TestCase):
             self.assertEqual(out["qa"], [], f"an entity with no invariants must add nothing: {out['qa']}")
 
 
+
+class TestReferenceImplementation(unittest.TestCase):
+    """SPEC v0.57 4.1.1: a motif that code already draws is rendered against its captured
+    ORIGINAL on every spread, ahead of its own plates, and the comparison is a qa line.
+    Earned on continental-works 2026-09-29: the continent motif redrawn from prose."""
+
+    def _motif(self, root, **impl):
+        (root / "reference" / "a-wisp" / "live.png").write_bytes(b"\x89PNG")
+        path = root / "canon" / "entities" / "a-wisp.json"
+        d = json.loads(path.read_text())
+        d["structured"]["implementation"] = {
+            "kind": "component", "path": "site/Wisp.tsx",
+            "compareAgainst": "reference/a-wisp/live.png", **impl}
+        path.write_text(json.dumps(d))
+
+    def test_the_original_leads_the_motifs_refs_and_is_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp)
+            self._motif(root)
+            out = build(root, _spec([{"id": "a-wisp", "plate": "master"}]), "spread-01")
+            names = [str(r) for r in out["refs"]]
+            live = [i for i, r in enumerate(names) if r.endswith("a-wisp/live.png")]
+            master = [i for i, r in enumerate(names) if r.endswith("a-wisp/master.png")]
+            self.assertTrue(live, f"the original never reached the refs: {names}")
+            self.assertTrue(master and live[0] < master[0], names)
+            self.assertTrue(any("reference implementation" in q for q in out["qa"]), out["qa"])
+
+    def test_plate_implementation_selects_the_original(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp)
+            self._motif(root)
+            out = build(root, _spec([{"id": "a-wisp", "plate": "implementation"}]), "spread-01")
+            self.assertTrue(any(str(r).endswith("a-wisp/live.png") for r in out["refs"]))
+
+    def test_a_motif_without_one_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _universe(tmp)
+            out = build(root, _spec([{"id": "a-wisp", "plate": "master"}]), "spread-01")
+            self.assertFalse(any("reference implementation" in q for q in out["qa"]))
+
+
 if __name__ == "__main__":
     unittest.main()

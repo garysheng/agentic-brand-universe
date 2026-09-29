@@ -85,6 +85,14 @@ resolved in the recipe, and hard-fails on a missing plate or an unknown look.
 Hand-picking `--ref` for a canon entity is how you get a plausible picture of the wrong
 person. Reserve `--ref` for inputs that are not canon entities.
 
+**An entity with a reference implementation (SPEC §4.1.1) is reused, not repainted.** If
+`structured.implementation` names a component or generator and the deliverable can carry
+code or the generator's output, use that and do not call this skill for it at all. When a
+painted image genuinely must depict it, `--entity` passes the captured original FIRST,
+adds "matches its reference implementation" to the prompt and the recipe's entity
+invariants, and refuses if the original is missing. Read the result back side by side with
+that original; a reinterpretation is a DEFECT, however good it looks.
+
 One image, in a known look, gated. This is the framework's **lightweight front door**: it consumes a
 **Style Pack** (SPEC §4.7), not a universe, because "generate more images in this style" has no
 recurring-identity requirement and therefore needs no canon.

@@ -62,6 +62,14 @@ nothing can be made from it.
    If the method fumbles, or you find yourself working around it, that is a defect in the
    FORM, not in this work. Fix the form. This is `fix-the-generator` applied to forms.
 
+4a. **A recurring element with a reference implementation is REUSED (SPEC §4.1.1).** Before
+   drawing any motif, prop or visual-metaphor the work shows, read its
+   `structured.implementation`. If code, a generator or a locked render already draws it,
+   import or port that component, run that generator, or pass the locked render as a
+   reference, and compare the result side by side with `compareAgainst` before calling the
+   work done. Never rebuild it from its prose description: that is how continental-works'
+   continent came back as flat squares beside the ribbon (2026-09-29).
+
 5. **File the work where the universe says.** `universe.json` may declare `workRoot`;
    undeclared means the default, `works/<id>/`. The convention:
 

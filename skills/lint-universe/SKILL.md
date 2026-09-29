@@ -118,6 +118,13 @@ the read-back checklist from v0.29, but `structured.invariants` is what the iden
 auto-disambiguation, `supersedes` and `judge-slot` all read, so an entity with a populated `render.qa`
 and an empty `invariants` is guarded in one place out of five.
 
+**A recurring element drawn from prose** (SPEC §4.1.1, v0.57). `IMPLEMENTATION-MISSING` (error): a
+`structured.implementation` pointer, or its `compareAgainst` original, names a file that is not there
+(a path in a sibling `repo` is checked only when that repo is checked out beside the universe).
+`MOTIF-PROSE-ONLY` (warn): a motif, prop or visual-metaphor that a story, render-spec or work uses has
+neither a locked render on disk nor an implementation, so every use is redrawn from its description.
+Point at what already draws it, or shoot its references.
+
 **Quirks.** The provider registry parses, and a pinned provider that the registry has never heard of is
 flagged, because it will silently inherit no quirks.
 

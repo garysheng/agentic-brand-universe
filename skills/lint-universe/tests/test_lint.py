@@ -1149,5 +1149,74 @@ class TestTypedSheetSlots(unittest.TestCase):
         self.assertEqual(bare, typed)
 
 
+
+class TestReferenceImplementation(unittest.TestCase):
+    """SPEC v0.57 4.1.1. Earned on continental-works 2026-09-29: the continent motif
+    lived only as prose and a new surface redrew it as flat squares beside the ribbon."""
+
+    def lint_motif(self, impl=None, *, used=True, files=(), sheets=None):
+        with tempfile.TemporaryDirectory() as t:
+            ent = {"id": "e", "kind": "motif",
+                   "structured": {"sheets": sheets or {}, "requiredForRender": []}}
+            if impl is not None:
+                ent["structured"]["implementation"] = impl
+            root = build(t, entity=ent)
+            for rel in files:
+                p = root / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_bytes(b"\x89PNG")
+            if used:
+                (root / "stories").mkdir(exist_ok=True)
+                (root / "stories" / "s.json").write_text(json.dumps({"id": "s", "features": ["e"]}))
+            return run(root)
+
+    def test_used_prose_only_motif_warns(self):
+        _, warns = self.lint_motif()
+        self.assertIn("MOTIF-PROSE-ONLY", warns)
+
+    def test_unused_prose_only_motif_is_silent(self):
+        _, warns = self.lint_motif(used=False)
+        self.assertNotIn("MOTIF-PROSE-ONLY", warns)
+
+    def test_a_locked_render_silences_it(self):
+        _, warns = self.lint_motif(sheets={"hero": "reference/e/hero.png"},
+                                   files=["reference/e/hero.png"])
+        self.assertNotIn("MOTIF-PROSE-ONLY", warns)
+
+    def test_a_present_implementation_silences_it(self):
+        errs, warns = self.lint_motif(
+            {"kind": "component", "path": "site/Continent.tsx",
+             "compareAgainst": "reference/e/live.png"},
+            files=["site/Continent.tsx", "reference/e/live.png"])
+        self.assertNotIn("MOTIF-PROSE-ONLY", warns)
+        self.assertNotIn("IMPLEMENTATION-MISSING", errs)
+
+    def test_declared_none_still_warns(self):
+        _, warns = self.lint_motif({"kind": "none", "reason": "not built"})
+        self.assertIn("MOTIF-PROSE-ONLY", warns)
+
+    def test_a_pointer_to_nothing_errors(self):
+        errs, _ = self.lint_motif({"kind": "asset", "path": "reference/e/gone.png"})
+        self.assertIn("IMPLEMENTATION-MISSING", errs)
+
+    def test_a_missing_original_errors(self):
+        errs, _ = self.lint_motif(
+            {"kind": "component", "path": "site/Continent.tsx",
+             "compareAgainst": "reference/e/live.png"},
+            files=["site/Continent.tsx"])
+        self.assertIn("IMPLEMENTATION-MISSING", errs)
+
+    def test_a_missing_generator_errors(self):
+        errs, _ = self.lint_motif({"kind": "generator", "path": "continent"})
+        self.assertIn("IMPLEMENTATION-MISSING", errs)
+
+    def test_an_absent_sibling_repo_is_not_the_universes_defect(self):
+        errs, _ = self.lint_motif(
+            {"kind": "component", "repo": "no-such-sibling-repo-xyz",
+             "path": "Continent.tsx", "compareAgainst": "reference/e/live.png"},
+            files=["reference/e/live.png"])
+        self.assertNotIn("IMPLEMENTATION-MISSING", errs)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

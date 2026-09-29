@@ -36,6 +36,13 @@ Corollary worth stating because it is counterintuitive: when exploring **form**,
 material constant, even if the material is also unsettled. When exploring **material**, hold
 the form constant. Two open questions get two passes, never one grid.
 
+**A canon element with a reference implementation is NOT an open question.** If the
+subject includes a motif or prop whose `structured.implementation` names code or a locked
+render (SPEC §4.1.1), hold it constant as that original (bind it with `--entity`, which
+passes the captured original first) and explore something else. Exploring what an
+implemented element "could look like" produces reinterpretations of a thing that is
+already decided.
+
 ## Run it
 
 ```bash

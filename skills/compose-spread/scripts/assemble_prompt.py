@@ -1583,6 +1583,23 @@ def strip_authoring_notes(prose: str) -> str:
     return re.sub(r"\s{2,}", " ", " ".join(kept)).replace(" ;", ";").replace(" ,", ",").strip()
 
 
+def implementation_image(ent: dict) -> str | None:
+    """The original a motif/prop's reference implementation is compared against (SPEC
+    v0.57 4.1.1), read through the ENGINE's predicate so this reader cannot drift from
+    `referenceable_sheets`, lint or on-brand-image. None when nothing is declared."""
+    if not isinstance((ent.get("structured") or {}).get("implementation"), dict):
+        return None
+    root = _abu_root()
+    if root is None:
+        raise Refuse(f"'{ent.get('id')}' declares structured.implementation but the ABU "
+                     "engine could not be located to read it. Reinstall the plugin.")
+    eng = str(root / "engine")
+    if eng not in sys.path:
+        sys.path.insert(0, eng)
+    from agenticstory.model import Entity
+    return Entity(id=ent.get("id") or "", kind=ent.get("kind") or "", raw=ent).implementation_image()
+
+
 def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     """Resolve ONE named plate/sheet for a non-character entity.
 
@@ -1597,6 +1614,13 @@ def resolve_plate(ent: dict, plate: str | None) -> list[str]:
     if not plate:
         return []
     sheets = (ent.get("structured") or {}).get("sheets") or {}
+    if plate == "implementation" and "implementation" not in sheets:
+        img = implementation_image(ent)
+        if not img:
+            raise Refuse(f"{ent.get('id')}: plate 'implementation' selected, but the entity "
+                         f"declares no structured.implementation with an original to compare "
+                         f"against (SPEC 4.1.1)")
+        return [img]
     p = _sheet_path(sheets.get(plate))
     if p:
         return [p]
@@ -2089,6 +2113,11 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
         if kind != "character":
             for i in (ent.get("structured") or {}).get("invariants") or []:
                 qa.append(f"{c['id']}: {i}")
+            # SPEC v0.57 4.1.1: the comparison against the original is a read-back line.
+            _impl_img = implementation_image(ent)
+            if _impl_img:
+                qa.append(f"{c['id']}: matches its reference implementation when compared "
+                          f"side by side with {_impl_img}; a reinterpretation is a defect")
         for i in _as_neg_list(render_block_for(ent, c.get("look")).get("qa")):
             qa.append(f"{c['id']}: {i}")
         # A POSE ON A NON-CHARACTER SELECTS NOTHING, SO SAY SO.
@@ -2132,6 +2161,12 @@ def build(uroot: Path, spec: dict, spread_id: str) -> dict:
             r = resolve_plate(ent, c.get("plate"))
             if not r:
                 r, _inv = resolve_character(ent, c.get("look"), uroot)
+            # A motif/prop that code or a locked render already draws carries its ORIGINAL
+            # on every spread that casts it, ahead of its own plates (SPEC v0.57 4.1.1), so
+            # the element is rendered against the real thing and never from its prose.
+            _impl = implementation_image(ent)
+            if _impl and _impl not in r:
+                r = [_impl] + list(r)
             add_refs(r)
             derived = ((ent.get("prose") or {}).get("rules")
                        or ((ent.get("structured") or {}).get("render") or {}).get("bake"))

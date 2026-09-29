@@ -203,7 +203,33 @@ def resolve_entities(specs, required_only=False, with_photos=False):
                       else ent.identity_sheets(look))
         except ValueError as e:
             sys.exit(f"generate.py: {e}")
-        if not sheets:
+        # A REFERENCE IMPLEMENTATION OUTRANKS THE PROSE AND THE PLATES (SPEC v0.57 4.1.1).
+        # When code or a locked render already draws this element, the image of that
+        # original goes FIRST in this entity's refs and becomes a readback invariant, so a
+        # render is compared against the real thing rather than against a sentence that
+        # summarises it. Earned 2026-09-29: continental-works' continent motif, redrawn
+        # from "a tile = a seat, dim vs lit", came back as flat squares beside the ribbon.
+        impl = ent.implementation() or {}
+        impl_img = ent.implementation_image()
+        impl_invariant = None
+        if impl_img:
+            ip = os.path.normpath(os.path.join(str(store.asset_root), impl_img))
+            if not os.path.exists(ip):
+                sys.exit(f"generate.py: {eid}'s reference implementation original is MISSING "
+                         f"on disk: {impl_img}\nRefusing to render: without it this element "
+                         f"would be redrawn from its description, which is the drift the "
+                         f"pointer exists to prevent. Capture the live original there.")
+            refs.append(ip)
+            impl_invariant = (f"{eid} matches its reference implementation "
+                              f"({impl.get('kind')}: {impl.get('path')}) when compared side by "
+                              f"side with {impl_img}; a reinterpretation is a defect")
+        if impl.get("kind") in ("component", "generator"):
+            print(f"generate.py: NOTE {eid} is drawn by a {impl['kind']} "
+                  f"({impl.get('repo') + ':' if impl.get('repo') else ''}{impl.get('path')}). "
+                  f"If the deliverable can carry code or the generator's output, reuse that "
+                  f"instead of painting it; this render is compared against the original.",
+                  file=sys.stderr)
+        if not sheets and not impl_img:
             sys.exit(f"generate.py: {eid}"
                      f"{'@' + look if look else ''} resolved ZERO reference sheets. "
                      f"Lock its art first; rendering a canon entity with no plates is "
@@ -248,6 +274,8 @@ def resolve_entities(specs, required_only=False, with_photos=False):
                      + "\nRefusing to render: the result would look fine and be off-canon.")
 
         invariants.extend(ent.look_invariants(look))
+        if impl_invariant:
+            invariants.append(impl_invariant)
         r = ((ent.raw.get("prose") or {}).get("rules") or "").strip()
         if r:
             rules.append(r)
@@ -275,7 +303,11 @@ def resolve_entities(specs, required_only=False, with_photos=False):
                      "sheets": {k: v for k, v in sorted(sheets.items())},
                      # Per-entity, so the readback can check each entity's own guard
                      # rather than a flattened list nobody can attribute.
-                     "invariants": list(ent.look_invariants(look))})
+                     "invariants": list(ent.look_invariants(look))
+                                   + ([impl_invariant] if impl_invariant else []),
+                     "implementation": ({"kind": impl.get("kind"), "repo": impl.get("repo"),
+                                         "path": impl.get("path"), "compareAgainst": impl_img}
+                                        if impl_img else None)})
     # De-dupe, preserving order: two entities may legitimately share a plate.
     seen, uniq = set(), []
     for p in refs:

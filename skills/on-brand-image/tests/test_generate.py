@@ -1255,5 +1255,57 @@ class TestGuardGate(GenerateCase):
         self.assertNotIn("guardGate", r.recipe)
 
 
+
+class TestReferenceImplementation(GenerateCase):
+    """SPEC v0.57 4.1.1. A recurring element that code or a locked render already draws
+    is rendered against that ORIGINAL, never from its prose. Earned 2026-09-29 on
+    continental-works: the continent motif, redrawn from its one-sentence description,
+    came back as flat squares beside the ribbon."""
+
+    def motif(self, impl, sheets=None):
+        d = {"id": "continent", "kind": "motif",
+             "structured": {"sheets": dict(sheets or {}), "requiredForRender": [],
+                            "invariants": ["ribbons thread up through the gutters"],
+                            "implementation": impl}}
+        return build_universe(self.tmp / "uni", entities=[d])
+
+    COMPONENT = {"kind": "component", "repo": "freedom-site",
+                 "path": "components/home/Continent.tsx",
+                 "compareAgainst": "reference/continent/live.png"}
+
+    def test_the_original_is_passed_first_even_with_no_plates(self):
+        u = self.motif(self.COMPONENT)
+        png(Path(u) / "reference" / "continent" / "live.png", extra=b"l")
+        r = self.run_main(*self.base("--entity", f"{u}:continent"))
+        self.assertEqual(os.path.basename(r.uploads[0]), "live.png")
+
+    def test_the_original_outranks_the_entitys_own_plates(self):
+        u = self.motif(self.COMPONENT, sheets={"hero": "reference/continent/hero.png"})
+        png(Path(u) / "reference" / "continent" / "live.png", extra=b"l")
+        png(Path(u) / "reference" / "continent" / "hero.png", extra=b"h")
+        r = self.run_main(*self.base("--entity", f"{u}:continent"))
+        self.assertEqual([os.path.basename(p) for p in r.uploads], ["live.png", "hero.png"])
+
+    def test_the_comparison_is_a_readback_invariant_and_recorded(self):
+        u = self.motif(self.COMPONENT)
+        png(Path(u) / "reference" / "continent" / "live.png", extra=b"l")
+        r = self.run_main(*self.base("--entity", f"{u}:continent"))
+        self.assertIn("matches its reference implementation", r.prompt)
+        meta = r.recipe["entities"][0]
+        self.assertEqual(meta["implementation"]["compareAgainst"], "reference/continent/live.png")
+        self.assertTrue(any("reference implementation" in i for i in meta["invariants"]))
+
+    def test_a_missing_original_refuses(self):
+        u = self.motif(self.COMPONENT)
+        msg = self.expect_exit(*self.base("--entity", f"{u}:continent"))
+        self.assertIn("reference implementation original is MISSING", msg)
+        self.assertEqual(self.calls, [])
+
+    def test_declared_none_with_no_plates_still_refuses(self):
+        u = self.motif({"kind": "none", "reason": "not built yet"})
+        msg = self.expect_exit(*self.base("--entity", f"{u}:continent"))
+        self.assertIn("ZERO reference sheets", msg)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
