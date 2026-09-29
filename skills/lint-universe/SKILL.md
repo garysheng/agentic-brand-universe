@@ -125,6 +125,13 @@ and an empty `invariants` is guarded in one place out of five.
 neither a locked render on disk nor an implementation, so every use is redrawn from its description.
 Point at what already draws it, or shoot its references.
 
+**A preferred term the gate cannot read** (SPEC §11, v0.58). `VOICE-PREFER-TERMS-SHAPE` (error):
+`identity.voice.preferTerms` is not a list, or an entry lacks `prefer` or `avoid`, or names an unknown
+`severity`. `VOICE-PREFER-TERM-BAD-PATTERN` (error): an `avoid` or `except` pattern does not compile.
+voice-gate skips both rather than crash, so without this check the rule is silently unenforced.
+`VOICE-PREFER-TERM-NO-EXCEPT` (warn): no `except` key, so every sense of the bare word fires; name the
+ordinary senses, or write `"except": []`.
+
 **Quirks.** The provider registry parses, and a pinned provider that the registry has never heard of is
 flagged, because it will silently inherit no quirks.
 

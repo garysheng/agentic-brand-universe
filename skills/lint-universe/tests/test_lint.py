@@ -1218,5 +1218,52 @@ class TestReferenceImplementation(unittest.TestCase):
         self.assertNotIn("IMPLEMENTATION-MISSING", errs)
 
 
+class TestPreferTerms(unittest.TestCase):
+    """identity.voice.preferTerms (SPEC 11, v0.58): voice-gate skips what it cannot
+    read, so a malformed entry would be silent everywhere but here."""
+
+    def lint_voice(self, prefer_terms):
+        with tempfile.TemporaryDirectory() as d:
+            root = build(d)
+            u = json.loads((root / "universe.json").read_text())
+            u["identity"]["voice"] = {"preferTerms": prefer_terms}
+            (root / "universe.json").write_text(json.dumps(u))
+            return run(root)
+
+    GOOD = {"prefer": "Agentic Edge", "avoid": ["edge"],
+            "except": [r"\bedge to edge\b"], "when": "the client's context"}
+
+    def test_well_formed_entry_is_clean(self):
+        e, w = self.lint_voice([self.GOOD])
+        self.assertFalse({c for c in e | w if c.startswith("VOICE-PREFER")}, (e, w))
+
+    def test_missing_prefer_errors(self):
+        e, _ = self.lint_voice([{"avoid": ["edge"], "except": []}])
+        self.assertIn("VOICE-PREFER-TERMS-SHAPE", e)
+
+    def test_missing_avoid_errors(self):
+        e, _ = self.lint_voice([{"prefer": "Agentic Edge", "except": []}])
+        self.assertIn("VOICE-PREFER-TERMS-SHAPE", e)
+
+    def test_not_a_list_errors(self):
+        e, _ = self.lint_voice({"prefer": "Agentic Edge"})
+        self.assertIn("VOICE-PREFER-TERMS-SHAPE", e)
+
+    def test_uncompilable_pattern_errors(self):
+        e, _ = self.lint_voice([dict(self.GOOD, **{"except": ["(edge"]})])
+        self.assertIn("VOICE-PREFER-TERM-BAD-PATTERN", e)
+
+    def test_bad_severity_errors(self):
+        e, _ = self.lint_voice([dict(self.GOOD, severity="loud")])
+        self.assertIn("VOICE-PREFER-TERMS-SHAPE", e)
+
+    def test_no_except_warns_but_empty_list_does_not(self):
+        bare = {k: v for k, v in self.GOOD.items() if k != "except"}
+        _, w = self.lint_voice([bare])
+        self.assertIn("VOICE-PREFER-TERM-NO-EXCEPT", w)
+        _, w = self.lint_voice([dict(bare, **{"except": []})])
+        self.assertNotIn("VOICE-PREFER-TERM-NO-EXCEPT", w)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

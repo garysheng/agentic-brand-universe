@@ -1,10 +1,21 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.57 — 2026-09-29.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.58 — 2026-09-29.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.58 changelog — a PREFERRED TERM is a voice rule the gate enforces.** §11:
+> `identity.voice.preferTerms` lists entries of `{prefer, avoid, except, when, severity,
+> decided}`: the house term, the bare forms it replaces (patterns), and the ordinary senses
+> that must never fire (patterns). voice-gate reports a bare form as `prefer-term` (REVIEW,
+> waivable with a reason, or BLOCK by `severity`) with the line rewritten as a suggestion,
+> and the preferred term in the wrong case as `prefer-term-case` (BLOCK). lint-universe
+> refuses a malformed entry or an uncompilable pattern by name and warns when `except` is
+> absent. Earned 2026-09-29 on continental-works: "Always capitalize Edge and ideally say
+> Agentic Edge always" had no field, so the universe recorded it as prose the gate never
+> read, and `capitalize` could not hold a bare "Edge" without flagging every border.
 
 > **v0.57 changelog — reuse what already draws it, never redraw it from prose.**
 > §4.1.1: any entity may declare
@@ -2709,7 +2720,8 @@ known by, that generic skills read.
   "platformUniverseId": "nation-of-fire",// registry id when shipping to a shared platform
   "theme": "gold-belongs-to-god",        // brand token set / palette id
   "closingOrnament": "wisp",             // a recurring closing motif, if any
-  "voice": { "capitalize": ["Kingdom","Spirit"], "oneWord": ["Christofuturist"] }, // voice-gate rules
+  "voice": { "capitalize": ["Kingdom","Spirit"], "oneWord": ["Christofuturist"],
+             "preferTerms": [ /* see "Voice term rules" below (v0.58) */ ] }, // voice-gate rules
   "subjectApproval": { "realLivingPerson": "requires-blessing" }, // requires-blessing | none-required
   // `none-required` abolishes the per-subject blessing gate universe-wide. Entity validation then
   // stops demanding realPerson.approval.state, because there is no gate left to enforce (v0.6.1).
@@ -2746,6 +2758,61 @@ reference depicts; a Style Pack override in `chain_matrix` likewise reads the PA
 `anchorSubject`. The framework's own spread composer (`compose-spread/assemble_prompt`) does NOT
 yet read it and carries only the generic anchor guard; that gap is logged, not hidden. A Style
 Pack may declare the same field for the same reason.
+
+**Voice term rules (`identity.voice`).** The universe-local half of the voice gate
+(`voice-gate`), each rule sized to how much judgment it needs:
+
+| Field | Shape | Gate finding | Severity |
+|---|---|---|---|
+| `oneWord` | terms | a split of the term (`Christo futurist`) | BLOCK |
+| `capitalize` | terms | the term written all-lowercase | ADVISORY (the sense can invert: "his spirit") |
+| `neverDisparage` | terms | the term beside a dismissive word | ADVISORY |
+| `preferTerms` (v0.58) | entries, below | a bare form where the house term belongs; the house term in the wrong case | REVIEW / BLOCK |
+
+`preferTerms` is for a universe that has a HOUSE TERM for something a bare word also names:
+say "Agentic Edge", not "edge". Each entry:
+
+```jsonc
+{
+  "prefer": "Agentic Edge",                 // the house term, in its one correct case
+  "avoid": ["edge"],                        // bare/wrong forms it replaces: regex patterns,
+                                            // case-insensitive, word-bounded by the gate;
+                                            // a single string is accepted
+  "except": ["\\bedge to edge\\b",          // ordinary senses that must NEVER fire:
+             "\\bat the edges?\\b",         // patterns matched on the same line; an avoid
+             "\\b(?:competitive|leading|cutting) edges?\\b"], // hit inside one is skipped
+  "when": "it means the client's compounded context", // the sense, printed with the finding
+  "severity": "review",                     // "review" (default) | "block"
+  "decided": { "date": "2026-09-29", "who": "...", "verbatim": "..." } // optional provenance
+}
+```
+
+What the gate does with it, on every line outside a blockquote (verbatim quotation keeps its
+printed wording):
+
+- The preferred term in the wrong case ("agentic edge") is `prefer-term-case`, **BLOCK**. No
+  judgment exists, so no waiver applies. Any `capitalize` advisory on the same span is
+  suppressed, so one mistake is one finding.
+- A bare form not inside the preferred term and not inside an `except` match is
+  `prefer-term`, **REVIEW** by default: fix it (the finding carries the line rewritten with
+  the preferred term) or waive it with a written reason like any REVIEW. `severity: "block"`
+  hardens it for a universe whose bare form has no ordinary sense at all.
+- `except` is how the rule stays trustworthy. A bare word usually has an ordinary sense (a
+  border, a margin, an advantage), and a rule that fires on "teal runs edge to edge" trains
+  the author to force the gate. Name the ordinary senses once, in the universe, rather than
+  waiving them one sentence at a time. An ordinary sense `except` does not cover yet is a
+  pattern to add, not a waiver to write, once it recurs.
+
+`lint-universe` refuses a malformed entry (`VOICE-PREFER-TERMS-SHAPE`: not a list, no
+`prefer`, no `avoid`, an unknown `severity`) and a pattern that does not compile
+(`VOICE-PREFER-TERM-BAD-PATTERN`) as errors, because the gate skips what it cannot read and a
+skipped rule is silent. An entry with no `except` key warns (`VOICE-PREFER-TERM-NO-EXCEPT`);
+`"except": []` says there are no ordinary senses and silences it.
+
+Earned 2026-09-29 on continental-works. Gary: "Always capitalize Edge and ideally say Agentic
+Edge always." `capitalize` could carry "Agentic Edge" but not a bare "Edge", because it
+matches the word anywhere and would flag every border and margin, so the universe wrote the
+rule as a `preferTerms` entry the gate did not read and marked it "not yet enforced".
 
 **Craft-canon is data, not skill prose.** Genres, spines, and register rules a universe discovers
 (SPEC §3.5, §5) are typed canon records the renderer reads — NOT paragraphs buried in a skill file.

@@ -272,6 +272,70 @@ def is_quotation(line: str) -> bool:
     return line.lstrip().startswith(">")
 
 
+def _as_list(v) -> list[str]:
+    if v is None:
+        return []
+    return [v] if isinstance(v, str) else [x for x in v if isinstance(x, str) and x]
+
+
+def prefer_term_findings(raw: str, where: str, entry: dict,
+                         taken: set[tuple[int, int]]) -> list[Finding]:
+    """`identity.voice.preferTerms` (SPEC 11, v0.58): say the house term, not a bare form.
+
+    Two findings, because they are two different mistakes:
+
+    - `prefer-term-case` (BLOCK): the preferred term IS written, in the wrong case
+      ("agentic edge"). No judgment exists, so nothing waives it.
+    - `prefer-term` (REVIEW by default, `severity: "block"` to harden): a bare form from
+      `avoid` stands where the preferred term belongs ("your edge grows"). Whether a bare
+      word carries the house sense is judgment, so `except` patterns name the ordinary
+      senses up front ("edge to edge", "at the edges", "competitive edge") and a match
+      inside one never fires; anything left is fixed or waived with a reason.
+
+    Every span a finding covers is added to `taken`, so the `capitalize` advisory does not
+    report the same word a second time.
+    """
+    prefer = entry.get("prefer")
+    if not isinstance(prefer, str) or not prefer.strip():
+        return []
+    out: list[Finding] = []
+    covered: list[tuple[int, int]] = []
+    # The preferred term itself, in any case. Correct case covers its span silently;
+    # wrong case is the capitalization-only violation.
+    for m in re.finditer(rf"\b{re.escape(prefer)}\b", raw, re.I):
+        covered.append(m.span())
+        if m.group(0) != prefer:
+            taken.add(m.span())
+            out.append(Finding("prefer-term-case", BLOCK, where, raw.strip(), m.group(0),
+                               f"write it as {prefer!r}"))
+    excepts: list[tuple[int, int]] = []
+    for pat in _as_list(entry.get("except")):
+        try:
+            excepts += [m.span() for m in re.finditer(pat, raw, re.I)]
+        except re.error:
+            continue                      # lint-universe reports a bad pattern
+    severity = BLOCK if str(entry.get("severity", "")).lower() == "block" else REVIEW
+    sense = (entry.get("when") or "").strip()
+    for pat in _as_list(entry.get("avoid")):
+        try:
+            rx = re.compile(rf"\b(?:{pat})\b", re.I)
+        except re.error:
+            continue
+        for m in rx.finditer(raw):
+            a, b = m.span()
+            if any(x <= a and b <= y for x, y in covered + excepts):
+                continue
+            taken.add((a, b))
+            fixed = raw[:a] + prefer + raw[b:]
+            out.append(Finding(
+                "prefer-term", severity, where, raw.strip(), m.group(0),
+                f"say {prefer!r}, not {m.group(0)!r}"
+                + (f" (when {sense[:140]})" if sense else "")
+                + f". Suggested: {fixed.strip()[:120]!r}. An ordinary sense this "
+                  "entry's `except` does not cover yet: add the pattern, or waive"))
+    return out
+
+
 def check_file(path: Path, voice: dict) -> list[Finding]:
     findings: list[Finding] = []
     verse_window = 0
@@ -296,12 +360,21 @@ def check_file(path: Path, voice: dict) -> list[Finding]:
                                         m.group(0), rule.note))
 
         # Universe-local term rules. `oneWord` is mechanical; `capitalize` is not.
+        # preferTerms first, so the spans it reports are not reported twice below.
+        # Verbatim quotation keeps its printed wording, as for every sense rule.
+        taken: set[tuple[int, int]] = set()
+        if not quoted:
+            for entry in voice.get("preferTerms") or []:
+                if isinstance(entry, dict):
+                    findings += prefer_term_findings(raw, where, entry, taken)
         for term in voice.get("oneWord") or []:
             for m in re.finditer(one_word_split(term), raw, re.I):
                 findings.append(Finding("one-word-term", BLOCK, where, raw.strip(),
                                         m.group(0), f"{term!r} must be one word"))
         for term in voice.get("capitalize") or []:
             for m in re.finditer(rf"\b{re.escape(term.lower())}\b", raw):
+                if any(x <= m.start() and m.end() <= y for x, y in taken):
+                    continue
                 before = raw[max(0, m.start() - 24):m.start()].lower()
                 poss = bool(re.search(r"\b(my|your|his|her|their|our|its|a|the man's)\s+$",
                                       before))

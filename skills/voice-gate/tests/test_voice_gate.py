@@ -222,5 +222,84 @@ class VoiceGate(unittest.TestCase):
         self.assertFalse(moved.current)
 
 
+#: The Continental Works entry (Gary, 2026-09-29: "Always capitalize Edge and ideally say
+#: Agentic Edge always"), with the ordinary senses of "edge" named as exceptions.
+EDGE = {"identity": {"voice": {
+    "capitalize": ["Agentic Edge"], "oneWord": [],
+    "preferTerms": [{
+        "prefer": "Agentic Edge",
+        "avoid": ["edge"],
+        "except": [r"\bedge to edge\b", r"\bat the edges?\b",
+                   r"\b(?:competitive|leading|cutting|trailing) edges?\b"],
+        "when": "it means the client's compounded context",
+    }]}}}
+
+
+class PreferTerms(unittest.TestCase):
+    """identity.voice.preferTerms (SPEC 11, v0.58)."""
+
+    def check(self, body, universe=EDGE, **kw):
+        with tempfile.TemporaryDirectory() as d:
+            return run(Path(d), body, universe=universe, **kw)
+
+    def test_bare_form_in_the_house_sense_fires_with_a_suggestion(self):
+        code, out = self.check("Every session, your edge grows.")
+        self.assertEqual(code, 1, out)
+        self.assertIn("[prefer-term] 'edge'", out)
+        self.assertIn("'Every session, your Agentic Edge grows.'", out)
+
+    def test_ordinary_senses_in_except_do_not_fire(self):
+        for line in ("The teal runs edge to edge.",
+                     "Frayed at the edges, it still held.",
+                     "It is a competitive edge, nothing more."):
+            code, out = self.check(line)
+            self.assertEqual(code, 0, f"{line!r} fired:\n{out}")
+
+    def test_the_preferred_term_itself_is_not_a_bare_form(self):
+        code, out = self.check("Your Agentic Edge grows. So does the Personal Agentic Edge.")
+        self.assertEqual(code, 0, out)
+
+    def test_capitalization_only_violation_blocks_and_is_reported_once(self):
+        code, out = self.check("Your agentic edge grows.")
+        self.assertEqual(code, 1, out)
+        self.assertIn("[prefer-term-case] 'agentic edge'", out)
+        self.assertIn("BLOCKING: 1", out)
+        # the capitalize advisory must not report the same span a second time
+        self.assertNotIn("capitalize-term", out)
+        self.assertNotIn("[prefer-term] 'edge'", out)
+
+    def test_case_violation_cannot_be_waived(self):
+        line = "Your agentic edge grows."
+        code, _ = self.check(line, waivers=[{"rule": "prefer-term-case",
+                                             "match": "agentic edge", "line": line,
+                                             "reason": "I like it"}])
+        self.assertEqual(code, 1)
+
+    def test_bare_form_is_waivable_with_a_reason(self):
+        line = "She stood at the edge of the stage."
+        code, out = self.check(line, waivers=[{"rule": "prefer-term", "match": "edge",
+                                               "line": line,
+                                               "reason": "a physical border"}])
+        self.assertEqual(code, 0, out)
+
+    def test_severity_block_hardens_the_bare_form(self):
+        u = json.loads(json.dumps(EDGE))
+        u["identity"]["voice"]["preferTerms"][0]["severity"] = "block"
+        code, out = self.check("your edge grows", universe=u)
+        self.assertEqual(code, 1)
+        self.assertIn("BLOCKING: 1", out)
+
+    def test_blockquote_keeps_its_printed_wording(self):
+        code, out = self.check("> the edge is yours")
+        self.assertEqual(code, 0, out)
+
+    def test_single_string_avoid_is_accepted(self):
+        u = json.loads(json.dumps(EDGE))
+        u["identity"]["voice"]["preferTerms"][0]["avoid"] = "edge"
+        code, out = self.check("their edge", universe=u)
+        self.assertEqual(code, 1)
+        self.assertIn("prefer-term", out)
+
+
 if __name__ == "__main__":
     unittest.main()

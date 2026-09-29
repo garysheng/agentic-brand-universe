@@ -47,8 +47,8 @@ Network failure never fails the gate: it falls back to the vendored copy and say
 
 | Tier | Examples | Behavior |
 |---|---|---|
-| **BLOCK** | em dash, `Christo-futurist`, Claude co-author credit, a `oneWord` term split | fix it; nothing waives it |
-| **REVIEW** | totalizing emphasis, `not X but Y`, filler, tautology-then-negation, `automate` | fix it, **or** waive it with a written reason |
+| **BLOCK** | em dash, `Christo-futurist`, Claude co-author credit, a `oneWord` term split, a `preferTerms` term in the wrong case (`prefer-term-case`) | fix it; nothing waives it |
+| **REVIEW** | totalizing emphasis, `not X but Y`, filler, tautology-then-negation, `automate`, a `preferTerms` bare form (`prefer-term`, BLOCK when the entry says `severity: "block"`) | fix it, **or** waive it with a written reason |
 | **ADVISORY** | `capitalize` terms, `neverDisparage` | printed, never gated |
 
 ADVISORY exists because some rules are genuinely undecidable by grep. Nation of Fire's own
@@ -56,6 +56,14 @@ ADVISORY exists because some rules are genuinely undecidable by grep. Nation of 
 own spirit-man, and capitalizing it is a doctrinal error rather than a style win. A checker
 that blocked on that would train the author to force the gate, and a forced gate is worse
 than none because it also lies about having checked.
+
+## Preferred terms (`identity.voice.preferTerms`, SPEC §11)
+
+A universe with a house term ("Agentic Edge") for something a bare word also names ("edge")
+declares `{prefer, avoid, except, when}`. The gate flags a bare form with the line rewritten
+as the suggestion, and skips any match inside an `except` pattern, which is where the ordinary
+senses live ("edge to edge", "at the edges", "competitive edge"). When the same ordinary sense
+turns up twice, add it to `except` in `universe.json` rather than writing a second waiver.
 
 ## Waivers are decisions, not a mute button
 

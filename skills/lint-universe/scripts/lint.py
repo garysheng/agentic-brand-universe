@@ -102,6 +102,60 @@ def _lint_windows(eid, kind_word, variants: dict):
              f"Give every {kind_word} in the set a window, or none of them.")
 
 
+def _lint_prefer_terms(voice: dict):
+    """Schema check for `identity.voice.preferTerms` (SPEC 11, v0.58).
+
+    voice-gate SKIPS an entry it cannot read and a pattern that does not compile, rather
+    than crash a manuscript check. That makes a malformed entry silent at the gate, which
+    is exactly the defect a linter exists for: the rule is written down, read by people,
+    and enforced by nothing. So the shape is refused here, by name.
+    """
+    pts = voice.get("preferTerms")
+    if pts is None:
+        return
+    if not isinstance(pts, list):
+        err("VOICE-PREFER-TERMS-SHAPE", "identity.voice.preferTerms must be a list of "
+            "{prefer, avoid, except, when} entries")
+        return
+    for i, e in enumerate(pts):
+        at = f"identity.voice.preferTerms[{i}]"
+        if not isinstance(e, dict):
+            err("VOICE-PREFER-TERMS-SHAPE", f"{at} is not an object"); continue
+        prefer = e.get("prefer")
+        if not isinstance(prefer, str) or not prefer.strip():
+            err("VOICE-PREFER-TERMS-SHAPE", f"{at}.prefer must be the preferred term, "
+                "a non-empty string"); continue
+        avoid = e.get("avoid")
+        avoid = [avoid] if isinstance(avoid, str) else avoid
+        if not avoid or not isinstance(avoid, list) or \
+                not all(isinstance(a, str) and a for a in avoid):
+            err("VOICE-PREFER-TERMS-SHAPE", f"{at}.avoid must be a pattern or a list of "
+                f"patterns naming the bare forms {prefer!r} replaces"); continue
+        exc = e.get("except")
+        if exc is not None and (not isinstance(exc, list) or
+                                not all(isinstance(x, str) for x in exc)):
+            err("VOICE-PREFER-TERMS-SHAPE", f"{at}.except must be a list of patterns")
+            exc = []
+        for field, pats in (("avoid", avoid), ("except", exc or [])):
+            for pat in pats:
+                try:
+                    re.compile(pat)
+                except re.error as x:
+                    err("VOICE-PREFER-TERM-BAD-PATTERN",
+                        f"{at}.{field} {pat!r} does not compile ({x}); voice-gate skips "
+                        f"it, so this rule enforces nothing")
+        sev = e.get("severity")
+        if sev is not None and str(sev).lower() not in ("review", "block"):
+            err("VOICE-PREFER-TERMS-SHAPE", f"{at}.severity is {sev!r}; use 'review' "
+                "(the default) or 'block'")
+        if exc is None:
+            warn("VOICE-PREFER-TERM-NO-EXCEPT",
+                 f"{at} ({prefer!r}) declares no `except`, so every sense of "
+                 f"{', '.join(map(repr, avoid))} fires. Name the ordinary senses "
+                 f"(a border, a margin) as patterns, or write `\"except\": []` to say "
+                 f"there are none")
+
+
 def jload(p):
     try: return json.loads(pathlib.Path(p).read_text())
     except Exception as ex: err("PARSE", f"{p}: {ex}"); return None
@@ -931,6 +985,8 @@ def lint(root):
                                 f"Bump deliberately and re-lint, or pin the engine back. Do not "
                                 f"leave them disagreeing: the recipes this engine writes will "
                                 f"record a version the universe never conformed to.")
+
+    _lint_prefer_terms((u.get("identity") or {}).get("voice") or {})
 
     reg = u.get("identity", {}).get("register", {})
     if not reg.get("anchor"):
