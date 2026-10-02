@@ -185,6 +185,8 @@ class CanonStore:
         problems += self._validate_generators()
         problems += self._validate_canon_records()
         problems += self._validate_assets()
+        from .surfaces import validate_surfaces
+        problems += validate_surfaces(self.dir, self.manifest)
         return problems
 
     def _validate_works(self) -> list[str]:

@@ -1,10 +1,18 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.58 — 2026-09-29.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.59 — 2026-10-02.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.59 changelog — a universe declares the SURFACE ROLES a renderer outside it paints in.**
+> §11: `identity.surfaces` maps a surface (`default`, `deck`, `artifact`, ...) to a canon record
+> (`"tokens": "<file>#<dot.path>"`) and names which token in it is the `ground`, the `text` and
+> the `accent`, plus an optional `display` font family. `validate` refuses a declaration whose
+> file, path, role or hex does not resolve, and one with no `default`. Earned by freedom#163: the
+> first two universes Freedom renders in keep their colors in different files, and their token
+> NAMES mean opposite things (Christofuturism's `ink` is text, Continental Works' is ground).
 
 > **v0.58 changelog — a PREFERRED TERM is a voice rule the gate enforces.** §11:
 > `identity.voice.preferTerms` lists entries of `{prefer, avoid, except, when, severity,
@@ -2813,6 +2821,35 @@ Earned 2026-09-29 on continental-works. Gary: "Always capitalize Edge and ideall
 Edge always." `capitalize` could carry "Agentic Edge" but not a bare "Edge", because it
 matches the word anywhere and would flag every border and margin, so the universe wrote the
 rule as a `preferTerms` entry the gate did not read and marked it "not yet enforced".
+
+**Surface roles (`identity.surfaces`, v0.59, optional).** A renderer OUTSIDE the universe (a
+slide deck, a published page, a share card, a wiki theme) needs three colors: what it paints the
+ground, the text and the one accent. Canon already holds them, but in no fixed place and under no
+fixed names, and the names do not travel: in Christofuturism `brand.chrome.ink` is the bone TEXT
+color on a night ground, in Continental Works `palette.json` `ink` is the warm GROUND. A consumer
+that reads token names therefore paints one of the two universes inside out. So the universe
+says it, per surface, and the consumer reads roles only:
+
+```jsonc
+"surfaces": {
+  "default":  { "tokens": "canon/craft/palette.json#tokens",            // <file>#<dot.path to a map>
+                "roles": { "ground": "ink", "text": "cream", "accent": "live" } },
+  "artifact": { "tokens": "canon/craft/the-ascent.json#tokens",
+                "roles": { "ground": "cream", "text": "ink", "accent": "teal" },
+                "display": "Fraunces" }                                 // optional font family
+}
+```
+
+- A token is a hex string or an object with `hex` (both shapes are in use; neither moves).
+- A surface the declaration does not name falls back to `default`, which is therefore required.
+- Keys beginning `_` are comments.
+- **`validate` refuses** a missing file, a path that is not a map, a role that is missing or names
+  a token the map lacks, a value that is not a hex, and a missing `default`, every defect at once.
+  The declaration is read by tools that never run this engine, so the universe's own gate is the
+  only place a stale one can be caught before it renders a deck in someone else's colors.
+- The consumer of record is Freedom (`freedom-brand.mjs`, freedom#163), which resolves the
+  surface for a deck or a published page from the universe the operator's workspace loads as its
+  brand. The roles are canon; how a consumer maps them onto its own variables is the consumer's.
 
 **Craft-canon is data, not skill prose.** Genres, spines, and register rules a universe discovers
 (SPEC §3.5, §5) are typed canon records the renderer reads — NOT paragraphs buried in a skill file.

@@ -57,14 +57,14 @@ retired and why, and [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the layer
 <!-- BEGIN GENERATED: status -->
 |  | Value | Source |
 |---|---|---|
-| Spec | v0.58 | `SPEC.md`, dated 2026-09-29 |
-| Engine conforms to | v0.58 | `engine/agenticstory/__init__.py` |
+| Spec | v0.59 | `SPEC.md`, dated 2026-10-02 |
+| Engine conforms to | v0.59 | `engine/agenticstory/__init__.py` |
 | Engine version | v0.0.1 | `engine/agenticstory/__init__.py` |
 | Skills | 39 | `skills/*/SKILL.md` |
 | CLI verbs | 25 | `abu --help` |
 | Agents | 1 | `agents/*.md` |
 | Commands | 1 | `commands/*.md` |
-| Tests | 1958 | across 121 files; `./run-tests.sh` |
+| Tests | 1962 | across 122 files; `./run-tests.sh` |
 <!-- END GENERATED: status -->
 
 The engine is a typed canon store + model validation + the load-bearing reference gate. Stdlib only,
