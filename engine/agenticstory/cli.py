@@ -3,7 +3,9 @@ Agentic Brand Universe CLI.
 
   abu validate <universe>            # structural validation of all canon + stories
   abu list <universe>                # entities + stories
-  abu list-craft <universe>          # craft-canon records (spine/genre/register-rule)
+  abu list-craft <universe>          # craft-canon records (spine/genre/register-rule/kit)
+  abu kit <universe> [--json]        # the brand's pieces and no-gos (SPEC §13.1)
+  abu check-kit <universe> <path>... # refuse a surface whose source uses a no-go
   abu crossovers <universe> <entity> # crossover relations for an entity
   abu assert-story <universe> <id>   # THE pre-render gate for a whole story
   abu assert-spread <universe> --characters a,b [--location X]
@@ -58,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
     li.add_argument("universe")
     lc = sub.add_parser("list-craft", help="list a universe's craft-canon records")
     lc.add_argument("universe")
+    kt = sub.add_parser("kit", help="list the brand's pieces and no-gos (SPEC §13.1 kit records)")
+    kt.add_argument("universe"); kt.add_argument("--json", action="store_true")
+    ck = sub.add_parser("check-kit", help="refuse a surface whose source files use a no-go the kit can detect")
+    ck.add_argument("universe"); ck.add_argument("paths", nargs="+", help="files or directories to scan")
+    ck.add_argument("--json", action="store_true")
     c = sub.add_parser("crossovers", help="list the crossovers an entity appears in")
     c.add_argument("universe"); c.add_argument("entity")
     rel = sub.add_parser("relations", help="list an entity's typed relations")
@@ -518,6 +525,36 @@ def main(argv: list[str] | None = None) -> int:
         for s in store.stories.values():
             print(f"  {s.id:24s} spine={s.raw.get('spine')} features={len(s.features)} beats={len(s.beats)}")
         return 0
+    if args.cmd == "kit":
+        from .kit import kits
+        ks = kits(store.craft)
+        if args.json:
+            print(json.dumps(ks, indent=2)); return 0
+        if not ks:
+            print("no kit: this universe records no pieces or no-gos (SPEC §13.1)"); return 0
+        for k in ks:
+            print(f"kit {k.get('id')}: {k.get('name', '')}")
+            for p in k.get("pieces") or []:
+                where = p.get("definedAt") or "recipe"
+                print(f"  piece  {p.get('id'):34} {p.get('name', '')}  [{where if isinstance(where, str) else ', '.join(where)}]")
+            for n in k.get("noGos") or []:
+                print(f"  no-go  {n.get('id'):34} instead: {n.get('instead') or '-'}")
+        return 0
+    if args.cmd == "check-kit":
+        from .kit import nogos, pieces_by_id, scan
+        if not any(n.get("detect") for n in nogos(store.craft)):
+            print("check-kit: no no-go in this universe declares a detect pattern, so nothing can be checked")
+            return 2
+        hits = scan(store.craft, args.paths)
+        if args.json:
+            print(json.dumps(hits, indent=2))
+            return 1 if hits else 0
+        pieces = pieces_by_id(store.craft)
+        for h in hits:
+            inst = pieces.get(h["instead"] or "", {}).get("name") or h["instead"] or "(see the no-go)"
+            print(f"{h['file']}:{h['line']}  NO-GO {h['nogo']}  -> use {inst}\n    {h['excerpt']}")
+        print(f"check-kit: {len(hits)} no-go use(s)" if hits else "check-kit: clean")
+        return 1 if hits else 0
     if args.cmd == "list-craft":
         for c in sorted(store.craft.values(), key=lambda c: (c.kind, c.id)):
             print(f"{c.kind:14} {c.id:32} {c.raw.get('name', '')}")

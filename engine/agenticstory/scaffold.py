@@ -24,11 +24,49 @@ def engine_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+# THE ENGINE IS CHOSEN, NOT ASSUMED (SPEC v0.60). Bash that sets $ENGINE, given $UNIVERSE and
+# $BAKED_ENGINE. Kept as one constant so a universe whose assert.sh grew local modes can paste it
+# verbatim, and so a test can run it. Earned 2026-10-06: continental-works pinned spec v0.58 while
+# its gate ran an engine checkout at v0.51, which silently skipped every check added since; the
+# first new craft kind then failed there as "unknown craft kind", which reads as a canon defect.
+ENGINE_RESOLVER = r'''# THE ENGINE IS CHOSEN, NOT ASSUMED (SPEC v0.60): the first of $AGENTICSTORY_ENGINE, the path
+# baked at init, and the newest installed `abu` plugin that conforms to at least the spec this
+# universe pins. An older engine cannot know the rules it must enforce: it refuses a kind it has
+# never heard of, or passes a check it does not have, and both look like a verdict.
+ENGINE="$(python3 - "$UNIVERSE" "$BAKED_ENGINE" <<'PY'
+import glob, json, os, re, sys
+uni, baked = sys.argv[1], sys.argv[2]
+ver = lambda s: tuple(int(x) for x in re.findall(r"\d+", str(s)))
+need = (json.load(open(os.path.join(uni, "universe.json"))).get("spec") or {}).get("version") or "0"
+claude = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+plugins = sorted(glob.glob(os.path.join(claude, "plugins", "cache", "*", "abu", "*", "engine")),
+                 key=lambda p: ver(p.split(os.sep)[-2]), reverse=True)
+tried = []
+for cand in [os.environ.get("AGENTICSTORY_ENGINE", ""), baked] + plugins:
+    init = os.path.join(cand, "agenticstory", "__init__.py") if cand else ""
+    if not init or not os.path.isfile(init):
+        continue
+    m = re.search(r'^SPEC_VERSION\s*=\s*"([^"]+)"', open(init).read(), re.M)
+    have = m.group(1) if m else "0"
+    tried.append(f"  {cand} (spec v{have})")
+    if ver(have) >= ver(need):
+        print(cand)
+        sys.exit(0)
+sys.stderr.write(f"REFUSED: no engine on this machine conforms to spec v{need}, which this universe pins.\n"
+                 + ("Tried:\n" + "\n".join(tried) if tried else "No engine found.") + "\n"
+                 "Update one (pull the framework checkout, or /plugin update abu), or set AGENTICSTORY_ENGINE.\n")
+sys.exit(3)
+PY
+)" || exit 3
+'''
+
+
 def _assert_sh(baked_engine: Path) -> str:
     """The pre-render GATE a renderer/gen-script calls before drawing a unit.
 
-    Delegates to the engine so there is ONE load-bearing system. The engine dir is
-    resolved from $AGENTICSTORY_ENGINE (override) or the path baked at init time.
+    Delegates to the engine so there is ONE load-bearing system. The engine is chosen by
+    ENGINE_RESOLVER: the first of $AGENTICSTORY_ENGINE, the path baked at init time, and the
+    newest installed `abu` plugin that conforms to at least the spec this universe pins.
     """
     return f'''#!/usr/bin/env bash
 # Load-bearing PRE-RENDER GATE for this universe, via the Agentic Brand Universe engine.
@@ -41,20 +79,21 @@ def _assert_sh(baked_engine: Path) -> str:
 #   assert.sh validate
 #   assert.sh spread --characters hero,guide [--location the-hall]
 #   assert.sh story  the-first-step
+#   assert.sh engine                                   # print the engine the gate resolved
 set -euo pipefail
 HERE="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
 UNIVERSE="$(cd "$HERE/../.." && pwd)"                 # <universe> (this file is at <universe>/canon/scripts/)
-ENGINE="${{AGENTICSTORY_ENGINE:-{baked_engine}}}"     # override with $AGENTICSTORY_ENGINE if the engine moves
-[ -d "$ENGINE" ] || {{ echo "agenticstory engine not found at $ENGINE — set AGENTICSTORY_ENGINE" >&2; exit 3; }}
-
-[ $# -ge 1 ] || {{ echo "usage: assert.sh validate|spread|story ..." >&2; exit 2; }}
+BAKED_ENGINE="{baked_engine}"                         # override with $AGENTICSTORY_ENGINE
+''' + ENGINE_RESOLVER + '''
+[ $# -ge 1 ] || { echo "usage: assert.sh validate|spread|story|engine ..." >&2; exit 2; }
 mode="$1"; shift
 cd "$ENGINE"
 case "$mode" in
   validate) exec python3 -m agenticstory.cli validate     "$UNIVERSE" ;;
   spread)   exec python3 -m agenticstory.cli assert-spread "$UNIVERSE" "$@" ;;
   story)    exec python3 -m agenticstory.cli assert-story  "$UNIVERSE" "$@" ;;
-  *) echo "usage: assert.sh validate|spread|story ..." >&2; exit 2 ;;
+  engine)   echo "$ENGINE" ;;
+  *) echo "usage: assert.sh validate|spread|story|engine ..." >&2; exit 2 ;;
 esac
 '''
 

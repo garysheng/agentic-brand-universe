@@ -33,6 +33,7 @@ or a set of page heroes without ever declaring canon.
 | `add-character` | Add ONE character to an Agentic Brand Universe: interview the source (a real person's story/wardrobe/sensitive-list, or a fictional design brief), reuse-first via casting sweep, then scaffold a typed `character` entity with the SPEC §12 reference-matrix slots (8 shots) and a ready-to-run generation prompt per shot. | yes |
 | `add-generator` | Add ONE deterministic generator to a universe (SPEC v0.13 §4.11) — code that DRAWS an asset instead of prompting for one. |  |
 | `add-motif` | Add ONE motif (a recurring visual element, gesture, or pattern that must render identically wherever it appears, not a one-off image) to an Agentic Brand Universe (interview what it is and its load-bearing detail, reuse-first via casting sweep, then scaffold a typed `motif` entity with SPEC §12's hero + detail reference slots and ready-to-run generation prompts). |  |
+| `add-piece-or-no-go` | Record ONE brand PIECE (a reusable part of the brand with its exact recipe, or a pointer to the canon that already defines it - a selection state, a button, a thread of stripes, a section marker, a mark at a size) or ONE NO-GO (a thing the brand refuses, why, and the piece to use instead) into a universe's kit record (SPEC 13.1, craft-canon kind `kit`), with who decided it, when and in what words. |  |
 | `add-prop` | Add ONE prop (a discrete physical object a character holds, wears, or uses, that must render identically wherever it appears) to an Agentic Brand Universe (interview what it is and its load-bearing detail, reuse-first via casting sweep, then scaffold a typed `prop` entity with SPEC §12's hero + detail reference slots and ready-to-run generation prompts). |  |
 | `add-relation` | Record ONE typed relation between two ids in an Agentic Brand Universe's canon graph (`crossover-with`, `appears-in`, `derived-from`, `contradicts`, `supersedes`) as a `from`/`rel`/`to`/`story`/`note` record written to `canon/relations/`. |  |
 | `add-setting` | Add ONE setting (a location) to an Agentic Brand Universe (interview its fixed geometry, fixed camera angles, and dressing, reuse-first via casting sweep, then scaffold a typed `setting` entity with SPEC §12's contract slots (turnaround, per-angle empty plates, blueprint, plus map/blocking/dressing descriptor prose) and ready-to-run generation prompts). |  |
@@ -88,10 +89,12 @@ answers questions about it, and refuses renders whose references do not exist on
 | `backfill-provenance` | record provenance for art that predates the adapter, without regenerating it (never invokes a model) |
 | `build-canon` | regenerate CANON.md from canon/properties + canon/crossovers |
 | `build-docs` | regenerate the framework's own derived docs (README + docs/REFERENCE.md) |
+| `check-kit` | refuse a surface whose source files use a no-go the kit can detect |
 | `crossovers` | list the crossovers an entity appears in |
 | `elevation` | render an OBJECT's blueprint as a code-built 2D elevation sheet from a declarative spec (deterministic, no model, no cost) |
 | `import-asset` | bring an asset made OUTSIDE this universe INTO it, writing its provenance chain as a side effect of the copy |
-| `init` | scaffold a new universe (conforms to spec v0.59) |
+| `init` | scaffold a new universe (conforms to spec v0.60) |
+| `kit` | list the brand's pieces and no-gos (SPEC §13.1 kit records) |
 | `land` | merge a finished work branch home, or queue it if that is not safe yet |
 | `list` | list every entity in a universe |
 | `list-craft` | list a universe's craft-canon records |
@@ -166,6 +169,7 @@ Headlines only, parsed from `SPEC.md`. Read the spec for the full text of any en
 <!-- BEGIN GENERATED: spec-changelog -->
 | Version | What changed |
 |---|---|
+| v0.60 | the KIT: a universe catalogs its brand's pieces and no-gos, and a gate > reads the no-gos. |
 | v0.59 | a universe declares the SURFACE ROLES a renderer outside it paints in. |
 | v0.58 | a PREFERRED TERM is a voice rule the gate enforces. |
 | v0.57 | reuse what already draws it, never redraw it from prose. |

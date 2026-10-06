@@ -1,10 +1,23 @@
 # Agentic Brand Universe — Cartridge Spec
 
-**v0.59 — 2026-10-02.** The version-controlled brand-universe (cartridge) format: the first-principles
+**v0.60 — 2026-10-06.** The version-controlled brand-universe (cartridge) format: the first-principles
 architecture for a brand as version-controlled canon + golden assets, agentically writable,
 composable, and evolvable, rendered into any deliverable. Home: `agenticbranduniverse.com`.
 Reference implementations: the Nation of Fire universe (storybooks) and Build on Anthropic (a
 documentation brand: explanatory plates, ink-line illustration, share cards, a slide deck).
+
+> **v0.60 changelog — the KIT: a universe catalogs its brand's pieces and no-gos, and a gate
+> reads the no-gos.** §13.1: a craft-canon record of the new kind `kit` holds `pieces` (a
+> reusable part with what it is for, an exact `recipe` or a `definedAt` pointer into the canon
+> that already defines it, where it is used, and who decided it, when, in what words) and
+> `noGos` (what is refused, why, the piece to use `instead`, the same provenance, an optional
+> `source` quote that must still be in canon, an optional `supersedes` line that must no longer
+> say the old thing, and optional `detect` patterns). `validate` refuses every malformed item;
+> `abu kit` lists them; `abu check-kit <universe> <paths>` scans a surface's source and exits 1 on
+> any no-go it can detect. §3.2: the scaffolded `assert.sh` now CHOOSES its engine (override, baked
+> path, newest installed plugin) and refuses one older than the spec the universe pins. Earned 2026-10-06 on continental-works: Gary rejected the six stripes
+> down one edge of a selected card and asked ABU to catalog "all these different Lego pieces of
+> the brand and no-goes"; the refused shape was itself canon, and nothing could read a refusal.
 
 > **v0.59 changelog — a universe declares the SURFACE ROLES a renderer outside it paints in.**
 > §11: `identity.surfaces` maps a surface (`default`, `deck`, `artifact`, ...) to a canon record
@@ -1036,6 +1049,18 @@ document that can drift.
 A resolver maps every entity to its real assets and **asserts** them before any render. Missing,
 renamed, or unlocked → hard error. This is the layer that kills silent drift. (The Nation of Fire
 `resolve_gabr.py` + `gabr-index.json` are the v0 of this layer.)
+
+**The gate chooses its engine; it never assumes one (v0.60).** A universe's `canon/scripts/assert.sh`
+runs the engine that is the first of `$AGENTICSTORY_ENGINE`, the path baked at `init`, and the
+newest installed `abu` plugin (`~/.claude/plugins/cache/*/abu/<version>/engine`, compared
+numerically) whose `SPEC_VERSION` is at least `universe.json` `spec.version`. With none, it exits 3
+naming every engine it tried and its spec version. `assert.sh engine` prints the choice. An engine
+older than the pin cannot know the rules the universe relies on: it refuses a kind it has never
+heard of, or passes a check it does not have, and both read as a verdict on canon. Earned
+2026-10-06: continental-works pinned v0.58 while its gate ran an engine checkout at v0.51, silently
+skipping every check added since, and the first `kit` record then failed there as "unknown craft
+kind". The resolver is `scaffold.ENGINE_RESOLVER`; a universe whose `assert.sh` grew local modes
+pastes it verbatim.
 
 **A ref path may be a FILE or a DIRECTORY.** A directory expands to the image files directly inside
 it, sorted. `agenticstory.refs.expand_ref` is the one implementation; `refs.photo_stack` layers the
@@ -2881,11 +2906,86 @@ in `canon/craft/*.json`, loaded and validated by the engine:
   epistle). A renderer reads the genre a property declares.
 - **register-rule** — a universe-wide visual or narrative law (e.g. "gold belongs to God",
   "testimony over prediction", "awe not horror") the renderer honors on every unit.
+- **kit** (v0.60) — the brand's catalog of PIECES and NO-GOS, read by a gate. See §13.1.
 
 Each record: `{ id, kind, name, summary, rules, origin }`. `rules` (or `summary`) is required; `origin`
 records where a rule was discovered. The collection is OPTIONAL: a universe with no `canon/craft/`
 validates unchanged. This is how a genre discovered making one book (SPEC §5, craft is discovered then
 encoded) is paid for once and reused by every future property and universe.
+
+### 13.1 The kit: pieces and no-gos (v0.60)
+
+A brand is made of small reusable parts (a selection state, a button, a thread of stripes, a
+section marker) and of things it refuses. Before v0.60 neither had a typed home: pieces lived as
+sentences inside register-rule prose or only in a site's CSS, and refusals were scattered across
+rule text, icon notes and project STATE files. Nothing could READ a refusal, so it held only as
+long as somebody remembered it, and a refused shape could sit in canon itself as the instruction.
+
+A kit is a craft-canon record with `"kind": "kit"` (a universe may have more than one; ids are
+unique across all of them):
+
+```jsonc
+{
+  "id": "brand-kit", "kind": "kit", "name": "...", "summary": "...",
+  "tokensFrom": "canon/craft/the-ascent.json#tokens",   // optional: the map a recipe's tokens name
+  "pieces": [{
+    "id": "selection-ring",                 // kebab-case
+    "name": "The selection ring",
+    "for": "what it is for",
+    "recipe": { "tokens": ["teal", "mustard", "tomato"], "css": "...", "sizes": "..." },
+    "definedAt": "canon/craft/the-ascent.json#icon.rules.4",   // a piece ALREADY defined points, never copies
+    "usedIn": ["where it is used, free text"],
+    "decided": { "by": "Gary Sheng", "on": "2026-10-06", "verbatim": "his words" }
+  }],
+  "noGos": [{
+    "id": "edge-stripe-on-selection",
+    "refuses": "what is refused", "why": "why",
+    "instead": "selection-ring",            // a piece id, or null plus "insteadNote"
+    "decided": { "by": "...", "on": "YYYY-MM-DD", "verbatim": "..." },
+    "source": [{ "at": "canon/craft/the-ascent.json#rules.4", "quote": "the line it was lifted from" }],
+    "supersedes": [{ "at": "<file>#<path of the LIVE line>", "said": "the words it used to say" }],
+    "scope": "optional: where the ruling was made, when it is narrower than the whole brand",
+    "detect": [{ "pattern": "<regex over a source file>", "files": ["*.css"], "note": "..." }]
+  }]
+}
+```
+
+A pointer is `<file>#<dot.path>` inside the universe; a numeric segment indexes a list. A source
+in a sibling repo is written `<repo>:<path>[@<commit>]` and is recorded, not checked.
+
+**What `validate` refuses**, every defect at once: an item with no `decided` (by, a `YYYY-MM-DD`
+date, and `verbatim`, unless the item cites a `source`); a piece with neither `recipe` nor
+`definedAt`, or a `definedAt` that does not resolve; a recipe token missing from `tokensFrom`; a
+no-go with no `refuses`/`why`/`instead`, an `instead` naming no piece, or a null `instead` with no
+`insteadNote`; a `source` quote no longer present at its pointer (so a harvested no-go cannot
+outlive the canon line it came from silently); a `supersedes` line that STILL says the old words
+(a ruling recorded in the kit while canon still instructs the opposite is two sources of truth);
+a duplicate id; a `detect` pattern that does not compile.
+
+**Supersession is recorded, never deleted.** When a ruling replaces a canon line, the live line is
+rewritten to point at the piece, the old words are kept in a supersession note beside it with the
+date and the verbatim, and the no-go's `supersedes` names the line, which `validate` then holds
+to its new text.
+
+**The gate: `abu check-kit <universe> <path>...`** runs every no-go's `detect` patterns over the
+source files under the paths (CSS, HTML, JS/TS and component files by default; `node_modules`,
+`.git` and build output skipped) and prints each hit with the piece to use instead. Exit 1 on a
+hit, 0 clean, 2 when no no-go declares a detector. Patterns run over the WHOLE file so a rule
+split across lines is caught; write them with `[^}]*` rather than `.*` so one match cannot span
+two CSS rules. A detector is a floor, not proof: a no-go about taste ("no italics") may have
+none, and an inline React style is invisible to a CSS-shaped pattern. Run it over every surface
+the universe governs before calling a rename of a piece done, and over a sibling repo to list
+the places still on a superseded rule.
+
+`abu kit <universe> [--json]` lists the pieces and no-gos. The scaffolding verb is the
+`add-piece-or-no-go` skill.
+
+Earned 2026-10-06 on continental-works. A selected card in a book reader carried the six-stripe
+ribbon down its left edge only, exactly as canon (`surfaces.frapp.roles.chosenOption`) said to.
+Gary: "I really don't like it when you ... use the stripes like the way you did it for Diane ...
+make it like a full multi-border instead of just a left border ... And I want whatever you do with
+that to be part of the ABU, as like, I think the ABU should be cataloging all these different Lego
+pieces of the brand and no-goes."
 
 ## 12. Reference-matrix standard (v0.4)
 
